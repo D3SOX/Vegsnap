@@ -1083,6 +1083,11 @@ fn research_if_needed(
     if sources.len() > 50 {
         return first;
     }
+    // Preserve the optional source-backed contact for downstream identity and URL
+    // validation. A malformed optional field must not discard useful evidence.
+    if let Some(contact) = next.get("contact").filter(|value| value.is_object()) {
+        original["contact"] = contact.clone();
+    }
     crate::stream::AnalysisResponse {
         text: original.to_string(),
         research: json!({"searched":true,"sources":sources}),
@@ -1221,6 +1226,44 @@ mod tests {
             text: json!({"text":"","complete":false,"category":"food","name":"Granola Kakao & Hallon","brand":"Paulúns"}).to_string(),
             research: json!({"searched":searched,"sources":[]}),
         }
+    }
+
+    #[test]
+    fn research_followup_preserves_contact_with_actual_source_provenance() {
+        let contact = json!({"email":"care@maker.example","sourceUrl":"https://maker.example/contact","productName":"Granola Kakao & Hallon","brand":"Paulúns"});
+        for searched in [false, true] {
+            let result = research_if_needed(research_fixture(false), &[], |_| {
+                let mut next = research_fixture(searched);
+                let mut extracted = extraction_json(&next.text).unwrap();
+                extracted["contact"] = contact.clone();
+                next.text = extracted.to_string();
+                next.research["sources"] =
+                    json!([{"url":"https://maker.example/contact","title":"Customer service"}]);
+                Ok(next)
+            });
+            let extracted = extraction_json(&result.text).unwrap();
+            if searched {
+                assert_eq!(extracted["contact"], contact);
+                assert_eq!(result.research["sources"][0]["url"], contact["sourceUrl"]);
+            } else {
+                assert!(extracted.get("contact").is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn malformed_optional_contact_does_not_discard_other_research() {
+        let result = research_if_needed(research_fixture(false), &[], |_| {
+            let mut next = research_fixture(true);
+            let mut extracted = extraction_json(&next.text).unwrap();
+            extracted["contact"] = json!("malformed");
+            extracted["webCompositions"] = json!([{"url":"https://maker.example/granola","text":"oats","complete":true,"sourceType":"manufacturer","productName":"Granola Kakao & Hallon","brand":"Paulúns"}]);
+            next.text = extracted.to_string();
+            Ok(next)
+        });
+        let extracted = extraction_json(&result.text).unwrap();
+        assert!(extracted.get("contact").is_none());
+        assert_eq!(extracted["webCompositions"].as_array().unwrap().len(), 1);
     }
 
     #[test]
