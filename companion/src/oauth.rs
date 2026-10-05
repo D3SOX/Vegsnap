@@ -2,7 +2,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use directories::ProjectDirs;
 use fs2::FileExt;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
-use rand::RngCore;
+use rand::Rng;
 use reqwest::blocking::{Client, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -56,7 +56,10 @@ impl Registration {
     }
 }
 fn subject_hash(subject: &str) -> String {
-    format!("{:x}", Sha256::digest(subject.as_bytes()))
+    Sha256::digest(subject.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 fn valid_registration(registration: &Registration) -> bool {
     !registration.client_id.is_empty()
@@ -2025,6 +2028,43 @@ mod tests {
             })
             .is_err()
         );
+    }
+
+    #[test]
+    fn registration_subject_hash_preserves_sha256_lower_hex_format() {
+        // These hashes are persisted between releases. In particular, leading zero
+        // nibbles must survive dependency upgrades so the same account still matches.
+        assert_eq!(
+            subject_hash("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let registration = Registration {
+            client_id: "issued-client".into(),
+            subject_hash: Some(
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+            ),
+        };
+        assert!(valid_registration(&registration));
+        assert!(registration.accepts_subject("abc"));
+        assert!(!registration.accepts_subject("abcd"));
+    }
+
+    #[test]
+    fn oauth_random_values_keep_256_bits_and_url_safe_encoding() {
+        fn requires_crypto_rng(_: &impl rand::CryptoRng) {}
+        requires_crypto_rng(&rand::rng());
+        let first = random_value();
+        let second = random_value();
+        for value in [&first, &second] {
+            assert_eq!(value.len(), 43);
+            assert!(
+                value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+            );
+            assert_eq!(URL_SAFE_NO_PAD.decode(value).unwrap().len(), 32);
+        }
+        assert_ne!(first, second);
     }
 
     #[test]

@@ -7,15 +7,15 @@ license = "AGPL-3.0-only"
 description = "Optional native messaging host for Veguide ChatGPT connections"
 
 [dependencies]
-base64 = "0.22"
+base64 = "0.23"
 directories = "6"
 fs2 = "0.4"
-jsonwebtoken = { version = "10.3", default-features = false, features = ["rust_crypto"] }
-rand = "0.9"
+jsonwebtoken = { version = "11.1", default-features = false, features = ["rust_crypto"] }
+rand = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
+sha2 = "0.11"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 webbrowser = "1"
