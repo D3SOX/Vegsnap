@@ -38,6 +38,317 @@
         "sourceUrl": "https://www.nestle.com/brands/culinary-chilled-frozen/garden-gourmet",
         "reviewedAt": "2026-10-06T00:00:00Z"
       }
+    },
+    {
+      "id": "procter-gamble",
+      "name": "Procter & Gamble",
+      "kind": "company",
+      "aliases": [
+        "P&G",
+        "Procter and Gamble",
+        "The Procter & Gamble Company"
+      ]
+    },
+    {
+      "id": "reckitt",
+      "name": "Reckitt",
+      "kind": "company",
+      "aliases": [
+        "Reckitt Benckiser",
+        "Reckitt Benckiser Group plc"
+      ]
+    },
+    {
+      "id": "colgate-palmolive",
+      "name": "Colgate-Palmolive",
+      "kind": "company",
+      "aliases": [
+        "Colgate Palmolive",
+        "Colgate-Palmolive Company"
+      ]
+    },
+    {
+      "id": "henkel",
+      "name": "Henkel",
+      "kind": "company",
+      "aliases": [
+        "Henkel AG & Co. KGaA"
+      ]
+    },
+    {
+      "id": "procter-gamble-ariel",
+      "name": "Ariel",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-gillette",
+      "name": "Gillette",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-head-shoulders",
+      "name": "Head & Shoulders",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-pantene",
+      "name": "Pantene",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-old-spice",
+      "name": "Old Spice",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-febreze",
+      "name": "Febreze",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-pampers",
+      "name": "Pampers",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-tampax",
+      "name": "Tampax",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "procter-gamble-swiffer",
+      "name": "Swiffer",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "procter-gamble",
+        "sourceUrl": "https://us.pg.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-dettol",
+      "name": "Dettol",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-lysol",
+      "name": "Lysol",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-harpic",
+      "name": "Harpic",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-finish",
+      "name": "Finish",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-vanish",
+      "name": "Vanish",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-durex",
+      "name": "Durex",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "reckitt-veet",
+      "name": "Veet",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "reckitt",
+        "sourceUrl": "https://www.reckitt.com/brands/",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-colgate",
+      "name": "Colgate",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-palmolive",
+      "name": "Palmolive",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-elmex",
+      "name": "elmex",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-meridol",
+      "name": "meridol",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-sanex",
+      "name": "Sanex",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-danklorix",
+      "name": "DanKlorix",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "colgate-palmolive-softlan",
+      "name": "Softlan",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "colgate-palmolive",
+        "sourceUrl": "https://www.colgatepalmolive.com/en-us/brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "henkel-schwarzkopf",
+      "name": "Schwarzkopf",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "henkel",
+        "sourceUrl": "https://www.henkel.com/our-businesses/henkel-consumer-brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "henkel-syoss",
+      "name": "Syoss",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "henkel",
+        "sourceUrl": "https://www.henkel.com/our-businesses/henkel-consumer-brands",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
     }
   ],
   "records": [
@@ -54,6 +365,160 @@
       "reviewedAt": "2026-10-06T00:00:00Z",
       "status": "current",
       "redistribution": "Original factual summary; source text is not redistributed."
+    },
+    {
+      "id": "procter-gamble-animal-testing-policy",
+      "companyId": "procter-gamble",
+      "category": "animal_testing",
+      "description": {
+        "en": "P&G states that it no longer tests consumer products on animals except when required by law, and supports replacing animal tests. This regulatory exception is a company policy concern, not evidence that this product was tested on animals.",
+        "de": "P&G erklärt, Verbraucherprodukte nur noch dann an Tieren zu testen, wenn dies gesetzlich vorgeschrieben ist, und unterstützt den Ersatz von Tierversuchen. Diese gesetzliche Ausnahme betrifft die Unternehmensrichtlinie und belegt nicht, dass dieses Produkt an Tieren getestet wurde."
+      },
+      "sourceUrl": "https://us.pg.com/cruelty-free/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "status": "current",
+      "redistribution": "Original factual summary; source text is not redistributed."
+    },
+    {
+      "id": "reckitt-animal-testing-policy",
+      "companyId": "reckitt",
+      "category": "animal_testing",
+      "description": {
+        "en": "Reckitt’s policy allows animal tests when scientifically justified or required by government or scientific agencies. It requires internal ethical approval and prioritises alternatives. This is a company policy concern, not evidence that this product was tested on animals.",
+        "de": "Reckitts Richtlinie erlaubt Tierversuche bei wissenschaftlicher Begründung oder auf Anforderung staatlicher oder wissenschaftlicher Stellen. Sie verlangt eine interne ethische Genehmigung und gibt Alternativen Vorrang. Dies betrifft die Unternehmensrichtlinie und belegt nicht, dass dieses Produkt an Tieren getestet wurde."
+      },
+      "sourceUrl": "https://eu-assets.contentstack.com/v3/assets/blt93c8bc7a598af9f0/bltef0fd3fa64c44798/6a6b30b5b9c69ae8b7f6f21b/Alternatives_to_Animal_Testing_Policy_Approved.pdf",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "status": "current",
+      "redistribution": "Original factual summary; source text is not redistributed.",
+      "sourceDate": "2026-04-16"
+    },
+    {
+      "id": "colgate-palmolive-animal-testing-policy",
+      "companyId": "colgate-palmolive",
+      "category": "animal_testing",
+      "description": {
+        "en": "Colgate-Palmolive states that contracted animal tests are limited to regulatory requirements or cases without suitable safety alternatives. Its adult personal-care testing moratorium retains exceptions. This is a company policy concern, not evidence that this product was tested on animals.",
+        "de": "Colgate-Palmolive erklärt, beauftragte Tierversuche auf behördliche Anforderungen oder Fälle ohne geeignete Sicherheitsalternativen zu begrenzen. Das Testmoratorium für Körperpflegeprodukte für Erwachsene enthält Ausnahmen. Dies betrifft die Unternehmensrichtlinie und belegt nicht, dass dieses Produkt an Tieren getestet wurde."
+      },
+      "sourceUrl": "https://www.colgatepalmolive.com/en-us/who-we-are/our-policies/our-commitment-to-animal-welfare",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "status": "current",
+      "redistribution": "Original factual summary; source text is not redistributed."
+    },
+    {
+      "id": "henkel-animal-testing-policy",
+      "companyId": "henkel",
+      "category": "animal_testing",
+      "description": {
+        "en": "Henkel states that it does not test finished detergents or cleaning products on animals. For the few ingredients it manufactures, it commissions tests only when specifically required by law, using alternatives where possible. This is a company policy concern, not evidence that this product was tested on animals.",
+        "de": "Henkel erklärt, fertige Wasch- und Reinigungsmittel nicht an Tieren zu testen. Für die wenigen selbst hergestellten Inhaltsstoffe beauftragt es Tests nur bei ausdrücklicher gesetzlicher Pflicht und nutzt nach Möglichkeit Alternativen. Dies betrifft die Unternehmensrichtlinie und belegt nicht, dass dieses Produkt an Tieren getestet wurde."
+      },
+      "sourceUrl": "https://www.henkel.com/our-businesses/henkel-consumer-brands/animal-testing-detergents-and-cleaning-products",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "status": "current",
+      "redistribution": "Original factual summary; source text is not redistributed."
+    }
+  ],
+  "researchSources": [
+    {
+      "id": "arlo",
+      "name": "Animal Research Laboratory Overview (Rise for Animals)",
+      "url": "https://arlo.riseforanimals.org/about",
+      "termsUrl": "https://arlorise.zendesk.com/hc/en-us/articles/360050809911-Terms-and-Conditions-of-Use",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public searchable facility records; no account required. No documented bulk API verified.",
+      "reuse": "Records may be downloaded and republished under the source terms, with mandatory Rise for Animals attribution and an ARLO link. Meaning must not be distorted. Not an unrestricted open-data licence.",
+      "reviewPolicy": "Candidate evidence: dated animal-use annual reports and inspection findings. Facility registration alone does not establish actual testing or a violation; independently verify corporate ownership."
+    },
+    {
+      "id": "aphis",
+      "name": "USDA APHIS Animal Care",
+      "url": "https://www.aphis.usda.gov/awa/public-search",
+      "termsUrl": "https://www.aphis.usda.gov/awa/research-facility-report/annual-summary",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public search of registrations, inspection and enforcement records, and research-facility annual reports.",
+      "reuse": "Use original factual summaries and link dated records. Do not assume every third-party submission is public-domain merely because a government site hosts it.",
+      "reviewPolicy": "Annual reports document covered animal use and may be amended. Distinguish animals held from animals used; preserve fiscal year, facility identity, and exact inspected finding. No automatic parent or brand accusation."
+    },
+    {
+      "id": "peta-food",
+      "name": "PETA Eat Without Experiments",
+      "url": "https://eatwithoutexperiments.peta.org/list/",
+      "termsUrl": "https://www.peta.org/about-peta/learn-about-peta/website-policies/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public food-and-drink company and brand directory; no documented public API verified.",
+      "reuse": "Website terms permit personal noncommercial copying; bulk redistribution permission has not been established. No list is imported.",
+      "reviewPolicy": "Supports Animal Testing, regulatory-only exceptions, and Declines to Sign Assurance are different classifications. Non-assurance alone is not documented testing. Verify underlying evidence and market-specific ownership."
+    },
+    {
+      "id": "peta-personal-care",
+      "name": "PETA cruelty-free company directory",
+      "url": "https://crueltyfree.peta.org/companies-do-test/",
+      "termsUrl": "https://www.peta.org/about-peta/learn-about-peta/website-policies/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public company directory and downloadable lists; no documented public API verified.",
+      "reuse": "Website terms permit personal noncommercial copying; bulk redistribution permission has not been established. No list is imported.",
+      "reviewPolicy": "Do-test PDF includes companies that have not assured PETA; website explanations differ. Missing certification, nonresponse, or ineligible markets must never become misconduct findings without positive evidence."
+    },
+    {
+      "id": "cruelty-free-investing",
+      "name": "Cruelty Free Investing",
+      "url": "https://crueltyfreeinvesting.org/downloads/",
+      "termsUrl": "https://crueltyfreeinvesting.org/legal/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Downloadable CSV/PDF company classifications.",
+      "reuse": "Terms prohibit bulk reproduction or commercial use without express written permission. No list is imported.",
+      "reviewPolicy": "The broad exploitation classification includes ordinary animal-product sales and tangential activity, excluded by Veguide policy. Animal-testing entries are research leads only, requiring current underlying evidence."
+    },
+    {
+      "id": "bundestag-lobbyregister",
+      "name": "Deutscher Bundestag Lobbyregister",
+      "url": "https://www.lobbyregister.bundestag.de/informationen-und-hilfe/open-data-1049716",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Official JSON downloads and read-only API V2; access instructions are published by the register.",
+      "reuse": "Machine-readable access verified; redistribution terms for individual submitted documents still need review. No automatic import.",
+      "reviewPolicy": "Inspect specific dated positions on animal-welfare legislation. Registration, general lobbying, trade-association membership, or a policy topic alone does not establish opposition to animal welfare."
+    },
+    {
+      "id": "until-every-cage",
+      "name": "Until Every Cage is Empty",
+      "url": "https://github.com/eliperez-dev/UntilEveryCage",
+      "termsUrl": "https://github.com/eliperez-dev/UntilEveryCage/blob/master/DATA_LICENSE",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Published facility datasets and processing code.",
+      "reuse": "Compiled data is CC BY-NC-SA-4.0, separate from AGPL code; noncommercial restriction prevents treating it as unrestricted FOSS data. No compilation is imported.",
+      "reviewPolicy": "Follow provenance to original public records. Facility existence and ordinary animal-product production alone do not qualify as Veguide concerns."
+    },
+    {
+      "id": "leaping-bunny",
+      "name": "Leaping Bunny",
+      "url": "https://www.leapingbunny.org/frequently-asked-questions",
+      "termsUrl": "https://www.leapingbunny.org/frequently-asked-questions",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public website directory and explanatory pages.",
+      "reuse": "No open data licence or public API verified; no directory is imported.",
+      "reviewPolicy": "A positive certification directory, not a list of offending companies. Absence is not evidence of animal testing, and cruelty-free certification does not establish vegan ingredients."
+    },
+    {
+      "id": "cruelty-free-kitty",
+      "name": "Cruelty-Free Kitty",
+      "url": "https://www.crueltyfreekitty.com/companies-that-test-on-animals/",
+      "termsUrl": "https://www.crueltyfreekitty.com/disclaimer/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public website directory and explanatory pages.",
+      "reuse": "No open data licence or public API verified; no directory is imported.",
+      "reviewPolicy": "Use as research leads only. Verify the underlying company statement, date, scope and distinction between missing assurances and positive evidence."
+    },
+    {
+      "id": "ethical-elephant",
+      "name": "Ethical Elephant",
+      "url": "https://ethicalelephant.com/",
+      "termsUrl": "https://ethicalelephant.com/terms-and-conditions/",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "access": "Public website directory and explanatory pages.",
+      "reuse": "The published CC BY-NC-ND licence covers photos, not the brand directory. No data redistribution permission or public API verified; no directory is imported.",
+      "reviewPolicy": "Use as research leads only, preserving the distinction between brand and parent policies and confirming positive conduct from primary sources."
     }
   ]
 }

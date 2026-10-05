@@ -58,6 +58,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 1000
+          },
+          "translatedTerm": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
           }
         },
         "required": [
@@ -146,11 +151,112 @@
           "brand"
         ]
       }
+    },
+    "contact": {
+      "$ref": "#/$defs/manufacturerContact"
+    },
+    "webCompositions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "sourceType": {
+            "enum": [
+              "manufacturer",
+              "retailer"
+            ]
+          },
+          "productName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "brand": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "url",
+          "text",
+          "complete",
+          "sourceType",
+          "productName",
+          "brand"
+        ]
+      }
     }
   },
   "required": [
     "text",
     "complete",
     "category"
-  ]
+  ],
+  "$defs": {
+    "manufacturerContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "brand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "sourceUrl",
+        "productName",
+        "brand"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "email"
+          ]
+        },
+        {
+          "required": [
+            "url"
+          ]
+        }
+      ]
+    }
+  }
 }

@@ -499,16 +499,16 @@ class VeguideViewModel(application: Application) : AndroidViewModel(application)
         catch (_: Exception) { mutableOfflineMessage.value = R.string.offline_pack_error }
         finally { mutableOfflineBusy.value = false }
     }
-    internal fun refreshRegionalPacks(url: String) = regionalOperation { regionalPacks.refresh(url.trim(), settings.value.offline) }
-    internal fun downloadRegionalPack(id: String) = regionalOperation { regionalPacks.install(id, settings.value.offline) }
+    internal fun refreshRegionalPacks(url: String) = regionalOperation(catalog = true) { regionalPacks.refresh(url.trim(), settings.value.offline) }
+    internal fun downloadRegionalPack(id: String) = regionalOperation(catalog = false) { regionalPacks.install(id, settings.value.offline) }
     internal fun cancelRegionalDownload() { regionalPacks.cancel(); offlineDownloadJob?.cancel() }
-    private fun regionalOperation(action: suspend () -> Unit) {
+    private fun regionalOperation(catalog: Boolean, action: suspend () -> Unit) {
         if (settings.value.offline || !mutableOfflineBusy.compareAndSet(false, true)) return
         mutableOfflineMessage.value = null
         offlineDownloadJob = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             try { action() }
             catch (error: CancellationException) { throw error }
-            catch (_: Exception) { mutableOfflineMessage.value = R.string.offline_download_error }
+            catch (error: Exception) { mutableOfflineMessage.value = regionalPackErrorMessage(error, catalog) }
             finally { mutableOfflineBusy.value = false }
         }
     }

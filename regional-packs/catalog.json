@@ -4,7 +4,7 @@
     {
       "id": "germany",
       "region": "germany",
-      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.0/germany.json",
+      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.1/germany.json",
       "bytes": 4073247,
       "sha256": "577ee8f3740cf1f6c1954d28d8e7526ad5bb9baaaad61928d0fb407d779c8542",
       "generatedAt": "2026-10-05T22:10:17.804Z",
@@ -13,7 +13,7 @@
     {
       "id": "sweden",
       "region": "sweden",
-      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.0/sweden.json",
+      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.1/sweden.json",
       "bytes": 2619098,
       "sha256": "8455552db570de7283bb08bf0e10f123e616488be3484c29d60892a08488375e",
       "generatedAt": "2026-10-05T21:44:23.419Z",
@@ -22,7 +22,7 @@
     {
       "id": "eu",
       "region": "eu",
-      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.0/eu.json",
+      "url": "https://github.com/D3SOX/veguide/releases/download/v0.1.1/eu.json",
       "bytes": 4413883,
       "sha256": "ad9b84a749e1ddad1277abe5996414cb5888fb435e2e058de4c8490b474b0f20",
       "generatedAt": "2026-10-05T22:10:39.015Z",

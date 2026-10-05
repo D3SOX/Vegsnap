@@ -70,6 +70,48 @@ class BottomSheetGestureTest {
         }
     }
 
+    @Test fun regionalPacksRemainStableWhenSwipingPastEnd() {
+        val tops = mutableListOf<Float>()
+        compose.setContent {
+            var visible by remember { mutableStateOf(true) }
+            MaterialTheme {
+                if (visible) RegionalPacksSheet(
+                    state = OfflineDatabaseState(ready = true),
+                    downloads = RegionalPacksState(ready = true, packs = (1..12).map { index ->
+                        RegionalPackDescriptor("region-$index", "Region $index", "https://example.org/pack.json",
+                            1_000_000, "a".repeat(64), "2026-10-01T00:00:00Z", 100)
+                    }),
+                    offline = false, busy = false, message = null,
+                    onRefresh = {}, onCancel = {}, onDownload = {}, onDismiss = { visible = false },
+                    dragHandle = {
+                        BottomSheetDefaults.DragHandle(Modifier.onGloballyPositioned { tops.add(it.positionInWindow().y) })
+                    }
+                )
+            }
+        }
+        compose.waitForIdle()
+        val content = compose.onNodeWithTag("regional-packs")
+        compose.onNodeWithText("Region 12").assertDoesNotExist()
+        repeat(8) { content.performTouchInput { swipeUp(durationMillis = 250) } }
+        compose.onNodeWithText("Region 12").assertIsDisplayed()
+        compose.runOnIdle {
+            val settledTop = tops.last()
+            tops.clear()
+            tops.add(settledTop)
+        }
+        repeat(5) {
+            content.performTouchInput { swipeUp(durationMillis = 80) }
+            compose.waitForIdle()
+        }
+        compose.runOnIdle {
+            val travel = (tops.maxOrNull() ?: 0f) - (tops.minOrNull() ?: 0f)
+            assertTrue("Regional sheet oscillated by $travel px; positions=$tops", travel <= 2f)
+        }
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithText(context.getString(R.string.close)).performClick()
+        content.assertDoesNotExist()
+    }
+
     @Test fun downwardSwipeStillDismissesShortSheet() {
         compose.setContent {
             var visible by remember { mutableStateOf(true) }

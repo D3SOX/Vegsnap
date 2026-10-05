@@ -68,6 +68,28 @@ describe('reviewed company identity resolver', () => {
 });
 
 describe('company indicators remain separate from every product outcome', () => {
+  test('bundled policy coverage maps reviewed brand families without claiming product testing', () => {
+    for (const [brand, company] of [
+      ['Ariel', 'Procter & Gamble'], ['Gillette', 'Procter & Gamble'],
+      ['Finish', 'Reckitt'], ['Dettol', 'Reckitt'],
+      ['Colgate', 'Colgate-Palmolive'], ['elmex', 'Colgate-Palmolive'],
+      ['Schwarzkopf', 'Henkel'], ['Syoss', 'Henkel'],
+    ]) {
+      const concern = resolveCompanyConcerns(brand)[0]!;
+      expect(concern.company).toBe(company!);
+      expect(concern.scope).toBe('parent');
+      expect(concern.ownershipSourceUrl).toStartWith('https://');
+      expect(concern.description).toContain('not evidence that this product');
+    }
+    expect(resolveCompanyConcerns('P&G')[0]?.scope).toBe('direct');
+    expect(resolveCompanyConcerns('Reckitt')[0]?.sourceDate).toBe('2026-04-16');
+    expect(resolveCompanyConcerns('Henkel')[0]?.description).toContain('ingredients it manufactures');
+    // These names have market-dependent ownership or are no longer in the cited portfolio.
+    expect(resolveCompanyConcerns('Persil')).toEqual([]);
+    expect(resolveCompanyConcerns('Bounty')).toEqual([]);
+    expect(resolveCompanyConcerns('Charlie Banana')).toEqual([]);
+    expect(resolveCompanyConcerns('Ariel recipe')).toEqual([]);
+  });
   test('bundled records contain source-backed concerns and preserve verdict fields', () => {
     expect(resolveCompanyConcerns('Nestle')[0]?.sourceDate).toBe('2017-02');
     for (const outcome of ['vegan', 'not_vegan', 'uncertain', 'conflicting'] as const) {

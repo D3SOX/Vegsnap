@@ -193,4 +193,59 @@ class RegionalPacksTest {
             assertEquals(3, server.requestCount)
         }
     }
+    @Test fun `unpublished catalog retains HTTP 404 instead of a generic verification failure`() = runBlocking {
+        MockWebServer().use { server ->
+            val http = OkHttpClient.Builder().followRedirects(false).addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url(server.url("/catalog.json")).build())
+            }.build()
+            server.enqueue(MockResponse().setResponseCode(404).setBody("Not found"))
+            val failure = runCatching {
+                HttpRegionalPackDownload(http).read("https://release.example/catalog.json?private=never-display", 256_000) { fail("404 body must not be consumed") }
+            }.exceptionOrNull()
+            assertNotNull(failure)
+            assertEquals("RegionalPackHttpException", failure!!.javaClass.simpleName)
+            assertEquals("HTTP 404", failure.message)
+            assertEquals(R.string.offline_catalog_not_available, regionalPackErrorMessage(failure as Exception, catalog = true))
+            assertEquals(R.string.offline_region_not_available, regionalPackErrorMessage(failure, catalog = false))
+        }
+    }
+    @Test fun `HTTP rate limits and server failures reach separate localized actions`() = runBlocking {
+        MockWebServer().use { server ->
+            val http = OkHttpClient.Builder().followRedirects(false).addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url(server.url("/catalog.json")).build())
+            }.build()
+            for ((status, message) in listOf(429 to R.string.offline_download_rate_limited, 503 to R.string.offline_download_server_error, 403 to R.string.offline_download_rejected)) {
+                server.enqueue(MockResponse().setResponseCode(status).setBody("sensitive server body must not be shown"))
+                val failure = requireNotNull(runCatching {
+                    HttpRegionalPackDownload(http).read("https://release.example/catalog.json?token=private", 1000) { fail("Error body must not be consumed") }
+                }.exceptionOrNull()) as Exception
+                assertEquals(message, regionalPackErrorMessage(failure, catalog = true))
+                assertEquals("HTTP $status", failure.message)
+                assertNull(failure.cause)
+            }
+        }
+    }
+    @Test fun `network failures do not leak transport URLs or look like corrupt catalogs`() = runBlocking {
+        val http = OkHttpClient.Builder().addInterceptor { throw java.net.UnknownHostException("https://private.example/?token=secret") }.build()
+        val failure = requireNotNull(runCatching {
+            HttpRegionalPackDownload(http).read("https://release.example/catalog.json", 1000) { fail("No response exists") }
+        }.exceptionOrNull()) as Exception
+        assertTrue(failure is RegionalPackNetworkException)
+        assertEquals(R.string.offline_download_network_error, regionalPackErrorMessage(failure, catalog = true))
+        assertFalse(failure.toString().contains("secret"))
+        assertNull(failure.cause)
+    }
+    @Test fun `bad catalog and failed pack verification are distinguished from HTTP failures`() = withDatabase { database, folder ->
+        val bytes = snapshot("Sweden")
+        val download = FakeDownload(mutableMapOf(source to "not a catalog".toByteArray(), packUrl to bytes))
+        val packs = RegionalPacks(File(folder, "downloads"), database, download)
+        val catalogFailure = requireNotNull(runCatching { packs.refresh(source, false) }.exceptionOrNull()) as Exception
+        assertEquals(R.string.offline_catalog_invalid, regionalPackErrorMessage(catalogFailure, catalog = true))
+        download.values[source] = catalog(descriptor(bytes))
+        packs.refresh(source, false)
+        download.values[packUrl] = bytes.clone().also { it[it.lastIndex] = 0 }
+        val verificationFailure = requireNotNull(runCatching { packs.install("sweden", false) }.exceptionOrNull()) as Exception
+        assertEquals(R.string.offline_download_invalid, regionalPackErrorMessage(verificationFailure, catalog = false))
+        assertTrue(database.state.value.installed.isEmpty())
+    }
 }

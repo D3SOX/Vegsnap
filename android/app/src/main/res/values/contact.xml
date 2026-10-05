@@ -1,0 +1,14 @@
+<resources>
+    <string name="contact_manufacturer">Ask the manufacturer</string>
+    <string name="contact_ai_read">AI found this contact in a source it consulted. Check the original source before using it. Review the draft before sending.</string>
+    <string name="contact_source">Review contact source</string>
+    <string name="contact_email_app">Open in email app</string>
+    <string name="contact_form">Open contact page</string>
+    <string name="contact_show_draft">Review message</string>
+    <string name="contact_hide_draft">Hide message</string>
+    <string name="contact_copy">Copy message</string>
+    <string name="contact_copied">Message copied</string>
+    <string name="contact_no_email_app">No email app could open this draft. Copy the message instead.</string>
+    <string name="contact_open_failed">Could not open this contact page.</string>
+    <string name="contact_copy_failed">Could not copy. Select the draft below and copy it manually.</string>
+</resources>

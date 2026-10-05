@@ -111,6 +111,13 @@ object HistoryTransfer {
         listOf("schemaVersion", "id", "outcome", "basis", "title", "summary", "category", "identity", "findings", "evidence", "questions", "warnings", "crossContact", "companyConcerns", "checkedAt", "usedAI", "aiStatus", "webSearchStatus")
             .forEach { field -> if (result.has(field)) clean.put(field, result.get(field)) }
         // Never trust a transferred message or extra fields in an error envelope.
+        if (clean.optString("outcome") in setOf("uncertain", "conflicting")) {
+            safeManufacturerContact(result.optJSONObject("manufacturerContact"))?.let { contact ->
+                val identity = clean.optJSONObject("identity")
+                if (normalizeProductIdentity(contact.getString("productName")) == normalizeProductIdentity(identity?.optString("name").orEmpty()) &&
+                    normalizeProductIdentity(contact.getString("brand")) == normalizeProductIdentity(identity?.optString("brand").orEmpty())) clean.put("manufacturerContact", contact)
+            }
+        }
         if (clean.optString("aiStatus") == "failed") {
             val code = result.optJSONObject("aiError")?.optString("code")
             AIErrorCode.entries.firstOrNull { it.code == code }?.let { clean.put("aiError", it.json(locale)) }

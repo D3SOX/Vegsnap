@@ -53,6 +53,13 @@ export interface CompanyConcern {
   sourceDate?: string;
 }
 export type AIErrorCode = 'authentication' | 'access_denied' | 'quota' | 'rate_limit' | 'timeout' | 'network' | 'unsupported_model' | 'invalid_response' | 'incomplete_response' | 'request_rejected' | 'service' | 'unknown';
+export interface ManufacturerContact {
+  email?: string;
+  url?: string;
+  sourceUrl: string;
+  productName: string;
+  brand: string;
+}
 export interface CheckResult {
   schemaVersion: 1;
   id: string;
@@ -74,6 +81,8 @@ export interface CheckResult {
   /** Fixed localized copy derived from code; never a raw provider error. */
   aiError?: { code: AIErrorCode; message: string };
   webSearchStatus?: 'searched' | 'not_used' | 'unsupported';
+  /** AI-read contact details from a consulted manufacturer source. Review the source before use. */
+  manufacturerContact?: ManufacturerContact;
 }
 export interface AIExtraction {
   text: string;
@@ -86,6 +95,7 @@ export interface AIExtraction {
   labelObservations?: { kind: 'vegan_certification' | 'vegan_claim'; name: string; text: string }[];
   webClaims?: { url: string; quote: string; claim: 'vegan' | 'not_vegan'; sourceType: 'manufacturer' | 'certification'; productName: string; brand: string }[];
   webCompositions?: { url: string; text: string; complete: boolean; sourceType: 'manufacturer' | 'retailer'; productName: string; brand: string }[];
+  contact?: ManufacturerContact;
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */
   research?: { searched: boolean; sources: { url: string; title: string }[] };
 }

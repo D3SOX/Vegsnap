@@ -107,6 +107,9 @@
     },
     "aiError": {
       "$ref": "#/$defs/aiError"
+    },
+    "manufacturerContact": {
+      "$ref": "#/$defs/manufacturerContact"
     }
   },
   "required": [
@@ -398,6 +401,56 @@
       "required": [
         "code",
         "message"
+      ]
+    },
+    "manufacturerContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "brand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "sourceUrl",
+        "productName",
+        "brand"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "email"
+          ]
+        },
+        {
+          "required": [
+            "url"
+          ]
+        }
       ]
     }
   }

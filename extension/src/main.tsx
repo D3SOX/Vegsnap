@@ -13,6 +13,7 @@ import { historyExport, type HistoryResult } from './history';
 import './style.css';
 import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
+import { ManufacturerContactSection } from './manufacturer-contact';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -266,6 +267,7 @@ export function App() {
         {result.findings.length > 0 && <section><h2>{t.findings}</h2>{localizeResult(result, config.language).findings.map((finding, i) => <div class="finding" key={i}><strong>{finding.displayTerm ?? finding.term}</strong>{finding.displayTerm && finding.displayTerm !== finding.term && <small class="hint">{t.originalTerm}: {finding.term}</small>}<p>{finding.explanation}</p></div>)}</section>}
         {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
         <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
+        <ManufacturerContactSection key={result.id} result={result} locale={config.language}/>
         <CompanyConcerns concerns={result.companyConcerns} locale={config.language}/>
       </section> : tab === 'scan' ? <section>
         <h1>{t.scan}</h1>
