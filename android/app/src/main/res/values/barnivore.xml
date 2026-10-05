@@ -1,0 +1,5 @@
+<resources>
+    <string name="barnivore_notice">Beverage information from Barnivore, copied on the date shown. Veguide is not affiliated with Barnivore. Check the exact drink, country and dated company response in the original entry; this is not certification.</string>
+    <string name="barnivore_copied">Copied from source</string>
+    <string name="barnivore_status">Status reported by Barnivore</string>
+</resources>

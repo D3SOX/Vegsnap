@@ -1,0 +1,322 @@
+import { OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@veguide/core';
+import { render } from 'preact';
+import { imageSupport, localizeResult } from '@veguide/core';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { browser } from 'wxt/browser';
+import type { Category, CheckInput, CheckStage } from '@veguide/core';
+import { messages } from './i18n';
+import { PRESETS, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
+import { isRecord, scanInput, pendingInput, inspectedInput, type Pending, type Reply, type Request, type State } from './protocol';
+import { extractProducts } from './extraction';
+import { sanitizeImage, readImageResponse } from './images';
+import { historyExport, type HistoryResult } from './history';
+import './style.css';
+import { synchronizedRefresh } from './synchronization';
+import { CompanyConcerns } from './company-concerns';
+
+async function request<T>(message: Request): Promise<T> {
+  const reply = await browser.runtime.sendMessage(message) as Reply<T>;
+  if (!reply.ok) throw new Error(reply.error);
+  return reply.result;
+}
+function Leaf() { return <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M26 5C11 4 4 11 7 21c10 5 20-2 19-16Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 28 21 11M12 21v-7m0 7h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>; }
+function Trash() { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6m4-6v6"/></svg>; }
+function safeLink(url: string | undefined): string | undefined { try { if (!url) return; const parsed = new URL(url); return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined; } catch { return; } }
+export function App() {
+  const [config, setConfig] = useState<Settings>(defaultSettings);
+  const [tab, setTab] = useState<'scan' | 'history' | 'settings'>('scan');
+  const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
+  const [result, setResult] = useState<HistoryResult>();
+  const [text, setText] = useState('');
+  const [offlinePacks, setOfflinePacks] = useState<OfflinePackInfo[]>([]);
+  const [inspectedIdentity, setInspectedIdentity] = useState<Pick<CheckInput, 'name' | 'barcode'>>();
+  const [category, setCategory] = useState<Category>('other');
+  const [complete, setComplete] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState<string>();
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [checkProgress, setCheckProgress] = useState<{ stage: CheckStage; startedAt: number }>();
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const activeCheckId = useRef<string>();
+  const [ready, setReady] = useState(false);
+  const [token, setToken] = useState('');
+  const [hasKey, setHasKey] = useState(false);
+  const [search, setSearch] = useState('');
+  const [models, setModels] = useState<{ id: string; name: string; supportsImages?: boolean }[]>([]);
+  const [emailRevealed, setEmailRevealed] = useState(false);
+  const [account, setAccount] = useState<{ state: 'checking' | 'signedout' | 'connected' | 'unavailable'; email?: string }>({ state: 'checking' });
+  const [connectionTask, setConnectionTask] = useState<'' | 'status' | 'signIn' | 'models' | 'disconnect' | 'model'>('');
+  const [connectionError, setConnectionError] = useState('');
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [languageSaving, setLanguageSaving] = useState(false);
+  const [storeAccess, setStoreAccess] = useState<Record<string, boolean>>({});
+  const connectionOperation = useRef(0);
+  const settingsWrites = useRef<Promise<void>>(Promise.resolve());
+  const credentialRevision = useRef(0);
+  const configRef = useRef(config);
+  const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
+  const resultHeading = useRef<HTMLHeadingElement>(null);
+  const t = messages[config.language];
+  const isPopup = location.pathname.includes('popup');
+  function refresh() { return sharedRefresh.current(); }
+  useEffect(() => {
+    const sync = synchronizedRefresh(async () => {
+      // Finish local edits before adopting a shared snapshot.
+      let pending: Promise<void>;
+      do { pending = settingsWrites.current; await pending.catch(() => {}); } while (pending !== settingsWrites.current);
+      const state = await request<State>({ type: 'state' });
+      const shared = await browser.storage.session.get(['chatGPTConnection', 'chatGPTModelCatalog']);
+      return { state, shared, pending };
+    }, ({ state, shared, pending }) => {
+      if (pending !== settingsWrites.current) { void sync.refresh(); return; }
+      if (configRef.current.baseUrl !== state.settings.baseUrl || configRef.current.connection !== state.settings.connection) {
+        credentialRevision.current++; setToken('');
+      }
+      configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks);
+      const connection = shared.chatGPTConnection;
+      if (isRecord(connection) && ['checking', 'signedout', 'connected', 'unavailable'].includes(String(connection.state))) {
+        setAccount({ state: connection.state as 'checking' | 'signedout' | 'connected' | 'unavailable', ...(typeof connection.email === 'string' ? { email: connection.email } : {}) });
+        setConnectionTask(['status', 'signIn', 'models', 'disconnect'].includes(String(connection.task)) ? connection.task as 'status' | 'signIn' | 'models' | 'disconnect' : '');
+        setConnectionError(typeof connection.error === 'string' ? connection.error : '');
+      }
+      const catalog = shared.chatGPTModelCatalog;
+      setModels(Array.isArray(catalog) ? catalog.filter((model): model is { id: string; name: string; supportsImages?: boolean } => isRecord(model) && typeof model.id === 'string' && typeof model.name === 'string') : []);
+      setModelsLoaded(Array.isArray(catalog));
+    }, cause => setError(cause instanceof Error ? cause.message : 'Unable to synchronize Veguide.'));
+    const changed = (message: unknown, sender: { id?: string }) => {
+      if (sender.id === browser.runtime.id && isRecord(message) && message.type === 'state-changed') void sync.refresh();
+      return undefined;
+    };
+    const storageChanged = (changes: Record<string, unknown>, area: string) => {
+      if ((area === 'local' && 'settings' in changes) || (area === 'session' && ['credential', 'chatGPTConnection', 'chatGPTModelCatalog'].some(key => key in changes))) void sync.refresh();
+    };
+    const focus = () => { void sync.refresh(); };
+    browser.runtime.onMessage.addListener(changed);
+    browser.storage.onChanged.addListener(storageChanged);
+    window.addEventListener('focus', focus);
+    sharedRefresh.current = sync.refresh;
+    return () => { sync.dispose(); browser.runtime.onMessage.removeListener(changed); browser.storage.onChanged.removeListener(storageChanged); window.removeEventListener('focus', focus); };
+  }, []);
+  useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state]);
+  useEffect(() => {
+    const hide = () => setEmailRevealed(false);
+    window.addEventListener('blur', hide); document.addEventListener('visibilitychange', hide);
+    return () => { window.removeEventListener('blur', hide); document.removeEventListener('visibilitychange', hide); };
+  }, []);
+  async function act(work: () => Promise<void>) { setError(''); setNotice(''); setBusy(true); try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to complete this action.'); } finally { setBusy(false); } }
+  async function runCheck(input: CheckInput): Promise<HistoryResult> {
+    const requestId = crypto.randomUUID();
+    activeCheckId.current = requestId;
+    setElapsedSeconds(0); setCheckProgress({ stage: 'evaluating', startedAt: Date.now() });
+    try { return await request<HistoryResult>({ type: 'check', input, requestId }); }
+    finally { if (activeCheckId.current === requestId) { activeCheckId.current = undefined; setCheckProgress(undefined); } }
+  }
+  async function check(input: CheckInput) {
+    await act(async () => {
+      const current = configRef.current;
+      if (!['chatgpt', 'database'].includes(current.connection) && !(await browser.permissions.request({ origins: [endpointOrigin(current.baseUrl)] }))) throw new Error('Endpoint permission was not granted.');
+      await settingsWrites.current;
+      const checked = await runCheck(input); setResult(checked); setImages([]); setImageUrl(undefined); await refresh(); });
+  }
+  useEffect(() => {
+    const onProgress = (message: unknown, sender: { id?: string }): undefined => {
+      if (sender.id === browser.runtime.id && isRecord(message) && message.type === 'check-progress' && message.requestId === activeCheckId.current &&
+        ['database', 'ai', 'evaluating'].includes(String(message.stage))) {
+        setCheckProgress(previous => previous && ({ ...previous, stage: message.stage as CheckStage }));
+      }
+      return undefined;
+    };
+    browser.runtime.onMessage.addListener(onProgress);
+    return () => { activeCheckId.current = undefined; browser.runtime.onMessage.removeListener(onProgress); };
+  }, []);
+  useEffect(() => {
+    if (!checkProgress) return;
+    const timer = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - checkProgress.startedAt) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [checkProgress?.startedAt]);
+  useEffect(() => {
+    void act(async () => {
+      await refresh(); setReady(true);
+      const id = new URLSearchParams(location.search).get('pending');
+      if (!id) return;
+      const pending = await request<Pending>({ type: 'pending', id });
+      window.history.replaceState(null, '', location.pathname);
+      if (pending.imageUrl) { setImageUrl(pending.imageUrl); setText(pending.text ?? ''); }
+      else { setText(pending.text ?? pending.barcode ?? ''); const checked = await runCheck(pendingInput(pending)); setResult(checked); await refresh(); }
+    });
+  }, []);
+  useEffect(() => {
+    if (ready && config.connection === 'chatgpt') void connect('status');
+    return () => { connectionOperation.current++; };
+  }, [ready, config.connection]);
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    void Promise.all(STORES.map(async store => [store.id, await browser.permissions.contains({ origins: [...store.origins] })] as const))
+      .then(entries => { if (active) setStoreAccess(Object.fromEntries(entries)); }).catch(() => {});
+    return () => { active = false; };
+  }, [ready, config.stores]);
+  useEffect(() => { document.documentElement.lang = config.language; }, [config.language]);
+  useEffect(() => { if (result) resultHeading.current?.focus(); }, [result]);
+  function localConfig(next: Settings) { configRef.current = next; setConfig(next); }
+  function persist(message: Request, onSuccess?: () => void) {
+    setError('');
+    const operation = settingsWrites.current.catch(() => {}).then(() => request(message)).then(() => { onSuccess?.(); });
+    settingsWrites.current = operation;
+    void operation.catch(cause => setError(cause instanceof Error ? cause.message : 'Unable to save settings.'));
+    return operation;
+  }
+  function update<K extends keyof Settings>(key: K, value: Settings[K]) {
+    localConfig({ ...configRef.current, [key]: value });
+    if (key === 'baseUrl') { credentialRevision.current++; setToken(''); setHasKey(false); }
+    persist({ type: 'update-settings', patch: { [key]: value } });
+  }
+  function changeConnection(connection: Connection) {
+    const patch = { connection, model: '', ...(connection in PRESETS ? { baseUrl: PRESETS[connection as keyof typeof PRESETS] } : {}) };
+    localConfig({ ...configRef.current, ...patch }); credentialRevision.current++; setToken(''); setHasKey(false);
+    persist({ type: 'update-settings', patch });
+  }
+  function changeToken(value: string) {
+    const revision = ++credentialRevision.current;
+    setToken(value);
+    try { endpointOrigin(configRef.current.baseUrl); }
+    catch { setError(t.invalidEndpoint); return; }
+    persist({ type: 'set-api-token', endpoint: configRef.current.baseUrl, token: value }, () => { if (revision === credentialRevision.current) setHasKey(Boolean(value)); });
+  }
+  async function changeLanguage(language: Settings['language']) {
+    const previous = config.language;
+    localConfig({ ...configRef.current, language }); setLanguageSaving(true); setError('');
+    try { await persist({ type: 'set-language', language }); }
+    catch (cause) { localConfig({ ...configRef.current, language: previous }); setError(cause instanceof Error ? cause.message : 'Unable to save language.'); }
+    finally { setLanguageSaving(false); }
+  }
+  async function connect(command: 'status' | 'signIn' | 'disconnect' | 'models') {
+    const operation = ++connectionOperation.current;
+    const current = () => operation === connectionOperation.current;
+    setConnectionTask(command); setConnectionError('');
+    try {
+      if (command === 'signIn' && !(await browser.permissions.request({ permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
+      if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) {
+        if (current()) { setAccount({ state: 'signedout' }); setModels([]); setModelsLoaded(false); }
+        return;
+      }
+      await request({ type: 'companion', command });
+    } catch (cause) {
+      if (current()) {
+        setConnectionError(cause instanceof Error ? cause.message : t.invalidCompanion);
+        if (command === 'status' || command === 'signIn') setAccount(previous => previous.state === 'connected' ? previous : { state: 'unavailable' });
+      }
+    } finally { if (current()) setConnectionTask(''); }
+  }
+  async function chooseModel(model: string) {
+    setConnectionTask('model'); setConnectionError('');
+    try { await persist({ type: 'set-chatgpt-model', model }); localConfig({ ...configRef.current, model }); }
+    catch (cause) { setConnectionError(cause instanceof Error ? cause.message : t.invalidCompanion); }
+    finally { setConnectionTask(''); }
+  }
+  async function inspect() {
+    const [active] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!active?.id) throw new Error('Open the product page, then use the Veguide toolbar button.');
+    const [response] = await browser.scripting.executeScript({ target: { tabId: active.id }, func: () => ({ selection: window.getSelection()?.toString().slice(0, 30_000) ?? '', json: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).slice(0, 10).map(node => (node.textContent ?? '').slice(0, 300_000)), title: document.title }) });
+    const page = response?.result;
+    if (!page) throw new Error('This page cannot be read. Paste text or import a photo instead.');
+    const products = page.json.flatMap(value => { try { return extractProducts(JSON.parse(value)); } catch { return []; } });
+    const input = inspectedInput({ ...page, products });
+    setText(input.text ?? '');
+    setInspectedIdentity(input.name || input.barcode ? { name: input.name, barcode: input.barcode } : undefined);
+    setComplete(false);
+  }
+  async function toggleStore(store: typeof STORES[number], grantAll = false) {
+    const enabled = configRef.current.stores.includes(store.id);
+    if ((!enabled || grantAll) && !(await browser.permissions.request({ origins: [...store.origins] }))) throw new Error('Site permission was not granted.');
+    await settingsWrites.current;
+    const stores = await request<string[]>({ type: 'set-store', store: store.id, enabled: grantAll || !enabled });
+    if (enabled && !grantAll) await browser.permissions.remove({ origins: [...store.origins] });
+    localConfig({ ...configRef.current, stores });
+  }
+  async function remoteImage() {
+    if (!imageUrl) return;
+    const url = new URL(imageUrl);
+    if (url.protocol !== 'https:') throw new Error('Save this image and import it as a file.');
+    if (!(await browser.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error('Image permission was not granted.');
+    const response = await fetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) throw new Error('Image could not be loaded. Save it and import the file.');
+    setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
+  }
+  function exportHistory() {
+    const blob = new Blob([JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'veguide-history.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return <div class={`shell ${isPopup ? 'popup' : ''}`}>
+    <header><div class="brand"><img class="brand-icon" src="/icons/veguide.svg" alt="" width="44" height="44"/><div><strong>Veguide</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
+    <nav aria-label="Veguide">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <main aria-busy={busy}>
+      {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
+      {notice && <p role="status" class="alert">{notice}</p>}
+      {busy && <div class="check-progress"><p role="status" class="working"><span class="spinner" aria-hidden="true"/>{checkProgress?.stage === 'database' ? t.progressDatabase : checkProgress?.stage === 'ai' ? t.progressAI : checkProgress ? t.progressEvaluating : t.checking}</p>{checkProgress && <><progress aria-label={t.checking}/><span class="hint">{elapsedSeconds}s</span></>}</div>}
+      {result ? <section class="result">
+        <button class="text-button" onClick={() => setResult(undefined)}>← {t.back}</button>
+        <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
+        {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
+        <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
+        {result.webSearchStatus === 'searched' && <p class="muted">{t.webSearched}</p>}
+        {result.webSearchStatus === 'unsupported' && <p class="muted">{t.webUnsupported}</p>}
+        {result.findings.length > 0 && <section><h2>{t.findings}</h2>{localizeResult(result, config.language).findings.map((finding, i) => <div class="finding" key={i}><strong>{finding.displayTerm ?? finding.term}</strong>{finding.displayTerm && finding.displayTerm !== finding.term && <small class="hint">{t.originalTerm}: {finding.term}</small>}<p>{finding.explanation}</p></div>)}</section>}
+        {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
+        <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
+        <CompanyConcerns concerns={result.companyConcerns} locale={config.language}/>
+      </section> : tab === 'scan' ? <section>
+        <h1>{t.scan}</h1>
+        <form onSubmit={event => { event.preventDefault(); void check({ ...scanInput({ text, category, complete, images }), ...inspectedIdentity }); }}>
+          {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
+          <label>{t.text}<textarea value={text} onInput={event => { setText(event.currentTarget.value); setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
+          {isPopup && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
+          <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
+          <label class="checkbox"><input type="checkbox" checked={complete} onChange={event => setComplete(event.currentTarget.checked)}/><span>{t.complete}<small>{t.completeHint}</small></span></label>
+          {imageUrl && <div class="alert"><p>{t.imageHint}</p><button type="button" onClick={() => void act(remoteImage)} disabled={busy}>{t.loadImage}</button></div>}
+          <div class="photos">{images.map((image, index) => <figure><img src={image} alt={`${t.photo} ${index + 1}`}/><button type="button" onClick={() => setImages(images.filter((_, i) => i !== index))}>{t.remove}</button></figure>)}</div>
+          <label class="upload">+ {t.photo}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={images.length >= 3 || busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { const image = await sanitizeImage(file); setImages(previous => [...previous, image].slice(0, 3)); }); event.currentTarget.value = ''; }}/></label>
+          <p class="hint">{t.photoHint}</p>
+          <button class="primary wide" type="submit" disabled={!ready || busy || (!text.trim() && images.length === 0 && !inspectedIdentity?.name && !inspectedIdentity?.barcode)}>{t.check} <span aria-hidden="true">→</span></button>
+          {config.connection !== 'database' && config.model && <p class="hint" role="status">{imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
+          <p class="hint">{t.providerHint}</p>
+        </form>
+      </section> : tab === 'history' ? <section>
+        <div class="section-title"><h1>{t.history}</h1>{savedHistory.length > 0 && <button onClick={exportHistory}>{t.export}</button>}</div>
+        {savedHistory.length === 0 ? <div class="empty"><Leaf/><h2>{t.noHistory}</h2><p>{t.noHistoryHint}</p></div> : <><label>{t.search}<input type="search" value={search} onInput={event => setSearch(event.currentTarget.value)}/></label><div class="history-list">{savedHistory.filter(item => `${item.title} ${item.identity.name ?? ''} ${item.identity.barcode ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(item => <article key={item.id}><button class="history-item" onClick={() => setResult(item)}><span class={`dot ${item.outcome}`}/>{item.photos?.[0] && <img class="history-thumbnail" src={item.photos[0]} alt=""/>}<span class="history-description"><strong>{item.identity.name ?? item.identity.barcode ?? item.title}</strong><small>{item.title} · {new Date(item.checkedAt).toLocaleDateString(config.language)}</small></span><span aria-hidden="true">›</span></button><button class="history-delete" title={t.delete} aria-label={`${t.delete}: ${item.identity.name ?? item.identity.barcode ?? item.title}`} disabled={busy} onClick={event => { event.stopPropagation(); void act(async () => { await request({ type: 'delete', id: item.id }); await refresh(); }); }}><Trash/></button></article>)}</div><button class="danger" onClick={() => { if (confirm(t.confirmDelete)) void act(async () => { await request({ type: 'delete' }); await refresh(); }); }}>{t.deleteAll}</button></>}
+      </section> : <section>
+        <h1>{t.settings}</h1>
+        <section aria-labelledby="store-heading"><h2 id="store-heading">{t.storeHeading}</h2><p class="hint">{t.storeHint}</p>{STORES.map(store => <div class="store" key={store.id}><div><strong>{store.name}</strong><small>{config.stores.includes(store.id) ? t.storeEnabled : t.storeOff}</small></div><div class="actions">{config.stores.includes(store.id) && storeAccess[store.id] === false && <button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store, true))}>{t.enableAllSites}</button>}<button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store))}>{config.stores.includes(store.id) ? t.disable : t.enable}</button></div></div>)}</section>
+        <form onSubmit={event => event.preventDefault()}>
+          <label>{t.language}<select disabled={!ready || languageSaving || busy} value={config.language} onChange={event => void changeLanguage(event.currentTarget.value as 'de' | 'en')}><option value="de">Deutsch</option><option value="en">English</option></select></label>
+          <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : 'Custom'}</option>)}</select></label>
+          {config.connection === 'chatgpt' ? <section class="connection" aria-label={t.chatgpt} aria-busy={Boolean(connectionTask)}>
+            <div class="connection-heading"><strong>{account.state === 'connected' ? t.connected : account.state === 'checking' ? t.checkingConnection : account.state === 'signedout' ? t.notConnected : t.connectionUnavailable}</strong>{account.state === 'connected' && <span class="connection-badge">ChatGPT</span>}</div>
+            {account.state === 'connected' && account.email && <button type="button" class="account-email" aria-label={emailRevealed ? `${t.hideEmail}: ${account.email}` : t.showEmail} aria-pressed={emailRevealed} onClick={() => setEmailRevealed(value => !value)}><span aria-hidden="true" class={emailRevealed ? '' : 'email-obscured'}>{emailRevealed ? account.email : '••••••••@••••••••'}</span><span>{emailRevealed ? t.hideEmail : t.showEmail}</span></button>}
+            {connectionTask && <p class="working" role="status"><span class="spinner"/>{connectionTask === 'signIn' ? t.signingIn : connectionTask === 'models' ? t.loadingModels : connectionTask === 'disconnect' ? t.disconnecting : connectionTask === 'model' ? t.savingModel : t.checkingConnection}</p>}
+            {connectionError && <div class="alert error" role="alert"><p>{connectionError}</p><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect(account.state === 'connected' ? 'models' : 'status')}>{t.retry}</button></div>}
+            {account.state === 'connected' ? <>
+              {modelsLoaded && models.length === 0 && <p role="status">{t.noModels}</p>}
+              {models.length > 0 && <label>{t.model}<select disabled={Boolean(connectionTask)} value={models.some(model => model.id === config.model) ? config.model : ''} onChange={event => { if (event.currentTarget.value) void chooseModel(event.currentTarget.value); }}><option value="" disabled>{t.chooseModel}</option>{models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</select></label>}
+              {modelsLoaded && models.length > 0 && <p class="hint" role="status">{models.some(model => model.id === config.model) ? t.readyToCheck : t.chooseModelHint}</p>}
+              <div class="actions"><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('models')}>{t.refreshModels}</button><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('disconnect')}>{t.disconnect}</button></div>
+            </> : <><p class="hint">{t.companionHint}</p><button type="button" class="primary" disabled={!ready || Boolean(connectionTask)} onClick={() => void connect('signIn')}>{t.signIn}</button></>}
+          </section> : config.connection !== 'database' ? <><label>{t.endpoint}<input type="url" required value={config.baseUrl} onInput={event => update('baseUrl', event.currentTarget.value)}/></label><label>{t.token}<input type="password" autoComplete="off" value={token} onInput={event => changeToken(event.currentTarget.value)}/></label><p class="hint">{t.tokenHint} {hasKey ? t.hasKey : t.emptyKey}</p>{hasKey && <button type="button" onClick={() => changeToken('')}>{t.disconnect}</button>}</> : null}
+          {!['database', 'chatgpt'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder="Model ID" onInput={event => update('model', event.currentTarget.value)}/></label>}
+          {config.connection !== 'database' && config.model && <p class="hint" role="status">{imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
+          <p class="hint">{t.providerHint}</p>
+          <section aria-labelledby="offline-heading"><h2 id="offline-heading">{t.offlineHeading}</h2><p class="hint">{t.offlineHint}</p>
+            {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
+            <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.'); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
+          </section>
+          <h2>{t.privacy}</h2><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
+        </form>
+        <footer>Veguide · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
+      </section>}
+    </main>
+  </div>;
+}
+const root = document.getElementById('app');
+if (root) render(<App/>, root);

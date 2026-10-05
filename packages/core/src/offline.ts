@@ -1,0 +1,103 @@
+import { DATABASES, normalizeBarcode } from './database';
+import type { CheckInput, DatabaseProduct } from './types';
+
+export const OFFLINE_MAX_BYTES = 10_000_000;
+export interface OfflineSnapshot {
+  schemaVersion: 1;
+  generatedAt: string;
+  region: string;
+  sources: { id: 'off' | 'obf' | 'opf'; url: string; license: string; retrievedAt: string }[];
+  products: {
+    source: 'off' | 'obf' | 'opf'; code: string; name: string; name_de?: string; name_en?: string;
+    brands: string; ingredients: string; ingredients_de?: string; ingredients_en?: string;
+    countries_tags: string[]; last_modified_t: number;
+  }[];
+}
+export interface OfflinePackInfo { region: string; generatedAt: string; count: number; bundled: boolean; }
+function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
+function string(value: unknown, max: number): value is string { return typeof value === 'string' && value.length <= max; }
+function timestamp(value: unknown): value is string { return typeof value === 'string' && value.length <= 40 && /^\d{4}-\d\d-\d\dT/.test(value) && Number.isFinite(Date.parse(value)); }
+function only(value: Record<string, unknown>, keys: string[]): boolean { return Object.keys(value).every(key => keys.includes(key)); }
+
+/** Imported snapshots are data only: no arbitrary URLs, labels, or completeness claims can influence a verdict. */
+export function validateOfflineSnapshot(value: unknown): OfflineSnapshot {
+  if (!record(value) || !only(value, ['schemaVersion', 'generatedAt', 'region', 'sources', 'products']) || value.schemaVersion !== 1 ||
+    !timestamp(value.generatedAt) || !string(value.region, 80) || !value.region.trim() ||
+    !Array.isArray(value.sources) || !value.sources.length || value.sources.length > 3 ||
+    !Array.isArray(value.products) || value.products.length > 10_000) throw new Error('Invalid offline pack format.');
+  if (new TextEncoder().encode(JSON.stringify(value)).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.');
+  const sourceIds = new Set<string>();
+  for (const source of value.sources) {
+    if (!record(source) || !only(source, ['id', 'url', 'license', 'retrievedAt']) ||
+      !string(source.id, 3) || sourceIds.has(source.id) || !DATABASES.some(db => db.id === source.id && db.origin === source.url) ||
+      !string(source.license, 200) || !source.license.includes('ODbL-1.0') || !timestamp(source.retrievedAt)) throw new Error('Invalid offline pack source attribution.');
+    sourceIds.add(source.id);
+  }
+  const products = new Set<string>();
+  for (const product of value.products) {
+    if (!record(product) || !only(product, ['source', 'code', 'name', 'name_de', 'name_en', 'brands', 'ingredients', 'ingredients_de', 'ingredients_en', 'countries_tags', 'last_modified_t']) ||
+      typeof product.source !== 'string' || !sourceIds.has(product.source) || typeof product.code !== 'string' || !/^\d+$/.test(product.code) || !normalizeBarcode(product.code) ||
+      !string(product.name, 500) || !string(product.brands, 500) || !string(product.ingredients, 12_000) ||
+      ['name_de', 'name_en'].some(key => product[key] !== undefined && !string(product[key], 500)) ||
+      ['ingredients_de', 'ingredients_en'].some(key => product[key] !== undefined && !string(product[key], 12_000)) ||
+      !Array.isArray(product.countries_tags) || product.countries_tags.length > 64 || product.countries_tags.some(tag => !string(tag, 80)) ||
+      typeof product.last_modified_t !== 'number' || !Number.isSafeInteger(product.last_modified_t) || product.last_modified_t < 0 || !Number.isFinite(new Date(product.last_modified_t * 1000).getTime())) throw new Error('Invalid product in offline pack.');
+    const key = `${product.source}:${product.code.padStart(14, '0')}`;
+    if (products.has(key)) throw new Error('Offline pack contains a duplicate product identifier.');
+    products.add(key);
+  }
+  return value as unknown as OfflineSnapshot;
+}
+export function parseOfflineSnapshot(text: string): OfflineSnapshot {
+  if (text.length > OFFLINE_MAX_BYTES || new TextEncoder().encode(text).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.');
+  return validateOfflineSnapshot(JSON.parse(text));
+}
+const markets: Record<string, string> = {
+  DE: 'germany', AT: 'austria', CH: 'switzerland', SE: 'sweden', FI: 'finland', DK: 'denmark', NO: 'norway',
+  FR: 'france', NL: 'netherlands', BE: 'belgium', ES: 'spain', IT: 'italy', PL: 'poland', IE: 'ireland', PT: 'portugal',
+  GB: 'united-kingdom', US: 'united-states', CA: 'canada', AU: 'australia',
+};
+export class OfflineProductIndex {
+  private readonly products = new Map<string, { product: OfflineSnapshot['products'][number]; snapshot: OfflineSnapshot }[]>();
+  constructor(snapshots: readonly OfflineSnapshot[]) {
+    for (const raw of snapshots) {
+      const snapshot = validateOfflineSnapshot(raw);
+      for (const product of snapshot.products) {
+        const key = product.code.padStart(14, '0');
+        const entries = this.products.get(key) ?? [];
+        entries.push({ product, snapshot });
+        this.products.set(key, entries);
+      }
+    }
+  }
+  lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market'> = {}): DatabaseProduct | null {
+    const code = normalizeBarcode(barcode);
+    if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
+    const market = (input.market ?? 'DE').toUpperCase();
+    const marketTag = markets[market];
+    const preferred = input.category === 'cosmetics' ? 'obf' : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? 'opf' : 'off';
+    const matchesMarket = (product: OfflineSnapshot['products'][number]) => Boolean(marketTag && product.countries_tags.includes(`en:${marketTag}`));
+    const entries = [...this.products.get(code.padStart(14, '0')) ?? []]
+      .sort((a, b) => Number(matchesMarket(b.product)) - Number(matchesMarket(a.product)) || Number(b.product.source === preferred) - Number(a.product.source === preferred) || b.product.last_modified_t - a.product.last_modified_t || Date.parse(b.snapshot.generatedAt) - Date.parse(a.snapshot.generatedAt));
+    const entry = entries[0];
+    if (!entry) return null;
+    const { product, snapshot } = entry;
+    const db = DATABASES.find(item => item.id === product.source)!;
+    const source = snapshot.sources.find(item => item.id === product.source)!;
+    const text = (input.locale === 'de' ? product.ingredients_de : product.ingredients_en) || product.ingredients || product.ingredients_de || product.ingredients_en || '';
+    const name = (input.locale === 'de' ? product.name_de : product.name_en) || product.name || product.name_de || product.name_en || '';
+    return {
+      input: { barcode: code, name, brand: product.brands, text, complete: false, locale: input.locale, market,
+        category: input.category && input.category !== 'other' ? input.category : db.category, sourceUrl: `${db.origin}/product/${product.code}` },
+      evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${input.locale === 'de' ? 'Offline-Auszug' : 'offline snapshot'} (${snapshot.region})`,
+        excerpt: text || name || code, url: `${db.origin}/product/${product.code}`, retrievedAt: source.retrievedAt,
+        sourceDate: new Date(product.last_modified_t * 1000).toISOString(), license: `${source.license} (database); DBCL-1.0 (contents)` },
+      labels: [],
+      warnings: [input.locale === 'de' ? `Teilweiser Offline-Datenbestand vom ${snapshot.generatedAt.slice(0, 10)}; Produktänderungen seit dem Abruf sind nicht enthalten.` : `Partial offline coverage dated ${snapshot.generatedAt.slice(0, 10)}; product changes since retrieval are not included.`,
+        ...(product.countries_tags.length && !matchesMarket(product) ? [input.locale === 'de'
+          ? `Abweichender Markt: Dieser Offline-Eintrag nennt ${product.countries_tags.join(', ')} statt ${market}. Markt und Rezeptur am Produkt prüfen.`
+          : `Different market: this offline record lists ${product.countries_tags.join(', ')}, not ${market}. Confirm the product's market and recipe.`] : []),
+      ],
+    };
+  }
+}

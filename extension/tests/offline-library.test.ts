@@ -1,0 +1,23 @@
+import { expect, test } from 'bun:test';
+import type { OfflineSnapshot } from '@veguide/core';
+import { createOfflineLibrary } from '../src/offline-library';
+const bundle: OfflineSnapshot = { schemaVersion: 1, generatedAt: '2026-10-05T10:00:00Z', region: 'Bundled DE/EU', sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T09:00:00Z' }], products: [] };
+const extra: OfflineSnapshot = { ...bundle, region: 'Sweden', products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: 'Example', ingredients: 'milk', countries_tags: ['en:sweden'], last_modified_t: 1760000000 }] };
+test('pack import validates before writing and commits the index only after storage succeeds', async () => {
+  let stored: OfflineSnapshot[] = [];
+  let fail = false;
+  const library = createOfflineLibrary({ read: async () => stored, put: async pack => { if (fail) throw new Error('Storage full'); stored = [pack]; }, remove: async () => { stored = []; } }, bundle);
+  await library.import(JSON.stringify(extra));
+  expect((await library.index()).lookup('4006381333931', { market: 'SE' })?.input.name).toBe('Example');
+  expect(await library.info()).toHaveLength(2);
+  await expect(library.import('{bad json')).rejects.toThrow();
+  expect(stored[0]?.region).toBe('Sweden');
+  fail = true;
+  await expect(library.import(JSON.stringify({ ...extra, products: [] }))).rejects.toThrow('Storage full');
+  expect((await library.index()).lookup('4006381333931', { market: 'SE' })).not.toBeNull();
+  expect((await library.info()).find(pack => !pack.bundled)?.count).toBe(1);
+  fail = false;
+  await library.remove('Sweden');
+  expect((await library.index()).lookup('4006381333931', { market: 'SE' })).toBeNull();
+  expect(await library.info()).toEqual([{ region: bundle.region, generatedAt: bundle.generatedAt, count: 0, bundled: true }]);
+});

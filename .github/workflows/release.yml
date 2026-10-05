@@ -1,0 +1,92 @@
+name: Release Android and regional packs
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (for example v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: Validate release
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$REQUESTED_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 1
+          existing_tag=$(git ls-remote --tags origin "refs/tags/$REQUESTED_TAG" "refs/tags/$REQUESTED_TAG^{}")
+          if [[ -n "$existing_tag" ]]; then
+            git fetch --no-tags origin "refs/tags/$REQUESTED_TAG:refs/tags/$REQUESTED_TAG"
+            [[ "$(git rev-parse "$REQUESTED_TAG^{commit}")" == "$(git rev-parse HEAD)" ]] || { echo 'Tag points to a different commit; dispatch on that tag.'; exit 1; }
+          fi
+          if gh release view "$REQUESTED_TAG" --json isDraft --jq '.isDraft == false' | grep -qx true; then
+            echo 'This version is already published. Use a new version tag.'
+            exit 1
+          fi
+          {
+            echo "RELEASE_TAG=$REQUESTED_TAG"
+            echo "VEGUIDE_VERSION_NAME=${REQUESTED_TAG#v}"
+            echo "VEGUIDE_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))"
+          } >> "$GITHUB_ENV"
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck && bun run test
+      - name: Decode signing key
+        env:
+          SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          umask 077
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/veguide-release.p12"
+      - name: Verify and build signed APK
+        env:
+          VEGUIDE_KEYSTORE_PATH: ${{ runner.temp }}/veguide-release.p12
+          VEGUIDE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+      - name: Prepare release files
+        run: |
+          mkdir release
+          cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
+          cp regional-packs/{germany,sweden,eu}.json release/
+          cp regional-packs/README.md release/OFFLINE-DATA-LICENSE.md
+          bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" release/catalog.json
+          cd release
+          sha256sum veguide.apk germany.json sweden.json eu.json catalog.json > SHA256SUMS
+      - name: Publish release and download catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK and partial regional offline product snapshots. See OFFLINE-DATA-LICENSE.md for data attribution and licensing."
+          fi
+          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional pack catalog" --notes "Stable catalog address for Veguide. Pack URLs point to versioned releases; snapshots are partial and dated." --latest=false
+          fi
+          gh release upload offline-data release/catalog.json --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/veguide-release.p12"

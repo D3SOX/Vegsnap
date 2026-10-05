@@ -1,0 +1,10 @@
+{
+  "name": "@veguide/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "exports": "./src/index.ts",
+  "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
+  "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^5.9.3" }
+}

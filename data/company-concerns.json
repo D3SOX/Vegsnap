@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "license": "AGPL-3.0-only",
+  "policy": "Only reviewed, dated, sourced conduct is eligible. Selling animal products alone never qualifies. Empty means no concern recorded, not ethical clearance. Original summaries only; linked source documents retain their own copyright.",
+  "entities": [
+    {
+      "id": "nestle",
+      "name": "Nestlé",
+      "kind": "company",
+      "aliases": [
+        "Nestle",
+        "Nestlé S.A.",
+        "Nestle S.A."
+      ]
+    },
+    {
+      "id": "halsans-kok",
+      "name": "Hälsans Kök",
+      "kind": "brand",
+      "aliases": [
+        "Halsans Kok",
+        "Halsans Kök",
+        "Hälsans Kok"
+      ],
+      "parent": {
+        "id": "nestle",
+        "sourceUrl": "https://www.nestle.dk/da/media/pressreleases/garden-gourmet-bliver-til-hlsans-kk",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    },
+    {
+      "id": "garden-gourmet",
+      "name": "Garden Gourmet",
+      "kind": "brand",
+      "aliases": [],
+      "parent": {
+        "id": "nestle",
+        "sourceUrl": "https://www.nestle.com/brands/culinary-chilled-frozen/garden-gourmet",
+        "reviewedAt": "2026-10-06T00:00:00Z"
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "nestle-animal-testing-policy",
+      "companyId": "nestle",
+      "category": "animal_testing",
+      "description": {
+        "en": "Nestlé’s published policy permits animal testing for certain regulatory approvals and nutritional or medical research, while requiring alternatives where possible. It prohibits testing to develop conventional human food and drinks or cosmetics. This is a company policy concern, not evidence that this product was tested on animals.",
+        "de": "Nestlés veröffentlichte Richtlinie erlaubt Tierversuche für bestimmte Zulassungen sowie Ernährungs- oder medizinische Forschung und verlangt nach Möglichkeit Alternativen. Für die Entwicklung herkömmlicher Lebensmittel, Getränke und Kosmetika untersagt sie Tierversuche. Dies betrifft die Unternehmensrichtlinie und belegt nicht, dass dieses Produkt an Tieren getestet wurde."
+      },
+      "sourceUrl": "https://www.nestle.com/asset-library/Documents/Library/Documents/Corporate_Social_Responsibility/nestle-policy-animal-testing.pdf",
+      "sourceDate": "2017-02",
+      "reviewedAt": "2026-10-06T00:00:00Z",
+      "status": "current",
+      "redistribution": "Original factual summary; source text is not redistributed."
+    }
+  ]
+}

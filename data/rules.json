@@ -1,0 +1,3747 @@
+{
+  "version": 1,
+  "license": "AGPL-3.0-only",
+  "note": "Original concise classification rules; linked references are supporting sources, not imported databases. Plant status includes mineral and synthetic materials without identified animal content. Not a full ingredient taxonomy.",
+  "sources": [
+    {
+      "id": "v-label",
+      "url": "https://www.v-label.com/our-criteria/",
+      "title": "V-Label criteria for ingredients, materials and production aids"
+    },
+    {
+      "id": "eu-additive-specifications",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32012R0231",
+      "title": "EU specifications for food additives (including tocopherols E306–E309)"
+    },
+    {
+      "id": "bfr-flavourings",
+      "url": "https://www.bfr.bund.de/lebensmittelsicherheit/bewertung-der-stofflichen-risiken-von-lebensmitteln/aromastoffe-und-aromen/",
+      "title": "BfR: natural flavourings may have plant, animal or microbiological origins"
+    },
+    {
+      "id": "german-spice-guidelines",
+      "url": "https://www.deutsche-lebensmittelbuch-kommission.de/fileadmin/Dokumente/LS/10_ls_fuer_gewuerze_nicht_barrierefrei_12_2025.pdf",
+      "title": "German Food Book guidelines for spices and seasoning ingredients"
+    },
+    {
+      "id": "nordic-vegan-nutrition",
+      "url": "https://www.livsmedelsverket.se/matvanor-halsa--miljo/kostrad/vegansk-mat/",
+      "title": "Swedish Food Agency: fortified vegan foods, riboflavin, B12 and vitamin D2"
+    },
+    {
+      "id": "oddlygood-composition-translations",
+      "url": "https://www.oddlygood.com/fi/tuotteet/oddlygood-soygurt-1-kg-maustamaton/",
+      "title": "Oddlygood ingredient names; parallel Swedish/Finnish manufacturer composition"
+    },
+    {
+      "id": "efsa-tocopherols",
+      "url": "https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2015.4247",
+      "title": "EFSA: natural tocopherol-rich extracts and synthetic tocopherols (E306–E309)"
+    },
+    {
+      "id": "nordic-plant-foods",
+      "url": "https://www.livsmedelsverket.se/matvanor-halsa--miljo/kostrad-och-matvanor/vegetarisk-mat-for-vuxna",
+      "title": "Swedish Food Agency: vegetables, fruit, cereals, pulses, nuts and seeds as plant foods"
+    },
+    {
+      "id": "hengstenberg-spirit-vinegar",
+      "url": "https://www.hengstenberg.de/produkte/essig-und-vinaigrette/tafel-essig",
+      "title": "Manufacturer description of plain spirit vinegar and its composition"
+    },
+    {
+      "id": "eu-gum-specifications",
+      "url": "https://eur-lex.europa.eu/eli/reg/2026/196/oj/eng",
+      "title": "EU definitions for locust bean gum, guar gum and xanthan gum"
+    },
+    {
+      "id": "fda-maltodextrin",
+      "url": "https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-184/subpart-B/section-184.1444",
+      "title": "FDA maltodextrin definition: hydrolysed corn, potato or rice starch"
+    }
+  ],
+  "rules": [
+    {
+      "id": "milk",
+      "status": "animal",
+      "aliases": [
+        "milk",
+        "milch",
+        "whole milk",
+        "vollmilch",
+        "skimmed milk",
+        "magermilch",
+        "milk powder",
+        "milchpulver",
+        "skimmed milk powder",
+        "magermilchpulver",
+        "mjölk",
+        "helmjölk",
+        "skummjölk",
+        "mjölkpulver",
+        "helmjölkspulver",
+        "skummjölkspulver",
+        "condensed milk",
+        "kondensmilch",
+        "kondenserad mjölk",
+        "buttermilk",
+        "buttermilch",
+        "kärnmjölk",
+        "full cream milk powder",
+        "vollmilchpulver"
+      ],
+      "explanation": {
+        "en": "Milk is an animal-derived dairy ingredient.",
+        "de": "Milch ist eine tierische Zutat."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "butter",
+      "status": "animal",
+      "aliases": [
+        "butter",
+        "butterfat",
+        "butterreinfett",
+        "smör",
+        "smörfett"
+      ],
+      "explanation": {
+        "en": "Dairy butter is made from milk.",
+        "de": "Milchbutter wird aus Milch hergestellt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "cream",
+      "status": "animal",
+      "aliases": [
+        "cream",
+        "sahne",
+        "rahm",
+        "grädde"
+      ],
+      "explanation": {
+        "en": "Dairy cream is made from milk.",
+        "de": "Sahne wird aus Milch hergestellt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "whey",
+      "status": "animal",
+      "aliases": [
+        "whey",
+        "molke",
+        "whey powder",
+        "molkenpulver",
+        "sweet whey powder",
+        "süßmolkenpulver",
+        "süssmolkenpulver",
+        "whey protein",
+        "molkenprotein",
+        "vassle",
+        "vasslepulver",
+        "vassleprotein"
+      ],
+      "explanation": {
+        "en": "Whey is derived from milk.",
+        "de": "Molke wird aus Milch gewonnen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "casein",
+      "status": "animal",
+      "aliases": [
+        "casein",
+        "kasein",
+        "caseinate",
+        "milk protein",
+        "milcheiweiß",
+        "milcheiweiss",
+        "mjölkprotein",
+        "kaseinater",
+        "caseinates",
+        "natriumcaseinat",
+        "sodium caseinate",
+        "natriumkaseinat"
+      ],
+      "explanation": {
+        "en": "Casein and milk protein come from milk.",
+        "de": "Kasein und Milcheiweiß stammen aus Milch."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "lactose",
+      "status": "animal",
+      "aliases": [
+        "lactose",
+        "laktose",
+        "milchzucker",
+        "laktos",
+        "mjölksocker"
+      ],
+      "explanation": {
+        "en": "Lactose is milk sugar.",
+        "de": "Laktose ist Milchzucker."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "egg",
+      "status": "animal",
+      "aliases": [
+        "egg",
+        "eggs",
+        "ei",
+        "eier",
+        "egg white",
+        "eiweiß aus hühnerei",
+        "egg yolk",
+        "eigelb",
+        "eiklar",
+        "hühnerei",
+        "ägg",
+        "äggvita",
+        "äggula",
+        "äggpulver",
+        "hönsägg",
+        "hühnereieiweiß",
+        "hühnereieigelb",
+        "vollei",
+        "volleipulver",
+        "eipulver",
+        "egg powder",
+        "whole egg",
+        "yolk",
+        "äggvitepulver",
+        "äggulepulver"
+      ],
+      "explanation": {
+        "en": "Egg is animal-derived.",
+        "de": "Ei ist tierischen Ursprungs."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "honey",
+      "status": "animal",
+      "aliases": [
+        "honey",
+        "honig",
+        "bienenhonig",
+        "honung"
+      ],
+      "explanation": {
+        "en": "Honey is produced by bees.",
+        "de": "Honig wird von Bienen erzeugt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "gelatin",
+      "status": "animal",
+      "aliases": [
+        "gelatin",
+        "gelatine",
+        "gelatin från gris",
+        "schweinegelatine",
+        "bovine gelatin",
+        "beef gelatin",
+        "rindergelatine",
+        "pork gelatin",
+        "fiskgelatin",
+        "fish gelatin"
+      ],
+      "explanation": {
+        "en": "Gelatin is made from animal collagen.",
+        "de": "Gelatine wird aus tierischem Kollagen hergestellt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "carmine",
+      "status": "animal",
+      "aliases": [
+        "carmine",
+        "karmin",
+        "echtes karmin",
+        "cochineal",
+        "cochenille",
+        "e120",
+        "e 120",
+        "ci 75470",
+        "karminsyra",
+        "karminer",
+        "cochenillerot",
+        "karminsäure"
+      ],
+      "explanation": {
+        "en": "Carmine is a dye derived from insects.",
+        "de": "Karmin ist ein Farbstoff aus Insekten."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "beeswax",
+      "status": "animal",
+      "aliases": [
+        "beeswax",
+        "bienenwachs",
+        "cera alba",
+        "e901",
+        "e 901",
+        "bivax",
+        "cera flava"
+      ],
+      "explanation": {
+        "en": "Beeswax is produced by bees.",
+        "de": "Bienenwachs wird von Bienen erzeugt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "shellac",
+      "status": "animal",
+      "aliases": [
+        "shellac",
+        "schellack",
+        "e904",
+        "e 904",
+        "shellack"
+      ],
+      "explanation": {
+        "en": "Shellac is derived from insects.",
+        "de": "Schellack stammt von Insekten."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "meat",
+      "status": "animal",
+      "aliases": [
+        "beef",
+        "rindfleisch",
+        "pork",
+        "schweinefleisch",
+        "chicken",
+        "hühnerfleisch",
+        "hähnchenfleisch",
+        "lard",
+        "schweineschmalz",
+        "tallow",
+        "rindertalg",
+        "meat",
+        "fleisch",
+        "kött",
+        "nötkött",
+        "fläskkött",
+        "griskött",
+        "kyckling",
+        "kycklingkött",
+        "poultry",
+        "geflügelfleisch",
+        "lamb",
+        "lammfleisch",
+        "lammkött",
+        "turkey",
+        "putenfleisch",
+        "kalkonkött",
+        "duck meat",
+        "entenfleisch",
+        "ankkött",
+        "bacon",
+        "speck",
+        "schinken",
+        "ham",
+        "skinka",
+        "beef fat",
+        "rinderfett",
+        "pork fat",
+        "schweinefett",
+        "grisköttsfett",
+        "ister",
+        "talg"
+      ],
+      "explanation": {
+        "en": "Meat and animal fats are animal-derived.",
+        "de": "Fleisch und tierische Fette sind tierischen Ursprungs."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "fish",
+      "status": "animal",
+      "aliases": [
+        "fish",
+        "fisch",
+        "salmon",
+        "lachs",
+        "tuna",
+        "thunfisch",
+        "anchovy",
+        "anchovies",
+        "sardellen",
+        "fish oil",
+        "fischöl",
+        "fisk",
+        "lax",
+        "tonfisk",
+        "ansjovis",
+        "sardeller",
+        "fiskolja",
+        "fish sauce",
+        "fischsauce",
+        "fischsoße",
+        "fischsosse",
+        "fisksås",
+        "bonito",
+        "bonito flakes",
+        "bonitoflocken",
+        "katsuobushi",
+        "sardine",
+        "sardines",
+        "sardinen",
+        "sardiner"
+      ],
+      "explanation": {
+        "en": "Fish and fish oil are animal-derived.",
+        "de": "Fisch und Fischöl sind tierischen Ursprungs."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "leather",
+      "status": "animal",
+      "aliases": [
+        "leather",
+        "leder",
+        "echtleder",
+        "genuine leather",
+        "suede",
+        "wildleder",
+        "nubuck",
+        "nubuk",
+        "läder",
+        "äkta läder",
+        "mocka",
+        "echtes leder",
+        "real leather",
+        "äkta skinn"
+      ],
+      "explanation": {
+        "en": "Leather is animal hide.",
+        "de": "Leder besteht aus Tierhaut."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "wool",
+      "status": "animal",
+      "aliases": [
+        "wool",
+        "wolle",
+        "merino wool",
+        "merinowolle",
+        "cashmere",
+        "kaschmir",
+        "angora",
+        "mohair",
+        "ull",
+        "merinoull",
+        "kashmir"
+      ],
+      "explanation": {
+        "en": "Wool and these fibres come from animals.",
+        "de": "Wolle und diese Fasern stammen von Tieren."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "silk",
+      "status": "animal",
+      "aliases": [
+        "silk",
+        "seide"
+      ],
+      "explanation": {
+        "en": "Silk is produced by silkworms.",
+        "de": "Seide wird von Seidenraupen erzeugt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "down",
+      "status": "animal",
+      "aliases": [
+        "down",
+        "daunen",
+        "feathers",
+        "federn"
+      ],
+      "explanation": {
+        "en": "Down and feathers come from birds.",
+        "de": "Daunen und Federn stammen von Vögeln."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "lanolin",
+      "status": "animal",
+      "aliases": [
+        "lanolin",
+        "wollwachs",
+        "wool wax"
+      ],
+      "explanation": {
+        "en": "Lanolin is obtained from sheep wool.",
+        "de": "Lanolin wird aus Schafwolle gewonnen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "collagen",
+      "status": "animal",
+      "aliases": [
+        "collagen",
+        "kollagen"
+      ],
+      "explanation": {
+        "en": "Conventional collagen is animal-derived; a different source needs explicit evidence.",
+        "de": "Konventionelles Kollagen ist tierisch; eine andere Herkunft muss belegt werden."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "water",
+      "status": "plant",
+      "aliases": [
+        "water",
+        "wasser",
+        "aqua",
+        "vatten",
+        "trinkwasser",
+        "drinking water",
+        "dricksvatten",
+        "vesi"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label",
+        "oddlygood-composition-translations"
+      ]
+    },
+    {
+      "id": "salt",
+      "status": "plant",
+      "aliases": [
+        "salt",
+        "salz",
+        "meersalz",
+        "sea salt",
+        "speisesalz",
+        "suola",
+        "havssalt",
+        "jodsalz",
+        "iodised salt",
+        "iodized salt",
+        "joderat salt",
+        "siedesalz",
+        "rock salt",
+        "steinsalz"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label",
+        "oddlygood-composition-translations"
+      ]
+    },
+    {
+      "id": "sugar",
+      "status": "plant",
+      "aliases": [
+        "sugar",
+        "zucker",
+        "rohrzucker",
+        "cane sugar",
+        "glucose",
+        "glukose",
+        "dextrose",
+        "socker",
+        "rörsocker",
+        "sokeri",
+        "beet sugar",
+        "rübenzucker",
+        "betsocker",
+        "glukos",
+        "fructose",
+        "fruktose",
+        "fruktos",
+        "glucose syrup",
+        "glukosesirup",
+        "glukossirap",
+        "glucose-fructose syrup",
+        "glukose-fruktose-sirup",
+        "glukos-fruktossirap",
+        "invert sugar syrup",
+        "invertzuckersirup",
+        "invertsockersirap",
+        "powdered sugar",
+        "icing sugar",
+        "puderzucker",
+        "florsocker",
+        "druvsocker"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label",
+        "oddlygood-composition-translations"
+      ]
+    },
+    {
+      "id": "cocoa",
+      "status": "plant",
+      "aliases": [
+        "cocoa",
+        "kakao",
+        "cocoa powder",
+        "kakaopulver",
+        "kakaomasse",
+        "cocoa mass",
+        "kakaomassa",
+        "cocoa solids",
+        "fettarmes kakaopulver",
+        "low-fat cocoa powder",
+        "kakaonibs",
+        "cocoa nibs",
+        "kakaofibrer",
+        "kakaofaser"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "cocoa-butter",
+      "status": "plant",
+      "aliases": [
+        "cocoa butter",
+        "kakaobutter",
+        "kakaosmör"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "coconut",
+      "status": "plant",
+      "aliases": [
+        "coconut",
+        "kokos",
+        "coconut milk",
+        "kokosmilch",
+        "coconut oil",
+        "kokosöl",
+        "kokosfett",
+        "kokosmjölk",
+        "kokosolja",
+        "coconut flakes",
+        "kokosraspeln",
+        "kokosflingor",
+        "kokosnuss",
+        "coconut flour",
+        "kokosmehl",
+        "kokosmjöl",
+        "coconut fat",
+        "coconut cream",
+        "kokosgrädde"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "oat",
+      "status": "plant",
+      "aliases": [
+        "oats",
+        "oat",
+        "hafer",
+        "haferflocken",
+        "oat flakes",
+        "oat flour",
+        "hafermehl",
+        "oat milk",
+        "hafermilch",
+        "havre",
+        "havregryn",
+        "havremjöl",
+        "havremjölk",
+        "havredryck",
+        "wholegrain oats",
+        "whole grain oats",
+        "wholegrain oat flakes",
+        "vollkornhaferflocken",
+        "hafervollkornflocken",
+        "haferkleie",
+        "oat bran",
+        "havrekli",
+        "havremjöl fullkorn",
+        "haferdrink",
+        "oat drink",
+        "hafervollkornmehl"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "wheat",
+      "status": "plant",
+      "aliases": [
+        "wheat",
+        "weizen",
+        "wheat flour",
+        "weizenmehl",
+        "wheat starch",
+        "weizenstärke",
+        "vetemjöl",
+        "vete",
+        "fullkornsvetemjöl",
+        "whole wheat flour",
+        "wholemeal wheat flour",
+        "wholegrain wheat flour",
+        "weizenvollkornmehl",
+        "durum wheat semolina",
+        "hartweizengrieß",
+        "hartweizengriess",
+        "durumvete",
+        "durumvetemjöl",
+        "wheat gluten",
+        "weizengluten",
+        "vetegluten",
+        "wheat protein",
+        "weizenprotein",
+        "veteprotein",
+        "wheat bran",
+        "weizenkleie",
+        "vetekli",
+        "vetestärkelse",
+        "weizenmehl type 405",
+        "weizenmehl type 550",
+        "weizenmehl type 1050"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "rice",
+      "status": "plant",
+      "aliases": [
+        "rice",
+        "reis",
+        "rice flour",
+        "reismehl",
+        "rismjöl",
+        "ris",
+        "brown rice",
+        "vollkornreis",
+        "råris",
+        "rice starch",
+        "reisstärke",
+        "risstärkelse",
+        "rice syrup",
+        "reissirup",
+        "rissirap",
+        "rice protein",
+        "reisprotein",
+        "risprotein"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "soy",
+      "status": "plant",
+      "aliases": [
+        "soy",
+        "soya",
+        "soja",
+        "soybeans",
+        "sojabohnen",
+        "soy lecithin",
+        "sojalecithin",
+        "sojalecithine",
+        "lecithine aus soja",
+        "sojabönor",
+        "skalade sojabönor",
+        "soijapapu",
+        "kuorittu soijapapu",
+        "sojamehl",
+        "soy flour",
+        "sojamjöl",
+        "soy protein",
+        "sojaprotein",
+        "soy protein isolate",
+        "sojaproteinisolat",
+        "soybean oil",
+        "sojaöl",
+        "sojaolja",
+        "soyalecitin",
+        "sojalecitin"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label",
+        "oddlygood-composition-translations"
+      ]
+    },
+    {
+      "id": "sunflower",
+      "status": "plant",
+      "aliases": [
+        "sunflower oil",
+        "sonnenblumenöl",
+        "sunflower lecithin",
+        "sonnenblumenlecithin",
+        "sonnenblumenkerne",
+        "sunflower seeds",
+        "solrosfrön",
+        "solroskärnor",
+        "solrosolja",
+        "solroslecitin",
+        "sonnenblumenprotein",
+        "sunflower protein"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "rapeseed",
+      "status": "plant",
+      "aliases": [
+        "rapeseed oil",
+        "rapsöl",
+        "rapsolja",
+        "canola oil",
+        "canolaolja",
+        "rapssamen",
+        "rapeseed",
+        "rapsfrön"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "olive",
+      "status": "plant",
+      "aliases": [
+        "olive oil",
+        "olivenöl",
+        "olives",
+        "oliven",
+        "oliver",
+        "olivolja",
+        "extra virgin olive oil",
+        "natives olivenöl extra",
+        "extra jungfruolivolja"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "corn",
+      "status": "plant",
+      "aliases": [
+        "corn",
+        "mais",
+        "corn starch",
+        "maisstärke",
+        "corn flour",
+        "maize flour",
+        "maize starch",
+        "maismehl",
+        "majs",
+        "majsmjöl",
+        "majsstärkelse",
+        "polenta",
+        "corn grits",
+        "maisgrieß",
+        "maisgriess",
+        "corn oil",
+        "maisöl",
+        "majsolja"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "almond",
+      "status": "plant",
+      "aliases": [
+        "almonds",
+        "mandeln",
+        "almond",
+        "mandel",
+        "mandlar",
+        "almond flour",
+        "mandelmehl",
+        "mandelmjöl",
+        "almond butter",
+        "mandelmus",
+        "mandelsmör"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "hazelnut",
+      "status": "plant",
+      "aliases": [
+        "hazelnuts",
+        "haselnüsse",
+        "hazelnut",
+        "haselnuss",
+        "hasselnöt",
+        "hasselnötter",
+        "haselnussmus",
+        "hazelnut butter",
+        "hasselnötssmör"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "fruit",
+      "status": "plant",
+      "aliases": [
+        "apple",
+        "apfel",
+        "apples",
+        "äpfel",
+        "banana",
+        "banane",
+        "bananas",
+        "bananen",
+        "lemon juice",
+        "zitronensaft",
+        "tomato",
+        "tomatoes",
+        "tomaten",
+        "äpple",
+        "äpplen",
+        "banan",
+        "bananer",
+        "tomat",
+        "tomater",
+        "citronsaft",
+        "citronjuice",
+        "lemon juice from concentrate",
+        "zitronensaft aus zitronensaftkonzentrat",
+        "zitronensaft aus konzentrat",
+        "citronjuice från koncentrat",
+        "lemon juice concentrate",
+        "zitronensaftkonzentrat",
+        "citronjuicekoncentrat",
+        "lemon",
+        "zitrone",
+        "citron"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "yeast",
+      "status": "plant",
+      "aliases": [
+        "yeast",
+        "hefe",
+        "jäst",
+        "baking yeast",
+        "baker’s yeast",
+        "bakers yeast",
+        "backhefe",
+        "trockenhefe",
+        "dry yeast",
+        "torrjäst",
+        "yeast extract",
+        "hefeextrakt",
+        "jästextrakt",
+        "nutritional yeast",
+        "hefeﬂocken",
+        "hefeflocken",
+        "näringsjäst"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "pectin",
+      "status": "plant",
+      "aliases": [
+        "pectin",
+        "pektin",
+        "e440",
+        "e 440",
+        "pektine",
+        "pectins",
+        "pektiner"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "agar",
+      "status": "plant",
+      "aliases": [
+        "agar",
+        "agar-agar",
+        "e406",
+        "e 406",
+        "agar agar"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "citric-acid",
+      "status": "plant",
+      "aliases": [
+        "citric acid",
+        "zitronensäure",
+        "e330",
+        "e 330",
+        "citronensäure",
+        "citronsyra"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "cotton",
+      "status": "plant",
+      "aliases": [
+        "cotton",
+        "baumwolle",
+        "bomull"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "linen",
+      "status": "plant",
+      "aliases": [
+        "linen",
+        "leinen"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "polyester",
+      "status": "plant",
+      "aliases": [
+        "polyester"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "polyamide",
+      "status": "plant",
+      "aliases": [
+        "polyamide",
+        "polyamid",
+        "nylon"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "polyurethane",
+      "status": "plant",
+      "aliases": [
+        "polyurethane",
+        "polyurethan",
+        "pu"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "elastane",
+      "status": "plant",
+      "aliases": [
+        "elastane",
+        "elastan",
+        "spandex"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "viscose",
+      "status": "plant",
+      "aliases": [
+        "viscose",
+        "viskose",
+        "lyocell"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "synthetic-leather",
+      "status": "plant",
+      "aliases": [
+        "synthetic leather",
+        "kunstleder",
+        "konstläder"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "rubber",
+      "status": "plant",
+      "aliases": [
+        "rubber",
+        "gummi"
+      ],
+      "explanation": {
+        "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+        "de": "Dieser Begriff bezeichnet keine tierische Zutat oder kein tierisches Material; Herstellungsdetails sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "e471",
+      "status": "ambiguous",
+      "aliases": [
+        "e471",
+        "e 471",
+        "mono- and diglycerides of fatty acids",
+        "mono- und diglyceride von speisefettsäuren",
+        "mono- och diglycerider av fettsyror",
+        "mono- och diglycerider av vegetabiliska och animaliska fettsyror"
+      ],
+      "explanation": {
+        "en": "Fatty-acid source may be plant or animal; origin evidence is needed.",
+        "de": "Fettsäuren können pflanzlich oder tierisch sein; ein Herkunftsnachweis fehlt."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "glycerin",
+      "status": "ambiguous",
+      "aliases": [
+        "glycerin",
+        "glycerine",
+        "glycerol",
+        "e422",
+        "e 422"
+      ],
+      "explanation": {
+        "en": "Glycerin can have different origins; confirm its source.",
+        "de": "Glycerin kann verschiedene Ursprünge haben; die Herkunft muss geklärt werden."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "stearate",
+      "status": "ambiguous",
+      "aliases": [
+        "stearic acid",
+        "stearinsäure",
+        "magnesium stearate",
+        "magnesiumstearat"
+      ],
+      "explanation": {
+        "en": "The fatty-acid origin needs confirmation.",
+        "de": "Die Herkunft der Fettsäuren muss bestätigt werden."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "flavouring",
+      "status": "ambiguous",
+      "aliases": [
+        "flavouring",
+        "flavoring",
+        "natural flavouring",
+        "natural flavoring",
+        "aroma",
+        "aromen",
+        "natürliches aroma",
+        "natürliche aromen",
+        "natural flavourings",
+        "natural flavorings",
+        "naturliga aromer",
+        "aromer",
+        "naturlig arom",
+        "arom",
+        "aromaämnen"
+      ],
+      "explanation": {
+        "en": "The description does not establish whether all flavouring components are vegan.",
+        "de": "Die Bezeichnung belegt nicht die vegane Herkunft aller Aromabestandteile."
+      },
+      "sourceIds": [
+        "v-label",
+        "bfr-flavourings"
+      ]
+    },
+    {
+      "id": "vitamin-d3",
+      "status": "ambiguous",
+      "aliases": [
+        "vitamin d3",
+        "cholecalciferol",
+        "kolekalciferol",
+        "cholekalziferol",
+        "d3"
+      ],
+      "explanation": {
+        "en": "Vitamin D3 may be derived from lanolin or a vegan source.",
+        "de": "Vitamin D3 kann aus Lanolin oder einer veganen Quelle stammen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "lecithin",
+      "status": "ambiguous",
+      "aliases": [
+        "lecithin",
+        "lecithine",
+        "e322",
+        "e 322",
+        "lecitin",
+        "lecitiner"
+      ],
+      "explanation": {
+        "en": "The lecithin source is unspecified.",
+        "de": "Die Herkunft des Lecithins ist nicht angegeben."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "glue",
+      "status": "ambiguous",
+      "aliases": [
+        "glue",
+        "adhesive",
+        "kleber",
+        "klebstoff"
+      ],
+      "explanation": {
+        "en": "Adhesives need a manufacturer declaration about their composition.",
+        "de": "Für Klebstoffe ist eine Herstellerangabe zur Zusammensetzung nötig."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "pea",
+      "status": "plant",
+      "aliases": [
+        "erbsen",
+        "erbsenprotein",
+        "erbsenproteinisolat",
+        "erbsenfaser",
+        "peas",
+        "pea protein",
+        "pea protein isolate",
+        "pea fibre",
+        "pea fiber",
+        "ärtprotein",
+        "ärtfiber",
+        "pea",
+        "erbse",
+        "ärta",
+        "ärtor",
+        "ärter",
+        "pea flour",
+        "erbsenmehl",
+        "ärtmjöl",
+        "yellow peas",
+        "gelbe erbsen",
+        "gula ärtor",
+        "green peas",
+        "grüne erbsen",
+        "gröna ärtor"
+      ],
+      "explanation": {
+        "en": "Peas and their named protein or fibre ingredients are plant-derived.",
+        "de": "Erbsen sowie daraus benanntes Protein und Fasern sind pflanzlich."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "fava-bean",
+      "status": "plant",
+      "aliases": [
+        "ackerbohnenprotein",
+        "ackerbohnen",
+        "fava bean protein",
+        "broad bean protein",
+        "faba bean protein",
+        "bondbönsprotein",
+        "bondbönor",
+        "fava beans",
+        "broad beans",
+        "faba beans",
+        "favabönor"
+      ],
+      "explanation": {
+        "en": "Fava beans and their protein are plant-derived.",
+        "de": "Ackerbohnen und ihr Protein sind pflanzlich."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "starch",
+      "status": "plant",
+      "aliases": [
+        "stärke",
+        "starch",
+        "stärkelse",
+        "kartoffelstärke",
+        "potato starch",
+        "potatisstärkelse",
+        "tapiokastärke",
+        "tapioca starch",
+        "modified starch",
+        "modifizierte stärke",
+        "modifierad stärkelse",
+        "tärkkelys",
+        "potatismjöl",
+        "tapiokastärkelse",
+        "tapioca",
+        "tapioka"
+      ],
+      "explanation": {
+        "en": "Starch is a plant carbohydrate.",
+        "de": "Stärke ist ein pflanzliches Kohlenhydrat."
+      },
+      "sourceIds": [
+        "v-label",
+        "oddlygood-composition-translations"
+      ]
+    },
+    {
+      "id": "citrus-fibre",
+      "status": "plant",
+      "aliases": [
+        "citrusfaser",
+        "zitrusfaser",
+        "citrusfibre",
+        "citrus fibre",
+        "citrus fiber",
+        "citrusfiber"
+      ],
+      "explanation": {
+        "en": "Citrus fibre comes from citrus fruit.",
+        "de": "Citrusfasern stammen aus Zitrusfrüchten."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "oligofructose",
+      "status": "plant",
+      "aliases": [
+        "oligofructose",
+        "oligofruktose",
+        "oligofruktos",
+        "fructooligosaccharides",
+        "fructo-oligosaccharides",
+        "inulin"
+      ],
+      "explanation": {
+        "en": "These carbohydrates are obtained from plant sugars or plant fibre.",
+        "de": "Diese Kohlenhydrate werden aus pflanzlichen Zuckern oder Fasern gewonnen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "flax",
+      "status": "plant",
+      "aliases": [
+        "leinsamen",
+        "leinsamenmehl",
+        "leinsaat",
+        "flaxseed",
+        "flaxseed flour",
+        "linseed",
+        "linseed flour",
+        "linfrö",
+        "linfrömjöl",
+        "linfrön",
+        "flax seeds",
+        "leinsamenöl",
+        "linolja",
+        "linseed oil"
+      ],
+      "explanation": {
+        "en": "Flaxseed and its flour are plant-derived.",
+        "de": "Leinsamen und Leinsamenmehl sind pflanzlich."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "psyllium",
+      "status": "plant",
+      "aliases": [
+        "flohsamenschalen",
+        "psyllium husks",
+        "psyllium husk",
+        "psyllium",
+        "psylliumfröskal"
+      ],
+      "explanation": {
+        "en": "Psyllium husks are seed husks from a plant.",
+        "de": "Flohsamenschalen sind pflanzliche Samenschalen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "calcium-lactate",
+      "status": "plant",
+      "aliases": [
+        "calciumlactat",
+        "kalziumlaktat",
+        "calcium lactate",
+        "kalciumlaktat",
+        "e327",
+        "e 327"
+      ],
+      "explanation": {
+        "en": "Calcium lactate is a lactic-acid salt, not milk or lactose; its name does not identify animal content.",
+        "de": "Calciumlactat ist ein Salz der Milchsäure, keine Milch oder Laktose; der Name bezeichnet keinen tierischen Bestandteil."
+      },
+      "sourceIds": [
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "sodium-acetate",
+      "status": "plant",
+      "aliases": [
+        "natriumacetat",
+        "natriumacetate",
+        "sodium acetate",
+        "sodium acetates",
+        "natriumacetater",
+        "e262",
+        "e 262"
+      ],
+      "explanation": {
+        "en": "Sodium acetates are salts of acetic acid without identified animal content.",
+        "de": "Natriumacetate sind Salze der Essigsäure ohne erkannten tierischen Bestandteil."
+      },
+      "sourceIds": [
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "iron-oxides",
+      "status": "plant",
+      "aliases": [
+        "eisenoxid",
+        "eisenoxide",
+        "eisenhydroxid",
+        "eisenhydroxide",
+        "eisenoxide und eisenhydroxide",
+        "eisenoxid und eisenhydroxid",
+        "iron oxides and hydroxides",
+        "iron oxide",
+        "iron oxides",
+        "järnoxider och järnhydroxider",
+        "e172",
+        "e 172"
+      ],
+      "explanation": {
+        "en": "Iron oxides and hydroxides are inorganic pigments, not animal-derived dyes.",
+        "de": "Eisenoxide und Eisenhydroxide sind anorganische Pigmente, keine tierischen Farbstoffe."
+      },
+      "sourceIds": [
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "spices",
+      "status": "plant",
+      "aliases": [
+        "gewürze",
+        "gewürz",
+        "spice",
+        "spices",
+        "kryddor",
+        "krydda",
+        "gewürzextrakte",
+        "gewürzextrakt",
+        "spice extracts",
+        "spice extract",
+        "kryddextrakt",
+        "paprikapulver",
+        "paprika powder",
+        "gemahlene paprika"
+      ],
+      "explanation": {
+        "en": "Spices and spice extracts come from plants; this is distinct from unspecified seasoning or flavouring.",
+        "de": "Gewürze und Gewürzextrakte stammen aus Pflanzen; unspezifische Würze oder Aromen sind davon zu unterscheiden."
+      },
+      "sourceIds": [
+        "german-spice-guidelines"
+      ]
+    },
+    {
+      "id": "seasoning",
+      "status": "ambiguous",
+      "aliases": [
+        "würze",
+        "speisewürze",
+        "seasoning"
+      ],
+      "explanation": {
+        "en": "Unspecified seasoning does not identify the source of its protein or flavour components. A vegan label or manufacturer confirmation can resolve this.",
+        "de": "Unspezifische Würze benennt die Herkunft ihrer Protein- oder Aromabestandteile nicht. Ein Vegan-Label oder eine Herstellerbestätigung kann dies klären."
+      },
+      "sourceIds": [
+        "german-spice-guidelines"
+      ]
+    },
+    {
+      "id": "vitamin-b2",
+      "status": "plant",
+      "aliases": [
+        "riboflavin",
+        "riboflaviini",
+        "riboflavine",
+        "vitamin b2",
+        "b2",
+        "e101",
+        "e 101"
+      ],
+      "explanation": {
+        "en": "Riboflavin is vitamin B2; the ingredient itself does not identify animal content.",
+        "de": "Riboflavin ist Vitamin B2; die Zutat selbst weist nicht auf tierische Bestandteile hin."
+      },
+      "sourceIds": [
+        "nordic-vegan-nutrition"
+      ]
+    },
+    {
+      "id": "vitamin-b12",
+      "status": "plant",
+      "aliases": [
+        "vitamin b12",
+        "b12",
+        "cyanocobalamin",
+        "cyanokobalamin"
+      ],
+      "explanation": {
+        "en": "Vitamin B12 used for fortification is produced by microorganisms; separate carriers are assessed independently.",
+        "de": "Vitamin B12 zur Anreicherung wird von Mikroorganismen hergestellt; zusätzliche Trägerstoffe werden gesondert bewertet."
+      },
+      "sourceIds": [
+        "nordic-vegan-nutrition"
+      ]
+    },
+    {
+      "id": "vitamin-d2",
+      "status": "plant",
+      "aliases": [
+        "vitamin d2",
+        "d2",
+        "ergocalciferol",
+        "ergokalciferol"
+      ],
+      "explanation": {
+        "en": "Vitamin D2 is the non-animal form used in fortified foods; separate carriers remain relevant.",
+        "de": "Vitamin D2 ist die nichttierische Form in angereicherten Lebensmitteln; zusätzliche Trägerstoffe bleiben relevant."
+      },
+      "sourceIds": [
+        "nordic-vegan-nutrition"
+      ]
+    },
+    {
+      "id": "vitamin-d-unspecified",
+      "status": "ambiguous",
+      "aliases": [
+        "vitamin d",
+        "d-vitamin"
+      ],
+      "explanation": {
+        "en": "The vitamin D form/source is unspecified; D2 and different sources of D3 cannot be treated as equivalent.",
+        "de": "Form und Herkunft des Vitamins D sind nicht angegeben; D2 und verschiedene D3-Quellen sind nicht gleichzusetzen."
+      },
+      "sourceIds": [
+        "nordic-vegan-nutrition"
+      ]
+    },
+    {
+      "id": "starter-culture",
+      "status": "ambiguous",
+      "aliases": [
+        "starter culture",
+        "starter cultures",
+        "culture",
+        "cultures",
+        "syrningskultur",
+        "hapate",
+        "joghurtkulturen"
+      ],
+      "explanation": {
+        "en": "Starter organisms are microbial, but this term alone does not establish the origin of culture carriers or growth media.",
+        "de": "Starterkulturen sind mikrobiell; der Begriff allein klärt die Herkunft von Trägern oder Nährmedien nicht."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "vitamin-e",
+      "status": "plant",
+      "aliases": [
+        "vitamin e",
+        "e-vitamin",
+        "tocopherol",
+        "tocopherols",
+        "tokoferol",
+        "tokoferoler",
+        "tocopherole",
+        "alpha-tocopherol",
+        "α-tocopherol",
+        "e306",
+        "e 306",
+        "e307",
+        "e 307"
+      ],
+      "explanation": {
+        "en": "Food-grade vitamin E (tocopherols) is obtained from vegetable oils or synthesis; separate carriers, capsules and other ingredients are assessed independently.",
+        "de": "Vitamin E (Tocopherole) für Lebensmittel stammt aus Pflanzenölen oder Synthese; zusätzliche Trägerstoffe, Kapseln und andere Zutaten werden gesondert bewertet."
+      },
+      "sourceIds": [
+        "efsa-tocopherols",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "vegetables",
+      "status": "plant",
+      "aliases": [
+        "vegetables",
+        "gemüse",
+        "grönsaker"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "bell-pepper",
+      "status": "plant",
+      "aliases": [
+        "paprika",
+        "bell pepper",
+        "bell peppers",
+        "sweet pepper",
+        "sweet peppers",
+        "red pepper",
+        "red bell pepper",
+        "rote paprika",
+        "röd paprika",
+        "gelbe paprika",
+        "yellow bell pepper",
+        "gul paprika",
+        "green bell pepper",
+        "grüne paprika",
+        "grön paprika"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "chili",
+      "status": "plant",
+      "aliases": [
+        "chili",
+        "chilis",
+        "chillies",
+        "chilli",
+        "chiles",
+        "chilipulver",
+        "chili powder",
+        "chillipulver",
+        "chilipeppar",
+        "cayenne pepper",
+        "cayennepfeffer",
+        "cayennepeppar",
+        "jalapeño",
+        "jalapeno",
+        "jalapenos"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cucumber",
+      "status": "plant",
+      "aliases": [
+        "cucumber",
+        "cucumbers",
+        "gurke",
+        "gurken",
+        "gurka",
+        "gurkor",
+        "cornichons"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "garlic",
+      "status": "plant",
+      "aliases": [
+        "garlic",
+        "knoblauch",
+        "vitlök",
+        "garlic powder",
+        "knoblauchpulver",
+        "vitlökspulver",
+        "dried garlic",
+        "getrockneter knoblauch",
+        "torkad vitlök"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "onion",
+      "status": "plant",
+      "aliases": [
+        "onion",
+        "onions",
+        "zwiebel",
+        "zwiebeln",
+        "lök",
+        "lökar",
+        "onion powder",
+        "zwiebelpulver",
+        "lökpulver",
+        "dried onion",
+        "getrocknete zwiebeln",
+        "torkad lök",
+        "red onion",
+        "rote zwiebeln",
+        "rödlök",
+        "schalotten",
+        "shallots",
+        "schalottenlök"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "carrot",
+      "status": "plant",
+      "aliases": [
+        "carrot",
+        "carrots",
+        "karotte",
+        "karotten",
+        "möhre",
+        "möhren",
+        "morot",
+        "morötter",
+        "carrot juice",
+        "karottensaft",
+        "morotsjuice"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "potato",
+      "status": "plant",
+      "aliases": [
+        "potato",
+        "potatoes",
+        "kartoffel",
+        "kartoffeln",
+        "potatis",
+        "potato flakes",
+        "kartoffelflocken",
+        "potatisflingor",
+        "potato flour",
+        "kartoffelmehl",
+        "potato protein",
+        "kartoffelprotein",
+        "potatisprotein"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cauliflower",
+      "status": "plant",
+      "aliases": [
+        "cauliflower",
+        "blumenkohl",
+        "blomkål"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "broccoli",
+      "status": "plant",
+      "aliases": [
+        "broccoli",
+        "brokkoli"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "spinach",
+      "status": "plant",
+      "aliases": [
+        "spinach",
+        "spinat",
+        "spenat"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cabbage",
+      "status": "plant",
+      "aliases": [
+        "cabbage",
+        "kohl",
+        "kål",
+        "white cabbage",
+        "weißkohl",
+        "weisskohl",
+        "vitkål",
+        "red cabbage",
+        "rotkohl",
+        "rödkål",
+        "kale",
+        "grünkohl",
+        "grönkål",
+        "brussels sprouts",
+        "rosenkohl",
+        "brysselkål"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "leek",
+      "status": "plant",
+      "aliases": [
+        "leek",
+        "leeks",
+        "lauch",
+        "porree",
+        "purjolök",
+        "spring onions",
+        "frühlingszwiebeln",
+        "salladslök"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "celery",
+      "status": "plant",
+      "aliases": [
+        "celery",
+        "sellerie",
+        "selleri",
+        "celeriac",
+        "knollensellerie",
+        "rotselleri",
+        "celery seeds",
+        "selleriesamen",
+        "sellerifrön"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "beetroot",
+      "status": "plant",
+      "aliases": [
+        "beetroot",
+        "beet",
+        "beets",
+        "rote bete",
+        "rote beete",
+        "rödbeta",
+        "rödbetor",
+        "beetroot juice",
+        "rote-bete-saft",
+        "rödbetsjuice"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "courgette",
+      "status": "plant",
+      "aliases": [
+        "courgette",
+        "courgettes",
+        "zucchini",
+        "zucchinis"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "aubergine",
+      "status": "plant",
+      "aliases": [
+        "aubergine",
+        "aubergines",
+        "eggplant",
+        "äggplanta"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "pumpkin",
+      "status": "plant",
+      "aliases": [
+        "pumpkin",
+        "kürbis",
+        "pumpa",
+        "pumpkin seeds",
+        "kürbiskerne",
+        "pumpafrön",
+        "pumpakärnor",
+        "pumpkin seed oil",
+        "kürbiskernöl",
+        "pumpafröolja"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "parsley",
+      "status": "plant",
+      "aliases": [
+        "parsley",
+        "petersilie",
+        "persilja"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "dill",
+      "status": "plant",
+      "aliases": [
+        "dill",
+        "dillspitzen"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "basil",
+      "status": "plant",
+      "aliases": [
+        "basil",
+        "basilikum",
+        "basilika"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "oregano",
+      "status": "plant",
+      "aliases": [
+        "oregano"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "thyme",
+      "status": "plant",
+      "aliases": [
+        "thyme",
+        "thymian",
+        "timjan"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "rosemary",
+      "status": "plant",
+      "aliases": [
+        "rosemary",
+        "rosmarin"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "coriander",
+      "status": "plant",
+      "aliases": [
+        "coriander",
+        "coriander seed",
+        "coriander seeds",
+        "koriander",
+        "koriandersamen",
+        "korianderfrön",
+        "cilantro"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "herbs",
+      "status": "plant",
+      "aliases": [
+        "herbs",
+        "herb",
+        "kräuter",
+        "örter",
+        "örtkryddor",
+        "herb extract",
+        "herb extracts",
+        "kräuterextrakt",
+        "kräuterextrakte",
+        "örtextrakt"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "pepper",
+      "status": "plant",
+      "aliases": [
+        "pepper",
+        "black pepper",
+        "white pepper",
+        "pfeffer",
+        "schwarzer pfeffer",
+        "weißer pfeffer",
+        "weisser pfeffer",
+        "peppar",
+        "svartpeppar",
+        "vitpeppar"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "ginger",
+      "status": "plant",
+      "aliases": [
+        "ginger",
+        "ingwer",
+        "ingefära"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cumin",
+      "status": "plant",
+      "aliases": [
+        "cumin",
+        "kreuzkümmel",
+        "spiskummin"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "caraway",
+      "status": "plant",
+      "aliases": [
+        "caraway",
+        "kümmel",
+        "kummin"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "turmeric",
+      "status": "plant",
+      "aliases": [
+        "turmeric",
+        "kurkuma",
+        "gurkmeja"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cinnamon",
+      "status": "plant",
+      "aliases": [
+        "cinnamon",
+        "zimt",
+        "kanel"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "nutmeg",
+      "status": "plant",
+      "aliases": [
+        "nutmeg",
+        "muskatnuss",
+        "muskat",
+        "muskotnöt",
+        "muskot"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cloves",
+      "status": "plant",
+      "aliases": [
+        "cloves",
+        "gewürznelken",
+        "nelken",
+        "kryddnejlika",
+        "kryddnejlikor"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cardamom",
+      "status": "plant",
+      "aliases": [
+        "cardamom",
+        "kardamom",
+        "kardemumma"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "vanilla",
+      "status": "plant",
+      "aliases": [
+        "vanilla",
+        "vanille",
+        "vanilj",
+        "vanilla bean",
+        "vanilleschote",
+        "vaniljstång"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "mustard-seed",
+      "status": "plant",
+      "aliases": [
+        "mustard seeds",
+        "mustard seed",
+        "senfkörner",
+        "senfsaat",
+        "senfsamen",
+        "senfkorn",
+        "senfmehl",
+        "mustard flour",
+        "senapsfrön",
+        "senapsfrö",
+        "senapsmjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "chickpea",
+      "status": "plant",
+      "aliases": [
+        "chickpea",
+        "chickpeas",
+        "kichererbse",
+        "kichererbsen",
+        "kikärtor",
+        "chickpea flour",
+        "kichererbsenmehl",
+        "kikärtsmjöl",
+        "gram flour",
+        "besan"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "lentil",
+      "status": "plant",
+      "aliases": [
+        "lentil",
+        "lentils",
+        "linse",
+        "linsen",
+        "lins",
+        "linser",
+        "red lentils",
+        "rote linsen",
+        "röda linser",
+        "green lentils",
+        "grüne linsen",
+        "gröna linser",
+        "lentil flour",
+        "linsenmehl",
+        "linsmjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "bean",
+      "status": "plant",
+      "aliases": [
+        "beans",
+        "bean",
+        "bohne",
+        "bohnen",
+        "böna",
+        "bönor",
+        "kidney beans",
+        "kidneybohnen",
+        "kidneybönor",
+        "black beans",
+        "schwarze bohnen",
+        "svarta bönor",
+        "white beans",
+        "weiße bohnen",
+        "weisse bohnen",
+        "vita bönor",
+        "green beans",
+        "grüne bohnen",
+        "gröna bönor"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "rye",
+      "status": "plant",
+      "aliases": [
+        "rye",
+        "roggen",
+        "råg",
+        "rye flour",
+        "roggenmehl",
+        "rågmjöl",
+        "wholemeal rye flour",
+        "roggenvollkornmehl",
+        "fullkornsrågmjöl",
+        "rågmjöl fullkorn",
+        "rye flakes",
+        "roggenflocken",
+        "rågflingor"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "barley",
+      "status": "plant",
+      "aliases": [
+        "barley",
+        "gerste",
+        "korn",
+        "barley flour",
+        "gerstenmehl",
+        "kornmjöl",
+        "barley malt",
+        "gerstenmalz",
+        "kornmalt",
+        "barley malt extract",
+        "gerstenmalzextrakt",
+        "kornmaltextrakt"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "spelt",
+      "status": "plant",
+      "aliases": [
+        "spelt",
+        "dinkel",
+        "spelt flour",
+        "dinkelmehl",
+        "dinkelmjöl",
+        "wholemeal spelt flour",
+        "dinkelvollkornmehl",
+        "fullkornsdinkelmjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "buckwheat",
+      "status": "plant",
+      "aliases": [
+        "buckwheat",
+        "buchweizen",
+        "bovete",
+        "buckwheat flour",
+        "buchweizenmehl",
+        "bovetemjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "millet",
+      "status": "plant",
+      "aliases": [
+        "millet",
+        "hirse",
+        "hirs",
+        "millet flour",
+        "hirsemehl",
+        "hirsmjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "quinoa",
+      "status": "plant",
+      "aliases": [
+        "quinoa",
+        "quinoamjöl",
+        "quinoa flour",
+        "quinoamehl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "sesame",
+      "status": "plant",
+      "aliases": [
+        "sesame",
+        "sesame seeds",
+        "sesam",
+        "sesamsamen",
+        "sesamfrön",
+        "sesame oil",
+        "sesamöl",
+        "sesamolja",
+        "tahini",
+        "tahin",
+        "sesammus",
+        "sesampasta"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "peanut",
+      "status": "plant",
+      "aliases": [
+        "peanut",
+        "peanuts",
+        "erdnuss",
+        "erdnüsse",
+        "jordnöt",
+        "jordnötter",
+        "peanut oil",
+        "erdnussöl",
+        "jordnötsolja",
+        "peanut flour",
+        "erdnussmehl",
+        "jordnötsmjöl"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "walnut",
+      "status": "plant",
+      "aliases": [
+        "walnut",
+        "walnuts",
+        "walnuss",
+        "walnüsse",
+        "valnöt",
+        "valnötter"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cashew",
+      "status": "plant",
+      "aliases": [
+        "cashew",
+        "cashews",
+        "cashew nuts",
+        "cashewkerne",
+        "cashewnüsse",
+        "cashewnötter",
+        "cashew nut",
+        "cashewnöt"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "pistachio",
+      "status": "plant",
+      "aliases": [
+        "pistachio",
+        "pistachios",
+        "pistazie",
+        "pistazien",
+        "pistagenöt",
+        "pistagenötter"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "chia",
+      "status": "plant",
+      "aliases": [
+        "chia",
+        "chia seeds",
+        "chiasamen",
+        "chiafrön"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "hemp-seed",
+      "status": "plant",
+      "aliases": [
+        "hemp seeds",
+        "hanfsamen",
+        "hampafrön",
+        "hemp protein",
+        "hanfprotein",
+        "hampaprotein"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "grape",
+      "status": "plant",
+      "aliases": [
+        "grape",
+        "grapes",
+        "weintrauben",
+        "trauben",
+        "druvor",
+        "grape juice",
+        "traubensaft",
+        "druvjuice",
+        "grape juice concentrate",
+        "traubensaftkonzentrat",
+        "druvjuicekoncentrat",
+        "raisins",
+        "rosinen",
+        "russin",
+        "sultanas",
+        "sultaninen"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "date",
+      "status": "plant",
+      "aliases": [
+        "date",
+        "dates",
+        "dattel",
+        "datteln",
+        "dadel",
+        "dadlar",
+        "date paste",
+        "dattelpaste",
+        "dadelpasta",
+        "date syrup",
+        "dattelsirup",
+        "dadelsirap",
+        "dried dates",
+        "getrocknete datteln",
+        "torkade dadlar"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "apple-products",
+      "status": "plant",
+      "aliases": [
+        "apple juice",
+        "apfelsaft",
+        "äppeljuice",
+        "apple juice concentrate",
+        "apfelsaftkonzentrat",
+        "äppeljuicekoncentrat",
+        "apple puree",
+        "apfelmark",
+        "äppelpuré",
+        "apfelpüree"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "orange",
+      "status": "plant",
+      "aliases": [
+        "orange",
+        "oranges",
+        "apfelsine",
+        "orangen",
+        "apelsin",
+        "apelsiner",
+        "orange juice",
+        "orangensaft",
+        "apelsinjuice",
+        "orange juice concentrate",
+        "orangensaftkonzentrat",
+        "apelsinjuicekoncentrat"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "lime",
+      "status": "plant",
+      "aliases": [
+        "lime",
+        "limes",
+        "limette",
+        "limetten",
+        "lime juice",
+        "limettensaft",
+        "limejuice"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "raspberry",
+      "status": "plant",
+      "aliases": [
+        "raspberry",
+        "raspberries",
+        "himbeere",
+        "himbeeren",
+        "hallon"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "strawberry",
+      "status": "plant",
+      "aliases": [
+        "strawberry",
+        "strawberries",
+        "erdbeere",
+        "erdbeeren",
+        "jordgubbe",
+        "jordgubbar"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "blueberry",
+      "status": "plant",
+      "aliases": [
+        "blueberry",
+        "blueberries",
+        "blaubeere",
+        "blaubeeren",
+        "heidelbeere",
+        "heidelbeeren",
+        "blåbär"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "blackcurrant",
+      "status": "plant",
+      "aliases": [
+        "blackcurrant",
+        "blackcurrants",
+        "schwarze johannisbeeren",
+        "svarta vinbär"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cranberry",
+      "status": "plant",
+      "aliases": [
+        "cranberry",
+        "cranberries",
+        "cranberrys",
+        "tranbär"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "pear",
+      "status": "plant",
+      "aliases": [
+        "pear",
+        "pears",
+        "birne",
+        "birnen",
+        "päron"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "peach",
+      "status": "plant",
+      "aliases": [
+        "peach",
+        "peaches",
+        "pfirsich",
+        "pfirsiche",
+        "persika",
+        "persikor"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "apricot",
+      "status": "plant",
+      "aliases": [
+        "apricot",
+        "apricots",
+        "aprikose",
+        "aprikosen",
+        "aprikos",
+        "aprikoser"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "plum",
+      "status": "plant",
+      "aliases": [
+        "plum",
+        "plums",
+        "pflaume",
+        "pflaumen",
+        "plommon",
+        "prunes",
+        "backpflaumen",
+        "sviskon"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "cherry",
+      "status": "plant",
+      "aliases": [
+        "cherry",
+        "cherries",
+        "kirsche",
+        "kirschen",
+        "körsbär"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "pineapple",
+      "status": "plant",
+      "aliases": [
+        "pineapple",
+        "ananas",
+        "pineapple juice",
+        "ananassaft",
+        "ananasjuice"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "mango",
+      "status": "plant",
+      "aliases": [
+        "mango",
+        "mangos",
+        "mango puree",
+        "mangopüree",
+        "mangopuré"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "fig",
+      "status": "plant",
+      "aliases": [
+        "fig",
+        "figs",
+        "feige",
+        "feigen",
+        "fikon"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "avocado",
+      "status": "plant",
+      "aliases": [
+        "avocado",
+        "avocados",
+        "avokado",
+        "avocado oil",
+        "avocadoöl",
+        "avokadoolja"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "vegetable-oil",
+      "status": "plant",
+      "aliases": [
+        "vegetable oil",
+        "vegetable oils",
+        "pflanzenöl",
+        "pflanzliches öl",
+        "pflanzliche öle",
+        "vegetabilisk olja",
+        "vegetabiliska oljor",
+        "vegetable fat",
+        "pflanzliches fett",
+        "pflanzenfett",
+        "vegetabiliskt fett",
+        "palm oil",
+        "palmöl",
+        "palmolja",
+        "palm fat",
+        "palmfett",
+        "palm kernel oil",
+        "palmkernöl",
+        "palmkärnolja"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "maple-syrup",
+      "status": "plant",
+      "aliases": [
+        "maple syrup",
+        "ahornsirup",
+        "lönnsirap"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "agave-syrup",
+      "status": "plant",
+      "aliases": [
+        "agave syrup",
+        "agavendicksaft",
+        "agavensirup",
+        "agavesirap"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "molasses",
+      "status": "plant",
+      "aliases": [
+        "molasses",
+        "melasse",
+        "melass"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "tomato-products",
+      "status": "plant",
+      "aliases": [
+        "tomato paste",
+        "tomato puree",
+        "tomatenmark",
+        "tomatenpüree",
+        "tomatpuré",
+        "tomato powder",
+        "tomatenpulver",
+        "tomatpulver",
+        "passierte tomaten",
+        "crushed tomatoes",
+        "krossade tomater"
+      ],
+      "explanation": {
+        "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+        "de": "Dies ist eine pflanzliche Zutat. Gesondert aufgeführte Zusatzstoffe, Überzüge und andere Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "mushroom",
+      "status": "plant",
+      "aliases": [
+        "mushroom",
+        "mushrooms",
+        "pilze",
+        "champignons",
+        "svamp",
+        "champinjoner",
+        "shiitake",
+        "oyster mushrooms",
+        "austernpilze",
+        "ostronskivling"
+      ],
+      "explanation": {
+        "en": "This is a fungus, not an animal-derived ingredient. Separately listed components are assessed independently.",
+        "de": "Dies ist ein Pilz und keine tierische Zutat. Gesondert aufgeführte Bestandteile werden separat bewertet."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "spirit-vinegar",
+      "status": "plant",
+      "aliases": [
+        "spirit vinegar",
+        "distilled vinegar",
+        "distilled white vinegar",
+        "white vinegar",
+        "branntweinessig",
+        "spritessig",
+        "ättika",
+        "ättiksprit"
+      ],
+      "explanation": {
+        "en": "Plain spirit vinegar has no identified animal ingredient; clarification or other production aids require separate evidence.",
+        "de": "Reiner Branntweinessig enthält keine erkennbare tierische Zutat; Klärung und andere Verarbeitungshilfsmittel erfordern eigene Belege."
+      },
+      "sourceIds": [
+        "hengstenberg-spirit-vinegar"
+      ]
+    },
+    {
+      "id": "fruit-vinegar",
+      "status": "plant",
+      "aliases": [
+        "apple cider vinegar",
+        "cider vinegar",
+        "apfelessig",
+        "äppelcidervinäger",
+        "wine vinegar",
+        "weinessig",
+        "vinäger",
+        "white wine vinegar",
+        "weißweinessig",
+        "weissweinessig",
+        "vitvinsvinäger",
+        "red wine vinegar",
+        "rotweinessig",
+        "rödvinsvinäger"
+      ],
+      "explanation": {
+        "en": "The named fruit/wine vinegar does not identify animal content. Its clarification and other processing aids are not established by the ingredient name.",
+        "de": "Der genannte Frucht-/Weinessig nennt keine tierischen Bestandteile. Klärung und andere Verarbeitungshilfsmittel sind durch den Zutatenbegriff nicht belegt."
+      },
+      "sourceIds": [
+        "hengstenberg-spirit-vinegar"
+      ]
+    },
+    {
+      "id": "xanthan",
+      "status": "plant",
+      "aliases": [
+        "xanthan",
+        "xanthan gum",
+        "xanthangummi",
+        "xantangummi",
+        "e415",
+        "e 415"
+      ],
+      "explanation": {
+        "en": "Xanthan is a polysaccharide produced by carbohydrate fermentation. Separately listed carriers or ingredients are evaluated independently.",
+        "de": "Xanthan ist ein durch Kohlenhydrat-Fermentation erzeugtes Polysaccharid. Gesondert genannte Trägerstoffe und Zutaten werden separat bewertet."
+      },
+      "sourceIds": [
+        "eu-gum-specifications"
+      ]
+    },
+    {
+      "id": "guar-gum",
+      "status": "plant",
+      "aliases": [
+        "guar gum",
+        "guar",
+        "guarkernmehl",
+        "guargummi",
+        "guarkärnmjöl",
+        "e412",
+        "e 412"
+      ],
+      "explanation": {
+        "en": "Guar gum comes from the endosperm of guar seeds.",
+        "de": "Guarkernmehl stammt aus dem Endosperm von Guarsamen."
+      },
+      "sourceIds": [
+        "eu-gum-specifications"
+      ]
+    },
+    {
+      "id": "locust-bean-gum",
+      "status": "plant",
+      "aliases": [
+        "locust bean gum",
+        "carob bean gum",
+        "johannisbrotkernmehl",
+        "fruktkärnmjöl",
+        "johannesbrödkärnmjöl",
+        "e410",
+        "e 410"
+      ],
+      "explanation": {
+        "en": "Locust bean gum is obtained from carob seeds.",
+        "de": "Johannisbrotkernmehl wird aus den Samen des Johannisbrotbaums gewonnen."
+      },
+      "sourceIds": [
+        "eu-gum-specifications"
+      ]
+    },
+    {
+      "id": "cellulose",
+      "status": "plant",
+      "aliases": [
+        "cellulose",
+        "zellulose",
+        "cellulosa",
+        "microcrystalline cellulose",
+        "mikrokristalline cellulose",
+        "mikrokristalline zellulose",
+        "mikrokristallin cellulosa",
+        "e460",
+        "e 460",
+        "methylcellulose",
+        "methyl cellulose",
+        "metylcellulosa",
+        "e461",
+        "e 461",
+        "hydroxypropylmethylcellulose",
+        "hydroxypropyl methylcellulose",
+        "hydroxipropylmetylcellulosa",
+        "e464",
+        "e 464",
+        "carboxymethylcellulose",
+        "carboxymethyl cellulose",
+        "karboximetylcellulosa",
+        "e466",
+        "e 466"
+      ],
+      "explanation": {
+        "en": "Food-grade cellulose and these specified derivatives come from plant fibre; additional capsule or coating ingredients are separate.",
+        "de": "Lebensmittel-Cellulose und diese genannten Derivate stammen aus Pflanzenfasern; weitere Kapsel- oder Überzugszutaten sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "sodium-carbonates",
+      "status": "plant",
+      "aliases": [
+        "sodium bicarbonate",
+        "sodium hydrogen carbonate",
+        "baking soda",
+        "natron",
+        "natriumhydrogencarbonat",
+        "natriumhydrogenkarbonat",
+        "natriumbicarbonat",
+        "natriumbikarbonat",
+        "bikarbonat",
+        "sodium carbonate",
+        "natriumcarbonat",
+        "natriumkarbonat",
+        "sodium carbonates",
+        "natriumcarbonate",
+        "natriumkarbonater",
+        "e500",
+        "e 500"
+      ],
+      "explanation": {
+        "en": "These are inorganic sodium carbonate salts; the term does not indicate animal-derived content.",
+        "de": "Dies sind anorganische Natriumcarbonat-Salze; der Begriff weist nicht auf tierische Bestandteile hin."
+      },
+      "sourceIds": [
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "maltodextrin",
+      "status": "plant",
+      "aliases": [
+        "maltodextrin",
+        "maltodextrine",
+        "maltodextriner"
+      ],
+      "explanation": {
+        "en": "Maltodextrin is a starch-derived carbohydrate, not an animal protein.",
+        "de": "Maltodextrin ist ein aus Stärke gewonnenes Kohlenhydrat und kein tierisches Protein."
+      },
+      "sourceIds": [
+        "fda-maltodextrin"
+      ]
+    },
+    {
+      "id": "cheese",
+      "status": "animal",
+      "aliases": [
+        "cheese",
+        "käse",
+        "ost",
+        "parmesan",
+        "cheddar",
+        "mozzarella",
+        "gouda",
+        "feta",
+        "cheese powder",
+        "käsepulver",
+        "ostpulver"
+      ],
+      "explanation": {
+        "en": "This ingredient identifies dairy cheese and therefore animal-derived content.",
+        "de": "Diese Zutat bezeichnet Käse aus Milch und damit tierische Bestandteile."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "yogurt",
+      "status": "animal",
+      "aliases": [
+        "yogurt",
+        "yoghurt",
+        "joghurt",
+        "quark",
+        "curd cheese",
+        "kvarg",
+        "sour cream",
+        "saure sahne",
+        "sauerrahm",
+        "smetana",
+        "gräddfil",
+        "crème fraîche",
+        "creme fraiche"
+      ],
+      "explanation": {
+        "en": "This ingredient identifies a dairy product. Explicit plant alternatives and their ingredients must be assessed separately.",
+        "de": "Diese Zutat bezeichnet ein Milchprodukt. Ausdrücklich pflanzliche Alternativen und ihre Zutaten müssen separat bewertet werden."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "shellfish",
+      "status": "animal",
+      "aliases": [
+        "shellfish",
+        "crustaceans",
+        "molluscs",
+        "schalentiere",
+        "krebstiere",
+        "weichtiere",
+        "skaldjur",
+        "shrimp",
+        "shrimps",
+        "prawn",
+        "prawns",
+        "garnelen",
+        "krabben",
+        "räkor",
+        "mussel",
+        "mussels",
+        "muscheln",
+        "musslor",
+        "oyster",
+        "oysters",
+        "austern",
+        "ostron"
+      ],
+      "explanation": {
+        "en": "This is an animal-derived aquatic ingredient.",
+        "de": "Dies ist eine tierische Zutat aus Wassertieren."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "plastic-synthetic",
+      "status": "plant",
+      "aliases": [
+        "synthetik",
+        "synthetisch",
+        "synthetic",
+        "synthetics",
+        "synthetic material",
+        "synthetisches material",
+        "kunststoff",
+        "kunststoffe",
+        "plastic",
+        "plastics",
+        "plast",
+        "syntet",
+        "syntetmaterial",
+        "syntetiskt material"
+      ],
+      "explanation": {
+        "en": "Plastic and explicitly synthetic material do not identify animal-derived content; adhesives and finishes remain separate.",
+        "de": "Kunststoff und ausdrücklich synthetisches Material bezeichnen keine tierischen Bestandteile; Klebstoffe und Beschichtungen sind gesondert zu prüfen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "textile",
+      "status": "ambiguous",
+      "aliases": [
+        "textil",
+        "textilien",
+        "textile",
+        "textiles",
+        "fabric",
+        "textilmaterial",
+        "textile material"
+      ],
+      "explanation": {
+        "en": "Textile describes a fabric, not its fibre source. It may contain plant, synthetic or animal fibres such as wool or silk.",
+        "de": "Textil bezeichnet ein Gewebe, nicht die Herkunft seiner Fasern. Es kann pflanzliche, synthetische oder tierische Fasern wie Wolle oder Seide enthalten."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    }
+  ]
+}

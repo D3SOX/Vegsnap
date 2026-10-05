@@ -1,0 +1,11 @@
+export * from './types';
+export { analyzeText, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
+export { lookupProduct, normalizeBarcode, DATABASES } from './database';
+export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';
+export { checkProduct } from './check';
+export { OfflineProductIndex, validateOfflineSnapshot, parseOfflineSnapshot, OFFLINE_MAX_BYTES } from './offline';
+export type { OfflineSnapshot, OfflinePackInfo } from './offline';
+export { imageSupport, acceptsImages, type ImageSupport } from './model-capabilities';
+export { localizeResult, translatedIngredient } from './ingredient-display';
+export { resolveCompanyConcerns, attachCompanyConcerns, createCompanyConcernResolver } from './company-concerns';
+export type { CompanyEntity, CompanyConcernRecord, CompanyConcernDataset } from './company-concerns';

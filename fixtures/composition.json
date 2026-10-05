@@ -1,0 +1,496 @@
+[
+  {
+    "id": "milk-ingredient",
+    "input": {
+      "text": "Zutaten: Wasser, Milch, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cocoa-butter",
+    "input": {
+      "text": "Ingredients: cocoa butter, sugar, cocoa",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "may-contain",
+    "input": {
+      "text": "Zutaten: Hafer, Wasser, Salz. Kann Spuren von Milch enthalten.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "unknown-additive",
+    "input": {
+      "text": "Ingredients: water, mystery stabilizer",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "e471-ambiguous",
+    "input": {
+      "text": "Zutaten: Weizenmehl, E471, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "no-ingredient-heading",
+    "input": {
+      "text": "water, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "full-list-confirmed",
+    "input": {
+      "text": "water, salt",
+      "category": "food",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "partial-list",
+    "input": {
+      "text": "Ingredients: water, salt",
+      "category": "food",
+      "complete": false
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "leather-shoe",
+    "input": {
+      "text": "Materials: leather, rubber",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "synthetic-shoe-incomplete",
+    "input": {
+      "text": "Materials: polyester, rubber",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "cotton-shirt",
+    "input": {
+      "text": "Material: 100% Baumwolle",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "wool-shirt",
+    "input": {
+      "text": "Material: 80% Baumwolle, 20% Wolle",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-beeswax",
+    "input": {
+      "text": "Ingredients: aqua, cera alba",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "household-water",
+    "input": {
+      "text": "Ingredients: water, citric acid",
+      "category": "household"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "drink-fining",
+    "input": {
+      "text": "Ingredients: water, sugar",
+      "category": "drink",
+      "name": "White wine"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "no-freeword-certification",
+    "input": {
+      "text": "Vegan certified. V-Label. Made without milk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "vegetarian-is-not-vegan",
+    "input": {
+      "text": "Vegetarian V-Label",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "empty",
+    "input": {
+      "text": "",
+      "category": "other"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "milk-chocolate-composite",
+    "input": {
+      "text": "Ingredients: sugar, chocolate (cocoa butter, milk powder)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "soy-milk-not-dairy",
+    "input": {
+      "text": "Ingredients: soy milk, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "no-milk-negative",
+    "input": {
+      "text": "Contains no milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "trailing-description",
+    "input": {
+      "text": "Ingredients: sugar. This is a delicious snack",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "name-before-heading",
+    "input": {
+      "text": "Example chocolate\nIngredients: organic cocoa butter, sugar, cocoa",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "label-modifiers",
+    "input": {
+      "text": "Material: Oberstoff: 80% Bio Baumwolle, Futter: 20% Wolle",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-milk",
+    "input": {
+      "text": "Ingredienser: vatten, mjölk, socker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-milk-powder",
+    "input": {
+      "text": "Ingredienser: skummjölkspulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-whey",
+    "input": {
+      "text": "Ingredienser: vasslepulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-eggs",
+    "input": {
+      "text": "Ingredienser: ägg",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-honey",
+    "input": {
+      "text": "Ingredienser: honung",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-plant-composition",
+    "input": {
+      "text": "Ingredienser: vatten, havre, socker, rapsolja, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-plant-milk-and-cocoa-butter",
+    "input": {
+      "text": "Ingredienser: havremjölk, kakaosmör, kokosmjölk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-unknown-additive",
+    "input": {
+      "text": "Ingredienser: vatten, okänd tillsats",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-cross-contact",
+    "input": {
+      "text": "Ingredienser: vatten, havre, salt. Kan innehålla spår av mjölk och ägg.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-wool",
+    "input": {
+      "text": "Material: 80% bomull, 20% ull",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-leather-shoes",
+    "input": {
+      "text": "Material: läder, gummi",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-plant-shoes-incomplete-production",
+    "input": {
+      "text": "Material: bomull, konstläder, gummi",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "german-protein-fibre-and-additive-roles",
+    "input": {
+      "text": "Trinkwasser, 9,5% Erbsenprotein, Ackerbohnenprotein, Stärke, Erbsenfaser, Citrusfaser, Oligofructose, Leinsamenmehl (teilentölt), Flohsamenschalen, Säureregulatoren: Calciumlactat, Natriumacetate; Gewürze, Gewürzextrakte, Farbstoff: Eisenoxide und Eisenhydroxide",
+      "category": "food",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-flavour-origin-remains-ambiguous",
+    "input": {
+      "text": "Zutaten: Trinkwasser, natürliche Aromen, Würze",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "modifier-parentheses-never-hide-animal-subingredient",
+    "input": {
+      "text": "Zutaten: Leinsamenmehl (Milch), Farbstoff: E120",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "soy-drink-complete",
+    "input": {
+      "name": "Soy drink",
+      "text": "water, soybeans, salt",
+      "category": "drink",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "footwear-german-role-blend-leather",
+    "input": {
+      "text": "Obermaterial: Leder/Synthetik\nInnenmaterial: Textil\nInnensohle: Kunststoff",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "footwear-synthetic-composition-needs-production-evidence",
+    "input": {
+      "text": "Upper: synthetic leather/plastic\nInsole: synthetic",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "footwear-explicit-genuine-leather",
+    "input": {
+      "text": "Obermaterial: echtes Leder",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "footwear-generic-textile-is-not-a-fibre-origin",
+    "input": {
+      "text": "Material: Textil",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  }
+]

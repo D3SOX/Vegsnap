@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veguide.invalid/schemas/result.schema.json",
+  "title": "Veguide result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "vegan",
+        "not_vegan",
+        "uncertain",
+        "conflicting"
+      ]
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "certified",
+        "manufacturer",
+        "composition",
+        "insufficient",
+        "packaging",
+        "research"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/category"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "crossContact": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "companyConcerns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/companyConcern"
+      }
+    },
+    "checkedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "usedAI": {
+      "type": "boolean"
+    },
+    "aiStatus": {
+      "enum": [
+        "not_needed",
+        "disabled",
+        "offline",
+        "unconfigured",
+        "vision_disabled",
+        "failed",
+        "text",
+        "images"
+      ]
+    },
+    "webSearchStatus": {
+      "enum": [
+        "searched",
+        "not_used",
+        "unsupported"
+      ]
+    },
+    "aiError": {
+      "$ref": "#/$defs/aiError"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "outcome",
+    "basis",
+    "title",
+    "summary",
+    "category",
+    "identity",
+    "findings",
+    "evidence",
+    "questions",
+    "warnings",
+    "crossContact",
+    "companyConcerns",
+    "checkedAt",
+    "usedAI"
+  ],
+  "$defs": {
+    "category": {
+      "type": "string",
+      "enum": [
+        "food",
+        "drink",
+        "cosmetics",
+        "household",
+        "clothing",
+        "shoes",
+        "other"
+      ]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "barcode": {
+          "type": "string",
+          "pattern": "^(?:[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})$"
+        },
+        "market": {
+          "type": "string"
+        },
+        "match": {
+          "type": "string",
+          "enum": [
+            "exact_barcode",
+            "unconfirmed"
+          ]
+        }
+      },
+      "required": [
+        "market",
+        "match"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "user_text",
+            "database",
+            "ai_extraction",
+            "certification",
+            "manufacturer",
+            "ocr"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "retrievedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "license": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string",
+          "enum": [
+            "vegan",
+            "not_vegan"
+          ]
+        },
+        "verification": {
+          "type": "string",
+          "enum": [
+            "registry",
+            "packaging",
+            "source",
+            "unverified"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "excerpt",
+        "retrievedAt"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "animal",
+            "plant",
+            "ambiguous",
+            "unknown"
+          ]
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "explanation": {
+          "type": "string"
+        },
+        "evidenceId": {
+          "type": "string"
+        },
+        "displayTerm": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "displayLocale": {
+          "type": "string",
+          "enum": [
+            "en",
+            "de"
+          ]
+        }
+      },
+      "required": [
+        "term",
+        "status",
+        "explanation",
+        "evidenceId"
+      ],
+      "dependentRequired": {
+        "displayTerm": [
+          "displayLocale"
+        ],
+        "displayLocale": [
+          "displayTerm"
+        ]
+      }
+    },
+    "companyConcern": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "animal_testing",
+            "animal_welfare_lobbying",
+            "animal_exploitation"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "current",
+            "resolved",
+            "disputed"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "direct",
+            "parent"
+          ]
+        },
+        "matchedBrand": {
+          "type": "string"
+        },
+        "ownershipSourceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://"
+        },
+        "ownershipReviewedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceDate": {
+          "type": "string",
+          "anyOf": [
+            {
+              "format": "date-time"
+            },
+            {
+              "format": "date"
+            },
+            {
+              "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "company",
+        "category",
+        "description",
+        "sourceUrl",
+        "reviewedAt",
+        "status"
+      ]
+    },
+    "aiError": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "authentication",
+            "access_denied",
+            "quota",
+            "rate_limit",
+            "timeout",
+            "network",
+            "unsupported_model",
+            "invalid_response",
+            "incomplete_response",
+            "request_rejected",
+            "service",
+            "unknown"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    }
+  }
+}

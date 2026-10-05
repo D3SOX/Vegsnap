@@ -1,0 +1,23 @@
+{
+  "name": "veguide",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "packageManager": "bun@1.4.2",
+  "workspaces": [
+    "packages/*",
+    "extension"
+  ],
+  "scripts": {
+    "test": "bun test packages scripts && bun run --filter @veguide/extension test",
+    "test:package": "bun run --filter @veguide/extension test:package",
+    "typecheck": "bun run --filter '*' typecheck",
+    "check:companion": "cargo test --manifest-path companion/Cargo.toml",
+    "check:android": "cd android && ./gradlew testDebugUnitTest lintDebug",
+    "data:offline": "bun scripts/offline-snapshot.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

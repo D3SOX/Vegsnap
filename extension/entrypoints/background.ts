@@ -1,0 +1,228 @@
+import { browser } from 'wxt/browser';
+import { acceptsImages, checkProduct, createOpenAIProvider, type CheckInput, type CheckResult } from '@veguide/core';
+import { defineBackground } from 'wxt/utils/define-background';
+import { companionProvider } from '../src/companion';
+import { createCompanionState, type CompanionCommand } from '../src/companion-state';
+import { history } from '../src/history';
+import { offlineLibrary } from '../src/offline';
+import { PRESETS, STORES, endpointOrigin, parseSettings, storeMarket } from '../src/settings';
+import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type Pending, type Reply } from '../src/protocol';
+
+export default defineBackground(() => {
+  let historyQueue = Promise.resolve();
+  let settingsQueue = Promise.resolve();
+  const connection = createCompanionState();
+  async function stateChanged() { try { await browser.runtime.sendMessage({ type: 'state-changed' }); } catch { /* No extension window is open. */ } }
+  function changeHistory(work: () => Promise<void>) {
+    const next = historyQueue.catch(() => {}).then(async () => { await work(); await stateChanged(); });
+    historyQueue = next;
+    return next;
+  }
+  function changeSettings(work: () => Promise<void>) {
+    const next = settingsQueue.catch(() => {}).then(async () => { await work(); await stateChanged(); });
+    settingsQueue = next;
+    return next;
+  }
+  const cache = new Map<string, { result: CheckResult; time: number }>();
+  const lastCheck = new Map<number, number>();
+  async function settings() { return parseSettings((await browser.storage.local.get('settings')).settings, browser.i18n.getUILanguage()); }
+  async function openCheck(input: Omit<Pending, 'createdAt'>) {
+    const id = crypto.randomUUID();
+    await browser.storage.session.set({ [`pending:${id}`]: { ...input, createdAt: Date.now() } });
+    await browser.tabs.create({ url: browser.runtime.getURL('/app.html') + `?pending=${id}` });
+  }
+  browser.runtime.onInstalled.addListener(async () => {
+    await browser.contextMenus.removeAll();
+    browser.contextMenus.create({ id: 'veguide-check', title: 'Check with Veguide / Mit Veguide prüfen', contexts: ['selection', 'image'] });
+  });
+  browser.contextMenus.onClicked.addListener(info => {
+    if (info.menuItemId === 'veguide-check') void openCheck({ ...(info.selectionText ? { text: info.selectionText.slice(0, 30_000) } : {}), ...(info.srcUrl ? { imageUrl: info.srcUrl } : {}) });
+  });
+  browser.runtime.onMessage.addListener((message: unknown, sender) => {
+    const extensionPage = sender.id === browser.runtime.id && !!sender.url?.startsWith(browser.runtime.getURL('/'));
+    const reply = async (): Promise<Reply<unknown>> => {
+      try {
+        if (!isRecord(message) || typeof message.type !== 'string') throw new Error('Invalid request.');
+        const config = await settings();
+        if (!extensionPage) {
+          if (sender.id !== browser.runtime.id || !isBackgroundRequest(message) || !allowBackground(sender.url, STORES.filter(store => config.stores.includes(store.id)).flatMap(store => store.origins))) throw new Error('This request is not allowed.');
+          const origin = `${new URL(sender.url!).origin}/*`;
+          if (!(await browser.permissions.contains({ origins: [origin] }))) throw new Error('Site permission has been removed.');
+          if (message.type === 'open-check') {
+            const sourceUrl = message.sourceUrl ? new URL(message.sourceUrl) : undefined;
+            if (sourceUrl && (sourceUrl.origin !== new URL(sender.url!).origin || sourceUrl.username || sourceUrl.password)) throw new Error('Invalid product link.');
+            await openCheck({ barcode: message.barcode, name: message.name, brand: message.brand, sourceUrl: sourceUrl?.href, market: storeMarket(sender.url!) });
+            return { ok: true, result: null };
+          }
+          const tab = sender.tab?.id;
+          if (tab === undefined) throw new Error('Missing tab.');
+          const cached = cache.get(`${config.language}:${storeMarket(sender.url!)}:${message.barcode}`);
+          if (cached && Date.now() - cached.time < 3_600_000) return { ok: true, result: cached.result };
+          if (Date.now() - (lastCheck.get(tab) ?? 0) < 1500) throw new Error('Please wait before the next lookup.');
+          lastCheck.set(tab, Date.now());
+          const result = await checkProduct({ barcode: message.barcode, locale: config.language, market: storeMarket(sender.url!) }, { mode: 'background', offlineProducts: await offlineLibrary().index() });
+          if (cache.size > 200) cache.clear();
+          cache.set(`${config.language}:${storeMarket(sender.url!)}:${message.barcode}`, { result, time: Date.now() });
+          return { ok: true, result };
+        }
+        switch (message.type) {
+          case 'state': { const key = (await browser.storage.session.get('credential')).credential; return { ok: true, result: { settings: config, history: await history('list'), offlinePacks: await offlineLibrary().info(), hasKey: isRecord(key) && key.endpoint === config.baseUrl && typeof key.token === 'string' && key.token.length > 0 } }; }
+          case 'import-offline-pack': {
+            if (typeof message.text !== 'string') throw new Error('Invalid offline pack.');
+            await offlineLibrary().import(message.text);
+            cache.clear(); await stateChanged();
+            return { ok: true, result: null };
+          }
+          case 'remove-offline-pack': {
+            if (typeof message.region !== 'string' || !message.region || message.region.length > 80) throw new Error('Invalid offline pack.');
+            await offlineLibrary().remove(message.region);
+            cache.clear(); await stateChanged();
+            return { ok: true, result: null };
+          }
+          case 'set-language': {
+            if (message.language !== 'en' && message.language !== 'de') throw new Error('Unsupported language.');
+            const language = message.language;
+            await changeSettings(async () => { await browser.storage.local.set({ settings: { ...await settings(), language } }); });
+            return { ok: true, result: null };
+          }
+          case 'set-chatgpt-model': {
+            if (typeof message.model !== 'string' || !message.model.trim() || message.model.length > 200) throw new Error('Invalid model.');
+            const model = message.model;
+            await changeSettings(async () => {
+              const current = await settings();
+              await browser.storage.local.set({ settings: { ...current, connection: 'chatgpt', model } });
+              if (current.connection !== 'chatgpt') await browser.storage.session.remove('credential');
+            });
+            return { ok: true, result: null };
+          }
+          case 'update-settings': {
+            if (!isRecord(message.patch)) throw new Error('Invalid settings.');
+            const patch = message.patch;
+            const allowed = ['connection', 'baseUrl', 'model', 'saveHistory'];
+            if (Object.keys(patch).some(key => !allowed.includes(key))) throw new Error('Invalid setting.');
+            if (patch.connection !== undefined && (typeof patch.connection !== 'string' || !['chatgpt', 'database', ...Object.keys(PRESETS)].includes(patch.connection)) ||
+              patch.baseUrl !== undefined && (typeof patch.baseUrl !== 'string' || patch.baseUrl.length > 2000) ||
+              patch.model !== undefined && (typeof patch.model !== 'string' || patch.model.length > 200) ||
+              ['saveHistory'].some(key => patch[key] !== undefined && typeof patch[key] !== 'boolean')) throw new Error('Invalid setting value.');
+            await changeSettings(async () => {
+              const current = await settings();
+              const next = parseSettings({ ...current, ...patch });
+              if (current.baseUrl !== next.baseUrl || current.connection !== next.connection) await browser.storage.session.remove('credential');
+              await browser.storage.local.set({ settings: next });
+            });
+            return { ok: true, result: null };
+          }
+          case 'set-api-token': {
+            if (typeof message.endpoint !== 'string' || typeof message.token !== 'string' || message.token.length > 10_000 || /[\r\n]/.test(message.token)) throw new Error('Invalid API key.');
+            const endpoint = message.endpoint, token = message.token;
+            endpointOrigin(endpoint);
+            await changeSettings(async () => {
+              const current = await settings();
+              if (current.baseUrl !== endpoint || ['chatgpt', 'database'].includes(current.connection)) throw new Error('The endpoint changed. Enter the key for the current endpoint.');
+              if (token) await browser.storage.session.set({ credential: { endpoint, token } });
+              else await browser.storage.session.remove('credential');
+            });
+            return { ok: true, result: null };
+          }
+          case 'set-store': {
+            const store = STORES.find(item => item.id === message.store);
+            if (!store || typeof message.enabled !== 'boolean') throw new Error('Invalid store setting.');
+            const enabled = message.enabled;
+            let stores: string[] = [];
+            await changeSettings(async () => {
+              if (enabled && !(await browser.permissions.contains({ origins: [...store.origins] }))) throw new Error('Site permission was not granted.');
+              const current = await settings();
+              stores = enabled ? [...new Set([...current.stores, store.id])] : current.stores.filter(id => id !== store.id);
+              await browser.storage.local.set({ settings: { ...current, stores } });
+              await syncScripts();
+            });
+            return { ok: true, result: stores };
+          }
+          case 'pending': {
+            if (typeof message.id !== 'string' || !/^[a-f0-9-]{36}$/.test(message.id)) throw new Error('Invalid pending check.');
+            const key = `pending:${message.id}`;
+            const value: unknown = (await browser.storage.session.get(key))[key];
+            await browser.storage.session.remove(key);
+            if (!isRecord(value) || typeof value.createdAt !== 'number' || Date.now() - value.createdAt > 300_000) throw new Error('This check expired. Select the product again.');
+            return { ok: true, result: value };
+          }
+          case 'check': {
+            if (!isCheckInput(message.input)) throw new Error('Invalid product input.');
+            if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId))) throw new Error('Invalid check identifier.');
+            const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
+            const input: CheckInput = { ...message.input, locale: config.language, market: typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins)) ? storeMarket(message.input.sourceUrl) : 'DE' };
+            let provider;
+            if (config.connection === 'chatgpt' && config.model) {
+              const catalog = (await browser.storage.session.get('chatGPTModelCatalog')).chatGPTModelCatalog;
+              const metadata = Array.isArray(catalog) ? catalog.find(item => isRecord(item) && item.id === config.model) : undefined;
+              provider = companionProvider(config.model, acceptsImages(config.model, metadata));
+            }
+            else if (!['chatgpt', 'database'].includes(config.connection) && config.model) {
+              const origin = endpointOrigin(config.baseUrl);
+              if (!(await browser.permissions.contains({ origins: [origin] }))) throw new Error('Allow access to this AI endpoint in settings first.');
+              const credential: unknown = (await browser.storage.session.get('credential')).credential;
+              const token = isRecord(credential) && credential.endpoint === config.baseUrl && typeof credential.token === 'string' ? credential.token : undefined;
+              provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) });
+            }
+            const result = await checkProduct(input, { mode: 'explicit', provider, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
+              const progress: CheckProgressMessage = { type: 'check-progress', requestId, stage };
+              void browser.runtime.sendMessage(progress).catch(() => {});
+            } } : {}) });
+            if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
+            const localResult = { ...result, ...(input.images?.length ? { photos: input.images } : {}) };
+            if (config.saveHistory) await changeHistory(() => history('save', localResult));
+            return { ok: true, result: localResult };
+          }
+          case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
+          case 'companion': {
+            if (!['status', 'signIn', 'disconnect', 'models'].includes(String(message.command))) throw new Error('Invalid companion command.');
+            const result = await connection(message.command as CompanionCommand);
+            return { ok: true, result };
+          }
+          default: throw new Error('Unknown request.');
+        }
+      } catch (error) { return { ok: false, error: error instanceof Error ? error.message : 'The check could not be completed.' }; }
+    };
+    return reply();
+  });
+  const integrationTabs = new Map<string, Set<number>>();
+  let scriptsQueue = Promise.resolve();
+  function syncScripts() {
+    scriptsQueue = scriptsQueue.catch(() => {}).then(async () => {
+      const config = await settings();
+      const registered = (await browser.scripting.getRegisteredContentScripts()).filter(script => script.id.startsWith('veguide-'));
+      if (registered.length) await browser.scripting.unregisterContentScripts({ ids: registered.map(script => script.id) });
+      for (const store of STORES) {
+        const granted: string[] = [];
+        for (const origin of store.origins) {
+          if (await browser.permissions.contains({ origins: [origin] })) granted.push(origin);
+          else if (origin.includes('*.')) {
+            // Keep a previously granted single-country permission usable until the user opts into all sites.
+            for (const exact of [origin.replace('*.', 'www.'), origin.replace('*.', '')]) {
+              if (await browser.permissions.contains({ origins: [exact] })) granted.push(exact);
+            }
+          }
+        }
+        const enabled = config.stores.includes(store.id);
+        if (enabled && granted.length) await browser.scripting.registerContentScripts([{ id: `veguide-${store.id}`, matches: granted, js: ['content-scripts/store.js'], runAt: 'document_idle', persistAcrossSessions: true }]);
+        const tabs = granted.length ? await browser.tabs.query({ url: granted }) : [];
+        const activeIds = new Set(enabled ? tabs.flatMap(tab => tab.id === undefined ? [] : [tab.id]) : []);
+        for (const id of integrationTabs.get(store.id) ?? []) if (!activeIds.has(id)) {
+          try { await browser.tabs.sendMessage(id, { type: 'veguide-store-disabled' }); } catch { /* The old tab may no longer exist. */ }
+        }
+        integrationTabs.set(store.id, activeIds);
+        for (const tab of tabs) if (tab.id !== undefined) {
+          try {
+            if (enabled) await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ['/content-scripts/store.js'] });
+            else await browser.tabs.sendMessage(tab.id, { type: 'veguide-store-disabled' });
+          } catch { /* A tab may close or navigate while its integration is updated. */ }
+        }
+      }
+    });
+    return scriptsQueue;
+  }
+  browser.runtime.onStartup.addListener(() => { void syncScripts(); });
+  browser.permissions.onRemoved.addListener(() => { void syncScripts(); });
+  // Extension reloads do not emit browser.onStartup. Restore saved opt-ins on every background start.
+  void syncScripts();
+});

@@ -1,0 +1,29 @@
+<resources>
+    <string name="offline_data">Offline product data</string>
+    <string name="offline_snapshot_notice">A limited selection of public product records is stored on this device. Records may be outdated or incomplete. A missing record says nothing about whether a product is vegan.</string>
+    <string name="offline_snapshot_empty">No match in the limited offline snapshot. Other products may exist in the online database.</string>
+    <string name="offline_snapshot_date">Offline snapshot: %1$s</string>
+    <string name="offline_pack_summary">%1$s · %2$d products · %3$s</string>
+    <string name="offline_bundled">Included with Veguide</string>
+    <string name="offline_imported">Installed regional packs</string>
+    <string name="offline_pack_hint">Install several regions (up to 10 packs, 10 MB / 10,000 products each). Updating one region keeps your other packs. You can also import a downloaded JSON file.</string>
+    <string name="offline_pack_import">Import regional pack</string>
+    <string name="offline_pack_remove">Remove regional pack</string>
+    <string name="offline_pack_error">Could not import or remove this pack. Check its format and size. Your previously installed data has been kept.</string>
+    <string name="offline_data_unavailable">Some offline data could not be loaded. Other installed data remains available.</string>
+    <string name="offline_regions">Find regional packs</string>
+    <string name="offline_download_notice">Download selected regions for offline checks and Browse. Download size and SHA-256 are verified before installation. Records remain community-maintained and may be incomplete.</string>
+    <string name="offline_download_disabled">Downloads are paused in offline mode. Installed packs remain available.</string>
+    <string name="offline_catalog_refresh">Refresh catalog</string>
+    <string name="offline_catalog_source">Catalog source</string>
+    <string name="offline_catalog_url">HTTPS catalog URL</string>
+    <string name="offline_catalog_recipient">The catalog host and download hosts receive your IP address and pack requests. No scans, history, or credentials are sent.</string>
+    <string name="offline_catalog_use">Use and load catalog</string>
+    <string name="offline_catalog_empty">No regional packs listed yet. Refresh the catalog or import a pack from your device.</string>
+    <string name="offline_download_summary">%1$d products · %2$.1f MB · %3$s</string>
+    <string name="offline_download_progress">%1$.1f of %2$.1f MB</string>
+    <string name="offline_download_installed">Installed</string>
+    <string name="offline_download">Download region</string>
+    <string name="offline_download_update">Update region</string>
+    <string name="offline_download_error">Regional data could not be downloaded or verified. Check the catalog URL and connection, then retry. Installed packs were kept.</string>
+</resources>

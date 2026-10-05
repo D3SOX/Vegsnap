@@ -1,0 +1,26 @@
+{
+  "name": "@veguide/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "prepare": "wxt prepare",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "bun test tests && bun tests/background-check.ts && bun tests/store-content-check.ts && bun tests/ui-sync-check.ts && bun tests/companion-errors-check.ts",
+    "test:package": "bun tests/package-check.ts",
+    "build:chromium": "bun ../scripts/offline-snapshot.ts && wxt build -b chrome",
+    "build:firefox": "bun ../scripts/offline-snapshot.ts && wxt build -b firefox"
+  },
+  "dependencies": {
+    "@veguide/core": "workspace:*",
+    "preact": "^10.27.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "@types/bun": "^1.3.0",
+    "happy-dom": "^20.14.5",
+    "typescript": "^5.9.3",
+    "wxt": "^0.21.4"
+  }
+}
