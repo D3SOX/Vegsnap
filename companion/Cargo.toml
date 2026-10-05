@@ -7,7 +7,7 @@ license = "AGPL-3.0-only"
 description = "Optional native messaging host for Veguide ChatGPT connections"
 
 [dependencies]
-base64 = "0.22"
+base64 = "0.23"
 directories = "6"
 fs2 = "0.4"
 jsonwebtoken = { version = "10.3", default-features = false, features = ["rust_crypto"] }
