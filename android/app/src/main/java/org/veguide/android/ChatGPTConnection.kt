@@ -374,8 +374,8 @@ class ChatGPTConnection(private val context: Context) {
             override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(e) }
             override fun onResponse(call: Call, response: Response) { response.use {
                 try {
-                    if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body?.byteStream())
-                    val result = consume(requireNotNull(response.body).byteStream())
+                    if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body.byteStream())
+                    val result = consume(response.body.byteStream())
                     if (continuation.isActive) continuation.resume(result)
                 } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(e) }
             } }

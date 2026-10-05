@@ -100,7 +100,7 @@ class HistoryPhotosTest {
     @Test fun `imported identifiers cannot escape the app history directory`() = withStore { root, store ->
         val outside = File(root, "photo.jpg").apply { writeText("keep") }
         store.save("../../photo.jpg", listOf(byteArrayOf(1))) { }
-        assertEquals("history-photos", store.files("../../photo.jpg").single().parentFile.parentFile.name)
+        assertEquals("history-photos", store.files("../../photo.jpg").single().parentFile?.parentFile?.name)
         store.delete("../../photo.jpg") { }
         assertEquals("keep", outside.readText())
     }

@@ -136,7 +136,7 @@ internal class BrowseRepository(
                         if (it.code in setOf(408, 504)) throw BrowseException(BrowseFailure.TIMEOUT)
                         if (it.code in 500..599) throw BrowseException(BrowseFailure.TEMPORARILY_UNAVAILABLE)
                         if (!it.isSuccessful) throw BrowseException(BrowseFailure.UNAVAILABLE)
-                        val body = it.body ?: throw BrowseException(BrowseFailure.UNAVAILABLE)
+                        val body = it.body
                         if (body.contentLength() > 2_000_000) throw BrowseException(BrowseFailure.UNAVAILABLE)
                         val bytes = ByteArrayOutputStream()
                         body.byteStream().use { stream ->

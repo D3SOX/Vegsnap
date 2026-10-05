@@ -343,8 +343,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 response.use {
                     try {
                         if (allowNotFound && response.code == 404) { if (continuation.isActive) continuation.resume(null); return }
-                        if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body?.byteStream())
-                        val body = response.body ?: throw AIProviderFailure(AIErrorCode.INVALID_RESPONSE)
+                        if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body.byteStream())
+                        val body = response.body
                         val output = java.io.ByteArrayOutputStream()
                         val buffer = ByteArray(8192)
                         val stream = body.byteStream()
