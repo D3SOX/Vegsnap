@@ -36,7 +36,7 @@ Connecting a cloud provider can send selected text and photos to that provider w
 
 ## Run from source
 
-Use Bun 1.4.2 for the extension. Android needs JDK 21 and Android SDK 36. The optional companion needs Rust. Automated tests do not require provider credentials.
+Use Bun 1.4.2 for the extension. Android needs JDK 21 and Android SDK 37. The optional companion needs Rust. Automated tests do not require provider credentials.
 
 ```sh
 bun install --frozen-lockfile
