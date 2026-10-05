@@ -10,7 +10,7 @@ description = "Optional native messaging host for Veguide ChatGPT connections"
 base64 = "0.22"
 directories = "6"
 fs2 = "0.4"
-jsonwebtoken = { version = "10.3", default-features = false, features = ["rust_crypto"] }
+jsonwebtoken = { version = "11.1", default-features = false, features = ["rust_crypto"] }
 rand = "0.9"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
