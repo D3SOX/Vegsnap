@@ -2,7 +2,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use directories::ProjectDirs;
 use fs2::FileExt;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
-use rand::RngCore;
+use rand::Rng;
 use reqwest::blocking::{Client, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -2025,6 +2025,24 @@ mod tests {
             })
             .is_err()
         );
+    }
+
+    #[test]
+    fn oauth_random_values_keep_256_bits_and_url_safe_encoding() {
+        fn requires_crypto_rng(_: &impl rand::CryptoRng) {}
+        requires_crypto_rng(&rand::rng());
+        let first = random_value();
+        let second = random_value();
+        for value in [&first, &second] {
+            assert_eq!(value.len(), 43);
+            assert!(
+                value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+            );
+            assert_eq!(URL_SAFE_NO_PAD.decode(value).unwrap().len(), 32);
+        }
+        assert_ne!(first, second);
     }
 
     #[test]
