@@ -56,7 +56,10 @@ impl Registration {
     }
 }
 fn subject_hash(subject: &str) -> String {
-    format!("{:x}", Sha256::digest(subject.as_bytes()))
+    Sha256::digest(subject.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 fn valid_registration(registration: &Registration) -> bool {
     !registration.client_id.is_empty()
@@ -2025,6 +2028,25 @@ mod tests {
             })
             .is_err()
         );
+    }
+
+    #[test]
+    fn registration_subject_hash_preserves_sha256_lower_hex_format() {
+        // These hashes are persisted between releases. In particular, leading zero
+        // nibbles must survive dependency upgrades so the same account still matches.
+        assert_eq!(
+            subject_hash("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let registration = Registration {
+            client_id: "issued-client".into(),
+            subject_hash: Some(
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+            ),
+        };
+        assert!(valid_registration(&registration));
+        assert!(registration.accepts_subject("abc"));
+        assert!(!registration.accepts_subject("abcd"));
     }
 
     #[test]
