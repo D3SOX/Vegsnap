@@ -1,18 +1,42 @@
 # Veguide
 
-An account-free, privacy-respecting vegan product checker for Android, Chromium, and Firefox. Designed for all product categories, including food, cosmetics, clothing, and shoes, with Germany/EU coverage and German/English first.
+Veguide checks whether products appear vegan. Photograph a label on Android, or check selected text and product images in Chromium or Firefox.
 
-Veguide identifies products from photos or selected website content, checks public product databases, and uses an optional connected AI provider when evidence is missing. Supported providers can inspect images and research product sources on the web. Results explain their evidence and keep company concerns separate from the product's vegan status.
+It supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
 
-**Status:** first development implementation. Android, Chromium/Firefox, and the optional ChatGPT companion are implemented with automated checks. Device and live-provider checks are recorded in the platform validation notes; broader compatibility and release acceptance remain outstanding. This is not a release-ready certification service.
+You do not need a Veguide account. History stays on your device. The app has no ads or telemetry.
+
+This is an early release. Device, store and provider compatibility tests are ongoing.
 
 [Website](https://veguide.app) · [Android releases](https://github.com/D3SOX/veguide/releases)
 
 [![Get it on Obtainium](https://img.shields.io/badge/Get_it_on-Obtainium-526442?style=for-the-badge)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522org.veguide.android%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D)
 
-## Try the implementation
+## What it does
 
-Requirements: Bun 1.4.2; JDK 21 and Android SDK 36 for Android; Rust for the optional companion. No Veguide account or server is needed. Model/provider credentials are optional and are never required by automated tests.
+- On Android, take or import photos, share a product, or enter text. The app has local history and offline text recognition with downloadable language models.
+- In Chromium and Firefox, check selected text or right-click a product image. Enable store integrations if you want database checks while browsing. Background checks never use AI.
+- Connect ChatGPT, an OpenAI-compatible API, or a compatible local model for AI checks. The extension needs the optional desktop companion for ChatGPT sign-in. API-key connections work without it.
+- Look up barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts. Regional packs provide a selection of these records offline.
+- Review company concerns alongside the product result. A reviewed list records documented animal testing, opposition to animal-welfare protections and other animal exploitation. Each entry has a source, a review date and a status. Parent-company links need their own ownership source. Selling animal products alone does not qualify.
+
+Company records never change the product's vegan result. The list is incomplete, so a missing record is not an ethical endorsement.
+
+German and English are supported, with Germany and the EU as the first markets. A native iOS app is planned.
+
+## AI and evidence
+
+AI can identify a product, read its label and assess unfamiliar ingredients. ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
+
+Veguide accepts a web claim only if its URL came from the search tool and its product and brand match the check. AI-read labels and claims remain marked unverified. Community database labels do not establish verified certification.
+
+Incomplete composition, ambiguous ingredient origins or conflicting sources can produce an uncertain result. Store badges require an exact barcode in the page's structured product data. Use a right-click check when a listing does not supply one.
+
+Connecting a cloud provider can send selected text and photos to that provider when you start a check. The provider's retention policy, usage limits and charges apply. Database checks and local rules need no AI account.
+
+## Run from source
+
+Use Bun 1.4.2 for the extension. Android needs JDK 21 and Android SDK 36. The optional companion needs Rust. Automated tests do not require provider credentials.
 
 ```sh
 bun install --frozen-lockfile
@@ -21,47 +45,36 @@ bun run test
 bun run test:package
 ```
 
-The packaging test generates and checks `extension/.output/chrome-mv3` and `extension/.output/firefox-mv3`. Load the appropriate development package using your browser's extension tools. For Firefox use `about:debugging` → This Firefox → Load Temporary Add-on; for Chromium enable developer mode in the extensions page and load the unpacked folder.
+The packaging test creates and checks `extension/.output/chrome-mv3` and `extension/.output/firefox-mv3`.
+
+In Chromium, enable developer mode on the extensions page and load the unpacked folder. In Firefox, open `about:debugging`, select **This Firefox**, then **Load Temporary Add-on** and choose the Firefox package's manifest.
+
+Open `android/` in Android Studio to run the app on a device. Run its checks with:
 
 ```sh
 cd android
 ./gradlew testDebugUnitTest lintDebug
 ```
 
-Open `android/` in Android Studio to run it on a device. Build the optional desktop companion with `cargo build --release --manifest-path companion/Cargo.toml`.
+Build the optional desktop companion from the repository root:
 
-## What works now
+```sh
+cargo build --release --manifest-path companion/Cargo.toml
+python3 companion/install.py --help
+```
 
-- Exact barcode lookup in the Open Facts database family, local German/English ingredient and material rules, evidence-linked explanations, and conservative unknown/conflict handling.
-- Android camera capture/import, AI-first image analysis and fallback offline German/English OCR with downloadable languages, local history, automatically saved settings, ChatGPT sign-in, and optional compatible-API image/text analysis.
-- Chromium/Firefox selected-text and image checks, local history, session-only API keys, ChatGPT companion connection, and opt-in structured-data store badges.
-- Shared result contracts, rule data, evaluation fixtures, provider/permission tests, and CI configuration.
+The installer registers the companion for a specific browser and extension ID. Supply the built binary path, browser and extension ID using the options shown by `--help`.
 
-## Current boundaries
-
-AI can identify products, transcribe composition, assess unfamiliar ingredient terms, and observe explicit vegan labels in supplied photos. ChatGPT and the official OpenAI API can use web search to find product-specific manufacturer or certification sources; other compatible endpoints currently do not support search. A web claim is usable only when its URL was returned by the actual search tool and its product/brand match the identified product. AI-read labels and sources remain marked unverified; they are not independent certification-registry verification. Community database label tags never become verified certification automatically. Company concerns use a small reviewed local dataset with source dates and separately sourced parent-company relationships. Initial coverage includes Nestlé, Hälsans Kök and Garden Gourmet; an absent entry is not ethical clearance.
-
-The store integration currently requires an unambiguous GTIN in structured product data. Many marketplace listings do not provide one, so generic right-click checks remain the fallback. Local rules and optional AI assessments distinguish unfamiliar terms from known animal or ambiguous ingredients. Missing composition or unresolved evidence can still return uncertain. An unknown result means more evidence is needed.
-
-Automated tests use fixtures and mocked network responses. They do not establish live provider eligibility, real-store coverage, or camera/OCR accuracy on packaging. Broader device/provider compatibility testing remains ongoing.
-
-## Confirmed decisions
-
-- No Veguide account, mandatory backend, advertising, or telemetry.
-- All product categories are in scope for the first release.
-- Native Android with Jetpack Compose; native iOS planned later.
-- Chromium and Firefox extension with generic checks and selected store integrations.
-- Database-first checks; automatic AI for explicitly initiated checks, database-only background checks.
-- ChatGPT sign-in as the preferred optional AI connection, with an optional desktop companion.
-- OpenAI-compatible API connections and local/self-hosted AI as alternatives.
-- Local history and settings; Scan, Manual, History, and Settings tabs on Android, with photo previews and Auto category selection.
-- Evidence-linked company concerns, including documented animal exploitation, independent of product status.
-- AGPL-3.0 licensing. This draft uses the SPDX designation `AGPL-3.0-only`.
-
-Third-party data, model weights, dependencies, and certification marks retain their respective licenses and terms. Connecting a cloud provider sends the selected content to that provider; the plan explains how this is disclosed and controlled.
+Automated tests use fixtures and mocked network responses. They do not establish live provider eligibility, store coverage or camera accuracy on real packaging.
 
 ## Releases
 
-Signed development APKs and regional packs are published on [GitHub Releases](https://github.com/D3SOX/veguide/releases). Regional packs and their licenses are in [regional-packs](regional-packs/README.md).
+[GitHub Releases](https://github.com/D3SOX/veguide/releases) provides signed Android APKs and regional product packs. Obtainium can track these releases.
 
-Releases run from `v*` tags or a manual workflow dispatch. Signing credentials live in GitHub Actions secrets, never in the repository. Release APKs use a different certificate from local debug builds; switching requires a deliberate reinstall and can delete local data.
+The release workflow runs on `v*` tags or a manual dispatch. Signing credentials are GitHub Actions secrets. Release APKs use a different certificate from local debug builds. Switching requires a reinstall, which can delete local history and settings.
+
+## Data licenses
+
+The application code uses AGPL-3.0-only. Open Food Facts, Open Beauty Facts and Open Products Facts databases use ODbL-1.0, with individual contents under DBCL-1.0. Regional packs retain source URLs and dates. These data licenses are separate from the application license.
+
+Third-party dependencies, language models and certification marks retain their own licenses and terms.

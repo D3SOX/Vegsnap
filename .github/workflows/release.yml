@@ -70,7 +70,7 @@ jobs:
           mkdir release
           cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
           cp regional-packs/{germany,sweden,eu}.json release/
-          cp regional-packs/README.md release/OFFLINE-DATA-LICENSE.md
+          cp README.md release/README.md
           bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" release/catalog.json
           cd release
           sha256sum veguide.apk germany.json sweden.json eu.json catalog.json > SHA256SUMS
@@ -79,7 +79,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK and partial regional offline product snapshots. See OFFLINE-DATA-LICENSE.md for data attribution and licensing."
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK and partial regional offline product snapshots. See README.md for data attribution and licensing."
           fi
           gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
