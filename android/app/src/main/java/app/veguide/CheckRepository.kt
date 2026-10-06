@@ -105,7 +105,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val aiInput = input.copy(text = authoritativeText, complete = complete, name = extracted.optString("name", input.name),
                     category = if (input.category != "other") input.category else extracted.getString("category"),
                     barcode = barcode.ifBlank { recognizedBarcode })
-                val ai = evaluator.evaluate(aiInput).put("usedAI", true)
+                val ingredients = extracted.optJSONArray("ingredients")?.let { items -> (0 until items.length()).map { items.getString(it) } }
+                val parsed = parseSourceIngredients(aiInput.text, extracted.optJSONArray("ingredients"))
+                val ai = evaluator.evaluate(aiInput, ingredients).put("usedAI", true)
                 extracted.optString("brand").takeIf { it.isNotBlank() }?.let { ai.getJSONObject("identity").put("brand", it) }
                 val evidence = ai.getJSONArray("evidence").getJSONObject(0)
                 evidence.put("id", "ai-extraction").put("kind", "ai_extraction").put("title", if (input.locale == "de") "KI-extrahierter Text — am Etikett prüfen" else "AI-extracted text — verify against the label")
@@ -113,7 +115,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 for (index in 0 until aiFindings.length()) aiFindings.getJSONObject(index).put("evidenceId", "ai-extraction")
                 if (evidence.getString("excerpt").isBlank()) ai.put("evidence", JSONArray())
                 val identifiedInput = aiInput.copy(name = original.name.ifBlank { aiInput.name })
-                result = applyWebEvidence(applyWebCompositions(applyAIEvidence(mergeResults(result, ai), aiInput, extracted, complete, photos.isNotEmpty() && settings.vision), identifiedInput, extracted, evaluator), identifiedInput, extracted)
+                result = applyWebEvidence(applyWebCompositions(applyAIEvidence(mergeResults(if (parsed != null) withoutCompositionFindings(result, aiInput.text) else result, ai), aiInput, extracted, complete, photos.isNotEmpty() && settings.vision), identifiedInput, extracted, evaluator), identifiedInput, extracted)
                 if (result.getJSONObject("identity").optString("brand").isBlank()) extracted.optString("brand").takeIf { it.isNotBlank() }
                     ?.let { result.getJSONObject("identity").put("brand", it) }
                 if (extracted.optJSONObject("research")?.optBoolean("searched") != true && needsResearch(input, extracted, photos.isNotEmpty() && settings.vision, settings)) warnings.put(if (input.locale == "de") "Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege bleiben erhalten." else "Web research did not complete; the available photo or text evidence was kept.")
@@ -219,7 +221,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
     private fun researchAssessment(input: CheckInput, extracted: JSONObject, imagesSent: Boolean): JSONObject {
         val visibleInput = input.copy(text = extracted.getString("text"), complete = extracted.getBoolean("complete"),
             name = input.name.ifBlank { extracted.optString("name") }, category = if (input.category == "other") extracted.getString("category") else input.category)
-        val visible = applyAIEvidence(evaluator.evaluate(visibleInput), visibleInput, extracted, extracted.getBoolean("complete"), imagesSent)
+        val ingredients = extracted.optJSONArray("ingredients")?.let { items -> (0 until items.length()).map { items.getString(it) } }
+        val visible = applyAIEvidence(evaluator.evaluate(visibleInput, ingredients), visibleInput, extracted, extracted.getBoolean("complete"), imagesSent)
         return applyWebEvidence(applyWebCompositions(visible, visibleInput, extracted, evaluator), visibleInput, extracted)
     }
     private fun publicResearchQuestions(input: CheckInput, extracted: JSONObject): JSONArray {
@@ -254,10 +257,11 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             normalizeProductIdentity(followup.optString("brand")) != normalizeProductIdentity(first.getString("brand"))) return first
         val merged = mutableMapOf<String, JSONArray>()
         for ((field, limit) in listOf("ingredientAssessments" to 100, "webClaims" to 5, "webCompositions" to 3)) {
-            val values = listOf(first, followup).flatMap { source ->
+            val combined = listOf(first, followup).flatMap { source ->
                 val items = source.optJSONArray(field) ?: JSONArray()
                 (0 until items.length()).map { items.getJSONObject(it) }
-            }.distinctBy { it.toString() }
+            }
+            val values = if (field == "webCompositions") mergeSourceCompositions(combined) else combined.distinctBy { it.toString() }
             if (values.size > limit) return first
             merged[field] = JSONArray(values)
         }

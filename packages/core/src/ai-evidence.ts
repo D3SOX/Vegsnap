@@ -1,4 +1,5 @@
-import { compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
+import { analyzeText, parseSourceIngredients, compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
+import { mergeResults, withoutCompositionFindings } from './merge-results';
 import type { AIExtraction, CheckInput, CheckResult, Finding } from './types';
 
 const veganCertifications = new Set(['v-label', 'v label', 'v-label vegan', 'v label vegan', 'vegan society', 'the vegan society', 'vegan society trademark', 'vegan trademark', 'vegan flower', 'veganblume', 'veganblomman', 'certified vegan', 'vegan action']);
@@ -6,8 +7,24 @@ const veganCertifications = new Set(['v-label', 'v label', 'v-label vegan', 'v l
 /** Model evidence stays explicitly attributed and cannot rewrite a known local ingredient rule. */
 export function applyAIEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction, complete: boolean): CheckResult {
   const de = input.locale === 'de';
+  const sourceText = input.complete === true && input.text?.trim() ? input.text : extracted.text || input.text || '';
+  const parsed = parseSourceIngredients(sourceText, extracted.ingredients);
+  let compositionEvidenceId = 'composition';
+  if (extracted.ingredients !== undefined) {
+    const evaluated = analyzeText({ ...input, text: sourceText, complete }, () => new Date(result.checkedAt), extracted.ingredients);
+    const canonical = (value: string) => value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+    const source = result.evidence.find(item => ['composition', 'ai-extraction'].includes(item.id) && canonical(item.excerpt) === canonical(sourceText));
+    // Re-parsing a photo transcription must reuse its AI source, not create a
+    // second 'supplied text' card or leave findings tied to a discarded source.
+    if (source) {
+      compositionEvidenceId = source.id;
+      evaluated.evidence = [];
+      evaluated.findings = evaluated.findings.map(finding => ({ ...finding, evidenceId: source.id }));
+    }
+    result = mergeResults(parsed ? withoutCompositionFindings(result, sourceText) : result, evaluated);
+  }
   const assessments = new Map<string, NonNullable<AIExtraction['ingredientAssessments']>[number]>();
-  const composition = normalizeTerm(input.complete === true && input.text?.trim() ? input.text : extracted.text || input.text || '');
+  const composition = normalizeTerm(sourceText);
   for (const assessment of extracted.ingredientAssessments ?? []) {
     const key = normalizeTerm(assessment.term);
     const keys = new Set([key]);
@@ -15,7 +32,7 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
     // assessment with the same component tokenizer used by the local rules.
     // A plant compound describes all its parts; animal/ambiguous status only
     // describes its outer ingredient and cannot be assigned to every child.
-    if (key && composition.includes(key)) {
+    if (!parsed && key && composition.includes(key)) {
       const terms = compositionTerms(assessment.term, ['shoes', 'clothing'].includes(input.category ?? 'other'));
       if (assessment.status === 'plant') terms.forEach(term => keys.add(term));
       else if ((terms.length === 1 || /[([{]/.test(assessment.term)) && terms[0]) keys.add(terms[0]);
@@ -32,7 +49,11 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
     const assessment = assessments.get(normalizeTerm(finding.term));
     const display = assessment?.translatedTerm && normalizeTerm(assessment.term) === normalizeTerm(finding.term)
       ? { ...finding, displayTerm: assessment.translatedTerm, displayLocale: input.locale ?? 'en' as const } : finding;
-    if (finding.status !== 'unknown' || !assessment) return display;
+    if (finding.status !== 'unknown' || !assessment) {
+      return parsed?.includes(normalizeTerm(finding.term)) && finding.status === 'unknown' && !assessment && finding.evidenceId === compositionEvidenceId
+        ? { ...display, explanation: de ? 'Die KI konnte die Herkunft dieser Zutat nicht feststellen.' : 'The AI did not establish the origin of this ingredient.' }
+        : display;
+    }
     return { ...display, status: assessment.status, evidenceId: 'ai-assessment',
       explanation: `${de ? 'KI-Einschätzung' : 'AI assessment'}: ${assessment.explanation}` };
   });

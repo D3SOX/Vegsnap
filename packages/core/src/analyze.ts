@@ -36,6 +36,26 @@ export function compositionTerms(text: string, materialContext = false): string[
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
 }
 
+/** Preserve chemical punctuation and verify every AI term against intentional source composition. */
+export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
+  const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const precautionMatch = precaution.exec(source);
+  const intentional = precautionMatch ? source.slice(0, precautionMatch.index) : source;
+  const contains = (term: string) => {
+    let start = intentional.indexOf(term);
+    while (start >= 0) {
+      const before = intentional[start - 1] ?? '';
+      const after = intentional[start + term.length] ?? '';
+      if (!/[\p{L}\p{N}]/u.test(before) && !/[\p{L}\p{N}]/u.test(after)) return true;
+      start = intentional.indexOf(term, start + 1);
+    }
+    return false;
+  };
+  const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
+  return terms.every(contains) ? [...new Set(terms.map(normalizeTerm))] : undefined;
+}
+
 /** Alcoholic/fermented beverage processing needs evidence; ordinary plant drinks do not inherit that veto. */
 export function needsProcessingEvidence(input: CheckInput): boolean {
   return input.category === 'drink' && /(?:^|[^\p{L}\p{N}])(?:wine|wein|vin|viini|beer|bier|olut|ale|lager|cider|sidra|champagne|sekt|prosecco|alcohol|alkohol|ethanol)(?=$|[^\p{L}\p{N}])/iu.test(`${input.name ?? ''} ${input.text ?? ''}`) || input.category === 'drink' &&
@@ -75,7 +95,7 @@ const strings = {
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date()): CheckResult {
+export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';
   const message = strings[locale];
@@ -95,7 +115,13 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const crossContact = precautionMatch ? [body.slice(precautionMatch.index).trim()] : [];
   // A barcode identifies a product; it is not a composition term.
   const identityOnly = !headingMatch && !input.complete && input.name && normalizeTerm(ingredients) === normalizeTerm(input.name) && !aliasRules.has(normalizeTerm(ingredients));
-  const tokens = normalizeBarcode(ingredients) || identityOnly ? [] : compositionTerms(ingredients, ['shoes', 'clothing'].includes(input.category ?? 'other'));
+  const fallback = normalizeBarcode(ingredients) || identityOnly ? [] : compositionTerms(ingredients, ['shoes', 'clothing'].includes(input.category ?? 'other'));
+  const parsed = parseSourceIngredients(text, parsedIngredients);
+  // AI selects the actual ingredients; local animal/ambiguous rules remain a veto
+  // even when an ingredient is omitted or hidden inside a misleading compound.
+  const guards = fallback.flatMap(term => [term, ...(term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1))] : [])])
+    .filter(term => ['animal', 'ambiguous'].includes(aliasRules.get(term)?.status ?? ''));
+  const tokens = parsed ? [...parsed, ...guards] : fallback;
   const findings: Finding[] = [...new Set(tokens)].map(term => {
     const rule = aliasRules.get(term);
     return rule ? {
@@ -125,6 +151,9 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
     category, identity: { name: input.name, brand: input.brand, barcode: input.barcode, market: input.market ?? 'DE', match: 'unconfirmed' },
     findings, evidence, questions, warnings: [message.caveat], crossContact,
     companyConcerns: [], checkedAt, usedAI: false,
+    ...(parsedIngredients !== undefined && text.trim() && !parsed ? { warnings: [message.caveat, locale === 'de'
+      ? 'Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet.'
+      : 'The AI ingredient list could not be matched to the original composition; local splitting was used.'] } : {}),
   };
 }
 

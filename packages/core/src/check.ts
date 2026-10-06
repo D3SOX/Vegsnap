@@ -1,9 +1,9 @@
-import { analyzeText } from './analyze';
+import { analyzeText, parseSourceIngredients } from './analyze';
 import { lookupProduct, normalizeBarcode } from './database';
 import { validateAIExtraction } from './provider';
 import { applyAIEvidence } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
-import { mergeResults } from './merge-results';
+import { mergeResults, withoutCompositionFindings } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
 import { applyCompanyAssessment } from './company-assessment';
@@ -87,20 +87,22 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     const hasCompleteText = input.complete === true && Boolean(original.trim());
     const authoritativeText = hasCompleteText ? original : extracted.text;
     const completeForEvaluation = authoritativeText.length <= 20_000 && (hasCompleteText || complete);
-    const extractedResult = analyzeText({ ...input, ...extracted,
+    const aiInput = { ...input, ...extracted,
       text: authoritativeText,
       category: input.category && input.category !== 'other' ? input.category : extracted.category,
       barcode: suppliedCode || extractedCode || input.barcode,
-      complete: completeForEvaluation }, options.now);
+      complete: completeForEvaluation };
+    const parsed = parseSourceIngredients(authoritativeText, extracted.ingredients);
+    const extractedResult = analyzeText(aiInput, options.now, extracted.ingredients);
     extractedResult.usedAI = true;
     extractedResult.evidence = extracted.text ? [{ id: 'ai-extraction', kind: 'ai_extraction', title: 'AI transcription — check against the original',
       excerpt: extracted.text, retrievedAt: result.checkedAt }] : [];
     extractedResult.findings = extractedResult.findings.map(finding => ({ ...finding, evidenceId: 'ai-extraction' }));
     if (extracted.text) extractedResult.warnings.push(input.locale === 'de' ? 'KI-Abschrift am Original prüfen; keine Zertifizierungsprüfung.' : 'Verify the AI transcription against the original; no certification was checked.');
-    result = mergeResults(result, extractedResult);
+    result = mergeResults(parsed ? withoutCompositionFindings(result, authoritativeText) : result, extractedResult);
     result.aiStatus = input.images?.length ? 'images' : 'text';
     result.webSearchStatus = extracted.research?.searched ? 'searched' : options.provider.supportsWebSearch === false ? 'unsupported' : 'not_used';
-    result = applyAIEvidence(result, input, extracted, completeForEvaluation);
+    result = applyAIEvidence(result, aiInput, extracted, completeForEvaluation);
     result = applyWebEvidence(result, input, extracted);
     if (result.outcome === 'uncertain' && options.provider.supportsWebSearch && extracted.name && extracted.brand && !extracted.complete && !extracted.research?.searched) {
       result.warnings.push(input.locale === 'de' ? 'Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege wurden beibehalten.' : 'Web research did not complete; the available photo or text evidence was kept.');

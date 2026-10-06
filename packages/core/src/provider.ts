@@ -2,7 +2,7 @@ import promptData from '../../../contracts/ai-extraction-prompt.json';
 import type { AIExtraction, Category, CheckInput, ProviderAdapter, ProviderConfig } from './types';
 import { readBoundedText } from './http';
 import { acceptsImages } from './model-capabilities';
-import { analyzeText, safeSourceUrl } from './analyze';
+import { analyzeText, parseSourceIngredients, safeSourceUrl } from './analyze';
 import { applyAIEvidence } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
@@ -18,8 +18,11 @@ export const PROVIDER_PRESETS = [
 ] as const;
 const categories: Category[] = ['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'];
 function object(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+function validIngredientList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 100 && value.every(term => typeof term === 'string' && Boolean(term.trim()) && term.length <= 300);
+}
 export function validateAIExtraction(value: unknown, options: { allowResearch?: boolean } = {}): AIExtraction {
-  const keys = ['text', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
+  const keys = ['text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
   if (!object(value) || Object.keys(value).some(key => !keys.includes(key)) ||
     typeof value.text !== 'string' || value.text.length > 20_000 || typeof value.complete !== 'boolean' ||
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
@@ -27,6 +30,7 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
     typeof value.barcode === 'string' && !/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(value.barcode)) {
     throw new Error('AI returned invalid extraction data.');
   }
+  if (value.ingredients !== undefined && !validIngredientList(value.ingredients)) throw new Error('AI returned invalid parsed ingredients.');
   if (!value.text.trim() && value.complete) throw new Error('AI marked an empty composition as complete.');
   if (value.ingredientAssessments !== undefined && (!Array.isArray(value.ingredientAssessments) || value.ingredientAssessments.length > 100 ||
     value.ingredientAssessments.some(item => !object(item) || Object.keys(item).some(key => !['term', 'translatedTerm', 'status', 'explanation'].includes(key)) ||
@@ -52,9 +56,10 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
     throw new Error('AI returned invalid web claims.');
   }
   if (value.webCompositions !== undefined && (!Array.isArray(value.webCompositions) || value.webCompositions.length > 3 ||
-    value.webCompositions.some(item => !object(item) || Object.keys(item).some(key => !['url', 'text', 'complete', 'sourceType', 'productName', 'brand'].includes(key)) ||
+    value.webCompositions.some(item => !object(item) || Object.keys(item).some(key => !['url', 'text', 'ingredients', 'complete', 'sourceType', 'productName', 'brand'].includes(key)) ||
       typeof item.url !== 'string' || item.url.length > 2000 || !safeSourceUrl(item.url) ||
       typeof item.text !== 'string' || !item.text.trim() || item.text.length > 20_000 || typeof item.complete !== 'boolean' ||
+      item.ingredients !== undefined && !validIngredientList(item.ingredients) ||
       !['manufacturer', 'retailer'].includes(String(item.sourceType)) ||
       ['productName', 'brand'].some(key => typeof item[key] !== 'string' || !item[key].trim() || item[key].length > 300)))) {
     throw new Error('AI returned invalid researched composition.');
@@ -116,7 +121,7 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
 function researchAssessment(extracted: AIExtraction, input: CheckInput) {
   const visible: CheckInput = { text: extracted.text, complete: extracted.complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
     name: input.name || extracted.name, brand: input.brand || extracted.brand, locale: input.locale, images: input.images };
-  return applyWebEvidence(applyAIEvidence(analyzeText(visible), visible, extracted, extracted.complete), visible, extracted);
+  return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, extracted.complete), visible, extracted);
 }
 function needsResearch(extracted: AIExtraction, input: CheckInput): boolean {
   return Boolean(extracted.name?.trim() && extracted.brand?.trim() && researchAssessment(extracted, input).outcome === 'uncertain');
@@ -131,7 +136,13 @@ function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtr
   const unique = <T>(values: T[]): T[] => [...new Map(values.map(value => [JSON.stringify(value), value])).values()];
   const assessments = unique([...(original.ingredientAssessments ?? []), ...(researched.ingredientAssessments ?? [])]);
   const webClaims = unique([...(original.webClaims ?? []), ...(researched.webClaims ?? [])]);
-  const webCompositions = unique([...(original.webCompositions ?? []), ...(researched.webCompositions ?? [])]);
+  const compositions = new Map<string, NonNullable<AIExtraction['webCompositions']>[number]>();
+  for (const item of [...(original.webCompositions ?? []), ...(researched.webCompositions ?? [])]) {
+    const sourceKey = JSON.stringify([item.url, key(item.text), item.complete, item.sourceType, key(item.productName), key(item.brand)]);
+    const previous = compositions.get(sourceKey);
+    compositions.set(sourceKey, { ...item, ingredients: parseSourceIngredients(item.text, item.ingredients) ? item.ingredients : previous?.ingredients ?? item.ingredients });
+  }
+  const webCompositions = [...compositions.values()];
   const sources = [...new Map([...(original.research?.sources ?? []), ...researched.research.sources].map(source => [source.url, source])).values()];
   // Preserve all original evidence and later contradictions, or keep the original intact when bounds are exceeded.
   if (assessments.length > 100 || webClaims.length > 5 || webCompositions.length > 3 || sources.length > 50) return original;

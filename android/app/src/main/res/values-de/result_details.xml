@@ -1,0 +1,11 @@
+<resources>
+    <string name="result_tab_ingredients">Zutaten</string>
+    <string name="result_tab_sources">Quellen</string>
+    <string name="result_tab_concerns">Bedenken</string>
+    <string name="result_no_ingredients">Für diese Prüfung wurden keine Zutaten oder Materialien festgestellt.</string>
+    <string name="result_no_sources">Für diese Prüfung wurden keine Produktbelege erfasst.</string>
+    <plurals name="result_concern_count">
+        <item quantity="one">%d Unternehmensbedenken</item>
+        <item quantity="other">%d Unternehmensbedenken</item>
+    </plurals>
+</resources>

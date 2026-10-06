@@ -189,6 +189,9 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 300
+          },
+          "ingredients": {
+            "$ref": "#/$defs/ingredients"
           }
         },
         "required": [
@@ -203,6 +206,9 @@
     },
     "companyAssessment": {
       "$ref": "#/$defs/companyAssessment"
+    },
+    "ingredients": {
+      "$ref": "#/$defs/ingredients"
     }
   },
   "required": [
@@ -403,6 +409,16 @@
           }
         }
       ]
+    },
+    "ingredients": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300,
+        "pattern": "\\S"
+      }
     }
   }
 }

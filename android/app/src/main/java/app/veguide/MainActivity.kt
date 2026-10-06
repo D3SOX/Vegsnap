@@ -17,6 +17,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +34,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -42,6 +45,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -504,88 +508,188 @@ internal fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> U
 }
 
 private fun JSONArray.strings() = (0 until length()).map { getString(it) }
+private enum class ResultDetailTab(val title: Int) {
+    INGREDIENTS(R.string.result_tab_ingredients),
+    SOURCES(R.string.result_tab_sources),
+    CONCERNS(R.string.result_tab_concerns),
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRecheck: () -> Unit, onSettings: () -> Unit, model: VeguideViewModel, failedRetry: AnalysisJob? = null) {
+internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRecheck: () -> Unit, onSettings: () -> Unit, model: VeguideViewModel, failedRetry: AnalysisJob? = null) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
     val result = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        ResultStatusLabel(resultClassification(result.getString("outcome"), result.optString("basis")), prominent = true)
-        Text(result.getString("title"), style = MaterialTheme.typography.titleLarge)
-        HistoryPhotoStrip(result.getString("id"), model)
-        Text(result.getString("summary"))
-        val aiStatus = result.optString("aiStatus")
-        val aiStatusText = when (aiStatus) {
-            "not_needed" -> R.string.ai_status_not_needed
-            "disabled" -> R.string.ai_status_disabled
-            "offline" -> R.string.ai_status_offline
-            "unconfigured" -> R.string.ai_status_unconfigured
-            "vision_disabled" -> R.string.ai_status_vision_disabled
-            "failed" -> R.string.ai_status_failed
-            "text" -> R.string.ai_status_text
-            "images" -> R.string.ai_status_images
-            else -> if (result.optBoolean("usedAI")) R.string.ai_status_used else null
-        }
-        aiStatusText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium,
-            color = if (aiStatus == "failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
-        (failedRetry?.failureReason?.json(locale)?.optString("message") ?: result.optJSONObject("aiError")?.optString("message"))?.takeIf { it.isNotBlank() }?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (failedRetry?.failureReason == AIErrorCode.QUOTA && failedRetry.settings.connection == "chatgpt") {
-            TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) } }) {
-                Text(stringResource(R.string.chatgpt_usage))
+    val resultId = result.getString("id")
+    var selectedTab by rememberSaveable(resultId) { mutableIntStateOf(0) }
+    val ingredientScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
+    val sourceScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
+    val concernScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
+    // Capture the tab for each lazy-content lambda. Reading mutable selectedTab
+    // inside an old list can measure the new shorter content and clamp its scroll.
+    val selectedDetail = ResultDetailTab.entries[selectedTab]
+    val selectedScroll = when (selectedDetail) {
+        ResultDetailTab.INGREDIENTS -> ingredientScroll
+        ResultDetailTab.SOURCES -> sourceScroll
+        ResultDetailTab.CONCERNS -> concernScroll
+    }
+    val concernCount = remember(result.toString()) { resultConcernCount(result) }
+    val concernDescription = pluralStringResource(R.plurals.result_concern_count, concernCount, concernCount)
+    val findings = result.optJSONArray("findings") ?: JSONArray()
+    val evidence = result.optJSONArray("evidence") ?: JSONArray()
+    // A stable expanded height keeps the sheet anchors independent of tab content.
+    // One lazy list owns vertical scrolling; actions remain reachable below it.
+    Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).testTag("result-sheet-content")) {
+        key(selectedDetail) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("result-details-scroll"), state = selectedScroll,
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                item(key = "summary") {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ResultStatusLabel(resultClassification(result.getString("outcome"), result.optString("basis")), prominent = true)
+                        Text(result.getString("title"), style = MaterialTheme.typography.titleLarge)
+                        HistoryPhotoStrip(result.getString("id"), model)
+                        Text(result.getString("summary"))
+                        val aiStatus = result.optString("aiStatus")
+                        val aiStatusText = when (aiStatus) {
+                            "not_needed" -> R.string.ai_status_not_needed
+                            "disabled" -> R.string.ai_status_disabled
+                            "offline" -> R.string.ai_status_offline
+                            "unconfigured" -> R.string.ai_status_unconfigured
+                            "vision_disabled" -> R.string.ai_status_vision_disabled
+                            "failed" -> R.string.ai_status_failed
+                            "text" -> R.string.ai_status_text
+                            "images" -> R.string.ai_status_images
+                            else -> if (result.optBoolean("usedAI")) R.string.ai_status_used else null
+                        }
+                        aiStatusText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium,
+                            color = if (aiStatus == "failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        (failedRetry?.failureReason?.json(locale)?.optString("message") ?: result.optJSONObject("aiError")?.optString("message"))?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (failedRetry?.failureReason == AIErrorCode.QUOTA && failedRetry.settings.connection == "chatgpt") {
+                            TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) } }) {
+                                Text(stringResource(R.string.chatgpt_usage))
+                            }
+                        }
+                        val webSearchText = when (result.optString("webSearchStatus")) {
+                            "searched" -> R.string.web_search_used
+                            "unsupported" -> R.string.web_search_unsupported
+                            else -> null
+                        }
+                        webSearchText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (aiStatus in setOf("disabled", "unconfigured", "vision_disabled")) {
+                            TextButton(onClick = onSettings) { Text(stringResource(R.string.ai_settings)) }
+                        }
+                    }
+                }
+                stickyHeader(key = "tabs") {
+                    Surface(color = MaterialTheme.colorScheme.surface) {
+                        SecondaryTabRow(selectedTabIndex = selectedTab) {
+                            ResultDetailTab.entries.forEachIndexed { index, detail ->
+                                Tab(selected = selectedTab == index, onClick = {
+                                        val destination = when (detail) {
+                                            ResultDetailTab.INGREDIENTS -> ingredientScroll
+                                            ResultDetailTab.SOURCES -> sourceScroll
+                                            ResultDetailTab.CONCERNS -> concernScroll
+                                        }
+                                        // Keep the tabs reachable when the summary was already
+                                        // scrolled away, especially with large text in landscape.
+                                        if ((selectedScroll.firstVisibleItemIndex > 0 || selectedScroll.firstVisibleItemScrollOffset > 0) &&
+                                            destination.firstVisibleItemIndex == 0 && destination.firstVisibleItemScrollOffset == 0) {
+                                            destination.requestScrollToItem(1)
+                                        }
+                                        selectedTab = index
+                                    },
+                                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                        if (detail == ResultDetailTab.CONCERNS) stateDescription = concernDescription
+                                    }) {
+                                        Row(Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                            verticalAlignment = Alignment.CenterVertically) {
+                                            Text(stringResource(detail.title), Modifier.weight(1f, fill = false),
+                                                textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                                            if (detail == ResultDetailTab.CONCERNS && concernCount > 0) {
+                                                Badge(Modifier.clearAndSetSemantics { }) { Text(concernCount.toString()) }
+                                            }
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+                when (selectedDetail) {
+                    ResultDetailTab.INGREDIENTS -> {
+                        if (findings.length() == 0) item(key = "no-findings") {
+                            Text(stringResource(R.string.result_no_ingredients), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        items(findings.length(), key = { "finding:$it" }) { index ->
+                            val finding = findings.getJSONObject(index)
+                            val original = finding.getString("term")
+                            val display = finding.optString("displayTerm").ifBlank { original }
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(display, style = MaterialTheme.typography.titleSmall)
+                                    Text(finding.getString("explanation"), style = MaterialTheme.typography.bodyMedium)
+                                    if (display != original) Text(stringResource(R.string.ingredient_original, original),
+                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        item(key = "ingredient-details") {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                result.optJSONArray("questions")?.strings()?.takeIf { it.isNotEmpty() }?.let { questions ->
+                                    Text(stringResource(R.string.questions), style = MaterialTheme.typography.titleMedium)
+                                    questions.forEach { Text(it) }
+                                }
+                                result.optJSONArray("crossContact")?.strings()?.takeIf { it.isNotEmpty() }?.let { values ->
+                                    Text(stringResource(R.string.cross_contact), style = MaterialTheme.typography.titleMedium)
+                                    values.forEach { Text(it) }
+                                }
+                                result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                                ManufacturerContactSection(result)
+                            }
+                        }
+                    }
+                    ResultDetailTab.SOURCES -> {
+                        if (evidence.length() == 0) item(key = "no-sources") {
+                            Text(stringResource(R.string.result_no_sources), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        items(evidence.length(), key = { "evidence:$it" }) { index ->
+                            val item = evidence.getJSONObject(index)
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(item.getString("title"), style = MaterialTheme.typography.titleSmall)
+                                    Text(item.optString("excerpt"), style = MaterialTheme.typography.bodySmall)
+                                    val url = item.optString("url")
+                                    if (url.startsWith("https://")) TextButton(onClick = {
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                    }) { Text(Uri.parse(url).host ?: url) }
+                                    Text(item.optString("retrievedAt").take(10), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                    ResultDetailTab.CONCERNS -> item(key = "company-concerns") {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            CompanyAssessmentSection(result)
+                            CompanyConcernSection(result)
+                        }
+                    }
+                }
             }
         }
-        val webSearchText = when (result.optString("webSearchStatus")) {
-            "searched" -> R.string.web_search_used
-            "unsupported" -> R.string.web_search_unsupported
-            else -> null
-        }
-        webSearchText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        if (aiStatus in setOf("disabled", "unconfigured", "vision_disabled")) {
-            TextButton(onClick = onSettings) { Text(stringResource(R.string.ai_settings)) }
-        }
-        result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-        val findings = result.optJSONArray("findings") ?: JSONArray()
-        for (index in 0 until findings.length()) {
-            val item = findings.getJSONObject(index)
-            if (item.optString("status") != "plant") {
-                val original = item.getString("term")
-                val display = item.optString("displayTerm").ifBlank { original }
-                Text(display + " — " + item.getString("explanation"))
-                if (display != original) Text(stringResource(R.string.ingredient_original, original), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        HorizontalDivider()
+        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
+            TextButton(onClick = { model.recheck(originalResult) }) { Icon(Icons.Outlined.EditNote, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.edit_result)) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = {
+                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, result.getString("title") + "\n" + result.getString("summary")) }, null))
+                }) { Text(stringResource(R.string.copy_result)) }
+                Button(modifier = Modifier.weight(1.2f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = onRecheck) { Text(stringResource(R.string.recheck)) }
+                TextButton(modifier = Modifier.weight(.8f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), onClick = onClose) { Text(stringResource(R.string.close)) }
             }
         }
-        result.optJSONArray("questions")?.strings()?.takeIf { it.isNotEmpty() }?.let { questions ->
-            Text(stringResource(R.string.questions), style = MaterialTheme.typography.titleMedium); questions.forEach { Text(it) }
-        }
-        result.optJSONArray("crossContact")?.strings()?.takeIf { it.isNotEmpty() }?.let { values ->
-            Text(stringResource(R.string.cross_contact), style = MaterialTheme.typography.titleMedium); values.forEach { Text(it) }
-        }
-        val evidence = result.optJSONArray("evidence") ?: JSONArray()
-        if (evidence.length() > 0) Text(stringResource(R.string.evidence), style = MaterialTheme.typography.titleMedium)
-        for (index in 0 until evidence.length()) {
-            val item = evidence.getJSONObject(index)
-            OutlinedCard { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(item.getString("title"), style = MaterialTheme.typography.titleSmall)
-                Text(item.optString("excerpt"), style = MaterialTheme.typography.bodySmall)
-                val url = item.optString("url")
-                if (url.startsWith("https://")) TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }) { Text(Uri.parse(url).host ?: url) }
-                Text(item.optString("retrievedAt").take(10), style = MaterialTheme.typography.labelSmall)
-            } }
-        }
-        ManufacturerContactSection(result)
-        CompanyAssessmentSection(result)
-        CompanyConcernSection(result)
-        TextButton(onClick = { model.recheck(originalResult) }) { Icon(Icons.Outlined.EditNote, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.edit_result)) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = {
-            context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, result.getString("title") + "\n" + result.getString("summary")) }, null))
-        }) { Text(stringResource(R.string.copy_result)) }
-        Button(modifier = Modifier.weight(1.2f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = onRecheck) { Text(stringResource(R.string.recheck)) }
-        TextButton(modifier = Modifier.weight(.8f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), onClick = onClose) { Text(stringResource(R.string.close)) }
-        }
-        Spacer(Modifier.height(24.dp))
     }
 }
 

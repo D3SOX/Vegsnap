@@ -11,6 +11,7 @@ data class CheckInput(val text: String = "", val category: String = "other", val
     val name: String = "", val barcode: String = "", val locale: String = "en", val truncated: Boolean = false)
 
 internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:\\s*", RegexOption.IGNORE_CASE)
+internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von)\\b", RegexOption.IGNORE_CASE)
 private const val additiveRoles = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel)"
 private val additivePrefix = Regex("^\\s*$additiveRoles(?:\\s*:\\s*|\\s+)(?=\\S)", RegexOption.IGNORE_CASE)
 private val additiveGroup = Regex("\\b$additiveRoles\\s*:?\\s*(?=\\(\\s*[\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
@@ -55,7 +56,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
         val aliases = rule.getJSONArray("aliases")
         (0 until aliases.length()).any { normalizeCompositionTerm(aliases.getString(it)) == term }
     }
-    fun evaluate(input: CheckInput): JSONObject {
+    fun evaluate(input: CheckInput, parsedIngredients: List<String>? = null): JSONObject {
         val now = Instant.now().toString()
         val heading = compositionHeading
         val headingMatch = heading.find(input.text)
@@ -65,13 +66,18 @@ class Evaluator(private val rulesDocument: JSONObject) {
             materialMatch != null -> input.text.substring(materialMatch.range.first).trim()
             else -> input.text
         }
-        val precaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von)\\b", RegexOption.IGNORE_CASE).find(body)
+        val precaution = compositionPrecaution.find(body)
         val composition = if (precaution == null) body else body.take(precaution.range.first)
         val crossContact = JSONArray().apply { precaution?.let { put(body.substring(it.range.first).trim()) } }
         // A barcode identifies a product; it is not a composition term.
         val identityOnly = headingMatch == null && input.complete != true && input.name.isNotBlank() &&
             normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && ruleForTerm(normalizeCompositionTerm(composition)) == null
-        val tokens = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
+        val fallback = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
+        val parsed = parsedIngredients?.let { parseSourceIngredients(input.text, JSONArray(it)) }
+        // AI supplies the split; omissions and misleading compound assessments cannot erase known origins.
+        val guards = fallback.flatMap { term -> listOf(term) + if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':'))) else emptyList() }
+            .filter { ruleForTerm(it)?.optString("status") in setOf("animal", "ambiguous") }
+        val tokens = if (parsed != null) (parsed + guards).distinct() else fallback
         val findings = JSONArray()
         for (term in tokens) {
             val rule = ruleForTerm(term)
@@ -115,7 +121,10 @@ class Evaluator(private val rulesDocument: JSONObject) {
             .put("identity", JSONObject().put("name", input.name).put("barcode", input.barcode).put("market", "DE").put("match", "unconfirmed"))
             .put("findings", findings).put("evidence", JSONArray().put(JSONObject().put("id", "input").put("kind", "user_text")
                 .put("title", if (de) "Übermittelter Text" else "Supplied text").put("excerpt", input.text).put("retrievedAt", now)))
-            .put("questions", questions).put("warnings", JSONArray()).put("crossContact", crossContact)
+            .put("questions", questions).put("warnings", JSONArray().apply {
+                if (parsedIngredients != null && parsed == null && input.text.isNotBlank()) put(if (de) "Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet."
+                    else "The AI ingredient list could not be matched to the original composition; local splitting was used.")
+            }).put("crossContact", crossContact)
             .put("companyConcerns", JSONArray()).put("checkedAt", now).put("usedAI", false)
     }
 }

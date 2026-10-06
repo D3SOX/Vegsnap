@@ -1,5 +1,5 @@
 export * from './types';
-export { analyzeText, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
+export { analyzeText, parseSourceIngredients, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
 export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';
 export { checkProduct } from './check';

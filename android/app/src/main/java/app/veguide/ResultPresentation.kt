@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.json.JSONObject
 
 /** Evidence levels remain distinct even when their overall verdict is vegan. */
 internal enum class ResultClassification(val label: Int, val icon: ImageVector,
@@ -78,4 +79,26 @@ internal fun categoryIcon(category: String): ImageVector = when (category) {
     "clothing" -> Icons.Outlined.Checkroom
     "shoes" -> Icons.Outlined.IceSkating
     else -> Icons.Outlined.AutoAwesome
+}
+
+/** Count active concern topics, without counting the same AI and reviewed topic twice. */
+internal fun resultConcernCount(result: JSONObject): Int {
+    val topics = mutableSetOf<Pair<String, String>>()
+    fun add(company: String, category: String) {
+        if (company.isNotBlank() && category in setOf("animal_testing", "animal_welfare_lobbying", "animal_exploitation")) {
+            topics += company.trim().lowercase(java.util.Locale.ROOT) to category
+        }
+    }
+    result.optJSONArray("companyConcerns")?.let { concerns ->
+        for (index in 0 until concerns.length()) {
+            val concern = concerns.optJSONObject(index) ?: continue
+            if (concern.optString("status") != "resolved") add(concern.optString("company"), concern.optString("category"))
+        }
+    }
+    safeCompanyAssessment(result.optJSONObject("companyAssessment"), saved = true)
+        ?.takeIf { it.optString("verdict") == "concerns_found" }?.let { assessment ->
+            val categories = assessment.getJSONArray("categories")
+            for (index in 0 until categories.length()) add(assessment.getString("company"), categories.getString(index))
+        }
+    return topics.size
 }

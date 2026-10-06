@@ -1,6 +1,14 @@
 {
   "terms": [
     {
+      "en": "The AI did not establish the origin of this ingredient.",
+      "de": "Die KI konnte die Herkunft dieser Zutat nicht feststellen."
+    },
+    {
+      "en": "The AI ingredient list could not be matched to the original composition; local splitting was used.",
+      "de": "Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet."
+    },
+    {
       "en": "Origin is not established by the bundled rules.",
       "de": "Herkunft nicht durch die lokalen Regeln geklärt."
     },

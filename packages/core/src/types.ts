@@ -99,6 +99,8 @@ export interface CheckResult {
 }
 export interface AIExtraction {
   text: string;
+  /** Actual ingredient/material terms parsed by AI, grounded against text; source wording is preserved. */
+  ingredients?: string[];
   complete: boolean;
   category: Category;
   name?: string;
@@ -107,7 +109,7 @@ export interface AIExtraction {
   ingredientAssessments?: { term: string; translatedTerm?: string; status: Finding['status']; explanation: string }[];
   labelObservations?: { kind: 'vegan_certification' | 'vegan_claim'; name: string; text: string }[];
   webClaims?: { url: string; quote: string; claim: 'vegan' | 'not_vegan'; sourceType: 'manufacturer' | 'certification'; productName: string; brand: string }[];
-  webCompositions?: { url: string; text: string; complete: boolean; sourceType: 'manufacturer' | 'retailer'; productName: string; brand: string }[];
+  webCompositions?: { url: string; text: string; ingredients?: string[]; complete: boolean; sourceType: 'manufacturer' | 'retailer'; productName: string; brand: string }[];
   contact?: ManufacturerContact;
   companyAssessment?: AICompanyAssessment;
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */

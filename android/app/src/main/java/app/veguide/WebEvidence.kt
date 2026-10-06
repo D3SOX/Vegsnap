@@ -53,6 +53,7 @@ internal fun validateWebCompositions(extracted: JSONObject) {
     require(items.length() <= 3)
     for (index in 0 until items.length()) {
         val item = items.getJSONObject(index)
+        validateIngredients(item)
         require(item.get("complete") is Boolean)
         require(item.optString("sourceType") in setOf("manufacturer", "retailer"))
         for ((field, limit) in mapOf("url" to 2000, "text" to 20_000, "productName" to 300, "brand" to 300)) {
@@ -78,7 +79,10 @@ internal fun applyWebCompositions(initial: JSONObject, input: CheckInput, extrac
         val url = publicEvidenceUrl(item.getString("url")) ?: continue
         if (url !in urls || normalizeProductIdentity(item.getString("productName")) != name || normalizeProductIdentity(item.getString("brand")) != brand) continue
         val sourceInput = input.copy(text = item.getString("text"), complete = item.getBoolean("complete"))
-        val composition = evaluator.evaluate(sourceInput).put("usedAI", true)
+        val parsed = parseSourceIngredients(sourceInput.text, item.optJSONArray("ingredients"))
+        val composition = evaluator.evaluate(sourceInput, item.optJSONArray("ingredients")?.let { values ->
+            (0 until values.length()).map { values.getString(it) }
+        }).put("usedAI", true)
         val id = "web-composition-$index"
         val de = input.locale == "de"
         composition.put("evidence", JSONArray().put(JSONObject().put("id", id).put("kind", "ai_extraction")
@@ -89,7 +93,12 @@ internal fun applyWebCompositions(initial: JSONObject, input: CheckInput, extrac
         val findings = composition.getJSONArray("findings")
         for (i in 0 until findings.length()) findings.getJSONObject(i).put("evidenceId", id)
         composition.getJSONArray("warnings").put(if (de) "Zutaten von KI aus einer Webquelle gelesen; Produktvariante, Markt und aktuelle Rezeptur am Original prüfen." else "Ingredients read from a web source by AI; check the product variant, market and current recipe against the original.")
-        result = mergeResults(result, applyAIEvidence(composition, sourceInput, extracted, item.getBoolean("complete"), false, "$id-assessment"))
+        val sourceExtraction = JSONObject(extracted.toString()).apply {
+            remove("ingredients")
+            item.optJSONArray("ingredients")?.let { put("ingredients", it) }
+        }
+        result = mergeResults(if (parsed != null) withoutCompositionFindings(result, sourceInput.text) else result,
+            applyAIEvidence(composition, sourceInput, sourceExtraction, item.getBoolean("complete"), false, "$id-assessment"))
     }
     return result
 }

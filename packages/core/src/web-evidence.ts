@@ -29,9 +29,9 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
     const compositionInput: CheckInput = { name: extracted.name, brand: extracted.brand, text: composition.text,
       complete: composition.complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
       locale: input.locale, market: input.market };
-    let evaluated = analyzeText(compositionInput, () => new Date(result.checkedAt));
+    let evaluated = analyzeText(compositionInput, () => new Date(result.checkedAt), composition.ingredients);
     evaluated = applyAIEvidence(evaluated, compositionInput, { text: composition.text, complete: composition.complete,
-      category: extracted.category, ingredientAssessments: extracted.ingredientAssessments }, composition.complete);
+      category: extracted.category, ingredients: composition.ingredients, ingredientAssessments: extracted.ingredientAssessments }, composition.complete);
     evaluated.usedAI = true;
     evaluated.evidence = [{ id: evidenceId, kind: composition.sourceType === 'manufacturer' ? 'manufacturer' : 'ai_extraction',
       title: composition.sourceType === 'manufacturer' ? (de ? 'Zusammensetzung laut Hersteller (KI)' : 'Manufacturer composition (AI)') : (de ? 'Zusammensetzung laut Händler (KI)' : 'Retailer composition (AI)'),

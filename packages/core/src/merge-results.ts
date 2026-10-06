@@ -24,3 +24,11 @@ export function mergeResults(current: CheckResult, next: CheckResult): CheckResu
     webSearchStatus: current.webSearchStatus ?? next.webSearchStatus,
   };
 }
+
+/** Replace tokenization only for the same supplied/AI-transcribed composition, retaining other sources. */
+export function withoutCompositionFindings(result: CheckResult, text: string): CheckResult {
+  const canonical = (value: string) => value.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const source = canonical(text);
+  const ids = new Set(result.evidence.filter(item => ['composition', 'ai-extraction'].includes(item.id) && ['user_text', 'ai_extraction'].includes(item.kind) && canonical(item.excerpt) === source).map(item => item.id));
+  return { ...result, findings: result.findings.filter(finding => !ids.has(finding.evidenceId)) };
+}

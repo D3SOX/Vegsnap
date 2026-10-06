@@ -3,8 +3,77 @@ package app.veguide
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal fun validateIngredients(source: JSONObject) {
+    if (!source.has("ingredients")) return
+    val items = source.getJSONArray("ingredients")
+    require(items.length() <= 100)
+    for (index in 0 until items.length()) {
+        val term = items.get(index)
+        require(term is String && term.isNotBlank() && term.length <= 300)
+    }
+}
+
+private fun canonicalIngredientSource(text: String): String = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFKC)
+    .lowercase(java.util.Locale.ROOT).replace(Regex("\\s+"), " ").trim()
+
+/** Preserve chemical punctuation; every model-split term must occur in intentional source composition. */
+internal fun parseSourceIngredients(text: String, items: JSONArray?): List<String>? {
+    if (items == null || items.length() !in 1..100) return null
+    val source = canonicalIngredientSource(text)
+    val precaution = compositionPrecaution.find(source)
+    val intentional = if (precaution == null) source else source.take(precaution.range.first)
+    val terms = mutableListOf<String>()
+    val word = Regex("[\\p{L}\\p{N}]")
+    for (index in 0 until items.length()) {
+        val value = items.opt(index) as? String ?: return null
+        if (value.isBlank() || value.length > 300) return null
+        val term = canonicalIngredientSource(value)
+        var start = intentional.indexOf(term)
+        var found = false
+        while (start >= 0) {
+            val before = intentional.getOrNull(start - 1)?.toString().orEmpty()
+            val after = intentional.getOrNull(start + term.length)?.toString().orEmpty()
+            if (!word.containsMatchIn(before) && !word.containsMatchIn(after)) { found = true; break }
+            start = intentional.indexOf(term, start + 1)
+        }
+        if (!found) return null
+        terms += normalizeCompositionTerm(term)
+    }
+    return terms.distinct()
+}
+
+/** Replace the old split only for this exact source, keeping all other source findings. */
+internal fun withoutCompositionFindings(result: JSONObject, text: String): JSONObject {
+    val key = canonicalIngredientSource(text)
+    if (key.isBlank()) return result
+    val evidence = result.getJSONArray("evidence")
+    val ids = (0 until evidence.length()).map { evidence.getJSONObject(it) }
+        .filter { it.optString("id") in setOf("input", "ai-extraction", "photo-ocr") && canonicalIngredientSource(it.optString("excerpt")) == key }
+        .map { it.getString("id") }.toSet()
+    val findings = result.getJSONArray("findings")
+    return JSONObject(result.toString()).put("findings", JSONArray((0 until findings.length())
+        .map { findings.getJSONObject(it) }.filterNot { it.optString("evidenceId") in ids }))
+}
+
+/** A research follow-up can enrich the split of the same source without duplicating its recipe. */
+internal fun mergeSourceCompositions(items: List<JSONObject>): List<JSONObject> {
+    val sources = linkedMapOf<String, JSONObject>()
+    for (item in items) {
+        val key = JSONArray(listOf(item.optString("url"), canonicalIngredientSource(item.optString("text")), item.optBoolean("complete"),
+            item.optString("sourceType"), canonicalIngredientSource(item.optString("productName")), canonicalIngredientSource(item.optString("brand")))).toString()
+        val previous = sources[key]
+        val next = JSONObject(item.toString())
+        if (parseSourceIngredients(item.optString("text"), item.optJSONArray("ingredients")) == null) {
+            previous?.optJSONArray("ingredients")?.let { next.put("ingredients", it) }
+        }
+        sources[key] = next
+    }
+    return sources.values.toList()
+}
+
 /** Bound and validate optional AI evidence before it can affect a stored result. */
 internal fun validateAIEvidence(extracted: JSONObject) {
+    validateIngredients(extracted)
     for (field in listOf("name", "brand")) if (extracted.has(field)) require(extracted.getString(field).length <= 300)
     if (extracted.has("ingredientAssessments")) {
         val items = extracted.getJSONArray("ingredientAssessments")
@@ -36,6 +105,14 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val de = input.locale == "de"
     val assessments = linkedMapOf<String, JSONObject>()
     val supplied = extracted.optJSONArray("ingredientAssessments") ?: JSONArray()
+    val parsedTerms = parseSourceIngredients(input.text, extracted.optJSONArray("ingredients"))
+    val structured = parsedTerms != null
+    val evidence = result.getJSONArray("evidence")
+    val sourceIds = (0 until evidence.length()).map { evidence.getJSONObject(it) }.filter { item ->
+        val id = item.optString("id")
+        (id in setOf("input", "ai-extraction", "photo-ocr") || id == assessmentEvidenceId.removeSuffix("-assessment")) &&
+            canonicalIngredientSource(item.optString("excerpt")) == canonicalIngredientSource(input.text)
+    }.map { it.getString("id") }.toSet()
     fun register(term: String, item: JSONObject) {
         val previous = assessments[term]
         assessments[term] = if (previous != null && previous.getString("status") != item.getString("status")) {
@@ -49,7 +126,7 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
         register(term, item)
         // A parent assessment applies only to a compound actually present in this source.
         // Known local animal/ambiguous children still cannot be overwritten below.
-        if (term.isNotEmpty() && composition.contains(term)) {
+        if (!structured && term.isNotEmpty() && composition.contains(term)) {
             val terms = compositionTerms(item.getString("term"), input.category in setOf("shoes", "clothing"))
             if (item.getString("status") == "plant") terms.forEach { register(it, item) }
             else if (terms.size == 1 || term.any { it == '(' || it == '[' || it == '{' }) terms.firstOrNull()?.let { register(it, item) }
@@ -59,7 +136,13 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val assessed = mutableListOf<JSONObject>()
     for (index in 0 until findings.length()) {
         val finding = findings.getJSONObject(index)
-        val assessment = assessments[normalizeCompositionTerm(finding.getString("term"))] ?: continue
+        val term = normalizeCompositionTerm(finding.getString("term"))
+        val assessment = assessments[term]
+        if (assessment == null) {
+            if (term in parsedTerms.orEmpty() && finding.getString("status") == "unknown" && finding.optString("evidenceId") in sourceIds) finding.put("explanation",
+                if (de) "Die KI konnte die Herkunft dieser Zutat nicht feststellen." else "The AI did not establish the origin of this ingredient.")
+            continue
+        }
         val translated = assessment.opt("translatedTerm") as? String
         if (!translated.isNullOrBlank() && translated.length <= 300 && normalizeCompositionTerm(assessment.optString("term")) == normalizeCompositionTerm(finding.getString("term"))) {
             finding.put("displayTerm", translated).put("displayLocale", if (de) "de" else "en")
