@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.Instant
@@ -27,8 +28,6 @@ internal fun OfflineDatabaseSettings(model: VeguideViewModel) {
     val busy by model.offlineDataBusy.collectAsStateWithLifecycle()
     val message by model.offlineDataMessage.collectAsStateWithLifecycle()
     var showRegions by rememberSaveable { mutableStateOf(false) }
-    var editSource by rememberSaveable { mutableStateOf(false) }
-    var sourceUrl by remember(downloads.catalogUrl) { mutableStateOf(downloads.catalogUrl) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { model.importOfflinePack(it) } }
     Text(stringResource(R.string.offline_data), style = MaterialTheme.typography.titleMedium)
     Text(stringResource(R.string.offline_snapshot_notice), style = MaterialTheme.typography.bodySmall)
@@ -58,14 +57,35 @@ internal fun OfflineDatabaseSettings(model: VeguideViewModel) {
         }
     }
     message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
-    if (showRegions) ModalBottomSheet(onDismissRequest = { showRegions = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+    if (showRegions) RegionalPacksSheet(state, downloads, settings.offline, busy, message,
+        onRefresh = model::refreshRegionalPacks, onCancel = model::cancelRegionalDownload,
+        onDownload = model::downloadRegionalPack, onDismiss = { showRegions = false })
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+internal fun RegionalPacksSheet(
+    state: OfflineDatabaseState,
+    downloads: RegionalPacksState,
+    offline: Boolean,
+    busy: Boolean,
+    message: Int?,
+    onRefresh: (String) -> Unit,
+    onCancel: () -> Unit,
+    onDownload: (String) -> Unit,
+    onDismiss: () -> Unit,
+    dragHandle: @Composable () -> Unit = { BottomSheetDefaults.DragHandle() },
+) {
+    var editSource by rememberSaveable { mutableStateOf(false) }
+    var sourceUrl by remember(downloads.catalogUrl) { mutableStateOf(downloads.catalogUrl) }
+    VeguideBottomSheet(onDismissRequest = onDismiss, dragHandle = dragHandle) {
+        LazyColumn(Modifier.testTag("regional-packs").fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
             item { Text(stringResource(R.string.offline_regions), style = MaterialTheme.typography.headlineSmall) }
             item { Text(stringResource(R.string.offline_download_notice), style = MaterialTheme.typography.bodySmall) }
-            if (settings.offline) item { Text(stringResource(R.string.offline_download_disabled), style = MaterialTheme.typography.bodyMedium) }
+            if (offline) item { Text(stringResource(R.string.offline_download_disabled), style = MaterialTheme.typography.bodyMedium) }
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(enabled = !busy && !settings.offline, onClick = { model.refreshRegionalPacks(downloads.catalogUrl) }) {
+                    OutlinedButton(enabled = !busy && !offline, onClick = { onRefresh(downloads.catalogUrl) }) {
                         Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.offline_catalog_refresh))
                     }
                     TextButton(onClick = { editSource = !editSource }, enabled = !busy) { Text(stringResource(R.string.offline_catalog_source)) }
@@ -77,14 +97,14 @@ internal fun OfflineDatabaseSettings(model: VeguideViewModel) {
                         modifier = Modifier.fillMaxWidth(), enabled = !busy, singleLine = true,
                         isError = sourceUrl.isNotBlank() && !validPackUrl(sourceUrl.trim()))
                     Text(stringResource(R.string.offline_catalog_recipient), style = MaterialTheme.typography.bodySmall)
-                    TextButton(enabled = !busy && !settings.offline && validPackUrl(sourceUrl.trim()), onClick = { model.refreshRegionalPacks(sourceUrl) }) {
+                    TextButton(enabled = !busy && !offline && validPackUrl(sourceUrl.trim()), onClick = { onRefresh(sourceUrl) }) {
                         Text(stringResource(R.string.offline_catalog_use))
                     }
                 }
             }
             if (downloads.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (downloads.loading || downloads.downloading != null) item {
-                TextButton(onClick = model::cancelRegionalDownload) { Text(stringResource(R.string.cancel)) }
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
             }
             message?.let { resource -> item { Text(stringResource(resource), color = MaterialTheme.colorScheme.error) } }
             if (!downloads.loading && downloads.packs.isEmpty()) item { Text(stringResource(R.string.offline_catalog_empty)) }
@@ -99,15 +119,15 @@ internal fun OfflineDatabaseSettings(model: VeguideViewModel) {
                             LinearProgressIndicator(progress = { (downloads.downloadedBytes.toFloat() / pack.bytes).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                             Text(stringResource(R.string.offline_download_progress, downloads.downloadedBytes / 1_000_000.0, pack.bytes / 1_000_000.0), style = MaterialTheme.typography.labelMedium)
                         } else if (current) Text(stringResource(R.string.offline_download_installed), style = MaterialTheme.typography.labelLarge)
-                        else OutlinedButton(onClick = { model.downloadRegionalPack(pack.id) },
-                            enabled = !busy && !settings.offline && (installed != null || state.installed.size < OFFLINE_INSTALLED_PACKS)) {
+                        else OutlinedButton(onClick = { onDownload(pack.id) },
+                            enabled = !busy && !offline && (installed != null || state.installed.size < OFFLINE_INSTALLED_PACKS)) {
                             Icon(Icons.Outlined.Download, null); Spacer(Modifier.width(8.dp))
                             Text(stringResource(if (installed == null) R.string.offline_download else R.string.offline_download_update))
                         }
                     }
                 }
             }
-            item { TextButton(onClick = { showRegions = false }) { Text(stringResource(R.string.close)) } }
+            item { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } }
         }
     }
 }

@@ -65,6 +65,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         }
         var aiStatus = "not_needed"
         var aiError: JSONObject? = null
+        var contactExtraction: JSONObject? = null
         val warnings = JSONArray()
         if (truncated) warnings.put(if (input.locale == "de") "Langer Text wurde gekürzt und wird als unvollständig behandelt." else "Long text was shortened and is treated as incomplete.")
         if (validGtin(barcode)) {
@@ -90,6 +91,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             try {
                 onProgress(if (photos.isNotEmpty() && settings.vision) CheckStage.ANALYZING_PHOTO else CheckStage.ANALYZING_TEXT)
                 val extracted = extract(input, photos, settings, token, onProgress)
+                contactExtraction = extracted
                 onProgress(CheckStage.EVALUATING)
                 val localComplete = input.complete ?: Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:", RegexOption.IGNORE_CASE).containsMatchIn(input.text)
                 val complete = input.complete != false && (photos.isNotEmpty() && settings.vision || localComplete) && extracted.getBoolean("complete")
@@ -154,6 +156,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         val allWarnings = result.getJSONArray("warnings")
         for (index in 0 until warnings.length()) allWarnings.put(warnings.getString(index))
         aiError?.let { result.put("aiError", it) }
+        contactExtraction?.let { applyManufacturerContact(result, original, it) }
         companyConcerns.attach(result.put("aiStatus", aiStatus), original.locale)
     }
     /** Passive camera lookups send only the GTIN; this entry point cannot invoke AI. */
@@ -262,6 +265,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         if (sources.size > 50) return first
         for ((field, items) in merged) first.put(field, items)
         first.put("research", JSONObject().put("searched", true).put("sources", JSONArray(sources)))
+        safeManufacturerContact(followup.optJSONObject("contact"))?.let { first.put("contact", it) }
         return first
     }
 
@@ -328,6 +332,11 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         validateAIEvidence(extracted)
         validateWebClaims(extracted)
         validateWebCompositions(extracted)
+        if (extracted.has("contact")) {
+            val contact = safeManufacturerContact(extracted.optJSONObject("contact"))
+            extracted.remove("contact")
+            if (contact != null) extracted.put("contact", contact)
+        }
         if (!requireResearch && (photos.isEmpty() || !settings.vision)) require(validTextExtraction(input.text, extracted.getString("text"))) { "AI changed supplied composition" }
         if (research != null) extracted.put("research", research)
         return extracted
@@ -343,8 +352,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 response.use {
                     try {
                         if (allowNotFound && response.code == 404) { if (continuation.isActive) continuation.resume(null); return }
-                        if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body?.byteStream())
-                        val body = response.body ?: throw AIProviderFailure(AIErrorCode.INVALID_RESPONSE)
+                        if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body.byteStream())
+                        val body = response.body
                         val output = java.io.ByteArrayOutputStream()
                         val buffer = ByteArray(8192)
                         val stream = body.byteStream()

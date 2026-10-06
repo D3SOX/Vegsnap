@@ -65,7 +65,19 @@ internal fun interface RegionalPackDownload {
 internal class HttpRegionalPackDownload(private val http: OkHttpClient = OkHttpClient.Builder()
     .followRedirects(false).followSslRedirects(false).connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(20, TimeUnit.SECONDS).callTimeout(3, TimeUnit.MINUTES).build()) : RegionalPackDownload {
-    override suspend fun read(url: String, limit: Long, consume: (InputStream) -> Unit) = withTimeout(TimeUnit.MINUTES.toMillis(3)) {
+    override suspend fun read(url: String, limit: Long, consume: (InputStream) -> Unit) {
+        try { readWithTimeout(url, limit, consume) }
+        catch (error: TimeoutCancellationException) {
+            currentCoroutineContext().ensureActive()
+            throw RegionalPackNetworkException()
+        }
+        catch (error: RegionalPackHttpException) { throw error }
+        catch (_: java.io.IOException) {
+            currentCoroutineContext().ensureActive()
+            throw RegionalPackNetworkException()
+        }
+    }
+    private suspend fun readWithTimeout(url: String, limit: Long, consume: (InputStream) -> Unit) = withTimeout(TimeUnit.MINUTES.toMillis(3)) {
         var location = url
         for (redirect in 0..5) {
             require(validPackUrl(location))
@@ -81,7 +93,7 @@ internal class HttpRegionalPackDownload(private val http: OkHttpClient = OkHttpC
                             next = requireNotNull(response.header("Location")?.let { request.url.resolve(it) }).toString()
                             require(validPackUrl(requireNotNull(next)))
                         } else {
-                            check(response.isSuccessful) { "Regional data unavailable" }
+                            if (!response.isSuccessful) throw RegionalPackHttpException(response.code)
                             val body = requireNotNull(response.body)
                             require(body.contentLength() == -1L || body.contentLength() <= limit)
                             consume(body.byteStream())

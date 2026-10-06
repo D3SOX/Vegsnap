@@ -47,7 +47,7 @@ internal class BarnivoreRepository(
                                 in 500..599 -> BrowseFailure.TEMPORARILY_UNAVAILABLE
                                 else -> BrowseFailure.UNAVAILABLE
                             })
-                            val bytes = it.body?.byteStream()?.use { stream ->
+                            val bytes = it.body.byteStream().use { stream ->
                                 val output = java.io.ByteArrayOutputStream()
                                 val buffer = ByteArray(8192)
                                 while (true) {
@@ -58,7 +58,6 @@ internal class BarnivoreRepository(
                                 }
                                 output.toByteArray()
                             }
-                                ?: throw BrowseException(BrowseFailure.UNAVAILABLE)
                             if (bytes.size > 1_000_000) throw BrowseException(BrowseFailure.UNAVAILABLE)
                             if (continuation.isActive) continuation.resume(bytes.toString(Charsets.UTF_8))
                         } catch (error: Exception) {
