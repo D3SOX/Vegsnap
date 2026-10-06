@@ -60,7 +60,7 @@ Veguide 0.2.1 on Android and in the browser, with example ingredient and materia
   <a href="website/images/screenshots/extension-history.png"><img src="website/images/store/extension/history.png" alt="Browser extension: search and revisit checks saved on your device" width="355"></a>
 </p>
 
-Open an image to see the original screenshot. For full-size images and editable layouts, see [Marketing assets](marketing/README.md).
+Open an image to see the original screenshot.
 
 ## AI and evidence
 
