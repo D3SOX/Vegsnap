@@ -34,12 +34,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val model: VeguideViewModel by viewModels()
@@ -508,42 +512,45 @@ internal fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> U
 }
 
 private fun JSONArray.strings() = (0 until length()).map { getString(it) }
-private enum class ResultDetailTab(val title: Int) {
+private enum class ResultDetailSection(val title: Int) {
     INGREDIENTS(R.string.result_tab_ingredients),
     SOURCES(R.string.result_tab_sources),
     CONCERNS(R.string.result_tab_concerns),
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRecheck: () -> Unit, onSettings: () -> Unit, model: VeguideViewModel, failedRetry: AnalysisJob? = null) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
     val result = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
     val resultId = result.getString("id")
-    var selectedTab by rememberSaveable(resultId) { mutableIntStateOf(0) }
-    val ingredientScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
-    val sourceScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
-    val concernScroll = rememberSaveable(resultId, saver = LazyListState.Saver) { LazyListState() }
-    // Capture the tab for each lazy-content lambda. Reading mutable selectedTab
-    // inside an old list can measure the new shorter content and clamp its scroll.
-    val selectedDetail = ResultDetailTab.entries[selectedTab]
-    val selectedScroll = when (selectedDetail) {
-        ResultDetailTab.INGREDIENTS -> ingredientScroll
-        ResultDetailTab.SOURCES -> sourceScroll
-        ResultDetailTab.CONCERNS -> concernScroll
-    }
+    val scroll = remember(resultId) { LazyListState() }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var viewportHeight by remember(resultId) { mutableIntStateOf(0) }
+    var concernHeadingHeight by remember(resultId) { mutableIntStateOf(0) }
     val concernCount = remember(result.toString()) { resultConcernCount(result) }
     val concernDescription = pluralStringResource(R.plurals.result_concern_count, concernCount, concernCount)
     val findings = result.optJSONArray("findings") ?: JSONArray()
     val evidence = result.optJSONArray("evidence") ?: JSONArray()
-    // A stable expanded height keeps the sheet anchors independent of tab content.
-    // One lazy list owns vertical scrolling; actions remain reachable below it.
+    val sourcesIndex = 3 + findings.length().coerceAtLeast(1)
+    val concernsIndex = sourcesIndex + 1 + evidence.length().coerceAtLeast(1)
+    val sectionIndices = listOf(1, sourcesIndex, concernsIndex)
+    val selectedSection by remember(scroll, sourcesIndex, concernsIndex) {
+        derivedStateOf {
+            sectionIndices.indexOfLast { scroll.firstVisibleItemIndex >= it }.coerceAtLeast(0)
+        }
+    }
+    // Keep a single expanded sheet and scroll container. A short final section
+    // fills the remaining viewport so its heading can reach the top too.
+    val concernMinHeight = with(density) { (viewportHeight - concernHeadingHeight).coerceAtLeast(0).toDp() }
+        .minus(24.dp).coerceAtLeast(0.dp)
     Column(Modifier.fillMaxWidth().fillMaxHeight(.9f).testTag("result-sheet-content")) {
-        key(selectedDetail) {
-            LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("result-details-scroll"), state = selectedScroll,
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("result-details-scroll")
+            .onSizeChanged { viewportHeight = it.height }, state = scroll,
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item(key = "summary") {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ResultStatusLabel(resultClassification(result.getString("outcome"), result.optString("basis")), prominent = true)
@@ -583,103 +590,105 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                     }
                 }
-                stickyHeader(key = "tabs") {
-                    Surface(color = MaterialTheme.colorScheme.surface) {
-                        SecondaryTabRow(selectedTabIndex = selectedTab) {
-                            ResultDetailTab.entries.forEachIndexed { index, detail ->
-                                Tab(selected = selectedTab == index, onClick = {
-                                        val destination = when (detail) {
-                                            ResultDetailTab.INGREDIENTS -> ingredientScroll
-                                            ResultDetailTab.SOURCES -> sourceScroll
-                                            ResultDetailTab.CONCERNS -> concernScroll
-                                        }
-                                        // Keep the tabs reachable when the summary was already
-                                        // scrolled away, especially with large text in landscape.
-                                        if ((selectedScroll.firstVisibleItemIndex > 0 || selectedScroll.firstVisibleItemScrollOffset > 0) &&
-                                            destination.firstVisibleItemIndex == 0 && destination.firstVisibleItemScrollOffset == 0) {
-                                            destination.requestScrollToItem(1)
-                                        }
-                                        selectedTab = index
-                                    },
-                                    modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                        if (detail == ResultDetailTab.CONCERNS) stateDescription = concernDescription
-                                    }) {
-                                        Row(Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                                            verticalAlignment = Alignment.CenterVertically) {
-                                            Text(stringResource(detail.title), Modifier.weight(1f, fill = false),
-                                                textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
-                                            if (detail == ResultDetailTab.CONCERNS && concernCount > 0) {
-                                                Badge(Modifier.clearAndSetSemantics { }) { Text(concernCount.toString()) }
-                                            }
-                                        }
-                                    }
+                item(key = "ingredients-heading") {
+                    Text(stringResource(R.string.result_tab_ingredients),
+                        Modifier.testTag("result-section-ingredients").semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium)
+                }
+                if (findings.length() == 0) item(key = "no-findings") {
+                    Text(stringResource(R.string.result_no_ingredients), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                items(findings.length(), key = { "finding:$it" }) { index ->
+                    val finding = findings.getJSONObject(index)
+                    val original = finding.getString("term")
+                    val display = finding.optString("displayTerm").ifBlank { original }
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                IngredientStatusIcon(finding.optString("status"))
+                                Text(display, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                             }
+                            Text(finding.getString("explanation"), style = MaterialTheme.typography.bodyMedium)
+                            if (display != original) Text(stringResource(R.string.ingredient_original, original),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
-                when (selectedDetail) {
-                    ResultDetailTab.INGREDIENTS -> {
-                        if (findings.length() == 0) item(key = "no-findings") {
-                            Text(stringResource(R.string.result_no_ingredients), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                item(key = "ingredient-details") {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        result.optJSONArray("questions")?.strings()?.takeIf { it.isNotEmpty() }?.let { questions ->
+                            Text(stringResource(R.string.questions), style = MaterialTheme.typography.titleMedium)
+                            questions.forEach { Text(it) }
                         }
-                        items(findings.length(), key = { "finding:$it" }) { index ->
-                            val finding = findings.getJSONObject(index)
-                            val original = finding.getString("term")
-                            val display = finding.optString("displayTerm").ifBlank { original }
-                            OutlinedCard(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(display, style = MaterialTheme.typography.titleSmall)
-                                    Text(finding.getString("explanation"), style = MaterialTheme.typography.bodyMedium)
-                                    if (display != original) Text(stringResource(R.string.ingredient_original, original),
-                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
+                        result.optJSONArray("crossContact")?.strings()?.takeIf { it.isNotEmpty() }?.let { values ->
+                            Text(stringResource(R.string.cross_contact), style = MaterialTheme.typography.titleMedium)
+                            values.forEach { Text(it) }
                         }
-                        item(key = "ingredient-details") {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                result.optJSONArray("questions")?.strings()?.takeIf { it.isNotEmpty() }?.let { questions ->
-                                    Text(stringResource(R.string.questions), style = MaterialTheme.typography.titleMedium)
-                                    questions.forEach { Text(it) }
-                                }
-                                result.optJSONArray("crossContact")?.strings()?.takeIf { it.isNotEmpty() }?.let { values ->
-                                    Text(stringResource(R.string.cross_contact), style = MaterialTheme.typography.titleMedium)
-                                    values.forEach { Text(it) }
-                                }
-                                result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-                                ManufacturerContactSection(result)
-                            }
+                        result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                        ManufacturerContactSection(result)
+                    }
+                }
+                item(key = "sources-heading") {
+                    Text(stringResource(R.string.result_tab_sources),
+                        Modifier.testTag("result-section-sources").semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium)
+                }
+                if (evidence.length() == 0) item(key = "no-sources") {
+                    Text(stringResource(R.string.result_no_sources), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                items(evidence.length(), key = { "evidence:$it" }) { index ->
+                    val item = evidence.getJSONObject(index)
+                    OutlinedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(item.getString("title"), style = MaterialTheme.typography.titleSmall)
+                            Text(item.optString("excerpt"), style = MaterialTheme.typography.bodySmall)
+                            val url = item.optString("url")
+                            if (url.startsWith("https://")) TextButton(onClick = {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                            }) { Text(Uri.parse(url).host ?: url) }
+                            Text(item.optString("retrievedAt").take(10), style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    ResultDetailTab.SOURCES -> {
-                        if (evidence.length() == 0) item(key = "no-sources") {
-                            Text(stringResource(R.string.result_no_sources), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        items(evidence.length(), key = { "evidence:$it" }) { index ->
-                            val item = evidence.getJSONObject(index)
-                            OutlinedCard(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(item.getString("title"), style = MaterialTheme.typography.titleSmall)
-                                    Text(item.optString("excerpt"), style = MaterialTheme.typography.bodySmall)
-                                    val url = item.optString("url")
-                                    if (url.startsWith("https://")) TextButton(onClick = {
-                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                                    }) { Text(Uri.parse(url).host ?: url) }
-                                    Text(item.optString("retrievedAt").take(10), style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
+                }
+                item(key = "concerns-heading") {
+                    Text(stringResource(R.string.concerns),
+                        Modifier.testTag("result-section-concerns").semantics { heading() }
+                            .onSizeChanged { concernHeadingHeight = it.height },
+                        style = MaterialTheme.typography.titleMedium)
+                }
+                item(key = "company-concerns") {
+                    Column(Modifier.fillMaxWidth().heightIn(min = concernMinHeight),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        CompanyAssessmentSection(result)
+                        CompanyConcernSection(result, showHeading = false)
                     }
-                    ResultDetailTab.CONCERNS -> item(key = "company-concerns") {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            CompanyAssessmentSection(result)
-                            CompanyConcernSection(result)
+                }
+        }
+        HorizontalDivider()
+        SecondaryTabRow(selectedTabIndex = selectedSection) {
+            ResultDetailSection.entries.forEachIndexed { index, section ->
+                Tab(selected = selectedSection == index, onClick = {
+                    scope.launch {
+                        val reducedMotion = android.provider.Settings.Global.getFloat(
+                            context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+                        if (reducedMotion) scroll.scrollToItem(sectionIndices[index])
+                        else scroll.animateScrollToItem(sectionIndices[index])
+                    }
+                }, modifier = Modifier.heightIn(min = 48.dp).testTag("result-nav-${section.name.lowercase()}").semantics {
+                    if (section == ResultDetailSection.CONCERNS) stateDescription = concernDescription
+                }) {
+                    Row(Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(section.title), Modifier.weight(1f, fill = false),
+                            textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                        if (section == ResultDetailSection.CONCERNS && concernCount > 0) {
+                            Badge(Modifier.clearAndSetSemantics { }) { Text(concernCount.toString()) }
                         }
                     }
                 }
             }
         }
-        HorizontalDivider()
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
             TextButton(onClick = { model.recheck(originalResult) }) { Icon(Icons.Outlined.EditNote, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.edit_result)) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

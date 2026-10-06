@@ -3,7 +3,7 @@ import { render } from 'preact';
 import { imageSupport, localizeResult } from '@veguide/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import type { Category, CheckInput, CheckStage } from '@veguide/core';
+import type { Category, CheckInput, CheckStage, Finding } from '@veguide/core';
 import { messages } from './i18n';
 import { PRESETS, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type Pending, type Reply, type Request, type State } from './protocol';
@@ -22,6 +22,15 @@ async function request<T>(message: Request): Promise<T> {
 }
 function Leaf() { return <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M26 5C11 4 4 11 7 21c10 5 20-2 19-16Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 28 21 11M12 21v-7m0 7h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>; }
 function Trash() { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6m4-6v6"/></svg>; }
+function IngredientStatus({ status, language }: { status: Finding['status']; language: Settings['language'] }) {
+  const t = messages[language];
+  const label = status === 'plant' ? t.ingredientVegan : status === 'animal' ? t.ingredientAnimal : status === 'ambiguous' ? t.ingredientAmbiguous : t.ingredientUnknown;
+  return <span class={`ingredient-status ${status}`} role="img" aria-label={label}>
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      {status === 'plant' ? <path d="m5 12 4 4L19 6"/> : status === 'animal' ? <path d="m6 6 12 12M18 6 6 18"/> : <><path d="M9 8a3 3 0 1 1 5 2.2c-1 .6-2 1.2-2 2.8"/><path d="M12 17h.01"/></>}
+    </svg>
+  </span>;
+}
 function safeLink(url: string | undefined): string | undefined { try { if (!url) return; const parsed = new URL(url); return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined; } catch { return; } }
 export function App() {
   const [config, setConfig] = useState<Settings>(defaultSettings);
@@ -264,7 +273,7 @@ export function App() {
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
         {result.webSearchStatus === 'searched' && <p class="muted">{t.webSearched}</p>}
         {result.webSearchStatus === 'unsupported' && <p class="muted">{t.webUnsupported}</p>}
-        {result.findings.length > 0 && <section><h2>{t.findings}</h2>{localizeResult(result, config.language).findings.map((finding, i) => <div class="finding" key={i}><strong>{finding.displayTerm ?? finding.term}</strong>{finding.displayTerm && finding.displayTerm !== finding.term && <small class="hint">{t.originalTerm}: {finding.term}</small>}<p>{finding.explanation}</p></div>)}</section>}
+        {result.findings.length > 0 && <section><h2>{t.findings}</h2>{localizeResult(result, config.language).findings.map((finding, i) => <div class="finding" key={i}><div class="finding-name"><IngredientStatus status={finding.status} language={config.language}/><strong>{finding.displayTerm ?? finding.term}</strong></div>{finding.displayTerm && finding.displayTerm !== finding.term && <small class="hint">{t.originalTerm}: {finding.term}</small>}<p>{finding.explanation}</p></div>)}</section>}
         {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
         <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
         <ManufacturerContactSection key={result.id} result={result} locale={config.language}/>

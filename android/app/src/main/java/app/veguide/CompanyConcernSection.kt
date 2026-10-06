@@ -16,8 +16,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONObject
 
 @Composable
-internal fun CompanyConcernSection(result: JSONObject) {
-    Text(stringResource(R.string.concerns), style = MaterialTheme.typography.titleMedium)
+internal fun CompanyConcernSection(result: JSONObject, showHeading: Boolean = true) {
+    if (showHeading) Text(stringResource(R.string.concerns), style = MaterialTheme.typography.titleMedium)
     val concerns = result.optJSONArray("companyConcerns")
     if (concerns == null || concerns.length() == 0) {
         Text(stringResource(if (result.optJSONObject("identity")?.optString("brand").isNullOrBlank()) R.string.company_unknown_brand else R.string.company_no_record), style = MaterialTheme.typography.bodySmall)

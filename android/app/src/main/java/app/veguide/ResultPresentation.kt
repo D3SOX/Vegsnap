@@ -1,9 +1,11 @@
 package app.veguide
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.outlined.CompareArrows
@@ -67,6 +69,32 @@ internal fun ResultStatusLabel(classification: ResultClassification, prominent: 
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(classification.icon, null, Modifier.size(if (prominent) 28.dp else 20.dp))
             Text(stringResource(classification.label), style = if (prominent) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+internal fun IngredientStatusIcon(status: String) {
+    val classification = when (status) {
+        "plant" -> ResultClassification.CERTIFIED
+        "animal" -> ResultClassification.NOT_VEGAN
+        else -> ResultClassification.UNCERTAIN
+    }
+    val label = when (status) {
+        "plant" -> R.string.ingredient_status_vegan
+        "animal" -> R.string.ingredient_status_animal
+        "ambiguous" -> R.string.ingredient_status_ambiguous
+        else -> R.string.ingredient_status_unknown
+    }
+    val icon = when (status) {
+        "plant" -> Icons.Outlined.Check
+        "animal" -> Icons.Outlined.Close
+        else -> Icons.AutoMirrored.Outlined.HelpOutline
+    }
+    val (ink, background) = classification.colors(MaterialTheme.colorScheme.surface.luminance() < 0.5f)
+    Surface(color = background, contentColor = ink, shape = CircleShape) {
+        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, stringResource(label), Modifier.size(20.dp))
         }
     }
 }

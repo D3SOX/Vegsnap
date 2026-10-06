@@ -10,8 +10,8 @@ android {
         applicationId = "app.veguide"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.environmentVariable("VEGUIDE_VERSION_CODE").orNull?.toInt() ?: 11
-        versionName = providers.environmentVariable("VEGUIDE_VERSION_NAME").orNull ?: "0.2.3"
+        versionCode = providers.environmentVariable("VEGUIDE_VERSION_CODE").orNull?.toInt() ?: 12
+        versionName = providers.environmentVariable("VEGUIDE_VERSION_NAME").orNull ?: "0.2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     val releaseKeystore = providers.environmentVariable("VEGUIDE_KEYSTORE_PATH").orNull

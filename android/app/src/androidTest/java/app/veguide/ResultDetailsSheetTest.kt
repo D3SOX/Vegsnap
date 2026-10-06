@@ -13,11 +13,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -42,6 +44,7 @@ class ResultDetailsSheetTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val store = ViewModelStore()
     private val tops = mutableListOf<Float>()
+    private val displayedResult = mutableStateOf(JSONObject())
 
     @After fun cleanUp() {
         compose.runOnIdle { store.clear() }
@@ -54,11 +57,11 @@ class ResultDetailsSheetTest {
         .put("checkedAt", "2026-10-06T00:00:00Z").put("category", "household")
         .put("identity", JSONObject().put("brand", "Fixture Maker"))
         .put("findings", JSONArray().apply { repeat(80) { index ->
-            put(JSONObject().put("term", "Ingredient ${index + 1}").put("status", "unknown")
-                .put("explanation", "A synthetic ingredient used to verify long-result scrolling and tabs."))
+            put(JSONObject().put("term", "Ingredient ${index + 1}").put("status", listOf("plant", "animal", "ambiguous", "unknown")[index % 4])
+                .put("explanation", "A synthetic ingredient used to verify continuous long-result scrolling and section navigation."))
         } })
         .put("evidence", JSONArray().put(JSONObject().put("title", "Fixture source")
-            .put("excerpt", "Synthetic source evidence is visible in the Sources tab.")
+            .put("excerpt", "Synthetic source evidence is visible in the Sources section.")
             .put("retrievedAt", "2026-10-06T00:00:00Z")))
         .put("companyConcerns", JSONArray().apply { if (concerns) {
             put(JSONObject().put("company", "Fixture Maker").put("category", "animal_testing")
@@ -81,6 +84,7 @@ class ResultDetailsSheetTest {
             model = VeguideViewModel(target.applicationContext as Application)
             store.put("result-ui-test", model)
         }
+        displayedResult.value = value
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration,
@@ -91,7 +95,7 @@ class ResultDetailsSheetTest {
                             BottomSheetDefaults.DragHandle(Modifier.onGloballyPositioned { tops.add(it.positionInWindow().y) })
                         }) {
                             CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
-                                ResultSheet(value, {}, {}, {}, model)
+                                ResultSheet(displayedResult.value, {}, {}, {}, model)
                             }
                         }
                     }
@@ -119,62 +123,99 @@ class ResultDetailsSheetTest {
         }
     }
 
-    @Test fun longIngredientScrollKeepsTabsAndActionsReachableWithoutSheetOscillation() {
+    private fun nav(section: String) = compose.onNodeWithTag("result-nav-$section")
+    private fun heading(section: String) = compose.onNodeWithTag("result-section-$section")
+
+    private fun assertAnchored(section: String) {
+        heading(section).assertIsDisplayed()
+        nav(section).assertIsSelected()
+        val difference = heading(section).fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y -
+            compose.onNodeWithTag("result-details-scroll").fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y
+        assertTrue("$section heading was not anchored: $difference px", difference in -1f..32f)
+    }
+
+    @Test fun continuousScrollAndSectionAnchorsKeepActionsReachableWithoutSheetOscillation() {
         show(result(), dark = true)
         actions()
-        compose.onNodeWithText("Ingredients").assertIsSelected()
-        compose.onNodeWithText("Concerns").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "2 company concerns"))
+        compose.onNodeWithText("Synthetic ingredient regression").assertIsDisplayed()
+        nav("ingredients").assertIsSelected()
+        nav("concerns").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "2 company concerns"))
+        nav("ingredients").performClick()
+        assertAnchored("ingredients")
+        val context = instrumentation.targetContext
+        listOf(R.string.ingredient_status_vegan, R.string.ingredient_status_animal,
+            R.string.ingredient_status_ambiguous, R.string.ingredient_status_unknown).forEach { description ->
+            compose.onNodeWithTag("result-details-scroll").performScrollToNode(hasContentDescription(context.getString(description)))
+            compose.onAllNodesWithContentDescription(context.getString(description)).onFirst().assertIsDisplayed()
+        }
         val scroll = compose.onNodeWithTag("result-details-scroll")
         scroll.performScrollToNode(hasText("Ingredient 80"))
         compose.onNodeWithText("Ingredient 80").assertIsDisplayed()
+        nav("ingredients").assertIsSelected()
         actions()
+        // Manual scrolling reaches every section; navigation reflects it without
+        // replacing the preceding ingredients or swapping scroll containers.
+        scroll.performScrollToNode(hasTestTag("result-section-sources"))
+        compose.onNodeWithText("Ingredient 80").assertIsDisplayed()
+        nav("sources").performClick()
+        assertAnchored("sources")
+        compose.onNodeWithText("Fixture source").assertIsDisplayed()
+        actions()
+        screenshot("result-sections-sources-en.png")
+        scroll.performTouchInput { swipeUp(durationMillis = 400) }
+        compose.waitForIdle()
+        nav("concerns").assertIsSelected()
+        nav("concerns").performClick()
+        assertAnchored("concerns")
+        compose.onNodeWithText("A synthetic documented company concern.").assertIsDisplayed()
+        actions()
+        screenshot("result-sections-concerns-en.png")
         compose.runOnIdle { val top = tops.last(); tops.clear(); tops.add(top) }
         repeat(5) { scroll.performTouchInput { swipeUp(durationMillis = 80) }; compose.waitForIdle() }
         compose.runOnIdle {
             val travel = tops.maxOrNull()!! - tops.minOrNull()!!
-            assertTrue("Expanded tabbed sheet oscillated by $travel px", travel <= 2f)
+            assertTrue("Expanded result sheet oscillated by $travel px", travel <= 2f)
         }
-        compose.onNodeWithText("Sources").performClick()
-        compose.onNodeWithText("Sources").assertIsSelected()
-        compose.onNodeWithText("Fixture source").assertIsDisplayed()
+        nav("ingredients").performClick()
+        assertAnchored("ingredients")
+        compose.onNodeWithText("Ingredient 1").assertIsDisplayed()
         actions()
-        screenshot("result-tabs-sources-en.png")
-        compose.onNodeWithText("Concerns").performClick()
-        compose.onNodeWithText("Concerns").assertIsSelected()
-        compose.onNodeWithText("A synthetic documented company concern.").assertIsDisplayed()
-        actions()
-        screenshot("result-tabs-concerns-en.png")
-        compose.onNodeWithText("Ingredients").performClick()
-        compose.onNodeWithText("Ingredient 80").assertIsDisplayed()
-        actions()
-        screenshot("result-tabs-ingredients-en.png")
+        screenshot("result-sections-ingredients-en.png")
+        compose.runOnIdle { displayedResult.value = result().put("id", "new-synthetic-result").put("title", "Fresh result") }
+        compose.onNodeWithText("Fresh result").assertIsDisplayed()
+        nav("ingredients").assertIsSelected()
     }
 
-    @Test fun emptyConcernListDoesNotDisplayAWarningBadge() {
-        show(result(concerns = false))
-        compose.onNodeWithText("Concerns").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0 company concerns"))
+    @Test fun shortEmptyConcernSectionAnchorsWithoutAWarningBadge() {
+        show(result(concerns = false).put("findings", JSONArray()).put("evidence", JSONArray()))
+        nav("concerns").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0 company concerns"))
         compose.onNodeWithText("2", useUnmergedTree = true).assertDoesNotExist()
-        compose.onNodeWithText("Concerns").performClick()
-        compose.onNodeWithText("Company concerns").assertIsDisplayed()
+        nav("concerns").performClick()
+        assertAnchored("concerns")
         actions()
+        nav("sources").performClick()
+        assertAnchored("sources")
+        nav("ingredients").performClick()
+        assertAnchored("ingredients")
     }
 
-    @Test fun germanLargeTextKeepsActionsAndTabsAvailable() {
+    @Test fun germanLargeTextKeepsActionsAndSectionNavigationAvailable() {
         if (InstrumentationRegistry.getArguments().getString("orientation") == "landscape") {
             compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(5_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
         }
-        show(result(), language = "de", fontScale = 1.6f)
+        show(result(concerns = false), language = "de", fontScale = 1.6f)
         actions("de")
         val scroll = compose.onNodeWithTag("result-details-scroll")
         scroll.performScrollToNode(hasText("Ingredient 80"))
-        compose.onNodeWithText("Zutaten").assertIsDisplayed()
-        compose.onNodeWithText("Quellen").performClick()
-        compose.onNodeWithText("Quellen").assertIsSelected()
+        nav("ingredients").assertIsDisplayed()
+        nav("sources").performClick()
+        assertAnchored("sources")
         actions("de")
-        compose.onNodeWithText("Bedenken").performClick()
-        compose.onNodeWithText("Bedenken").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "2 Unternehmensbedenken"))
+        nav("concerns").performClick()
+        assertAnchored("concerns")
+        nav("concerns").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0 Unternehmensbedenken"))
         actions("de")
-        screenshot("result-tabs-de-large.png")
+        screenshot("result-sections-de-large.png")
     }
 }

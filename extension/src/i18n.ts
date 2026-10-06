@@ -1,6 +1,7 @@
 const en = {
   offlineHeading: 'Offline product data', offlineHint: 'Barcodes are checked locally first. These packs cover a selection of products; missing products use the online databases. Import regional JSON packs up to 10 MB.', offlineImport: 'Import regional pack', offlineBundled: 'Included', offlineProducts: 'products',
   originalTerm: 'Original label',
+  ingredientVegan: 'Vegan ingredient', ingredientAnimal: 'Animal-derived ingredient', ingredientAmbiguous: 'Ingredient origin unclear', ingredientUnknown: 'Ingredient origin unknown',
   showEmail: 'Show email', hideEmail: 'Hide email',
   progressDatabase: 'Looking up product databases…', progressAI: 'Analyzing the product with AI…', progressEvaluating: 'Evaluating the evidence…',
   imagesSupported: 'This model supports photos.', imagesUnsupported: 'This model does not support photos. Choose an image-capable model.', imagesAutomatic: 'Photo support will be checked when you analyze an image.',
@@ -17,6 +18,7 @@ const en = {
 const de: typeof en = {
   offlineHeading: 'Offline-Produktdaten', offlineHint: 'Barcodes werden zuerst lokal geprüft. Die Pakete enthalten eine Produktauswahl; fehlende Produkte werden online nachgeschlagen. Regionale JSON-Pakete bis 10 MB importieren.', offlineImport: 'Regionales Paket importieren', offlineBundled: 'Enthalten', offlineProducts: 'Produkte',
   originalTerm: 'Originalbezeichnung',
+  ingredientVegan: 'Vegane Zutat', ingredientAnimal: 'Zutat tierischen Ursprungs', ingredientAmbiguous: 'Herkunft der Zutat unklar', ingredientUnknown: 'Herkunft der Zutat unbekannt',
   showEmail: 'E-Mail anzeigen', hideEmail: 'E-Mail verbergen',
   progressDatabase: 'Produktdatenbanken werden geprüft…', progressAI: 'KI analysiert das Produkt…', progressEvaluating: 'Belege werden ausgewertet…',
   imagesSupported: 'Dieses Modell unterstützt Fotos.', imagesUnsupported: 'Dieses Modell unterstützt keine Fotos. Wähle ein bildfähiges Modell.', imagesAutomatic: 'Die Fotounterstützung wird bei der Bildanalyse geprüft.',

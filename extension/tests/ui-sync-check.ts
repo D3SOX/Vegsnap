@@ -124,6 +124,9 @@ try {
   await until(() => roots.every(root => !emailButton(root) && root.textContent?.includes('Connect ChatGPT')), 'Disconnect reaches all windows without stale account details');
   history = [{ ...fixtureResult, outcome: 'uncertain', findings: [
     { term: 'naturlig arom', displayTerm: 'natural flavouring', displayLocale: 'en', status: 'ambiguous', explanation: 'Origin needs confirmation.', evidenceId: 'source' },
+    { term: 'sugar', status: 'plant', explanation: 'Plant-derived ingredient.', evidenceId: 'source' },
+    { term: 'gelatin', status: 'animal', explanation: 'Animal-derived ingredient.', evidenceId: 'source' },
+    { term: 'unidentified ingredient', status: 'unknown', explanation: 'Origin has not been established.', evidenceId: 'source' },
   ], questions: ['Confirm the origin of: naturlig arom.'], evidence: [{ id: 'source', kind: 'user_text', title: 'Original ingredients', excerpt: 'naturlig arom', retrievedAt: fixtureResult.checkedAt }] }];
   changed();
   await tab(roots[0]!, 1);
@@ -131,8 +134,14 @@ try {
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
   await until(() => roots[0]!.querySelector('.finding strong')?.textContent === 'natural flavouring', 'Saved AI ingredient translation appears in the actual result UI');
   assert.equal(roots[0]!.querySelector('.finding small')?.textContent, 'Original label: naturlig arom');
-  assert(roots[0]!.textContent?.includes('Confirm the origin of: natural flavouring.'));
+  assert(roots[0]!.textContent?.includes('Confirm the origin of: natural flavouring, unidentified ingredient.'));
   assert(roots[0]!.querySelector('.evidence')?.textContent?.includes('naturlig arom'), 'Source evidence keeps its original words');
+  const ingredientLabels = () => [...roots[0]!.querySelectorAll('.finding [role="img"]')].map(icon => icon.getAttribute('aria-label'));
+  assert.deepEqual(ingredientLabels(), ['Ingredient origin unclear', 'Vegan ingredient', 'Animal-derived ingredient', 'Ingredient origin unknown'], 'Every ingredient has an accessible indicator that keeps uncertainty separate from animal origin');
+  settings = { ...settings, language: 'de' };
+  storageChanged(['settings'], 'local');
+  await until(() => ingredientLabels()[0] === 'Herkunft der Zutat unklar', 'Ingredient indicator labels follow the selected language');
+  assert.deepEqual(ingredientLabels(), ['Herkunft der Zutat unklar', 'Vegane Zutat', 'Zutat tierischen Ursprungs', 'Herkunft der Zutat unbekannt']);
   console.log('Actual result UI: translated name/question and secondary original name preserve source evidence');
   console.log('Actual two-window UI: shared history/settings/session/model updates, trash isolation and private ephemeral email reveal verified');
 } finally {
