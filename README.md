@@ -76,31 +76,9 @@ Incomplete composition, ambiguous ingredient origins or conflicting sources can 
 
 Connecting a cloud provider can send selected text and photos to that provider when you start a check. The provider's retention policy, usage limits and charges apply. Database checks and local rules need no AI account.
 
-## Run from source
+## Install the Android app
 
-Use Bun 1.4.2 for the extension. Android needs JDK 21 and Android SDK 37. The optional companion needs Rust. Automated tests do not require provider credentials.
-
-```sh
-bun install --frozen-lockfile
-bun run typecheck
-bun run test
-bun run test:package
-```
-
-The packaging test creates and checks `extension/.output/chrome-mv3` and `extension/.output/firefox-mv3`.
-
-In Chromium, enable developer mode on the extensions page and load the unpacked folder. In Firefox, open `about:debugging`, select **This Firefox**, then **Load Temporary Add-on** and choose the Firefox package's manifest.
-
-Open `android/` in Android Studio to run the app on a device. Run its checks with:
-
-```sh
-cd android
-./gradlew testDebugUnitTest lintDebug
-```
-
-Automated tests use fixtures and mocked network responses. They do not establish live provider eligibility, store coverage or camera accuracy on real packaging.
-
-Screenshot refreshes run through the **Refresh screenshots** GitHub Actions workflow or the local capture script. See [the capture instructions](scripts/screenshots/README.md) for reviewing and applying a bundle with a signed commit.
+Download the signed APK using the Android badge above. You can also use the Obtainium badge to track updates.
 
 ## Install the browser extension
 
@@ -214,21 +192,6 @@ The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\
 Run the registration command for each browser you use. Release packages use the stable Chromium ID `bljmddjdbglldnbdhdfdlbilieoheend`; updates keep that ID. Firefox uses `veguide@veguide.app`.
 
 After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
-
-`--output PATH` writes a manifest to the chosen path without registering it. For other architectures, build the companion with Rust and register the resulting executable:
-
-```sh
-cargo build --locked --release --manifest-path companion/Cargo.toml
-python3 companion/install.py \
-  --binary "$PWD/companion/target/release/veguide-companion" \
-  --browser firefox --extension-id veguide@veguide.app
-```
-
-## Releases
-
-[GitHub Releases](https://github.com/D3SOX/veguide/releases) provides signed Android APKs, browser packages and desktop companions. Obtainium can track app releases. [Regional product packs](https://github.com/D3SOX/veguide/releases/tag/offline-data) live in one continuously updated release; the app downloads them from its catalog.
-
-The release workflow runs on `v*` tags or a manual dispatch. Signing credentials are GitHub Actions secrets. Release APKs use a different certificate from local debug builds. Switching requires a reinstall, which can delete local history and settings.
 
 ## Data licenses
 
