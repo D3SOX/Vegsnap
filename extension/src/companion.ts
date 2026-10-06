@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import { parseAIExtraction, validateAIExtraction, type ProviderAdapter } from '@veguide/core';
+import { parseAIExtraction, validateAIExtraction, type ProviderAdapter } from '@vegsnap/core';
 import { isRecord } from './protocol';
 let nativeQueue = Promise.resolve();
 /** Native processes share one OS session lock, including inference and read-only status. */
@@ -20,7 +20,7 @@ async function sendCompanion(command: string, payload?: unknown, signal?: AbortS
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
-    const port = browser.runtime.connectNative('org.veguide.companion');
+    const port = browser.runtime.connectNative('org.vegsnap.companion');
     let settled = false;
     const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
     const abort = () => { settled = true; cleanup(); port.disconnect(); reject(new DOMException('Cancelled', 'AbortError')); };

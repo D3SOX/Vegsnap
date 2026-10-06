@@ -52,7 +52,7 @@ def background(width, height):
 
 def brand(x, y, scale=1):
     return (image("website/logo.svg", x, y, 52*scale, 52*scale)
-            + text(x+68*scale, y+37*scale, "Veguide", 30*scale, weight="bold"))
+            + text(x+68*scale, y+37*scale, "Vegsnap", 30*scale, weight="bold"))
 
 
 def phone(path, x, y, width):
@@ -75,7 +75,7 @@ def browser(path, x, y, width, dark=False):
             f'<g clip-path="url(#browser)"><rect x="{x}" y="{y}" width="{width}" height="{height+32}" fill="{paper}"/>'
             f'<rect x="{x}" y="{y}" width="{width}" height="32" fill="{chrome}"/>'
             + ''.join(f'<circle cx="{x+18+i*13}" cy="{y+16}" r="3.5" fill="#789180"/>' for i in range(3))
-            + text(x+width/2-32, y+21, "Veguide", 11, label)
+            + text(x+width/2-32, y+21, "Vegsnap", 11, label)
             + image(path, x, y+32, width, height) + '</g>')
 
 
@@ -142,7 +142,7 @@ def render_badges():
         "obtainium": '<path d="M18 27a13 13 0 0 1 22-7l4 4M44 16v8h-8M42 35a13 13 0 0 1-22 7l-4-4M16 46v-8h8"/>',
         "extension": '<rect x="15" y="17" width="30" height="27" rx="4"/><path d="M15 25h30M21 21h1m4 0h1M25 31l-5 5 5 5m10-10 5 5-5 5"/>',
     }
-    for key, label, action in [("website", "VEGUIDE.APP", "Visit the website"), ("android", "ANDROID APK", "Download releases"), ("extension", "BROWSER EXTENSION", "Install from releases"), ("obtainium", "OBTAINIUM", "Add to Obtainium")]:
+    for key, label, action in [("website", "Vegsnap", "Visit the website"), ("android", "ANDROID APK", "Download releases"), ("extension", "BROWSER EXTENSION", "Install from releases"), ("obtainium", "OBTAINIUM", "Add to Obtainium")]:
         canvas = f'<rect x="1" y="1" width="218" height="62" rx="12" fill="{GREEN}" stroke="#789180"/>'
         canvas += f'<g stroke="{SAGE}" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round">{icons[key]}</g>'
         canvas += text(59, 25, label, 10, SAGE, "bold") + text(59, 44, action, 13, weight="bold")

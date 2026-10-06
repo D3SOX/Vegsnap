@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { render } from 'preact';
 import { CompanyConcerns } from '../src/company-concerns';
-import { resolveCompanyConcerns, type CompanyAssessment } from '@veguide/core';
+import { resolveCompanyConcerns, type CompanyAssessment } from '@vegsnap/core';
 const assessment: CompanyAssessment = { brand: 'Garden Gourmet', company: 'Parent company', scope: 'parent', verdict: 'no_concerns_found', summary: 'The limited sources consulted did not establish a qualifying concern.', categories: [], sources: [{ url: 'https://maker.example/policy', title: 'Policy source', quote: 'The cited policy wording.' }], ownershipSourceUrl: 'https://maker.example/brands', assessedAt: '2026-10-06T12:00:00.000Z' };
 function mount(value: CompanyAssessment | undefined, locale: 'en' | 'de' = 'en') {
   const window = new Window(); const document = window.document as unknown as Document;

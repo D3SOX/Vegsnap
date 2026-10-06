@@ -1,6 +1,6 @@
 {
-  "name": "@veguide/extension",
-  "version": "0.2.4",
+  "name": "@vegsnap/extension",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -13,7 +13,7 @@
     "build:firefox": "bun ../scripts/offline-snapshot.ts && wxt build -b firefox"
   },
   "dependencies": {
-    "@veguide/core": "workspace:*",
+    "@vegsnap/core": "workspace:*",
     "preact": "^10.27.0"
   },
   "devDependencies": {

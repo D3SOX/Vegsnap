@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { OfflineSnapshot } from '@veguide/core';
+import type { OfflineSnapshot } from '@vegsnap/core';
 import { createOfflineLibrary } from '../src/offline-library';
 const bundle: OfflineSnapshot = { schemaVersion: 1, generatedAt: '2026-10-05T10:00:00Z', region: 'Bundled DE/EU', sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T09:00:00Z' }], products: [] };
 const extra: OfflineSnapshot = { ...bundle, region: 'Sweden', products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: 'Example', ingredients: 'milk', countries_tags: ['en:sweden'], last_modified_t: 1760000000 }] };

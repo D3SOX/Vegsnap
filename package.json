@@ -1,6 +1,6 @@
 {
-  "name": "veguide",
-  "version": "0.2.4",
+  "name": "vegsnap",
+  "version": "0.2.5",
   "private": true,
   "license": "AGPL-3.0-only",
   "packageManager": "bun@1.4.2",
@@ -9,8 +9,8 @@
     "extension"
   ],
   "scripts": {
-    "test": "bun test packages scripts && bun run --filter @veguide/extension test",
-    "test:package": "bun run --filter @veguide/extension test:package",
+    "test": "bun test packages scripts && bun run --filter @vegsnap/extension test",
+    "test:package": "bun run --filter @vegsnap/extension test:package",
     "typecheck": "bun run --filter '*' typecheck",
     "check:companion": "cargo test --manifest-path companion/Cargo.toml",
     "check:android": "cd android && ./gradlew testDebugUnitTest lintDebug",

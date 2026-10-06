@@ -46,13 +46,13 @@ function context() {
 }
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => 'en-GB' },
-  runtime: { id: 'veguide', async sendMessage(message: Record<string, unknown>) { messages.push(message); return respond(message); }, onMessage: { addListener(listener: RuntimeListener) { runtimeListeners.add(listener); }, removeListener(listener: RuntimeListener) { runtimeListeners.delete(listener); } } },
+  runtime: { id: 'vegsnap', async sendMessage(message: Record<string, unknown>) { messages.push(message); return respond(message); }, onMessage: { addListener(listener: RuntimeListener) { runtimeListeners.add(listener); }, removeListener(listener: RuntimeListener) { runtimeListeners.delete(listener); } } },
 } }));
 mock.module('wxt/utils/define-content-script', () => ({ defineContentScript: (definition: unknown) => definition }));
 const { default: definition } = await import('../entrypoints/store.content');
 const script = definition as unknown as { main(ctx: TestContext): void };
 const fixture = (name: string) => Bun.file(new URL(`fixtures/stores/${name}.html`, import.meta.url)).text();
-const badges = () => [...document.querySelectorAll<HTMLElement>('[data-veguide-badge]')];
+const badges = () => [...document.querySelectorAll<HTMLElement>('[data-vegsnap-badge]')];
 const button = (host: HTMLElement) => host.shadowRoot!.querySelector<HTMLButtonElement>('button')!;
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 try {
@@ -60,7 +60,7 @@ try {
   document.body.insertAdjacentHTML('beforeend', '<script type="application/ld+json">{"@type":"Product","name":"Example Oat Drink 1L","brand":"Example Brand","url":"https://www.amazon.de/dp/B0ABC12345"}</script>');
   const first = context(); script.main(first.ctx);
   assert.equal(badges().length, 2, 'Amazon cards without barcodes still show explicit check buttons');
-  assert(badges().every(host => button(host).textContent === 'Veguide · Check'));
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
   assert(badges().every(host => !host.closest('a')), 'Check buttons are never nested in store product links');
   assert.equal(messages.length, 0, 'Barcodeless cards do not start background lookups');
   button(badges()[0]!).click();
@@ -82,9 +82,9 @@ try {
   assert.equal(messages.length, beforeOldClick, 'Detached old buttons cannot dispatch a product check');
   first.invalidate();
   assert.equal(badges().length, 2, 'Invalidating an old context leaves the current instance intact');
-  for (const listener of runtimeListeners) listener({ type: 'veguide-store-disabled' }, { id: 'other-extension' });
+  for (const listener of runtimeListeners) listener({ type: 'vegsnap-store-disabled' }, { id: 'other-extension' });
   assert.equal(badges().length, 2, 'An unrelated runtime sender cannot disable the integration');
-  for (const listener of [...runtimeListeners]) listener({ type: 'veguide-store-disabled' }, { id: 'veguide' });
+  for (const listener of [...runtimeListeners]) listener({ type: 'vegsnap-store-disabled' }, { id: 'vegsnap' });
   assert.equal(badges().length, 0);
   assert.equal(runtimeListeners.size, 0);
   assert.equal(domListeners.size, 0, 'Disabling removes DOM listeners as well as badges');
@@ -125,7 +125,7 @@ try {
   assert.equal(domListeners.size, 0);
   console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, reinjection and disable cleanup verified');
 } finally {
-  const shared = globalThis as typeof globalThis & { __veguideStoreCleanup?: () => void };
-  shared.__veguideStoreCleanup?.();
+  const shared = globalThis as typeof globalThis & { __vegsnapStoreCleanup?: () => void };
+  shared.__vegsnapStoreCleanup?.();
   await window.happyDOM.close();
 }

@@ -100,7 +100,7 @@ export async function packageExtensions(options: PackageOptions) {
     throw new Error('Both browser builds must have the same extension version.');
   }
   await mkdir(outputDirectory, { recursive: true });
-  const temporary = await mkdtemp(join(tmpdir(), 'veguide-extension-release-'));
+  const temporary = await mkdtemp(join(tmpdir(), 'vegsnap-extension-release-'));
   try {
     const staged = join(temporary, 'chromium');
     await cp(chromeDirectory, staged, { recursive: true });
@@ -112,9 +112,9 @@ export async function packageExtensions(options: PackageOptions) {
     ]);
     const crx = await readFile(`${staged}.crx`);
     verifyCrx3(crx, publicKey);
-    await writeFile(join(outputDirectory, 'veguide-chromium.crx'), crx);
+    await writeFile(join(outputDirectory, 'vegsnap-chromium.crx'), crx);
     // Write fresh archives: zip updates existing archives rather than removing stale entries.
-    for (const [name, directory] of [['veguide-chromium.zip', staged], ['veguide-firefox.xpi', firefoxDirectory]] as const) {
+    for (const [name, directory] of [['vegsnap-chromium.zip', staged], ['vegsnap-firefox.xpi', firefoxDirectory]] as const) {
       const archive = join(outputDirectory, name);
       await rm(archive, { force: true });
       await run(['zip', '-q', '-r', archive, '.'], directory);
@@ -122,8 +122,8 @@ export async function packageExtensions(options: PackageOptions) {
     }
     const metadata = {
       version: chromeManifest.version,
-      chromium: { id, package: 'veguide-chromium.crx', unpacked: 'veguide-chromium.zip', signature: 'CRX3' },
-      firefox: { package: 'veguide-firefox.xpi', signed: false, installation: 'Temporary installation through about:debugging; permanent installation requires Mozilla signing or a Firefox edition permitting unsigned extensions.' },
+      chromium: { id, package: 'vegsnap-chromium.crx', unpacked: 'vegsnap-chromium.zip', signature: 'CRX3' },
+      firefox: { package: 'vegsnap-firefox.xpi', signed: false, installation: 'Temporary installation through about:debugging; permanent installation requires Mozilla signing or a Firefox edition permitting unsigned extensions.' },
     };
     await writeFile(join(outputDirectory, 'extension-artifacts.json'), `${JSON.stringify(metadata, null, 2)}\n`);
     return metadata;
@@ -133,11 +133,11 @@ export async function packageExtensions(options: PackageOptions) {
 }
 
 if (import.meta.main) {
-  const keyPath = process.env.VEGUIDE_EXTENSION_KEY_PATH;
-  if (!keyPath) throw new Error('Set VEGUIDE_EXTENSION_KEY_PATH to the persistent RSA PEM signing key.');
+  const keyPath = process.env.VEGSNAP_EXTENSION_KEY_PATH;
+  if (!keyPath) throw new Error('Set VEGSNAP_EXTENSION_KEY_PATH to the persistent RSA PEM signing key.');
   console.log(JSON.stringify(await packageExtensions({
     keyPath,
-    chromiumBinary: process.env.VEGUIDE_CHROMIUM_BINARY,
+    chromiumBinary: process.env.VEGSNAP_CHROMIUM_BINARY,
     outputDirectory: process.argv[2],
   }), null, 2));
 }

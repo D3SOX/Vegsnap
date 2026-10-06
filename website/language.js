@@ -1,7 +1,7 @@
 // Check the preferred language once per browser; keep manual language changes.
 (() => {
   try {
-    const key = 'veguide-language-checked';
+    const key = 'vegsnap-language-checked';
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
 

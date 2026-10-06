@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://veguide.invalid/schemas/result.schema.json",
-  "title": "Veguide result",
+  "$id": "https://vegsnap.invalid/schemas/result.schema.json",
+  "title": "Vegsnap result",
   "type": "object",
   "additionalProperties": false,
   "properties": {

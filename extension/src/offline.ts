@@ -1,10 +1,10 @@
 import bundled from '../../data/offline/bundle.json';
-import { validateOfflineSnapshot, type OfflineSnapshot } from '@veguide/core';
+import { validateOfflineSnapshot, type OfflineSnapshot } from '@vegsnap/core';
 import { createOfflineLibrary, type OfflinePackStorage } from './offline-library';
 
 async function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('veguide-offline', 1);
+    const request = indexedDB.open('vegsnap-offline', 1);
     request.onupgradeneeded = () => request.result.createObjectStore('packs', { keyPath: 'region' });
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(new Error('Offline packs could not be opened.'));

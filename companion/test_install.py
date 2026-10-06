@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-spec = importlib.util.spec_from_file_location("veguide_installer", Path(__file__).with_name("install.py"))
+spec = importlib.util.spec_from_file_location("vegsnap_installer", Path(__file__).with_name("install.py"))
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 
@@ -17,7 +17,7 @@ class InstallerTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.binary = self.root / "veguide-companion.exe"
+        self.binary = self.root / "vegsnap-companion.exe"
         self.binary.write_text("test executable")
         self.binary.chmod(0o700)
         self.registry = MagicMock()
@@ -27,17 +27,17 @@ class InstallerTest(unittest.TestCase):
 
     def test_windows_registers_each_browser_for_current_user(self):
         expected = {
-            "firefox": r"Software\Mozilla\NativeMessagingHosts\org.veguide.companion",
-            "chrome": r"Software\Google\Chrome\NativeMessagingHosts\org.veguide.companion",
-            "chromium": r"Software\Chromium\NativeMessagingHosts\org.veguide.companion",
+            "firefox": r"Software\Mozilla\NativeMessagingHosts\org.vegsnap.companion",
+            "chrome": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
+            "chromium": r"Software\Chromium\NativeMessagingHosts\org.vegsnap.companion",
         }
         paths = []
         with patch.object(sys, "platform", "win32"), patch.object(Path, "home", side_effect=RuntimeError("Home is not required on Windows")), patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}), patch.dict(sys.modules, {"winreg": self.registry}):
             for browser, key in expected.items():
-                extension_id = "veguide@veguide.app" if browser == "firefox" else "a" * 32
+                extension_id = "vegsnap@vegsnap.app" if browser == "firefox" else "a" * 32
                 path = installer.install(self.binary, browser, extension_id)
                 paths.append(path)
-                self.assertEqual(path.parent, self.root / "Veguide/NativeMessagingHosts" / browser)
+                self.assertEqual(path.parent, self.root / "Vegsnap/NativeMessagingHosts" / browser)
                 self.registry.CreateKeyEx.assert_called_with("HKCU", key, 0, 2)
                 handle = self.registry.CreateKeyEx.return_value.__enter__.return_value
                 self.registry.SetValueEx.assert_called_with(handle, "", 0, 1, str(path))
@@ -46,12 +46,12 @@ class InstallerTest(unittest.TestCase):
                 self.assertEqual("allowed_extensions" in data, browser == "firefox")
                 self.assertEqual("allowed_origins" in data, browser != "firefox")
         self.assertEqual(len(set(paths)), 3)
-        self.assertEqual(json.loads(paths[0].read_text())["allowed_extensions"], ["veguide@veguide.app"])
+        self.assertEqual(json.loads(paths[0].read_text())["allowed_extensions"], ["vegsnap@vegsnap.app"])
 
     def test_output_only_writes_requested_manifest_without_registration(self):
         output = self.root / "custom.json"
         with patch.object(sys, "platform", "win32"), patch.dict(sys.modules, {"winreg": self.registry}), patch.object(installer, "destination") as destination:
-            self.assertEqual(installer.install(self.binary, "firefox", "veguide@veguide.app", output), output)
+            self.assertEqual(installer.install(self.binary, "firefox", "vegsnap@vegsnap.app", output), output)
         self.registry.CreateKeyEx.assert_not_called()
         destination.assert_not_called()
         self.assertTrue(output.is_file())
@@ -59,11 +59,11 @@ class InstallerTest(unittest.TestCase):
     def test_bad_binary_and_extension_do_not_register(self):
         with patch.object(sys, "platform", "win32"), patch.dict(sys.modules, {"winreg": self.registry}):
             with self.assertRaises(ValueError):
-                installer.install(self.root / "missing.exe", "firefox", "veguide@veguide.app")
+                installer.install(self.root / "missing.exe", "firefox", "vegsnap@vegsnap.app")
             with self.assertRaises(ValueError):
                 installer.install(self.binary, "chrome", "invalid")
             with patch.object(os, "access", return_value=False), self.assertRaises(ValueError):
-                installer.install(self.binary, "firefox", "veguide@veguide.app")
+                installer.install(self.binary, "firefox", "vegsnap@vegsnap.app")
         self.registry.CreateKeyEx.assert_not_called()
 
     def test_missing_windows_user_directory_is_reported(self):

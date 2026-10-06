@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import type { CheckResult } from '@veguide/core';
+import type { CheckResult } from '@vegsnap/core';
 import { discoverStoreProducts, isCurrentProductBinding, type ProductBinding } from '../src/store-products';
 import type { Reply } from '../src/protocol';
 
@@ -9,14 +9,14 @@ export default defineContentScript({
   registration: 'runtime',
   main(ctx) {
     // Enabling a site also injects into open tabs. Replace an earlier instance cleanly.
-    const shared = globalThis as typeof globalThis & { __veguideStoreCleanup?: () => void };
-    shared.__veguideStoreCleanup?.();
+    const shared = globalThis as typeof globalThis & { __vegsnapStoreCleanup?: () => void };
+    shared.__vegsnapStoreCleanup?.();
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let queue = Promise.resolve();
     const badges = new Map<HTMLElement, ProductBinding>();
     const german = /^de/i.test(browser.i18n.getUILanguage());
-    const checkLabel = german ? 'Veguide · Prüfen' : 'Veguide · Check';
+    const checkLabel = german ? 'Vegsnap · Prüfen' : 'Vegsnap · Check';
     const current = (host: HTMLElement, binding: ProductBinding) => active && host.isConnected && badges.get(host) === binding && isCurrentProductBinding(binding, location.href);
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) if (entry.isIntersecting) {
@@ -27,11 +27,11 @@ export default defineContentScript({
         queue = queue.then(async () => {
           if (!current(host, binding)) return;
           const label = host.shadowRoot?.querySelector('span');
-          if (label) label.textContent = german ? 'Veguide · Datenbank prüfen…' : 'Veguide · Checking database…';
+          if (label) label.textContent = german ? 'Vegsnap · Datenbank prüfen…' : 'Vegsnap · Checking database…';
           try {
             const response = await browser.runtime.sendMessage({ type: 'background-check', barcode: binding.product.barcode }) as Reply<CheckResult>;
             if (!current(host, binding)) return;
-            if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Veguide · ${response.result.title}` : checkLabel;
+            if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : checkLabel;
             host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : (german ? 'Keine eindeutige Datenbankantwort. Für eine vollständige Prüfung anklicken.' : 'No conclusive database answer. Click for a full check.');
           } catch { if (label && current(host, binding)) label.textContent = checkLabel; }
           await new Promise(resolve => setTimeout(resolve, 1600));
@@ -40,7 +40,7 @@ export default defineContentScript({
     });
     function remove(host: HTMLElement) { observer.unobserve(host); badges.delete(host); host.remove(); }
     function attach(binding: ProductBinding) {
-      const host = document.createElement('div'); host.dataset.veguideBadge = '';
+      const host = document.createElement('div'); host.dataset.vegsnapBadge = '';
       const shadow = host.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent = ':host{display:block;margin:6px 0;font:13px/1.4 system-ui;color:#234536}button{font:inherit;color:inherit;background:#edf5e9;border:1px solid #a3b89b;border-radius:12px;padding:8px 12px;cursor:pointer;min-height:44px;text-align:left}button:hover{background:#dfebd9}button:focus-visible{outline:2px solid #234536;outline-offset:2px}';
@@ -67,7 +67,7 @@ export default defineContentScript({
     mutations.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['href', 'data-asin', 'data-gtin', 'value'] });
     const rescan = () => { scan(); };
     const disabled = (message: unknown, sender: { id?: string }) => {
-      if (sender.id === browser.runtime.id && typeof message === 'object' && message !== null && 'type' in message && message.type === 'veguide-store-disabled') cleanup();
+      if (sender.id === browser.runtime.id && typeof message === 'object' && message !== null && 'type' in message && message.type === 'vegsnap-store-disabled') cleanup();
     };
     browser.runtime.onMessage.addListener(disabled);
     document.addEventListener('change', rescan);
@@ -80,9 +80,9 @@ export default defineContentScript({
       document.removeEventListener('change', rescan);
       window.removeEventListener('popstate', rescan);
       for (const host of badges.keys()) host.remove(); badges.clear();
-      if (shared.__veguideStoreCleanup === cleanup) delete shared.__veguideStoreCleanup;
+      if (shared.__vegsnapStoreCleanup === cleanup) delete shared.__vegsnapStoreCleanup;
     }
-    shared.__veguideStoreCleanup = cleanup;
+    shared.__vegsnapStoreCleanup = cleanup;
     ctx.onInvalidated(cleanup);
     scan();
   },

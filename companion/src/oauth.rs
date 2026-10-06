@@ -165,7 +165,7 @@ fn random_value() -> String {
 }
 
 fn directory() -> Result<PathBuf> {
-    let path = ProjectDirs::from("org", "veguide", "veguide")
+    let path = ProjectDirs::from("org", "vegsnap", "vegsnap")
         .ok_or("Cannot locate the user configuration directory.")?
         .config_dir()
         .to_path_buf();
@@ -183,7 +183,7 @@ pub fn with_session_lock(action: impl FnOnce() -> Result<Value>) -> Result<Value
         .open(directory()?.join("session.lock"))
         .map_err(|_| "Cannot open the connection lock.")?;
     FileExt::try_lock_exclusive(&lock)
-        .map_err(|_| "Another Veguide connection request is running. Try again shortly.")?;
+        .map_err(|_| "Another Vegsnap connection request is running. Try again shortly.")?;
     action()
 }
 
@@ -220,7 +220,7 @@ fn valid_host_id(id: &str) -> bool {
 }
 
 fn entry() -> Result<keyring::Entry> {
-    keyring::Entry::new("org.veguide.companion", "chatgpt").map_err(|_| {
+    keyring::Entry::new("org.vegsnap.companion", "chatgpt").map_err(|_| {
         "The OS credential store is unavailable. Unlock your wallet and try again.".into()
     })
 }
@@ -249,7 +249,7 @@ fn client() -> Result<Client> {
         .timeout(Duration::from_secs(120))
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::none())
-        .user_agent("Veguide/0.1.0")
+        .user_agent("Vegsnap/0.1.0")
         .build()
         .map_err(|_| "Cannot initialize the connection.".into())
 }
@@ -442,7 +442,7 @@ fn authorization_url(
     ]);
     if client_id == BOOTSTRAP {
         url.query_pairs_mut()
-            .append_pair("agent_name_hint", "Veguide");
+            .append_pair("agent_name_hint", "Vegsnap");
     }
     url
 }
@@ -512,12 +512,12 @@ fn complete_sign_in<T>(writer: &mut impl Write, finish: impl FnOnce() -> Result<
         Ok(_) => callback_response(
             "200 OK",
             "Connected to ChatGPT",
-            "Return to Veguide in Firefox. You can close this tab.",
+            "Return to Vegsnap in Firefox. You can close this tab.",
         ),
         Err(error) => callback_response(
             "502 Bad Gateway",
             "Could not connect to ChatGPT",
-            &format!("{error} Return to Veguide in Firefox to try again."),
+            &format!("{error} Return to Vegsnap in Firefox to try again."),
         ),
     };
     // Closing the browser tab must not discard a successfully stored connection.
@@ -586,7 +586,7 @@ pub fn sign_in() -> Result<Value> {
                 let response = callback_response(
                     "400 Bad Request",
                     "Could not complete sign-in",
-                    &format!("{error} Return to Veguide in Firefox to try again."),
+                    &format!("{error} Return to Vegsnap in Firefox to try again."),
                 );
                 let _ = socket.write_all(response.as_bytes());
                 // Ignore unrelated connections; a valid-state refusal ends this attempt.
@@ -1762,7 +1762,7 @@ mod tests {
             assert!(headers.contains(header));
         }
         assert!(headers.contains(&format!("Content-Length: {}", body.len())));
-        assert!(body.contains("Veguide"));
+        assert!(body.contains("Vegsnap"));
         assert!(body.contains("<svg"));
         assert!(!body.contains("{{"));
         assert!(!body.contains("<script"));
@@ -1805,7 +1805,7 @@ mod tests {
     #[test]
     fn sign_out_keeps_existing_registration_without_retaining_tokens_or_email() {
         let directory =
-            std::env::temp_dir().join(format!("veguide-registration-{}", random_value()));
+            std::env::temp_dir().join(format!("vegsnap-registration-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("registration.json");
         let session = registration_test_session();
@@ -1853,7 +1853,7 @@ mod tests {
     #[test]
     fn interrupted_registration_reuses_issued_id_and_cannot_replace_it_with_another_callback() {
         let directory =
-            std::env::temp_dir().join(format!("veguide-registration-{}", random_value()));
+            std::env::temp_dir().join(format!("vegsnap-registration-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("registration.json");
         let (_, client_id) = callback(
@@ -1903,7 +1903,7 @@ mod tests {
     #[test]
     fn malformed_or_conflicting_registration_never_falls_back_to_a_new_app() {
         let directory =
-            std::env::temp_dir().join(format!("veguide-registration-{}", random_value()));
+            std::env::temp_dir().join(format!("vegsnap-registration-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("registration.json");
         fs::write(&path, "corrupt registration").unwrap();
@@ -1935,7 +1935,7 @@ mod tests {
 
     #[test]
     fn persisted_host_id_is_uuid_v4_urn_in_authorization() {
-        let directory = std::env::temp_dir().join(format!("veguide-host-test-{}", random_value()));
+        let directory = std::env::temp_dir().join(format!("vegsnap-host-test-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("host-id");
         let host = host_id_at(&path).unwrap();
@@ -1965,7 +1965,7 @@ mod tests {
 
     #[test]
     fn invalid_saved_host_id_is_rejected_without_replacement() {
-        let directory = std::env::temp_dir().join(format!("veguide-host-test-{}", random_value()));
+        let directory = std::env::temp_dir().join(format!("vegsnap-host-test-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("host-id");
         fs::write(&path, "old-invalid-opaque-id").unwrap();
@@ -1982,7 +1982,7 @@ mod tests {
     #[test]
     fn saved_uuid_is_preserved_and_malformed_uuids_are_rejected() {
         let valid = "urn:uuid:8fd8cd3c-55d9-4a22-90aa-c42f0ea92bab";
-        let directory = std::env::temp_dir().join(format!("veguide-host-test-{}", random_value()));
+        let directory = std::env::temp_dir().join(format!("vegsnap-host-test-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("host-id");
         fs::write(&path, valid).unwrap();
@@ -2210,7 +2210,7 @@ mod tests {
             params["redirect_uri"],
             "http://127.0.0.1:4567/auth/callback"
         );
-        assert_eq!(params["agent_name_hint"], "Veguide");
+        assert_eq!(params["agent_name_hint"], "Vegsnap");
         let returning = authorization_url(
             "urn:uuid:8fd8cd3c-55d9-4a22-90aa-c42f0ea92bab",
             "issued",

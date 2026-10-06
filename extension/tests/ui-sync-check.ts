@@ -7,9 +7,9 @@ import { act } from 'preact/test-utils';
 import { defaultSettings } from '../src/settings';
 import type { HistoryResult } from '../src/history';
 import type { Request } from '../src/protocol';
-import type { OfflinePackInfo } from '@veguide/core';
+import type { OfflinePackInfo } from '@vegsnap/core';
 
-const window = new Window({ url: 'https://veguide.test/app.html' });
+const window = new Window({ url: 'https://vegsnap.test/app.html' });
 const document = window.document as unknown as Document;
 Object.assign(globalThis, { window, document, location: window.location, navigator: window.navigator });
 type MessageListener = (message: unknown, sender: { id?: string }) => unknown;
@@ -25,11 +25,11 @@ let offlinePacks: OfflinePackInfo[] = [
 const email = 'fake-account@example.invalid';
 const session: Record<string, unknown> = { chatGPTConnection: { state: 'connected', email }, chatGPTModelCatalog: [{ id: 'fixture-vision', name: 'Fixture Vision', supportsImages: true }] };
 let nativeConnected = true;
-const changed = (senderId = 'veguide') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
+const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
   runtime: {
-    id: 'veguide', getURL: (path: string) => `chrome-extension://veguide${path}`,
+    id: 'vegsnap', getURL: (path: string) => `chrome-extension://vegsnap${path}`,
     onMessage: { addListener: (listener: MessageListener) => messageListeners.add(listener), removeListener: (listener: MessageListener) => messageListeners.delete(listener) },
     async sendMessage(message: Request) {
       switch (message.type) {

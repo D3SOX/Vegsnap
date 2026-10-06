@@ -15,8 +15,8 @@ def manifest(binary: Path, browser: str, extension_id: str) -> dict:
     if not os.access(binary, os.X_OK):
         raise ValueError("The native host must be executable")
     result = {
-        "name": "org.veguide.companion",
-        "description": "Veguide optional ChatGPT connection",
+        "name": "org.vegsnap.companion",
+        "description": "Vegsnap optional ChatGPT connection",
         "path": str(binary),
         "type": "stdio",
     }
@@ -36,7 +36,7 @@ def destination(browser: str) -> Path:
         local = os.environ.get("LOCALAPPDATA")
         if not local or not Path(local).is_absolute():
             raise ValueError("LOCALAPPDATA must name an absolute current-user directory")
-        return Path(local) / "Veguide/NativeMessagingHosts" / browser
+        return Path(local) / "Vegsnap/NativeMessagingHosts" / browser
     home = Path.home()
     if sys.platform == "linux":
         if browser == "firefox":
@@ -56,14 +56,14 @@ def register_windows(browser: str, path: Path) -> None:
         "firefox": r"Software\Mozilla\NativeMessagingHosts",
         "chrome": r"Software\Google\Chrome\NativeMessagingHosts",
         "chromium": r"Software\Chromium\NativeMessagingHosts",
-    }[browser] + r"\org.veguide.companion"
+    }[browser] + r"\org.vegsnap.companion"
     with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_SET_VALUE) as registry:
         winreg.SetValueEx(registry, "", 0, winreg.REG_SZ, str(path))
 
 
 def install(binary: Path, browser: str, extension_id: str, output: Optional[Path] = None) -> Path:
     data = manifest(binary, browser, extension_id)
-    path = output or destination(browser) / "org.veguide.companion.json"
+    path = output or destination(browser) / "org.vegsnap.companion.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     if sys.platform == "win32" and output is None:

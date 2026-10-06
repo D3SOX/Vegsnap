@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
-import { analyzeText } from '@veguide/core';
+import { analyzeText } from '@vegsnap/core';
 import { ManufacturerContactSection } from '../src/manufacturer-contact';
 
 const result = { ...analyzeText({ text: 'vitamin D' }), manufacturerContact: { email: 'care@maker.example', sourceUrl: 'https://maker.example/contact', url: 'https://maker.example/contact', productName: 'Oat drink', brand: 'Maker' } };

@@ -15,7 +15,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / 'artifacts/screenshots'
-PACKAGE = 'app.veguide.screenshots'
+PACKAGE = 'app.vegsnapp.screenshots'
 KEYS = ('check', 'result', 'history', 'uncertain')
 
 
@@ -109,7 +109,7 @@ def capture_android(output, serial, avd):
             for theme in ('light', 'dark'):
                 run(adb + ['shell', 'cmd', 'uimode', 'night', 'yes' if theme == 'dark' else 'no'])
                 result = read(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
-                                    'app.veguide.MarketingScreenshotTest', '-e', 'screenshotTheme', theme,
+                                    'app.vegsnapp.MarketingScreenshotTest', '-e', 'screenshotTheme', theme,
                                     PACKAGE + '.test/androidx.test.runner.AndroidJUnitRunner'])
                 print(result)
                 if 'OK (1 test)' not in result:
@@ -278,8 +278,8 @@ def main():
     elif args.run:
         if not args.run.isdigit():
             raise ValueError('Run ID must be numeric.')
-        with tempfile.TemporaryDirectory(prefix='veguide-screenshots-') as folder:
-            run(['gh', 'run', 'download', args.run, '--name', 'veguide-screenshots', '--dir', folder])
+        with tempfile.TemporaryDirectory(prefix='vegsnap-screenshots-') as folder:
+            run(['gh', 'run', 'download', args.run, '--name', 'vegsnap-screenshots', '--dir', folder])
             apply(Path(folder), args.commit)
     else:
         apply(args.bundle.resolve(), args.commit)

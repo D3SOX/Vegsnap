@@ -1,9 +1,9 @@
-import { OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@veguide/core';
+import { OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { imageSupport, localizeResult } from '@veguide/core';
+import { imageSupport, localizeResult } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import type { Category, CheckInput, CheckStage, Finding } from '@veguide/core';
+import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { messages } from './i18n';
 import { PRESETS, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type Pending, type Reply, type Request, type State } from './protocol';
@@ -94,7 +94,7 @@ export function App() {
       const catalog = shared.chatGPTModelCatalog;
       setModels(Array.isArray(catalog) ? catalog.filter((model): model is { id: string; name: string; supportsImages?: boolean } => isRecord(model) && typeof model.id === 'string' && typeof model.name === 'string') : []);
       setModelsLoaded(Array.isArray(catalog));
-    }, cause => setError(cause instanceof Error ? cause.message : 'Unable to synchronize Veguide.'));
+    }, cause => setError(cause instanceof Error ? cause.message : 'Unable to synchronize Vegsnap.'));
     const changed = (message: unknown, sender: { id?: string }) => {
       if (sender.id === browser.runtime.id && isRecord(message) && message.type === 'state-changed') void sync.refresh();
       return undefined;
@@ -228,7 +228,7 @@ export function App() {
   }
   async function inspect() {
     const [active] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!active?.id) throw new Error('Open the product page, then use the Veguide toolbar button.');
+    if (!active?.id) throw new Error('Open the product page, then use the Vegsnap toolbar button.');
     const [response] = await browser.scripting.executeScript({ target: { tabId: active.id }, func: () => ({ selection: window.getSelection()?.toString().slice(0, 30_000) ?? '', json: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).slice(0, 10).map(node => (node.textContent ?? '').slice(0, 300_000)), title: document.title }) });
     const page = response?.result;
     if (!page) throw new Error('This page cannot be read. Paste text or import a photo instead.');
@@ -257,11 +257,11 @@ export function App() {
   }
   function exportHistory() {
     const blob = new Blob([JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'veguide-history.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'vegsnap-history.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
-    <header><div class="brand"><img class="brand-icon" src="/icons/veguide.svg" alt="" width="44" height="44"/><div><strong>Veguide</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Veguide">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
+    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
@@ -324,12 +324,12 @@ export function App() {
           </section>
           <h2>{t.privacy}</h2><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
         </form>
-        <footer>Veguide · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
+        <footer>Vegsnap · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
       </section>}
       <aside class="mobile-app" aria-labelledby="mobile-app-heading">
         <h2 id="mobile-app-heading">{t.mobileHeading}</h2>
         <p>{t.mobileHint}</p>
-        <a class="contact-action" href={`https://veguide.app/${config.language === 'de' ? 'de/' : ''}#download`} target="_blank" rel="noreferrer">{t.mobileAction}<span aria-hidden="true">↗</span></a>
+        <a class="contact-action" href={`https://vegsnap.app/${config.language === 'de' ? 'de/' : ''}#download`} target="_blank" rel="noreferrer">{t.mobileAction}<span aria-hidden="true">↗</span></a>
       </aside>
     </main>
   </div>;

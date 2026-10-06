@@ -51,7 +51,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
     const url = new URL(`/api/v3/product/${code}.json`, db.origin);
     url.searchParams.set('fields', FIELDS);
     // Browser fetch cannot reliably override User-Agent; app identification remains in the URL.
-    url.searchParams.set('app_name', 'Veguide'); url.searchParams.set('app_version', '0.1.0');
+    url.searchParams.set('app_name', 'Vegsnap'); url.searchParams.set('app_version', '0.1.0');
     try {
       const response = await fetcher(url.href, {
         headers: { Accept: 'application/json' }, credentials: 'omit', redirect: 'error',

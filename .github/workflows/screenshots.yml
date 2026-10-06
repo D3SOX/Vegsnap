@@ -55,11 +55,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7
-          avd-name: veguide_screenshots
+          avd-name: vegsnap_screenshots
           force-avd-creation: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swangle -no-snapshot
           disable-animations: true
-          script: python3 scripts/screenshots.py capture --platform android --serial emulator-5554 --avd veguide_screenshots
+          script: python3 scripts/screenshots.py capture --platform android --serial emulator-5554 --avd vegsnap_screenshots
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: screenshot-input-android
@@ -109,7 +109,7 @@ jobs:
           /tmp/screenshot-tools/bin/python scripts/screenshots.py render
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: veguide-screenshots
+          name: vegsnap-screenshots
           path: |
             artifacts/screenshots/website/images
             artifacts/screenshots/marketing/sources
@@ -119,7 +119,7 @@ jobs:
       - name: Review instructions
         run: |
           {
-            echo "Download **veguide-screenshots** and inspect contact-sheet.png."
+            echo "Download **vegsnap-screenshots** and inspect contact-sheet.png."
             echo "From the captured checkout, apply with:"
             echo "bun run screenshots:apply --run $GITHUB_RUN_ID --commit"
             echo "This creates a signed asset-only commit locally. It does not push or deploy."

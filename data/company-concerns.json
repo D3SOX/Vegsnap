@@ -469,7 +469,7 @@
       "reviewedAt": "2026-10-06T00:00:00Z",
       "access": "Downloadable CSV/PDF company classifications.",
       "reuse": "Terms prohibit bulk reproduction or commercial use without express written permission. No list is imported.",
-      "reviewPolicy": "The broad exploitation classification includes ordinary animal-product sales and tangential activity, excluded by Veguide policy. Animal-testing entries are research leads only, requiring current underlying evidence."
+      "reviewPolicy": "The broad exploitation classification includes ordinary animal-product sales and tangential activity, excluded by Vegsnap policy. Animal-testing entries are research leads only, requiring current underlying evidence."
     },
     {
       "id": "bundestag-lobbyregister",
@@ -488,7 +488,7 @@
       "reviewedAt": "2026-10-06T00:00:00Z",
       "access": "Published facility datasets and processing code.",
       "reuse": "Compiled data is CC BY-NC-SA-4.0, separate from AGPL code; noncommercial restriction prevents treating it as unrestricted FOSS data. No compilation is imported.",
-      "reviewPolicy": "Follow provenance to original public records. Facility existence and ordinary animal-product production alone do not qualify as Veguide concerns."
+      "reviewPolicy": "Follow provenance to original public records. Facility existence and ordinary animal-product production alone do not qualify as Vegsnap concerns."
     },
     {
       "id": "leaping-bunny",

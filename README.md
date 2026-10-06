@@ -1,6 +1,6 @@
 <div align="center">
-  <picture><img src="website/logo.png" alt="Veguide leaf icon" width="88" height="88"></picture>
-  <h1>Veguide</h1>
+  <picture><img src="website/logo.png" alt="Vegsnap leaf icon" width="88" height="88"></picture>
+  <h1>Vegsnap</h1>
   <p><strong>Check whether a product appears vegan.</strong></p>
   <p>Photograph a label on Android, or check ingredients and product images in Chromium or Firefox.</p>
   <p>
@@ -10,21 +10,22 @@
     &nbsp;&nbsp;
     <picture><img src="marketing/badges/firefox-icon.svg" alt="Firefox" width="40" height="40"></picture>
   </p>
-  <p><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/readme-preview.png"><img src="website/images/readme-preview.png" alt="Real Veguide screens: ingredient results in the browser extension and Android app" width="560"></picture></p>
+  <p><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/readme-preview.png"><img src="website/images/readme-preview.png" alt="Real Vegsnap screens: ingredient results in the browser extension and Android app" width="560"></picture></p>
   <p>
-    <a href="https://veguide.app"><img src="marketing/badges/website.svg" alt="Visit the Veguide website" width="200" height="58"></a>
-    <a href="https://github.com/D3SOX/veguide/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
+    <a href="https://vegsnap.app"><img src="marketing/badges/website.svg" alt="Visit the Vegsnap website" width="200" height="58"></a>
+    <a href="https://github.com/D3SOX/vegsnap/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
     <br>
     <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
-    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
+    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnapp%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
   </p>
 </div>
 
-Veguide supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
+Vegsnap supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
 
-You do not need a Veguide account. History stays on your device. The app has no ads or telemetry.
+You do not need a Vegsnap account. History stays on your device. The app has no ads or telemetry.
 
 This is an early release. Device, store and provider compatibility tests are ongoing.
+
 
 ## What it does
 
@@ -64,7 +65,7 @@ Open an image to see the original screenshot.
 
 AI can identify a product, read its label and assess unfamiliar ingredients. ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
 
-Veguide accepts a web claim only if its URL came from the search tool and its product and brand match the check. AI-read labels and claims remain marked unverified. Community database labels do not establish verified certification.
+Vegsnap accepts a web claim only if its URL came from the search tool and its product and brand match the check. AI-read labels and claims remain marked unverified. Community database labels do not establish verified certification.
 
 Incomplete composition, ambiguous ingredient origins or conflicting sources can produce an uncertain result. Store badges require an exact barcode in the page's structured product data. Use a right-click check when a listing does not supply one.
 
@@ -76,43 +77,43 @@ Download the signed APK using the Android badge above. You can also use the Obta
 
 ## Install the browser extension
 
-Download the browser packages from the [latest release](https://github.com/D3SOX/veguide/releases/latest).
+Download the browser packages from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest).
 
-- Chromium: extract `veguide-chromium.zip`, open `chrome://extensions`, enable developer mode and choose **Load unpacked**. Select the extracted folder. The release also includes `veguide-chromium.crx`, but some browsers restrict direct CRX installation. The ZIP works for development installation.
-- Firefox: download `veguide-firefox.xpi`, open `about:debugging`, choose **This Firefox**, then **Load Temporary Add-on** and select the file. The XPI is currently unsigned, so normal Firefox cannot install it permanently. Temporary add-ons disappear when Firefox closes. Permanent installation needs Mozilla signing.
+- Chromium: extract `vegsnap-chromium.zip`, open `chrome://extensions`, enable developer mode and choose **Load unpacked**. Select the extracted folder. The release also includes `vegsnap-chromium.crx`, but some browsers restrict direct CRX installation. The ZIP works for development installation.
+- Firefox: download `vegsnap-firefox.xpi`, open `about:debugging`, choose **This Firefox**, then **Load Temporary Add-on** and select the file. The XPI is currently unsigned, so normal Firefox cannot install it permanently. Temporary add-ons disappear when Firefox closes. Permanent installation needs Mozilla signing.
 
 ## Install the ChatGPT companion
 
 The extension needs a desktop companion for ChatGPT sign-in. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
 
-Download the archive for your computer from the [latest release](https://github.com/D3SOX/veguide/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
+Download the archive for your computer from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
 
 ### Linux x86_64
 
-Download `veguide-companion-linux-x86_64.tar.gz`, then run:
+Download `vegsnap-companion-linux-x86_64.tar.gz`, then run:
 
 ```sh
-mkdir -p ~/.local/lib/veguide
-tar -xzf ~/Downloads/veguide-companion-linux-x86_64.tar.gz -C ~/.local/lib/veguide
-chmod +x ~/.local/lib/veguide/veguide-companion
-python3 ~/.local/lib/veguide/install.py \
-  --binary "$HOME/.local/lib/veguide/veguide-companion" \
-  --browser firefox --extension-id veguide@veguide.app
+mkdir -p ~/.local/lib/vegsnap
+tar -xzf ~/Downloads/vegsnap-companion-linux-x86_64.tar.gz -C ~/.local/lib/vegsnap
+chmod +x ~/.local/lib/vegsnap/vegsnap-companion
+python3 ~/.local/lib/vegsnap/install.py \
+  --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
+  --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
 For Chromium:
 
 ```sh
-python3 "$HOME/.local/lib/veguide/install.py" \
-  --binary "$HOME/.local/lib/veguide/veguide-companion" \
+python3 "$HOME/.local/lib/vegsnap/install.py" \
+  --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
   --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
 For Google Chrome:
 
 ```sh
-python3 "$HOME/.local/lib/veguide/install.py" \
-  --binary "$HOME/.local/lib/veguide/veguide-companion" \
+python3 "$HOME/.local/lib/vegsnap/install.py" \
+  --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
   --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
@@ -120,31 +121,31 @@ Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Se
 
 ### macOS, Apple silicon and Intel
 
-Download `veguide-companion-macos-universal.tar.gz`, then run:
+Download `vegsnap-companion-macos-universal.tar.gz`, then run:
 
 ```sh
-mkdir -p "$HOME/Library/Application Support/Veguide"
-tar -xzf ~/Downloads/veguide-companion-macos-universal.tar.gz \
-  -C "$HOME/Library/Application Support/Veguide"
-chmod +x "$HOME/Library/Application Support/Veguide/veguide-companion"
-python3 "$HOME/Library/Application Support/Veguide/install.py" \
-  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
-  --browser firefox --extension-id veguide@veguide.app
+mkdir -p "$HOME/Library/Application Support/Vegsnap"
+tar -xzf ~/Downloads/vegsnap-companion-macos-universal.tar.gz \
+  -C "$HOME/Library/Application Support/Vegsnap"
+chmod +x "$HOME/Library/Application Support/Vegsnap/vegsnap-companion"
+python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
+  --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
+  --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
 For Chromium:
 
 ```sh
-python3 "$HOME/Library/Application Support/Veguide/install.py" \
-  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
+python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
+  --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
   --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
 For Google Chrome:
 
 ```sh
-python3 "$HOME/Library/Application Support/Veguide/install.py" \
-  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
+python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
+  --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
   --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
@@ -152,38 +153,38 @@ The companion uses macOS Keychain. The release is not notarized. If macOS blocks
 
 ### Windows x86_64
 
-Download `veguide-companion-windows-x86_64.zip`. Install Python 3 and the [Microsoft Visual C++ v14 Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/), then run these commands in PowerShell:
+Download `vegsnap-companion-windows-x86_64.zip`. Install Python 3 and the [Microsoft Visual C++ v14 Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/), then run these commands in PowerShell:
 
 ```powershell
-$veguideDirectory = Join-Path $env:LOCALAPPDATA "Veguide\Companion"
-New-Item -ItemType Directory -Force -Path $veguideDirectory | Out-Null
-Expand-Archive -Force -Path "$HOME\Downloads\veguide-companion-windows-x86_64.zip" -DestinationPath $veguideDirectory
-py -3 "$veguideDirectory\install.py" `
-  --binary "$veguideDirectory\veguide-companion.exe" `
-  --browser firefox --extension-id veguide@veguide.app
+$vegsnapDirectory = Join-Path $env:LOCALAPPDATA "Vegsnap\Companion"
+New-Item -ItemType Directory -Force -Path $vegsnapDirectory | Out-Null
+Expand-Archive -Force -Path "$HOME\Downloads\vegsnap-companion-windows-x86_64.zip" -DestinationPath $vegsnapDirectory
+py -3 "$vegsnapDirectory\install.py" `
+  --binary "$vegsnapDirectory\vegsnap-companion.exe" `
+  --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
 For Chromium:
 
 ```powershell
-py -3 "$veguideDirectory\install.py" `
-  --binary "$veguideDirectory\veguide-companion.exe" `
+py -3 "$vegsnapDirectory\install.py" `
+  --binary "$vegsnapDirectory\vegsnap-companion.exe" `
   --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
 For Google Chrome:
 
 ```powershell
-py -3 "$veguideDirectory\install.py" `
-  --binary "$veguideDirectory\veguide-companion.exe" `
+py -3 "$vegsnapDirectory\install.py" `
+  --binary "$vegsnapDirectory\vegsnap-companion.exe" `
   --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
-The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Veguide\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
+The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Vegsnap\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
 
 ### Connect your browser
 
-Run the registration command for each browser you use. Release packages use the stable Chromium ID `bljmddjdbglldnbdhdfdlbilieoheend`; updates keep that ID. Firefox uses `veguide@veguide.app`.
+Run the registration command for each browser you use. Release packages use the stable Chromium ID `bljmddjdbglldnbdhdfdlbilieoheend`; updates keep that ID. Firefox uses `vegsnap@vegsnap.app`.
 
 After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
 

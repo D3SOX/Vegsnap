@@ -46,8 +46,8 @@ jobs:
           fi
           {
             echo "RELEASE_TAG=$REQUESTED_TAG"
-            echo "VEGUIDE_VERSION_NAME=${REQUESTED_TAG#v}"
-            echo "VEGUIDE_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))"
+            echo "VEGSNAP_VERSION_NAME=${REQUESTED_TAG#v}"
+            echo "VEGSNAP_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))"
           } >> "$GITHUB_ENV"
       - run: bun install --frozen-lockfile
       - run: bun run typecheck && bun run test
@@ -56,43 +56,44 @@ jobs:
           SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           umask 077
-          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/veguide-release.p12"
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/vegsnap-release.p12"
       - name: Verify and build signed APK
         env:
-          VEGUIDE_KEYSTORE_PATH: ${{ runner.temp }}/veguide-release.p12
-          VEGUIDE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VEGSNAP_KEYSTORE_PATH: ${{ runner.temp }}/vegsnap-release.p12
+          VEGSNAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VEGSNAP_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
       - name: Build extension packages
         env:
           CHROMIUM_EXTENSION_KEY: ${{ secrets.CHROMIUM_EXTENSION_KEY }}
-          VEGUIDE_EXTENSION_KEY_PATH: ${{ runner.temp }}/veguide-extension.pem
-          VEGUIDE_CHROMIUM_BINARY: google-chrome
+          VEGSNAP_EXTENSION_KEY_PATH: ${{ runner.temp }}/vegsnap-extension.pem
+          VEGSNAP_CHROMIUM_BINARY: google-chrome
         run: |
           umask 077
-          printf '%s' "$CHROMIUM_EXTENSION_KEY" > "$VEGUIDE_EXTENSION_KEY_PATH"
-          bun run --filter @veguide/extension build:chromium
-          bun run --filter @veguide/extension build:firefox
+          printf '%s' "$CHROMIUM_EXTENSION_KEY" > "$VEGSNAP_EXTENSION_KEY_PATH"
+          bun run --filter @vegsnap/extension build:chromium
+          bun run --filter @vegsnap/extension build:firefox
           bun scripts/extension-release-check.ts
           bun scripts/extension-release.ts release
       - name: Prepare release files
         run: |
           mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
+          cp android/app/build/outputs/apk/release/app-release.apk release/vegsnap.apk
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: veguide-release-apps
+          name: vegsnap-release-apps
           retention-days: 1
           if-no-files-found: error
           path: |
-            release/veguide.apk
-            release/veguide-chromium.crx
-            release/veguide-chromium.zip
-            release/veguide-firefox.xpi
+            release/vegsnap.apk
+            release/vegsnap-chromium.crx
+            release/vegsnap-chromium.zip
+            release/vegsnap-firefox.xpi
             release/extension-artifacts.json
       - name: Remove signing material
         if: always()
-        run: rm -f "$RUNNER_TEMP/veguide-release.p12" "$RUNNER_TEMP/veguide-extension.pem"
+        run: rm -f "$RUNNER_TEMP/vegsnap-release.p12" "$RUNNER_TEMP/vegsnap-extension.pem"
 
   companion:
     strategy:
@@ -118,37 +119,37 @@ jobs:
           python -m unittest discover -s companion -p 'test_install.py' -v
       - name: Build companion
         env:
-          VEGUIDE_COMPANION_PLATFORM: ${{ matrix.platform }}
+          VEGSNAP_COMPANION_PLATFORM: ${{ matrix.platform }}
         run: |
           mkdir companion-release companion-artifacts
           cp companion/install.py LICENSE companion-release/
-          case "$VEGUIDE_COMPANION_PLATFORM" in
+          case "$VEGSNAP_COMPANION_PLATFORM" in
             macos-universal)
               rustup +1.98.1 target add aarch64-apple-darwin x86_64-apple-darwin
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target aarch64-apple-darwin
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
-              lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/veguide-companion -output companion-release/veguide-companion
-              codesign --force --sign - companion-release/veguide-companion
-              lipo companion-release/veguide-companion -verify_arch arm64 x86_64
-              codesign --verify companion-release/veguide-companion
-              tar -czf companion-artifacts/veguide-companion-macos-universal.tar.gz -C companion-release .
+              lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/vegsnap-companion -output companion-release/vegsnap-companion
+              codesign --force --sign - companion-release/vegsnap-companion
+              lipo companion-release/vegsnap-companion -verify_arch arm64 x86_64
+              codesign --verify companion-release/vegsnap-companion
+              tar -czf companion-artifacts/vegsnap-companion-macos-universal.tar.gz -C companion-release .
               ;;
             windows-x86_64)
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
-              cp companion/target/release/veguide-companion.exe companion-release/
-              python -c "import shutil; shutil.make_archive('companion-artifacts/veguide-companion-windows-x86_64', 'zip', 'companion-release')"
+              cp companion/target/release/vegsnap-companion.exe companion-release/
+              python -c "import shutil; shutil.make_archive('companion-artifacts/vegsnap-companion-windows-x86_64', 'zip', 'companion-release')"
               ;;
             linux-x86_64)
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
-              cp companion/target/release/veguide-companion companion-release/
-              veguide_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
-              cp "$(dirname "$veguide_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
-              tar -czf companion-artifacts/veguide-companion-linux-x86_64.tar.gz -C companion-release .
+              cp companion/target/release/vegsnap-companion companion-release/
+              vegsnap_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
+              cp "$(dirname "$vegsnap_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
+              tar -czf companion-artifacts/vegsnap-companion-linux-x86_64.tar.gz -C companion-release .
               ;;
           esac
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: veguide-release-${{ matrix.platform }}
+          name: vegsnap-release-${{ matrix.platform }}
           path: companion-artifacts/*
           retention-days: 1
           if-no-files-found: error
@@ -161,7 +162,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: veguide-release-*
+          pattern: vegsnap-release-*
           path: release
           merge-multiple: true
       - name: Publish release
@@ -169,29 +170,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          veguide_notes="$RUNNER_TEMP/veguide-release-notes.md"
-          veguide_extension_id=$(python -c 'import json,re; identity=json.load(open("release/extension-artifacts.json"))["chromium"]["id"]; assert re.fullmatch("[a-p]{32}", identity); print(identity)')
+          vegsnap_notes="$RUNNER_TEMP/vegsnap-release-notes.md"
+          vegsnap_extension_id=$(python -c 'import json,re; identity=json.load(open("release/extension-artifacts.json"))["chromium"]["id"]; assert re.fullmatch("[a-p]{32}", identity); print(identity)')
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            cat > "$veguide_notes" <<EOF
+            cat > "$vegsnap_notes" <<EOF
           Signed Android APK, browser extensions and companions for Linux, Windows and macOS.
 
           [Installation instructions](https://github.com/$GITHUB_REPOSITORY#install-the-browser-extension) cover the unsigned Firefox XPI and Chromium packages. [Companion registration](https://github.com/$GITHUB_REPOSITORY#install-the-chatgpt-companion) is required for ChatGPT sign-in in the extension.
 
           Regional packs are available in the [regional product packs release](https://github.com/$GITHUB_REPOSITORY/releases/tag/offline-data).
           EOF
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes-file "$veguide_notes"
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Vegsnap $RELEASE_TAG" --notes-file "$vegsnap_notes"
           fi
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > "$veguide_notes"
-          if ! grep -Fq "$veguide_extension_id" "$veguide_notes"; then
-            printf '\nChromium extension ID: %s. This stays the same across releases signed with the same key.\n' "$veguide_extension_id" >> "$veguide_notes"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > "$vegsnap_notes"
+          if ! grep -Fq "$vegsnap_extension_id" "$vegsnap_notes"; then
+            printf '\nChromium extension ID: %s. This stays the same across releases signed with the same key.\n' "$vegsnap_extension_id" >> "$vegsnap_notes"
           fi
-          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$veguide_notes"
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$vegsnap_notes"
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
-            release/veguide.apk \
-            release/veguide-chromium.crx \
-            release/veguide-chromium.zip \
-            release/veguide-firefox.xpi \
-            release/veguide-companion-linux-x86_64.tar.gz \
-            release/veguide-companion-windows-x86_64.zip \
-            release/veguide-companion-macos-universal.tar.gz
+            release/vegsnap.apk \
+            release/vegsnap-chromium.crx \
+            release/vegsnap-chromium.zip \
+            release/vegsnap-firefox.xpi \
+            release/vegsnap-companion-linux-x86_64.tar.gz \
+            release/vegsnap-companion-windows-x86_64.zip \
+            release/vegsnap-companion-macos-universal.tar.gz
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

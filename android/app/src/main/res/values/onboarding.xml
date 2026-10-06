@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
   <string name="tour_capture">Start with the product</string>
-  <string name="tour_capture_body">Scan a barcode, take photos, or enter a label. Veguide shows what the evidence supports.</string>
+  <string name="tour_capture_body">Scan a barcode, take photos, or enter a label. Vegsnap shows what the evidence supports.</string>
   <string name="tour_barcode">Barcode first</string>
   <string name="tour_barcode_body">Camera looks up detected barcodes in public databases. A match identifies a product; it does not automatically make it vegan.</string>
   <string name="tour_photo">Add the missing detail</string>
@@ -23,7 +23,7 @@
   <string name="tour_company">Company concerns are separate</string>
   <string name="tour_company_body">Documented animal exploitation can be flagged without changing the product verdict. Selling other animal products alone is not a flag. No flag is not an ethical certification.</string>
   <string name="tour_control">Your checks, your control</string>
-  <string name="tour_control_body">No Veguide account is required. Choose how much to share and how many checks run at once.</string>
+  <string name="tour_control_body">No Vegsnap account is required. Choose how much to share and how many checks run at once.</string>
   <string name="tour_local">Local history, explicit AI</string>
   <string name="tour_local_body">History and photos stay on this device. Explicit AI checks send selected content to your provider. Database searches send product identifiers or search terms, never camera frames.</string>
   <string name="tour_queue">Keep going</string>
@@ -33,7 +33,7 @@
   <string name="tour_next">Next</string>
   <string name="tour_done">Start checking</string>
   <string name="tour_progress">Step %1$d of %2$d</string>
-  <string name="tour_replay">How Veguide classifies products</string>
+  <string name="tour_replay">How Vegsnap classifies products</string>
   <string name="parallel_checks">Parallel checks: %1$d</string>
   <string name="parallel_checks_hint">Run 1–10 checks at once. Provider limits still apply.</string>
   <string name="edit_result">Edit</string>

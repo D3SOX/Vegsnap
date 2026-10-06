@@ -1,7 +1,7 @@
 // Isolated browser transport with the real provider adapter and product evaluation pipeline.
 import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
-import { checkProduct } from '@veguide/core';
+import { checkProduct } from '@vegsnap/core';
 
 let failure = '';
 const commands: string[] = [];

@@ -1,4 +1,4 @@
-import { OfflineProductIndex, parseOfflineSnapshot, validateOfflineSnapshot, type OfflinePackInfo, type OfflineSnapshot } from '@veguide/core';
+import { OfflineProductIndex, parseOfflineSnapshot, validateOfflineSnapshot, type OfflinePackInfo, type OfflineSnapshot } from '@vegsnap/core';
 export interface OfflinePackStorage {
   read(): Promise<unknown[]>;
   put(snapshot: OfflineSnapshot): Promise<void>;

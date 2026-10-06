@@ -1,7 +1,7 @@
 // Isolated process: module mocks here never leak into the core's real evaluator tests.
 import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
-import type { CheckInput, CheckOptions, ProviderConfig } from '@veguide/core';
+import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { defaultSettings, STORES } from '../src/settings';
 import type { Pending, Reply } from '../src/protocol';
@@ -68,7 +68,7 @@ function matchesOrigin(url: string, pattern: string) {
 function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string) { delete values[key]; } }; }
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => browserLanguage },
-  runtime: { id: 'veguide', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://veguide${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
+  runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
   storage: { local: storage(local), session: storage(session) },
   contextMenus: { onClicked: { addListener() {} }, async update(_id: string, properties: { title: string }) { if (menuTitle === undefined) throw new Error('Menu missing'); menuTitle = properties.title; }, create(properties: { title: string }) { assert.equal(menuTitle, undefined, 'Only one context menu is created'); menuTitle = properties.title; } },
   permissions: { async contains(request: { origins?: string[] }) { return !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
@@ -91,7 +91,7 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
   if (operation !== 'list') historyOperations.push(`${operation}:end`);
   return operation === 'list' ? saved : undefined;
 } }));
-mock.module('@veguide/core', () => ({
+mock.module('@vegsnap/core', () => ({
   acceptsImages,
   checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
   createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => ({ text: 'test', complete: false, category: 'other' }) }; },
@@ -102,14 +102,14 @@ const { default: background } = await import('../entrypoints/background');
 background.main();
 // Wait for initial registration's asynchronous storage/permission work to settle.
 await new Promise(resolve => setTimeout(resolve, 0));
-assert(registeredScripts.some(script => script.id === 'veguide-dm'), 'Saved opt-ins register on every background start, including extension reloads');
-assert(!registeredScripts.some(script => script.id === 'veguide-amazon'), 'Startup does not opt into another store');
+assert(registeredScripts.some(script => script.id === 'vegsnap-dm'), 'Saved opt-ins register on every background start, including extension reloads');
+assert(!registeredScripts.some(script => script.id === 'vegsnap-amazon'), 'Startup does not opt into another store');
 assert(injectedTabs.includes(1), 'Saved opt-ins activate in already open matching tabs');
 assert(!injectedTabs.includes(2) && !injectedTabs.includes(3));
-assert(registeredScripts.some(script => script.id === 'unrelated-script'), 'Registration only replaces Veguide scripts');
+assert(registeredScripts.some(script => script.id === 'unrelated-script'), 'Registration only replaces Vegsnap scripts');
 assert.equal(calls.length, 0, 'Activating integrations does not run an AI check');
-const page: Sender = { id: 'veguide', url: 'https://www.dm.de/example', tab: { id: 1 } };
-const trusted: Sender = { id: 'veguide', url: 'chrome-extension://veguide/app.html' };
+const page: Sender = { id: 'vegsnap', url: 'https://www.dm.de/example', tab: { id: 1 } };
+const trusted: Sender = { id: 'vegsnap', url: 'chrome-extension://vegsnap/app.html' };
 assert.equal((await listener!({ type: 'state' }, page)).ok, false, 'Content scripts cannot read settings or credentials');
 assert.equal((await listener!({ type: 'check', input: { text: 'milk' } }, page)).ok, false, 'Content scripts cannot run explicit AI');
 assert.equal((await listener!({ type: 'background-check', barcode: '4006381333931' }, { ...page, url: 'https://www.dm.de.evil.example/' })).ok, false);
@@ -242,16 +242,16 @@ assert.equal((await listener!({ type: 'check', input: { text: 'example' }, reque
 console.log('Check progress: correlated phase-only messages, invalid IDs and content-script request rejection verified');
 
 
-const swedishPage: Sender = { id: 'veguide', url: 'https://www.amazon.se/dp/TEST123456', tab: { id: 2 } };
+const swedishPage: Sender = { id: 'vegsnap', url: 'https://www.amazon.se/dp/TEST123456', tab: { id: 2 } };
 const swedishBarcode = '5012345678900';
 assert.equal((await listener!({ type: 'set-store', store: 'amazon', enabled: false }, trusted)).ok, true);
-assert(!registeredScripts.some(script => script.id === 'veguide-amazon'));
-assert(unregistered.includes('veguide-amazon'), 'Disabling unregisters the automatic content script');
-assert(notifiedTabs.some(tab => tab.id === 2 && JSON.stringify(tab.message) === JSON.stringify({ type: 'veguide-store-disabled' })), 'Disabling tells already open tabs to remove their integration');
+assert(!registeredScripts.some(script => script.id === 'vegsnap-amazon'));
+assert(unregistered.includes('vegsnap-amazon'), 'Disabling unregisters the automatic content script');
+assert(notifiedTabs.some(tab => tab.id === 2 && JSON.stringify(tab.message) === JSON.stringify({ type: 'vegsnap-store-disabled' })), 'Disabling tells already open tabs to remove their integration');
 assert.equal((await listener!({ type: 'background-check', barcode: swedishBarcode }, swedishPage)).ok, false, 'A permitted Amazon domain still requires store opt-in');
 const beforeEnable = injectedTabs.length;
 assert.equal((await listener!({ type: 'set-store', store: 'amazon', enabled: true }, trusted)).ok, true);
-assert(registeredScripts.find(script => script.id === 'veguide-amazon')?.matches.includes('https://*.amazon.se/*'));
+assert(registeredScripts.find(script => script.id === 'vegsnap-amazon')?.matches.includes('https://*.amazon.se/*'));
 assert(injectedTabs.slice(beforeEnable).includes(2), 'Enabling injects into an already open matching Amazon tab');
 assert(!injectedTabs.includes(3), 'A domain suffix lookalike is never injected');
 deniedOrigins.add('https://www.amazon.se/*');
@@ -306,7 +306,7 @@ for (const origin of amazon.origins) {
 }
 startupListener!();
 await new Promise(resolve => setTimeout(resolve, 0));
-assert.deepEqual(registeredScripts.find(script => script.id === 'veguide-amazon')?.matches, ['https://www.amazon.de/*'], 'A saved opt-in retains its previously granted single-country access');
+assert.deepEqual(registeredScripts.find(script => script.id === 'vegsnap-amazon')?.matches, ['https://www.amazon.de/*'], 'A saved opt-in retains its previously granted single-country access');
 assert.equal((await listener!({ type: 'set-store', store: 'amazon', enabled: true }, trusted)).ok, false, 'Expanding a saved store opt-in still requires grants for the full requested scope');
 assert((local.settings as { stores: string[] }).stores.includes('amazon'), 'A rejected permission expansion does not erase the existing opt-in');
 console.log('Existing Amazon access: single-country grants survive reload without silently broadening permissions');
@@ -317,13 +317,13 @@ const beforeRevocation = notifiedTabs.length;
 deniedOrigins.add('https://www.dm.de/*');
 permissionsRemovedListener!();
 await new Promise(resolve => setTimeout(resolve, 0));
-assert(!registeredScripts.some(script => script.id === 'veguide-dm'));
+assert(!registeredScripts.some(script => script.id === 'vegsnap-dm'));
 assert(notifiedTabs.slice(beforeRevocation).some(tab => tab.id === 1), 'Revoking host access removes annotations from previously activated tabs even when their URL is no longer queryable');
 
 // Cross-window state refreshes carry no product data, account credentials or tokens.
 const beforeMutation = progressMessages.length;
 await listener!({ type: 'set-language', language: 'de' }, trusted);
-assert.equal(menuTitle, 'Mit Veguide prüfen', 'Saved extension language immediately updates the menu');
+assert.equal(menuTitle, 'Mit Vegsnap prüfen', 'Saved extension language immediately updates the menu');
 assert.deepEqual(progressMessages.slice(beforeMutation), [{ type: 'state-changed' }], 'A completed settings mutation refreshes every extension window');
 await listener!({ type: 'update-settings', patch: { saveHistory: true } }, trusted);
 const firstSave = deferred(), deletion = deferred();
@@ -463,11 +463,11 @@ console.log('Offline packs: local-first indexes for explicit/background checks a
 const savedSettings = local.settings;
 delete local.settings; browserLanguage = 'de-DE';
 installedListener!(); await tick();
-assert.equal(menuTitle, 'Mit Veguide prüfen');
+assert.equal(menuTitle, 'Mit Vegsnap prüfen');
 browserLanguage = 'sv-SE'; installedListener!(); await tick();
-assert.equal(menuTitle, 'Check with Veguide', 'Unsupported browser languages use English');
+assert.equal(menuTitle, 'Check with Vegsnap', 'Unsupported browser languages use English');
 local.settings = { ...defaultSettings, language: 'de' };
 installedListener!(); await tick();
-assert.equal(menuTitle, 'Mit Veguide prüfen', 'Extension language wins over browser language');
+assert.equal(menuTitle, 'Mit Vegsnap prüfen', 'Extension language wins over browser language');
 local.settings = savedSettings;
 console.log('Context menu: a single localized label follows saved settings or the browser language');

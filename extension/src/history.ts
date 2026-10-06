@@ -1,9 +1,9 @@
-import type { CheckResult } from '@veguide/core';
+import type { CheckResult } from '@vegsnap/core';
 export interface HistoryResult extends CheckResult { photos?: string[]; }
 export function historyExport(results: HistoryResult[]): CheckResult[] {
   return results.map(({ photos: _photos, ...result }) => result);
 }
-const DB_NAME = 'veguide';
+const DB_NAME = 'vegsnap';
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);

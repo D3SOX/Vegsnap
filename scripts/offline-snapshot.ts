@@ -195,7 +195,7 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   if (!bytes) {
     const domain = DOMAIN[source];
     const url = `https://static.${domain}.org/data/en.${domain}.org.products.csv.gz`;
-    const response = await fetcher(url, { headers: { 'User-Agent': 'Veguide/0.1 (build-time offline snapshot)' }, redirect: 'error', signal: AbortSignal.timeout(60_000) });
+    const response = await fetcher(url, { headers: { 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' }, redirect: 'error', signal: AbortSignal.timeout(60_000) });
     if (!response.ok) throw new Error(`${source} export HTTP ${response.status}`);
     bytes = await boundedBytes(response.body, 32 * 1024 * 1024);
     const temporary = `${path}.${crypto.randomUUID()}.tmp`;
@@ -228,7 +228,7 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     const groups: unknown[][] = [];
     for (const query of regionQueries(region)) {
       log(`Offline ${region}: fetching ${query.limit} food candidates for ${query.countries.length === 1 ? query.countries[0] : 'EU'}.`);
-      const response = await (options.fetcher ?? fetch)(exportUrl(query), { headers: { Accept: 'application/json', 'User-Agent': 'Veguide/0.1 (build-time offline snapshot)' },
+      const response = await (options.fetcher ?? fetch)(exportUrl(query), { headers: { Accept: 'application/json', 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' },
         redirect: 'error', signal: AbortSignal.timeout(60_000) });
       groups.push(await readExport(response));
     }

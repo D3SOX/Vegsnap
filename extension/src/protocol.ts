@@ -1,4 +1,4 @@
-import type { CheckInput, CheckStage, OfflinePackInfo } from '@veguide/core';
+import type { CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
 import { validGtin } from './extraction';

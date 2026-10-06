@@ -1,10 +1,10 @@
 [package]
-name = "veguide-companion"
-version = "0.2.4"
+name = "vegsnap-companion"
+version = "0.2.5"
 edition = "2024"
 rust-version = "1.89"
 license = "AGPL-3.0-only"
-description = "Optional native messaging host for Veguide ChatGPT connections"
+description = "Optional native messaging host for Vegsnap ChatGPT connections"
 
 [dependencies]
 base64 = "0.23"

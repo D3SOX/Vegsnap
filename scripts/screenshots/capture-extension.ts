@@ -21,7 +21,7 @@ try {
     }).chrome;
     await chrome.storage.local.set({ settings: { language: 'en', connection: 'database', saveHistory: true } });
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('veguide', 1);
+      const request = indexedDB.open('vegsnap', 1);
       request.onupgradeneeded = () => request.result.createObjectStore('checks', { keyPath: 'id' });
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);

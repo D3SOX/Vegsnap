@@ -19,7 +19,7 @@
     <string name="browse_next">Next</string>
     <string name="browse_page">Page %1$d</string>
     <string name="browse_other_sources">Certification and other sources</string>
-    <string name="browse_external_notice">These sources open in your browser. Veguide does not import their directories or verify certification automatically.</string>
+    <string name="browse_external_notice">These sources open in your browser. Vegsnap does not import their directories or verify certification automatically.</string>
     <string name="browse_external">Opens external website</string>
     <string name="browse_manufacturer">Manufacturer evidence is researched during an explicit product check when your AI connection supports web search.</string>
     <string name="browse_open_error">Could not open your browser.</string>

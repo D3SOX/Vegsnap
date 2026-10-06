@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Veguide</string>
+    <string name="app_name">Vegsnap</string>
     <string name="scan">Camera</string>
     <string name="history">History</string>
     <string name="history_count">%1$d saved</string>
@@ -129,11 +129,11 @@
     <string name="chatgpt_signin_account_error">A different ChatGPT account was selected. Disconnect the current account before switching.</string>
     <string name="chatgpt_signin_storage_error">Could not save the ChatGPT connection on this device. Try connecting again.</string>
     <string name="chatgpt_models_error">Connected to ChatGPT, but available models could not be loaded. Check your connection and plan access, then retry loading models.</string>
-    <string name="chatgpt_browser_pending">Finish connecting in Veguide</string>
+    <string name="chatgpt_browser_pending">Finish connecting in Vegsnap</string>
     <string name="chatgpt_browser_failed">Connection not completed</string>
-    <string name="chatgpt_browser_pending_message">Return to Veguide to finish connecting.</string>
-    <string name="chatgpt_browser_failure_message">Return to Veguide for details and try connecting again.</string>
-    <string name="chatgpt_browser_return">Open Veguide</string>
+    <string name="chatgpt_browser_pending_message">Return to Vegsnap to finish connecting.</string>
+    <string name="chatgpt_browser_failure_message">Return to Vegsnap for details and try connecting again.</string>
+    <string name="chatgpt_browser_return">Open Vegsnap</string>
     <string name="progress_preparing">Preparing your check…</string>
     <string name="progress_database">Checking product databases…</string>
     <string name="progress_photo">Analyzing your photos…</string>
@@ -148,7 +148,7 @@
     <string name="refresh_models">Refresh models</string>
     <string name="queue_channel">Product analyses</string>
     <string name="queue_parallel_status">%1$d running · %2$d waiting</string>
-    <string name="queue_notification">Veguide is checking your products</string>
+    <string name="queue_notification">Vegsnap is checking your products</string>
     <string name="queue_waiting">Queued</string>
     <string name="queue_paused">Paused — turn off offline mode to continue</string>
     <string name="queue_failed">Could not finish. Your photos are saved; you can retry.</string>
@@ -157,7 +157,7 @@
     <string name="queue_retry">Retry</string>
     <string name="continue_scanning">Continue scanning</string>
     <string name="queue_save_error">Could not add this check to the queue. Your inputs are still available. The queue holds up to 30 checks.</string>
-    <string name="queue_start_error">Your check is saved. Open History and retry when Veguide is in the foreground.</string>
+    <string name="queue_start_error">Your check is saved. Open History and retry when Vegsnap is in the foreground.</string>
     <plurals name="queue_count"><item quantity="one">%d check</item><item quantity="other">%d checks</item></plurals>
     <plurals name="queue_photos"><item quantity="one">%d photo</item><item quantity="other">%d photos</item></plurals>
     <string name="show_account_email">Show email address</string>

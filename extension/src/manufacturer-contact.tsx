@@ -1,6 +1,6 @@
 /** @jsxImportSource preact */
 import { useState } from 'preact/hooks';
-import { manufacturerMessage, parseManufacturerContact, type CheckResult, type Locale } from '@veguide/core';
+import { manufacturerMessage, parseManufacturerContact, type CheckResult, type Locale } from '@vegsnap/core';
 
 const messages = {
   en: { title: 'Ask the manufacturer', source: 'Contact source', caution: 'AI read these contact details from the linked source. Check them before sending.', review: 'Review message', subject: 'Subject', copy: 'Copy message', copied: 'Message copied.', failed: 'Could not copy. Select the message below and copy it manually.', email: 'Open in email app', form: 'Open contact form', note: 'You review and send the message yourself.' },

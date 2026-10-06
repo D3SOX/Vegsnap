@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import { parseResultCompanyAssessment, safeSourceUrl, type CompanyAssessment, type CompanyConcern, type Locale } from '@veguide/core';
+import { parseResultCompanyAssessment, safeSourceUrl, type CompanyAssessment, type CompanyConcern, type Locale } from '@vegsnap/core';
 
 const messages = {
   en: {

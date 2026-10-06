@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "Continuously updated regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Veguide. See the repository README for data licenses." --latest=false
+            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "Continuously updated regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Vegsnap. See the repository README for data licenses." --latest=false
           fi
           gh release upload offline-data pack-release/{germany,sweden,eu}.json --repo "$GITHUB_REPOSITORY" --clobber
           gh release upload offline-data pack-release/catalog.json --repo "$GITHUB_REPOSITORY" --clobber

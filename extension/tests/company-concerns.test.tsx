@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { render } from 'preact';
 import { CompanyConcerns } from '../src/company-concerns';
-import { resolveCompanyConcerns } from '@veguide/core';
+import { resolveCompanyConcerns } from '@vegsnap/core';
 
 function mount(locale: 'en' | 'de', brand?: string) {
   const window = new Window();

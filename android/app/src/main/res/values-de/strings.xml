@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Veguide</string>
+    <string name="app_name">Vegsnap</string>
     <string name="scan">Kamera</string>
     <string name="history">Verlauf</string>
     <string name="history_count">%1$d gespeichert</string>
@@ -50,7 +50,7 @@
     <string name="model_required">Wähle ein Modell für die KI aus.</string>
     <string name="chatgpt_setup_required">Verbinde ChatGPT, um KI zu verwenden.</string>
     <string name="disconnect">Trennen und Schlüssel löschen</string>
-    <string name="chatgpt">Optional: Mit deinem berechtigten ChatGPT-Tarif verbinden. Der Systembrowser öffnet sich; kehre danach zu Veguide zurück. Tariflimits gelten. Lokales Trennen widerruft nicht die Freigabe in ChatGPT.</string>
+    <string name="chatgpt">Optional: Mit deinem berechtigten ChatGPT-Tarif verbinden. Der Systembrowser öffnet sich; kehre danach zu Vegsnap zurück. Tariflimits gelten. Lokales Trennen widerruft nicht die Freigabe in ChatGPT.</string>
     <string name="start_tab">App öffnen mit</string>
     <string name="privacy">Datenschutz</string>
     <string name="privacy_text">Kein Konto, keine Nutzungsanalyse und kein Cloud-Verlauf. Analysierte Fotos bleiben nur im lokalen Verlauf und werden mit der Prüfung gelöscht. Metadaten werden vor dem Senden entfernt. API-Schlüssel werden mit Android Keystore verschlüsselt. Datenbank- und KI-Anfragen übermitteln deine IP-Adresse an diese Dienste.</string>
@@ -129,11 +129,11 @@
     <string name="chatgpt_signin_account_error">Ein anderes ChatGPT-Konto wurde ausgewählt. Trenne zuerst das aktuelle Konto, bevor du wechselst.</string>
     <string name="chatgpt_signin_storage_error">Die ChatGPT-Verbindung konnte auf diesem Gerät nicht gespeichert werden. Verbinde dich erneut.</string>
     <string name="chatgpt_models_error">Mit ChatGPT verbunden, aber die verfügbaren Modelle konnten nicht geladen werden. Prüfe deine Verbindung und deinen Tarifzugriff und lade die Modelle erneut.</string>
-    <string name="chatgpt_browser_pending">Verbindung in Veguide abschließen</string>
+    <string name="chatgpt_browser_pending">Verbindung in Vegsnap abschließen</string>
     <string name="chatgpt_browser_failed">Verbindung nicht abgeschlossen</string>
-    <string name="chatgpt_browser_pending_message">Kehre zu Veguide zurück, um die Verbindung abzuschließen.</string>
-    <string name="chatgpt_browser_failure_message">Kehre für weitere Informationen zu Veguide zurück und verbinde dich erneut.</string>
-    <string name="chatgpt_browser_return">Veguide öffnen</string>
+    <string name="chatgpt_browser_pending_message">Kehre zu Vegsnap zurück, um die Verbindung abzuschließen.</string>
+    <string name="chatgpt_browser_failure_message">Kehre für weitere Informationen zu Vegsnap zurück und verbinde dich erneut.</string>
+    <string name="chatgpt_browser_return">Vegsnap öffnen</string>
     <string name="progress_preparing">Prüfung wird vorbereitet…</string>
     <string name="progress_database">Produktdatenbanken werden geprüft…</string>
     <string name="progress_photo">Fotos werden analysiert…</string>
@@ -148,7 +148,7 @@
     <string name="refresh_models">Modelle aktualisieren</string>
     <string name="queue_channel">Produktprüfungen</string>
     <string name="queue_parallel_status">%1$d laufen · %2$d warten</string>
-    <string name="queue_notification">Veguide prüft deine Produkte</string>
+    <string name="queue_notification">Vegsnap prüft deine Produkte</string>
     <string name="queue_waiting">In der Warteschlange</string>
     <string name="queue_paused">Pausiert — zum Fortfahren Offline-Modus ausschalten</string>
     <string name="queue_failed">Prüfung fehlgeschlagen. Deine Fotos sind gespeichert; du kannst es erneut versuchen.</string>
@@ -157,7 +157,7 @@
     <string name="queue_retry">Erneut versuchen</string>
     <string name="continue_scanning">Weiter scannen</string>
     <string name="queue_save_error">Prüfung konnte nicht gespeichert werden. Deine Eingaben sind noch vorhanden. Die Warteschlange fasst bis zu 30 Prüfungen.</string>
-    <string name="queue_start_error">Deine Prüfung ist gespeichert. Öffne den Verlauf und versuche es erneut, während Veguide geöffnet ist.</string>
+    <string name="queue_start_error">Deine Prüfung ist gespeichert. Öffne den Verlauf und versuche es erneut, während Vegsnap geöffnet ist.</string>
     <plurals name="queue_count"><item quantity="one">%d Prüfung</item><item quantity="other">%d Prüfungen</item></plurals>
     <plurals name="queue_photos"><item quantity="one">%d Foto</item><item quantity="other">%d Fotos</item></plurals>
     <string name="show_account_email">E-Mail-Adresse anzeigen</string>

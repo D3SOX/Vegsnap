@@ -4,23 +4,23 @@ plugins {
     id("com.google.devtools.ksp")
 }
 android {
-    namespace = "app.veguide"
+    namespace = "app.vegsnapp"
     compileSdk = 37
     defaultConfig {
-        applicationId = "app.veguide"
+        applicationId = "app.vegsnapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.environmentVariable("VEGUIDE_VERSION_CODE").orNull?.toInt() ?: 12
-        versionName = providers.environmentVariable("VEGUIDE_VERSION_NAME").orNull ?: "0.2.4"
+        versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 13
+        versionName = providers.environmentVariable("VEGSNAP_VERSION_NAME").orNull ?: "0.2.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    val releaseKeystore = providers.environmentVariable("VEGUIDE_KEYSTORE_PATH").orNull
+    val releaseKeystore = providers.environmentVariable("VEGSNAP_KEYSTORE_PATH").orNull
     if (releaseKeystore != null) {
         signingConfigs.create("release") {
             storeFile = file(releaseKeystore)
-            storePassword = providers.environmentVariable("VEGUIDE_KEYSTORE_PASSWORD").get()
-            keyAlias = "veguide"
-            keyPassword = providers.environmentVariable("VEGUIDE_KEYSTORE_PASSWORD").get()
+            storePassword = providers.environmentVariable("VEGSNAP_KEYSTORE_PASSWORD").get()
+            keyAlias = providers.environmentVariable("VEGSNAP_KEY_ALIAS").orElse("vegsnap").get()
+            keyPassword = providers.environmentVariable("VEGSNAP_KEYSTORE_PASSWORD").get()
         }
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
@@ -36,7 +36,7 @@ android {
     buildFeatures { compose = true }
     sourceSets["main"].assets.directories.add("../../data")
     sourceSets["main"].assets.directories.add("../../contracts")
-    testOptions { unitTests.all { it.systemProperty("veguide.repo", rootDir.parentFile.absolutePath) } }
+    testOptions { unitTests.all { it.systemProperty("vegsnap.repo", rootDir.parentFile.absolutePath) } }
     lint { abortOnError = true }
 }
 kotlin {

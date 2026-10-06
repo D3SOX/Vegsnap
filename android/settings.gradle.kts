@@ -6,5 +6,5 @@ dependencyResolutionManagement {
         maven("https://jitpack.io") { content { includeGroup("cz.adaptech.tesseract4android") } }
     }
 }
-rootProject.name = "Veguide"
+rootProject.name = "Vegsnap"
 include(":app")

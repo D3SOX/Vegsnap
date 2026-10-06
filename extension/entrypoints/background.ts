@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import { acceptsImages, checkProduct, createOpenAIProvider, type CheckInput, type CheckResult } from '@veguide/core';
+import { acceptsImages, checkProduct, createOpenAIProvider, type CheckInput, type CheckResult } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
@@ -34,9 +34,9 @@ export default defineBackground(() => {
   let menuQueue = Promise.resolve();
   function syncContextMenu() {
     const next = menuQueue.catch(() => {}).then(async () => {
-      const title = (await settings()).language === 'de' ? 'Mit Veguide prüfen' : 'Check with Veguide';
-      try { await browser.contextMenus.update('veguide-check', { title }); }
-      catch { browser.contextMenus.create({ id: 'veguide-check', title, contexts: ['selection', 'image'] }); }
+      const title = (await settings()).language === 'de' ? 'Mit Vegsnap prüfen' : 'Check with Vegsnap';
+      try { await browser.contextMenus.update('vegsnap-check', { title }); }
+      catch { browser.contextMenus.create({ id: 'vegsnap-check', title, contexts: ['selection', 'image'] }); }
     });
     menuQueue = next;
     return next;
@@ -45,7 +45,7 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(() => { void syncContextMenu(); });
   void syncContextMenu();
   browser.contextMenus.onClicked.addListener(info => {
-    if (info.menuItemId === 'veguide-check') void openCheck({ ...(info.selectionText ? { text: info.selectionText.slice(0, 30_000) } : {}), ...(info.srcUrl ? { imageUrl: info.srcUrl } : {}) });
+    if (info.menuItemId === 'vegsnap-check') void openCheck({ ...(info.selectionText ? { text: info.selectionText.slice(0, 30_000) } : {}), ...(info.srcUrl ? { imageUrl: info.srcUrl } : {}) });
   });
   browser.runtime.onMessage.addListener((message: unknown, sender) => {
     const extensionPage = sender.id === browser.runtime.id && !!sender.url?.startsWith(browser.runtime.getURL('/'));
@@ -199,7 +199,7 @@ export default defineBackground(() => {
   function syncScripts() {
     scriptsQueue = scriptsQueue.catch(() => {}).then(async () => {
       const config = await settings();
-      const registered = (await browser.scripting.getRegisteredContentScripts()).filter(script => script.id.startsWith('veguide-'));
+      const registered = (await browser.scripting.getRegisteredContentScripts()).filter(script => script.id.startsWith('vegsnap-'));
       if (registered.length) await browser.scripting.unregisterContentScripts({ ids: registered.map(script => script.id) });
       for (const store of STORES) {
         const granted: string[] = [];
@@ -213,17 +213,17 @@ export default defineBackground(() => {
           }
         }
         const enabled = config.stores.includes(store.id);
-        if (enabled && granted.length) await browser.scripting.registerContentScripts([{ id: `veguide-${store.id}`, matches: granted, js: ['content-scripts/store.js'], runAt: 'document_idle', persistAcrossSessions: true }]);
+        if (enabled && granted.length) await browser.scripting.registerContentScripts([{ id: `vegsnap-${store.id}`, matches: granted, js: ['content-scripts/store.js'], runAt: 'document_idle', persistAcrossSessions: true }]);
         const tabs = granted.length ? await browser.tabs.query({ url: granted }) : [];
         const activeIds = new Set(enabled ? tabs.flatMap(tab => tab.id === undefined ? [] : [tab.id]) : []);
         for (const id of integrationTabs.get(store.id) ?? []) if (!activeIds.has(id)) {
-          try { await browser.tabs.sendMessage(id, { type: 'veguide-store-disabled' }); } catch { /* The old tab may no longer exist. */ }
+          try { await browser.tabs.sendMessage(id, { type: 'vegsnap-store-disabled' }); } catch { /* The old tab may no longer exist. */ }
         }
         integrationTabs.set(store.id, activeIds);
         for (const tab of tabs) if (tab.id !== undefined) {
           try {
             if (enabled) await browser.scripting.executeScript({ target: { tabId: tab.id }, files: ['/content-scripts/store.js'] });
-            else await browser.tabs.sendMessage(tab.id, { type: 'veguide-store-disabled' });
+            else await browser.tabs.sendMessage(tab.id, { type: 'vegsnap-store-disabled' });
           } catch { /* A tab may close or navigate while its integration is updated. */ }
         }
       }

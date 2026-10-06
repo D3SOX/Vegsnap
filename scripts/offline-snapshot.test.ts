@@ -43,7 +43,7 @@ describe('offline snapshot build', () => {
     expect(() => [...parseTsv(header + '"unterminated')]).toThrow('Unterminated');
   });
   test('fresh cache does no network; failed stale refresh preserves original bytes and date', async () => {
-    const folder = await mkdtemp(join(tmpdir(), 'veguide-offline-test-'));
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-'));
     try {
       const output = join(folder, 'pack.json');
       const original = JSON.stringify(createSnapshot('germany', [[row]], date));
@@ -60,7 +60,7 @@ describe('offline snapshot build', () => {
     } finally { await rm(folder, { recursive: true, force: true }); }
   });
   test('rejects truncated/empty exports atomically; complete valid refresh replaces the cache', async () => {
-    const folder = await mkdtemp(join(tmpdir(), 'veguide-offline-test-'));
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-'));
     try {
       const output = join(folder, 'pack.json');
       const fetcher = (async () => exported([row], true));
