@@ -406,8 +406,9 @@ private fun SettingsScreen(settings: AppSettings, model: VeguideViewModel, onTou
         OutlinedButton(onClick = onTour) { Icon(Icons.Outlined.AutoStories, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.tour_replay)) }
         Text(stringResource(R.string.privacy), style = MaterialTheme.typography.titleLarge)
         Text(stringResource(R.string.privacy_text))
+        ProjectLinks()
         Text(stringResource(R.string.sources), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.source_text), style = MaterialTheme.typography.bodySmall)
+        SourceLicenseLinks()
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -591,6 +592,6 @@ private fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onReche
 private fun startTabIcon(tab: String) = when (tab) {
     "manual" -> Icons.Outlined.EditNote
     "history" -> Icons.Outlined.History
-    "last" -> Icons.Outlined.Restore
+    "last" -> Icons.Outlined.Tab
     else -> Icons.Outlined.CameraAlt
 }
