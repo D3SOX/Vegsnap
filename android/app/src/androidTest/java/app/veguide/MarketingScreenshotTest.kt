@@ -85,6 +85,7 @@ class MarketingScreenshotTest {
             }
         }
         compose.waitUntil(30_000) { model.history.value.size == 3 }
+        compose.onNodeWithText(localized.getString(R.string.manual_hint)).performScrollTo()
         compose.onNodeWithText("Check product").assertIsDisplayed()
         // Theme changes can restart SystemUI. Set demo bars after the first real screen is ready.
         for (extras in listOf("-e command enter", "-e command clock -e hhmm 0941",
