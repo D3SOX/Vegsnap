@@ -51,6 +51,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - run: bun install --frozen-lockfile
       - run: bun run typecheck && bun run test
+      - run: python3 -m unittest discover -s scripts -p 'test_extension_stores.py' -v
       - name: Decode signing key
         env:
           SIGNING_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -72,10 +73,19 @@ jobs:
         run: |
           umask 077
           printf '%s' "$CHROMIUM_EXTENSION_KEY" > "$VEGSNAP_EXTENSION_KEY_PATH"
-          bun run --filter @vegsnap/extension build:chromium
-          bun run --filter @vegsnap/extension build:firefox
+          # Refresh once so both builds and the review source use identical data.
+          bun run data:offline
+          bun run --cwd extension wxt build -b chrome
+          bun run --cwd extension wxt build -b firefox
           bun scripts/extension-release-check.ts
           bun scripts/extension-release.ts release
+          python3 scripts/prepare-extension-stores.py --packages-only --output "$RUNNER_TEMP/store-packages"
+          vegsnap_extension_version=$(python3 -c 'import json; print(json.load(open("extension/.output/firefox-mv3/manifest.json"))["version"])')
+          cp "$RUNNER_TEMP/store-packages/v$vegsnap_extension_version/"{vegsnap-chrome-store.zip,vegsnap-firefox.xpi,vegsnap-firefox-source.zip,submission.json,store-listing.json} release/
+          # Stable releases must match the extension version before publishing.
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            python3 scripts/publish-extension-stores.py validate --tag "$RELEASE_TAG" --directory release
+          fi
       - name: Prepare release files
         run: |
           mkdir -p release
@@ -91,6 +101,10 @@ jobs:
             release/vegsnap-chromium.zip
             release/vegsnap-firefox.xpi
             release/extension-artifacts.json
+            release/vegsnap-chrome-store.zip
+            release/vegsnap-firefox-source.zip
+            release/submission.json
+            release/store-listing.json
       - name: Remove signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/vegsnap-release.p12" "$RUNNER_TEMP/vegsnap-extension.pem"
@@ -192,7 +206,21 @@ jobs:
             release/vegsnap-chromium.crx \
             release/vegsnap-chromium.zip \
             release/vegsnap-firefox.xpi \
+            release/vegsnap-chrome-store.zip \
+            release/vegsnap-firefox-source.zip \
+            release/submission.json \
+            release/store-listing.json \
             release/vegsnap-companion-linux-x86_64.tar.gz \
             release/vegsnap-companion-windows-x86_64.zip \
             release/vegsnap-companion-macos-universal.tar.gz
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
+  stores:
+    needs: publish
+    if: ${{ !contains(inputs.tag || github.ref_name, '-') }}
+    # GITHUB_TOKEN-created releases don't emit another workflow run, so call
+    # the same workflow explicitly after all release assets have been uploaded.
+    uses: ./.github/workflows/publish-extension-stores.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+    secrets: inherit
