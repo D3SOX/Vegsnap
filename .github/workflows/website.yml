@@ -30,17 +30,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Configure GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - name: Version stylesheet URLs
+      - name: Version static asset URLs
         run: |
           python3 - <<'PYTHON'
           import hashlib
           from pathlib import Path
           root = Path('website')
-          stylesheet = root / 'style.css'
-          filename = 'style.' + hashlib.sha256(stylesheet.read_bytes()).hexdigest()[:12] + '.css'
-          stylesheet.rename(root / filename)
-          for page in root.rglob('*.html'):
-              page.write_text(page.read_text().replace('href="/style.css"', 'href="/' + filename + '"'))
+          for source in ('style.css', 'setup.js'):
+              asset = root / source
+              filename = asset.stem + '.' + hashlib.sha256(asset.read_bytes()).hexdigest()[:12] + asset.suffix
+              asset.rename(root / filename)
+              for page in root.rglob('*.html'):
+                  page.write_text(page.read_text().replace('"/' + source + '"', '"/' + filename + '"'))
           PYTHON
       - name: Upload static website
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
