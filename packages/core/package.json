@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./community": "./src/community.ts",
+    "./barcode": "./src/barcode.ts"
+  },
   "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
   "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^5.9.3" }
 }

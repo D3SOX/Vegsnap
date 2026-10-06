@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "veguide-community",
+  "account_id": "cf8bbc47f2bc101e87d665bda1438b49",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-06",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "triggers": { "crons": ["0 * * * *"] },
+  "observability": { "enabled": false },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://veguide-community.withered-flower-f0f2.workers.dev",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFPTnjoe0Tprl3eB",
+    "SUBMISSIONS_ENABLED": "true"
+  },
+  "d1_databases": [{ "binding": "DB", "database_name": "veguide-community", "database_id": "1a622120-c9e7-471d-bd77-623b8bb5ef82", "migrations_dir": "migrations" }],
+  "r2_buckets": [{ "binding": "EVIDENCE", "bucket_name": "veguide-community-evidence", "jurisdiction": "eu" }],
+  "ratelimits": [{ "name": "SUBMISSION_LIMIT", "namespace_id": "826401", "simple": { "limit": 5, "period": 60 } }]
+}

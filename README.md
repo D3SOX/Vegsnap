@@ -24,6 +24,8 @@ Vegsnap supports food, cosmetics, household products, clothing and shoes. It use
 
 You do not need a Vegsnap account. History stays on your device. The app has no ads or telemetry.
 
+The optional [community manufacturer-reply service](packages/community/README.md) accepts redacted responses for review and publishes approved contributions on Cloudflare. It is configured separately; opening a product result does not upload its history or alter its verdict.
+
 This is an early release. Device, store and provider compatibility tests are ongoing.
 
 
