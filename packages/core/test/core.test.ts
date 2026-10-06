@@ -138,7 +138,7 @@ describe('AI privacy and validation', () => {
     expect(extract).not.toHaveBeenCalled();
   });
   test('Auto accepts the database category without promoting an incomplete record to vegan', async () => {
-    const fetcher = mock(async (url: string | URL | Request) => String(url).includes('world.openfoodfacts.org')
+    const fetcher = mock(async (url: string | URL | Request) => new URL(url instanceof Request ? url.url : url).hostname === 'world.openfoodfacts.org'
       ? response(product()) : response({ status: 'not_found' }, 404)) as unknown as typeof fetch;
     const result = await checkProduct({ barcode: code, category: 'other' }, { mode: 'explicit', fetch: fetcher });
     expect(result.category).toBe('food');
@@ -216,6 +216,19 @@ describe('AI privacy and validation', () => {
     const changed = await checkProduct({ text: 'Ingredienser: vatten, havre, okänd tillsats', category: 'food' }, { mode: 'explicit', provider });
     expect(changed.outcome).toBe('uncertain');
     expect(changed.warnings.join(' ')).toContain('changed');
+  });
+  test('blank label lines do not grant completeness without a composition heading', async () => {
+    const provider = { extract: async () => extraction };
+    const blankLines = '\n'.repeat(200);
+    const partial = await checkProduct({ text: `${blankLines}water, salt`, category: 'food' }, { mode: 'explicit', provider });
+    expect(partial.outcome).toBe('uncertain');
+    expect(partial.usedAI).toBe(true);
+    expect(partial.questions).toContain('Provide the complete ingredients or materials list.');
+    for (const separator of ['\n', '\r\n']) {
+      const complete = await checkProduct({ text: `${separator.repeat(200)}\tIngredients\t: water, salt`, category: 'other' }, { mode: 'explicit', provider });
+      expect(complete.outcome).toBe('vegan');
+      expect(complete.usedAI).toBe(true);
+    }
   });
   test('provider rejects unsafe endpoints and does not forward credentials on redirects', async () => {
     expect(() => createOpenAIProvider({ baseUrl: 'http://example.com/v1', token: 'secret', model: 'test' })).toThrow('HTTPS');

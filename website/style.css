@@ -12,4 +12,4 @@
 
 .download-card pre{width:100%;max-width:100%;overflow-x:auto;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--wash);font-size:.75rem;line-height:1.6}.download-card{min-width:0}
 
-.browser-registration details{width:100%;min-width:0;border-top:1px solid var(--border);padding-block:14px}.browser-registration summary{cursor:pointer;font-weight:650}.browser-registration h4{font-size:.9rem;margin:20px 0 8px}.browser-registration details+p{margin-top:18px}
+.downloads.companion-setup{grid-template-columns:1fr}.companion-setup details{width:100%;min-width:0;border-top:1px solid var(--border);padding-block:4px}.companion-setup summary{cursor:pointer;font-weight:650;min-height:44px;padding-block:10px}.companion-setup .actions{margin-top:0;margin-bottom:20px}.companion-setup h4{font-size:.9rem;margin:20px 0 8px}.companion-setup details+p{margin-top:18px}.companion-setup details .hint{margin-top:8px}

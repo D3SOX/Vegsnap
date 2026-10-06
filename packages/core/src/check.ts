@@ -79,7 +79,8 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (!input.images?.length && extracted.text && ![canonical(original), canonical(composition)].includes(canonical(extracted.text))) {
       throw new Error('AI extraction changed the supplied text; the original evidence was kept.');
     }
-    const localComplete = input.complete ?? /(?:^|\n)\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
+    // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
+    const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
     const complete = input.complete === false ? false : input.images?.length ? extracted.complete : localComplete && extracted.complete;
     // A checked complete text list remains the composition authority even when a front photo is attached.
     // The photo can add label evidence, but must not silently replace or truncate supplied ingredients.
