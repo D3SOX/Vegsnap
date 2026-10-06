@@ -6,12 +6,12 @@ import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
 import { defaultSettings } from '../src/settings';
 import type { HistoryResult } from '../src/history';
-import type { Request } from '../src/protocol';
+import type { CheckReply, Request } from '../src/protocol';
 import type { OfflinePackInfo } from '@vegsnap/core';
 
 const window = new Window({ url: 'https://vegsnap.test/app.html' });
 const document = window.document as unknown as Document;
-Object.assign(globalThis, { window, document, location: window.location, navigator: window.navigator });
+Object.assign(globalThis, { window, document, location: window.location, navigator: window.navigator, Event: window.Event });
 type MessageListener = (message: unknown, sender: { id?: string }) => unknown;
 type StorageListener = (changes: Record<string, unknown>, area: string) => unknown;
 const messageListeners = new Set<MessageListener>();
@@ -25,14 +25,19 @@ let offlinePacks: OfflinePackInfo[] = [
 const email = 'fake-account@example.invalid';
 const session: Record<string, unknown> = { chatGPTConnection: { state: 'connected', email }, chatGPTModelCatalog: [{ id: 'fixture-vision', name: 'Fixture Vision', supportsImages: true }] };
 let nativeConnected = true;
+let extensionScheme = 'chrome-extension:';
+let checkConsent: CheckReply['onlineConsent'];
+let permissionRequests = 0, checkRequests = 0;
+let grantConsent = false;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
   runtime: {
-    id: 'vegsnap', getURL: (path: string) => `chrome-extension://vegsnap${path}`,
+    id: 'vegsnap', getURL: (path: string) => `${extensionScheme}//vegsnap${path}`,
     onMessage: { addListener: (listener: MessageListener) => messageListeners.add(listener), removeListener: (listener: MessageListener) => messageListeners.delete(listener) },
     async sendMessage(message: Request) {
       switch (message.type) {
+        case 'check': checkRequests++; return { ok: true, result: { ...fixtureResult, ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
         case 'state': return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
@@ -54,7 +59,7 @@ mock.module('wxt/browser', () => ({ browser: {
     session: { async get(keys: string | string[]) { return structuredClone(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, session[key]]))); } },
     onChanged: { addListener: (listener: StorageListener) => storageListeners.add(listener), removeListener: (listener: StorageListener) => storageListeners.delete(listener) },
   },
-  permissions: { async contains() { return true; }, async request() { return true; }, async remove() { return true; } },
+  permissions: { async contains() { return true; }, async request() { permissionRequests++; return grantConsent; }, async remove() { return true; } },
   tabs: { async create() {}, async query() { return []; } },
 } }));
 const { App } = await import('../src/main');
@@ -144,6 +149,33 @@ try {
   assert.deepEqual(ingredientLabels(), ['Herkunft der Zutat unklar', 'Vegane Zutat', 'Zutat tierischen Ursprungs', 'Herkunft der Zutat unbekannt']);
   console.log('Actual result UI: translated name/question and secondary original name preserve source evidence');
   console.log('Actual two-window UI: shared history/settings/session/model updates, trash isolation and private ephemeral email reveal verified');
+
+  extensionScheme = 'moz-extension:';
+  settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
+  async function submitCheck() {
+    await tab(roots[0]!, 0);
+    const textarea = roots[0]!.querySelector('textarea'); assert(textarea);
+    await act(async () => { textarea.value = 'Ingredients: oats'; textarea.dispatchEvent(new Event('input', { bubbles: true })); });
+    await act(async () => { roots[0]!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    await until(() => !!roots[0]!.querySelector('.verdict'), 'Local result is displayed');
+  }
+  await submitCheck();
+  assert.equal(permissionRequests, 0, 'A local check never prompts before it runs');
+  checkConsent = 'ai'; await submitCheck();
+  const onlineButton = () => [...roots[0]!.querySelectorAll('button')].find(button => button.textContent === 'Allow online checks');
+  await until(() => !!onlineButton(), 'An unresolved online operation offers an explicit consent action');
+  const beforeConsentCheck = checkRequests;
+  await act(async () => {
+    onlineButton()!.click();
+    assert.equal(permissionRequests, 1, 'Firefox permission request runs synchronously in the click handler');
+  });
+  await until(() => !!roots[0]!.textContent?.includes('Data sharing was not allowed'), 'Denied consent is explained');
+  assert(roots[0]!.querySelector('.verdict'), 'Declining sharing keeps the local result visible');
+  assert.equal(checkRequests, beforeConsentCheck, 'Declining sharing does not rerun or transmit the check');
+  grantConsent = true; checkConsent = undefined;
+  await act(async () => { onlineButton()!.click(); });
+  await until(() => checkRequests === beforeConsentCheck + 1 && !onlineButton(), 'Granting access reruns the same input and clears the consent action');
+  console.log('Actual check UI: local-first results, gesture-bound permission prompts, denial preservation and granted retry verified');
 } finally {
   await act(async () => { roots.forEach(root => render(null, root)); });
   assert.equal(messageListeners.size, 0, 'Unmount removes runtime listeners');

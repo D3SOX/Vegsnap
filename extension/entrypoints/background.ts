@@ -5,9 +5,9 @@ import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { history } from '../src/history';
 import { offlineLibrary } from '../src/offline';
-import { CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
+import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, STORES, endpointOrigin, parseSettings, storeMarket } from '../src/settings';
-import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type Pending, type Reply } from '../src/protocol';
+import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type CheckReply, type Pending, type Reply } from '../src/protocol';
 
 export default defineBackground(() => {
   let historyQueue = Promise.resolve();
@@ -163,6 +163,7 @@ export default defineBackground(() => {
             if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId))) throw new Error('Invalid check identifier.');
             const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
             const input: CheckInput = { ...message.input, locale: config.language, market: typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins)) ? storeMarket(message.input.sourceUrl) : 'DE' };
+            let onlineConsent: CheckReply['onlineConsent'];
             let provider;
             if (config.connection === 'chatgpt' && config.model) {
               const catalog = (await browser.storage.session.get('chatGPTModelCatalog')).chatGPTModelCatalog;
@@ -170,20 +171,36 @@ export default defineBackground(() => {
               provider = companionProvider(config.model, acceptsImages(config.model, metadata));
             }
             else if (!['chatgpt', 'database'].includes(config.connection) && config.model) {
-              const origin = endpointOrigin(config.baseUrl);
-              if (!(await browser.permissions.contains({ origins: [origin] }))) throw new Error('Allow access to this AI endpoint in settings first.');
               const credential: unknown = (await browser.storage.session.get('credential')).credential;
               const token = isRecord(credential) && credential.endpoint === config.baseUrl && typeof credential.token === 'string' ? credential.token : undefined;
               provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) }, aiFetch);
             }
-            const result = await checkProduct(input, { mode: 'explicit', provider, fetch: contentFetch, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
+            // The evaluator consults local rules and the offline index first. Only
+            // a network operation that is actually needed can ask for consent.
+            if (provider) {
+              const extract = provider.extract.bind(provider);
+              provider.extract = async (...args) => {
+                const data = config.connection === 'chatgpt' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : AI_DATA;
+                const hostAllowed = config.connection === 'chatgpt' || await browser.permissions.contains({ origins: [endpointOrigin(config.baseUrl)] });
+                if (!hostAllowed || !(await hasDataConsent(data))) {
+                  onlineConsent = 'ai';
+                  throw new Error('Online AI access was not allowed; the local evidence was kept.');
+                }
+                return extract(...args);
+              };
+            }
+            const fetcher: typeof fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+              if (!(await hasDataConsent(CONTENT_DATA))) onlineConsent ??= 'database';
+              return contentFetch(...args);
+            }, { preconnect: globalThis.fetch.preconnect });
+            const result = await checkProduct(input, { mode: 'explicit', provider, fetch: fetcher, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
               const progress: CheckProgressMessage = { type: 'check-progress', requestId, stage };
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
             if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
             const localResult = { ...result, ...(input.images?.length ? { photos: input.images } : {}) };
             if (config.saveHistory) await changeHistory(() => history('save', localResult));
-            return { ok: true, result: localResult };
+            return { ok: true, result: { ...localResult, ...(onlineConsent ? { onlineConsent } : {}) } };
           }
           case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
           case 'companion': {

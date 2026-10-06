@@ -1,5 +1,6 @@
 const en = {
   dataConsentDenied: 'Data sharing was not allowed. You can still check ingredients locally.', privacyPolicy: 'Privacy policy',
+  allowOnlineChecks: 'Allow online checks', onlineConsentHint: 'Local evidence is shown below. Allow access to check online databases or your selected AI provider for missing details.',
   mobileHeading: 'Vegsnap on your phone', mobileHint: 'Scan barcodes and photograph product labels with the Android app.', mobileAction: 'Get the Android app',
   offlineHeading: 'Offline product data', offlineHint: 'Barcodes are checked locally first. These packs cover a selection of products; missing products use the online databases. Import regional JSON packs up to 10 MB.', offlineImport: 'Import regional pack', offlineBundled: 'Included', offlineProducts: 'products',
   originalTerm: 'Original label',
@@ -19,6 +20,7 @@ const en = {
 };
 const de: typeof en = {
   dataConsentDenied: 'Die Datenweitergabe wurde nicht erlaubt. Du kannst Zutaten weiterhin lokal prüfen.', privacyPolicy: 'Datenschutzerklärung',
+  allowOnlineChecks: 'Online-Prüfung erlauben', onlineConsentHint: 'Die lokalen Belege stehen unten. Erlaube den Zugriff, um fehlende Angaben mit Online-Datenbanken oder deiner gewählten KI zu prüfen.',
   mobileHeading: 'Vegsnap auf deinem Handy', mobileHint: 'Scanne Barcodes und fotografiere Produktetiketten mit der Android-App.', mobileAction: 'Android-App herunterladen',
   offlineHeading: 'Offline-Produktdaten', offlineHint: 'Barcodes werden zuerst lokal geprüft. Die Pakete enthalten eine Produktauswahl; fehlende Produkte werden online nachgeschlagen. Regionale JSON-Pakete bis 10 MB importieren.', offlineImport: 'Regionales Paket importieren', offlineBundled: 'Enthalten', offlineProducts: 'Produkte',
   originalTerm: 'Originalbezeichnung',

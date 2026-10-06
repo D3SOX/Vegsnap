@@ -82,6 +82,8 @@ components do not use dangerouslySetInnerHTML or insert product HTML.
             raise ValueError('Invalid source archive')
     for variant in ('light', 'dark'):
         destination = output / 'screenshots' / variant
+        if destination.exists():
+            shutil.rmtree(destination)
         destination.mkdir(parents=True, exist_ok=True)
         source = ROOT / 'website/images' / ('dark/store/extension' if variant == 'dark' else 'store/extension')
         for path in sorted(source.glob('*.png')):
@@ -99,11 +101,11 @@ components do not use dangerouslySetInnerHTML or insert product HTML.
         rendered.convert('RGB').save(output / 'chrome-small-promo.png', optimize=True)
     upload_files = [output / name for name in ('vegsnap-chrome-store.zip', 'vegsnap-firefox.xpi', 'vegsnap-firefox-source.zip', 'icon-128.png', 'store-listing.json', 'chrome-small-promo.png')]
     upload_files.extend((output / 'screenshots').rglob('*.png'))
-    metadata = {'version': version, 'chromium_store_id': None, 'firefox_id': firefox_manifest['browser_specific_settings']['gecko']['id'],
+    metadata = {'version': version, 'chromium_store_id': json.loads((ROOT / 'extension/store-listing.json').read_text()).get('chromium_store_id'), 'firefox_id': firefox_manifest['browser_specific_settings']['gecko']['id'],
                 'files': {path.relative_to(output).as_posix(): sha256(path.read_bytes()) for path in sorted(upload_files) if path.is_file()}}
     (output / 'submission.json').write_text(json.dumps(metadata, indent=2) + '\n')
     print(f'Prepared Vegsnap {version}: {output}')
-    print(f'Chromium ID: assigned after store upload; Firefox ID: {metadata["firefox_id"]}')
+    print(f'Chromium ID: {metadata["chromium_store_id"] or "assigned after store upload"}; Firefox ID: {metadata["firefox_id"]}')
 
 
 if __name__ == '__main__':

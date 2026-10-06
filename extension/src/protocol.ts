@@ -27,6 +27,7 @@ export type Request =
   | { type: 'delete'; id?: string }
   | { type: 'companion'; command: 'status' | 'signIn' | 'disconnect' | 'models' };
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }
+export interface CheckReply extends HistoryResult { onlineConsent?: 'database' | 'ai'; }
 export interface Pending { text?: string; imageUrl?: string; barcode?: string; name?: string; brand?: string; sourceUrl?: string; market?: string; createdAt: number; }
 export function pendingInput(pending: Pending): CheckInput {
   return { ...scanInput({ text: pending.text ?? '', category: 'other', complete: false, images: [] }),
