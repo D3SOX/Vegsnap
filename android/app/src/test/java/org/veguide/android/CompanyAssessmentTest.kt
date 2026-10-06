@@ -77,6 +77,22 @@ class CompanyAssessmentTest {
         applyCompanyAssessment(result, extraction()).getJSONObject("companyAssessment").put("brand", "Other")
         assertFalse(roundtrip(result).has("companyAssessment"))
     }
+    @Test fun importedAssessmentAlwaysCarriesAnUnverifiedNoticeWithoutGrowingOnReimport() {
+        for (locale in listOf("en", "de")) {
+            val value = applyCompanyAssessment(result(), extraction())
+            value.put("warnings", JSONArray((0 until 100).map { "Existing warning $it" }))
+            val document = JSONObject().put("schemaVersion", 1).put("results", JSONArray().put(value)).toString()
+            val imported = HistoryTransfer.parse(document, locale).single()
+            val clean = JSONObject(imported.json)
+            val warnings = clean.getJSONArray("warnings")
+            assertEquals(100, warnings.length())
+            assertTrue(warnings.getString(99).startsWith(if (locale == "de") "Importierte Unternehmensbewertung:" else "Imported company assessment:"))
+            assertEquals(value.getString("outcome"), clean.getString("outcome"))
+            val again = JSONObject(HistoryTransfer.parse(HistoryTransfer.export(listOf(imported), locale), locale).single().json)
+            assertEquals(warnings.toString(), again.getJSONArray("warnings").toString())
+        }
+    }
+
     private fun response(extracted: JSONObject, searched: Boolean): JSONObject {
         val output = JSONArray()
         if (searched) output.put(JSONObject().put("type", "web_search_call").put("status", "completed").put("action", JSONObject().put("sources", JSONArray().put(JSONObject().put("url", url)))))
