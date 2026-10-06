@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -677,26 +678,44 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                 }, modifier = Modifier.heightIn(min = 48.dp).testTag("result-nav-${section.name.lowercase()}").semantics {
                     if (section == ResultDetailSection.CONCERNS) stateDescription = concernDescription
                 }) {
-                    Row(Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(section.title), Modifier.weight(1f, fill = false),
-                            textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
-                        if (section == ResultDetailSection.CONCERNS && concernCount > 0) {
-                            Badge(Modifier.clearAndSetSemantics { }) { Text(concernCount.toString()) }
+                    Column(Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(when (section) {
+                            ResultDetailSection.INGREDIENTS -> Icons.AutoMirrored.Outlined.ListAlt
+                            ResultDetailSection.SOURCES -> Icons.Outlined.Link
+                            ResultDetailSection.CONCERNS -> Icons.Outlined.WarningAmber
+                        }, null, Modifier.size(20.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(section.title), Modifier.weight(1f, fill = false),
+                                textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                            if (section == ResultDetailSection.CONCERNS && concernCount > 0) {
+                                Badge(Modifier.clearAndSetSemantics { }) { Text(concernCount.toString()) }
+                            }
                         }
                     }
                 }
             }
         }
-        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
-            TextButton(onClick = { model.recheck(originalResult) }) { Icon(Icons.Outlined.EditNote, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.edit_result)) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = {
-                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, result.getString("title") + "\n" + result.getString("summary")) }, null))
-                }) { Text(stringResource(R.string.copy_result)) }
-                Button(modifier = Modifier.weight(1.2f), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp), onClick = onRecheck) { Text(stringResource(R.string.recheck)) }
-                TextButton(modifier = Modifier.weight(.8f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), onClick = onClose) { Text(stringResource(R.string.close)) }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(modifier = Modifier.size(48.dp), onClick = {
+                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, result.getString("title") + "\n" + result.getString("summary")) }, null))
+            }) {
+                Icon(Icons.Outlined.Share, stringResource(R.string.copy_result))
+            }
+            OutlinedButton(modifier = Modifier.weight(1.15f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp), onClick = { model.recheck(originalResult) }) {
+                Icon(Icons.Outlined.EditNote, null, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.edit_result), textAlign = TextAlign.Center)
+            }
+            Button(modifier = Modifier.weight(1.25f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp), onClick = onRecheck) {
+                Icon(Icons.Outlined.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(R.string.recheck), textAlign = TextAlign.Center)
+            }
+            IconButton(modifier = Modifier.size(48.dp), onClick = onClose) {
+                Icon(Icons.Outlined.Close, stringResource(R.string.close))
             }
         }
     }

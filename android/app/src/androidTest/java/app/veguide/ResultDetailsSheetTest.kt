@@ -110,8 +110,11 @@ class ResultDetailsSheetTest {
             Configuration(instrumentation.targetContext.resources.configuration).apply {
                 setLocales(LocaleList.forLanguageTags(language))
             })
-        for (label in listOf(R.string.copy_result, R.string.recheck, R.string.close, R.string.edit_result)) {
+        for (label in listOf(R.string.recheck, R.string.edit_result)) {
             compose.onNodeWithText(context.getString(label)).assertIsDisplayed().assertHasClickAction()
+        }
+        for (label in listOf(R.string.copy_result, R.string.close)) {
+            compose.onNodeWithContentDescription(context.getString(label)).assertIsDisplayed().assertHasClickAction()
         }
     }
 
