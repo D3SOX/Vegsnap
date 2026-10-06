@@ -83,7 +83,9 @@ jobs:
           cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
           cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
           mkdir companion-release
-          cp companion/target/release/veguide-companion companion/install.py companion-release/
+          cp companion/target/release/veguide-companion companion/install.py LICENSE companion-release/
+          veguide_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python3 -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
+          cp "$(dirname "$veguide_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
           tar -czf release/veguide-companion-linux-x86_64.tar.gz -C companion-release .
       - name: Prepare release files
         run: |
