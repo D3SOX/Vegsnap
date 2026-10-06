@@ -103,14 +103,6 @@ def capture_android(output, serial, avd):
             run(adb + ['shell', 'cmd', 'alarm', 'set-timezone', 'UTC'])
             for theme in ('light', 'dark'):
                 run(adb + ['shell', 'cmd', 'uimode', 'night', 'yes' if theme == 'dark' else 'no'])
-                for command, extras in [('clock', ['hhmm', '0941']), ('notifications', ['visible', 'false']),
-                                        ('battery', ['level', '100', 'plugged', 'false']),
-                                        ('network', ['wifi', 'show', 'level', '4', 'fully', 'true', 'mobile', 'hide']),
-                                        ('status', ['rotate', 'hide', 'satellite', 'hide'])]:
-                    arguments = ['-e', 'command', command]
-                    for index in range(0, len(extras), 2):
-                        arguments += ['-e', extras[index], extras[index + 1]]
-                    run(adb + ['shell', 'am', 'broadcast', '-a', 'com.android.systemui.demo'] + arguments)
                 result = read(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
                                     'app.veguide.MarketingScreenshotTest', '-e', 'screenshotTheme', theme,
                                     PACKAGE + '.test/androidx.test.runner.AndroidJUnitRunner'])

@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.os.LocaleList
+import android.os.ParcelFileDescriptor
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -85,6 +86,16 @@ class MarketingScreenshotTest {
         }
         compose.waitUntil(30_000) { model.history.value.size == 3 }
         compose.onNodeWithText("Check product").assertIsDisplayed()
+        // Theme changes can restart SystemUI. Set demo bars after the first real screen is ready.
+        for (extras in listOf("-e command enter", "-e command clock -e hhmm 0941",
+            "-e command notifications -e visible false", "-e command battery -e level 100 -e plugged false",
+            "-e command network -e wifi show -e level 4 -e fully true -e mobile hide",
+            "-e command status -e rotate hide -e satellite hide")) {
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
+                "am broadcast -a com.android.systemui.demo $extras"
+            )).use { it.readBytes() }
+        }
+        instrumentation.uiAutomation.waitForIdle(100, 5_000)
         capture("android-check")
         compose.runOnIdle { model.update { it.copy(result = null) }; model.selectTab("history") }
         compose.onNodeWithText("Honey granola").assertIsDisplayed()
