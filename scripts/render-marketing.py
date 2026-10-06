@@ -129,7 +129,7 @@ def render_header(dark=False):
     # A compact image of both real interfaces for the README introduction.
     canvas = background(1400, 760)
     canvas += browser(f"website/images/{prefix}screenshots/extension-result.png", 135, 37, 575, dark)
-    canvas += phone(f"website/images/{prefix}screenshots/android-check.png", 878, 35, 310)
+    canvas += phone(f"website/images/{prefix}screenshots/android-result.png", 878, 35, 310)
     save(f"readme-preview{suffix}", 1400, 760, canvas, f"{prefix}readme-preview.png")
 
 

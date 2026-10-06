@@ -10,7 +10,7 @@
     &nbsp;&nbsp;
     <picture><img src="marketing/badges/firefox-icon.svg" alt="Firefox" width="40" height="40"></picture>
   </p>
-  <p><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/readme-preview.png"><img src="website/images/readme-preview.png" alt="Real Veguide screens: an ingredient result in the browser extension and label entry on Android" width="560"></picture></p>
+  <p><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/readme-preview.png"><img src="website/images/readme-preview.png" alt="Real Veguide screens: ingredient results in the browser extension and Android app" width="560"></picture></p>
   <p>
     <a href="https://veguide.app"><img src="marketing/badges/website.svg" alt="Visit the Veguide website" width="200" height="58"></a>
     <a href="https://github.com/D3SOX/veguide/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
