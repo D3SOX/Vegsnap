@@ -1,17 +1,9 @@
-import dictionary from '../../../data/ingredient-translations.json';
 import type { CheckResult, Locale } from './types';
-
-const normalized = (term: string) => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
-const terms = new Map(dictionary.terms.flatMap(entry => entry.aliases.map(alias => [normalized(alias), entry] as const)));
-export function translatedIngredient(term: string, locale: Locale): string | undefined {
-  return terms.get(normalized(term))?.[locale];
-}
 
 /** Presentation only: never feed translated words back into ingredient classification. */
 export function localizeResult<T extends CheckResult>(result: T, locale: Locale): T {
   const findings = result.findings.map(finding => {
-    const translated = translatedIngredient(finding.term, locale) ??
-      (finding.displayLocale === locale && typeof finding.displayTerm === 'string' && finding.displayTerm.trim() && finding.displayTerm.length <= 300 ? finding.displayTerm : undefined);
+    const translated = (finding.displayLocale === locale && typeof finding.displayTerm === 'string' && finding.displayTerm.trim() && finding.displayTerm.length <= 300 ? finding.displayTerm : undefined);
     const { displayTerm: _oldTerm, displayLocale: _oldLocale, ...source } = finding;
     return { ...source, ...(translated && translated !== finding.term ? { displayTerm: translated, displayLocale: locale } : {}) };
   });

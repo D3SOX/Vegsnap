@@ -88,6 +88,22 @@ python3 ~/.local/lib/veguide/install.py \
   --browser firefox --extension-id veguide@veguide.app
 ```
 
+For Chromium:
+
+```sh
+python3 "$HOME/.local/lib/veguide/install.py" \
+  --binary "$HOME/.local/lib/veguide/veguide-companion" \
+  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+```
+
+For Google Chrome:
+
+```sh
+python3 "$HOME/.local/lib/veguide/install.py" \
+  --binary "$HOME/.local/lib/veguide/veguide-companion" \
+  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+```
+
 Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
 
 ### macOS, Apple silicon and Intel
@@ -102,6 +118,22 @@ chmod +x "$HOME/Library/Application Support/Veguide/veguide-companion"
 python3 "$HOME/Library/Application Support/Veguide/install.py" \
   --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
   --browser firefox --extension-id veguide@veguide.app
+```
+
+For Chromium:
+
+```sh
+python3 "$HOME/Library/Application Support/Veguide/install.py" \
+  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
+  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+```
+
+For Google Chrome:
+
+```sh
+python3 "$HOME/Library/Application Support/Veguide/install.py" \
+  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
+  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
 ```
 
 The companion uses macOS Keychain. The release is not notarized. If macOS blocks it, review the downloaded executable in System Settings under Privacy & Security.
@@ -119,11 +151,27 @@ py -3 "$veguideDirectory\install.py" `
   --browser firefox --extension-id veguide@veguide.app
 ```
 
+For Chromium:
+
+```powershell
+py -3 "$veguideDirectory\install.py" `
+  --binary "$veguideDirectory\veguide-companion.exe" `
+  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+```
+
+For Google Chrome:
+
+```powershell
+py -3 "$veguideDirectory\install.py" `
+  --binary "$veguideDirectory\veguide-companion.exe" `
+  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+```
+
 The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Veguide\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
 
 ### Connect your browser
 
-The commands above register Firefox. For Chromium, use `--browser chromium` and replace the extension ID with the value shown on `chrome://extensions`. Google Chrome uses `--browser chrome`. The release's `chromium-extension-id.txt` also contains the package's ID. Run registration once for each browser you use.
+Run the registration command for each browser you use. Release packages use the stable Chromium ID `bljmddjdbglldnbdhdfdlbilieoheend`; updates keep that ID. Firefox uses `veguide@veguide.app`.
 
 After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
 

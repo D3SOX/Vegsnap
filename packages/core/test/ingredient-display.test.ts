@@ -17,31 +17,19 @@ test('AI ingredient translation is display-only and keeps source identity', () =
 
 import { localizeResult } from '../src';
 
-test('existing Swedish history gets offline names and questions without changing evidence or outcome', () => {
+test('ingredient display uses saved AI translations only for the matching locale', () => {
   const result = analyzeText({ text: 'äppelsyra, naturlig arom, sötningsmedel', category: 'food', complete: true });
+  expect(localizeResult(result, 'en').findings.every(f => f.displayTerm === undefined)).toBe(true);
+  result.findings[1] = { ...result.findings[1]!, displayTerm: 'natural flavouring', displayLocale: 'en' };
   const snapshot = JSON.stringify(result);
   const shown = localizeResult(result, 'en');
-  expect(shown.findings.map(finding => finding.displayTerm)).toEqual(['malic acid', 'natural flavouring', 'sweetener']);
+  expect(shown.findings[1]?.displayTerm).toBe('natural flavouring');
   expect(shown.questions.join(' ')).toContain('natural flavouring');
-  expect(shown.questions.join(' ')).not.toContain('naturlig arom');
-  expect(shown.findings.map(({ term, status }) => ({ term, status }))).toEqual(result.findings.map(({ term, status }) => ({ term, status })));
+  expect(localizeResult(result, 'de').findings[1]?.displayTerm).toBeUndefined();
   expect(shown.outcome).toBe(result.outcome);
   expect(shown.evidence).toEqual(result.evidence);
+  expect(shown.findings.map(f => f.term)).toEqual(result.findings.map(f => f.term));
   expect(JSON.stringify(result)).toBe(snapshot);
-  const german = localizeResult(result, 'de');
-  expect(german.findings.map(finding => finding.displayTerm)).toEqual(['Äpfelsäure', 'natürliches Aroma', 'Süßungsmittel']);
-  expect(german.questions.join(' ')).toContain('Die Herkunft dieser Zutaten klären:');
-});
-
-test('saved AI translations apply only in their recorded locale and bundled names take precedence', () => {
-  const original = analyzeText({ text: 'unlisted source ingredient, vatten', category: 'food', complete: true });
-  original.findings[0] = { ...original.findings[0]!, displayTerm: 'unbekannte Zutat', displayLocale: 'de' };
-  original.findings[1] = { ...original.findings[1]!, displayTerm: 'honey', displayLocale: 'en' };
-  const english = localizeResult(original, 'en');
-  expect(english.findings[0]?.displayTerm).toBeUndefined();
-  expect(english.findings[1]?.displayTerm).toBe('water');
-  expect(localizeResult(original, 'de').findings[0]?.displayTerm).toBe('unbekannte Zutat');
-  expect(english.findings[1]?.status).toBe(original.findings[1]?.status);
 });
 
 test('parent ingredient translation never relabels component findings', () => {
@@ -52,11 +40,11 @@ test('parent ingredient translation never relabels component findings', () => {
 });
 
 test('translations cannot overrule a known animal ingredient', () => {
-  const input = { text: 'milk', category: 'food' as const, complete: true, locale: 'en' as const };
-  const result = applyAIEvidence(analyzeText(input), input, { ...input, ingredientAssessments: [{ term: 'milk', translatedTerm: 'oat drink', status: 'plant', explanation: 'Untrusted model claim.' }] }, true);
+  const input = { text: 'milk', category: 'food' as const, complete: true, locale: 'de' as const };
+  const result = applyAIEvidence(analyzeText(input), input, { ...input, ingredientAssessments: [{ term: 'milk', translatedTerm: 'Milch', status: 'plant', explanation: 'Untrusted model claim.' }] }, true);
   expect(result.outcome).toBe('not_vegan');
   expect(result.findings[0]?.status).toBe('animal');
-  expect(localizeResult(result, 'en').findings[0]?.displayTerm).toBeUndefined();
+  expect(localizeResult(result, 'de').findings[0]?.displayTerm).toBe('Milch');
   expect(result.evidence[0]?.excerpt).toBe('milk');
 });
 
@@ -76,21 +64,4 @@ test('duplicate findings keep display metadata without changing evidence precede
   expect(merged.findings[0]?.displayTerm).toBe('translated ingredient');
   expect(merged.findings[0]?.evidenceId).toBe(first.findings[0]?.evidenceId);
   expect(merged.outcome).toBe(first.outcome);
-});
-
-test('common condiment ingredients translate offline while preserving source terms and classification', () => {
-  const text = 'branntweinessig, gurken, knoblauch, zwiebeln, kräuter, chilis, zitronensaft aus zitronensaftkonzentrat, xanthan';
-  const result = analyzeText({ text, category: 'food', complete: true });
-  const shown = localizeResult(result, 'en');
-  expect(shown.findings.map(f => f.displayTerm ?? f.term)).toEqual(['spirit vinegar', 'cucumbers', 'garlic', 'onions', 'herbs', 'chillies', 'lemon juice from concentrate', 'xanthan gum']);
-  expect(shown.findings.map(f => [f.term, f.status])).toEqual(result.findings.map(f => [f.term, f.status]));
-  expect(shown.evidence).toEqual(result.evidence);
-  expect(shown.outcome).toBe(result.outcome);
-});
-
-test('common Swedish food labels have offline English and German display names', () => {
-  const text = 'gurka, vitlök, lök, örter, chilipeppar, citronjuice från koncentrat, xantangummi';
-  const result = analyzeText({ text, category: 'food', complete: true });
-  expect(localizeResult(result, 'en').findings.map(f => f.displayTerm ?? f.term)).toEqual(['cucumbers', 'garlic', 'onions', 'herbs', 'chillies', 'lemon juice from concentrate', 'xanthan gum']);
-  expect(localizeResult(result, 'de').findings.map(f => f.displayTerm ?? f.term)).toEqual(['Gurken', 'Knoblauch', 'Zwiebeln', 'Kräuter', 'Chilis', 'Zitronensaft aus Konzentrat', 'Xanthan']);
 });

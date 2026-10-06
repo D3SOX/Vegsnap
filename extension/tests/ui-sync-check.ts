@@ -123,13 +123,13 @@ try {
   storageChanged(['chatGPTConnection', 'chatGPTModelCatalog'], 'session');
   await until(() => roots.every(root => !emailButton(root) && root.textContent?.includes('Connect ChatGPT')), 'Disconnect reaches all windows without stale account details');
   history = [{ ...fixtureResult, outcome: 'uncertain', findings: [
-    { term: 'naturlig arom', status: 'ambiguous', explanation: 'Origin needs confirmation.', evidenceId: 'source' },
+    { term: 'naturlig arom', displayTerm: 'natural flavouring', displayLocale: 'en', status: 'ambiguous', explanation: 'Origin needs confirmation.', evidenceId: 'source' },
   ], questions: ['Confirm the origin of: naturlig arom.'], evidence: [{ id: 'source', kind: 'user_text', title: 'Original ingredients', excerpt: 'naturlig arom', retrievedAt: fixtureResult.checkedAt }] }];
   changed();
   await tab(roots[0]!, 1);
-  await until(() => historyItems(roots[0]!).length === 1, 'Saved untranslated result arrives');
+  await until(() => historyItems(roots[0]!).length === 1, 'Saved AI-translated result arrives');
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
-  await until(() => roots[0]!.querySelector('.finding strong')?.textContent === 'natural flavouring', 'Saved ingredient name translates offline in the actual result UI');
+  await until(() => roots[0]!.querySelector('.finding strong')?.textContent === 'natural flavouring', 'Saved AI ingredient translation appears in the actual result UI');
   assert.equal(roots[0]!.querySelector('.finding small')?.textContent, 'Original label: naturlig arom');
   assert(roots[0]!.textContent?.includes('Confirm the origin of: natural flavouring.'));
   assert(roots[0]!.querySelector('.evidence')?.textContent?.includes('naturlig arom'), 'Source evidence keeps its original words');

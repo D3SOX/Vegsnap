@@ -6,7 +6,7 @@ export { checkProduct } from './check';
 export { OfflineProductIndex, validateOfflineSnapshot, parseOfflineSnapshot, OFFLINE_MAX_BYTES } from './offline';
 export type { OfflineSnapshot, OfflinePackInfo } from './offline';
 export { imageSupport, acceptsImages, type ImageSupport } from './model-capabilities';
-export { localizeResult, translatedIngredient } from './ingredient-display';
+export { localizeResult } from './ingredient-display';
 export { resolveCompanyConcerns, attachCompanyConcerns, createCompanyConcernResolver } from './company-concerns';
 export type { CompanyEntity, CompanyConcernRecord, CompanyConcernDataset } from './company-concerns';
 export { parseManufacturerContact, applyManufacturerContact, manufacturerMessage, safeContactEmail, safeContactUrl } from './manufacturer-contact';

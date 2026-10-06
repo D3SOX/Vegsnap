@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packageExtensions } from './extension-release';
@@ -32,7 +32,10 @@ try {
   assert.equal(JSON.parse(await readFile(join(chromeDirectory, 'manifest.json'), 'utf8')).key, undefined);
   assert.equal(await unzip('veguide-firefox.xpi', 'marker.txt'), 'packaged successfully');
   assert.equal(JSON.parse(await unzip('veguide-firefox.xpi', 'manifest.json')).key, undefined);
-  assert.equal((await readFile(join(outputDirectory, 'chromium-extension-id.txt'), 'utf8')).trim(), metadata.chromium.id);
+  assert.deepEqual((await readdir(outputDirectory)).sort(), [
+    'extension-artifacts.json', 'veguide-chromium.crx', 'veguide-chromium.zip', 'veguide-firefox.xpi',
+  ]);
+  assert.equal(JSON.parse(await readFile(join(outputDirectory, 'extension-artifacts.json'), 'utf8')).chromium.id, metadata.chromium.id);
   assert.equal(metadata.firefox.signed, false);
   const second = await packageExtensions({ keyPath, chromeDirectory, firefoxDirectory, outputDirectory, chromiumBinary: process.env.VEGUIDE_CHROMIUM_BINARY });
   assert.equal(second.chromium.id, metadata.chromium.id);

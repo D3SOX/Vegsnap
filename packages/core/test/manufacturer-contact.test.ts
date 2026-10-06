@@ -100,6 +100,7 @@ describe('manufacturer contact', () => {
   test('prepares localized bounded drafts and encoded mailto without personal scan content', async () => {
     const result = await check();
     result.identity.barcode = '4006381333931';
+    result.findings[0] = { ...result.findings[0]!, displayTerm: 'vitamin D', displayLocale: 'en' };
     const en = manufacturerMessage(result, 'en')!;
     expect(en.body).toContain(contact.productName);
     expect(en.body).toContain('4006381333931');

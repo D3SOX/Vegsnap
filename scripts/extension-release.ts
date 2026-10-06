@@ -120,7 +120,6 @@ export async function packageExtensions(options: PackageOptions) {
       await run(['zip', '-q', '-r', archive, '.'], directory);
       await run(['unzip', '-tq', archive]);
     }
-    await writeFile(join(outputDirectory, 'chromium-extension-id.txt'), `${id}\n`);
     const metadata = {
       version: chromeManifest.version,
       chromium: { id, package: 'veguide-chromium.crx', unpacked: 'veguide-chromium.zip', signature: 'CRX3' },

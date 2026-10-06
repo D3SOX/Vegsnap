@@ -3,21 +3,9 @@ package app.veguide
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.Normalizer
-import java.util.Locale
 
 /** Display names have no role in ingredient matching, evidence identity, or the vegan outcome. */
-internal class IngredientTranslations(document: JSONObject) {
-    private fun normalized(term: String) = Normalizer.normalize(term, Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace(Regex("\\s+"), " ").trim()
-    private val terms = buildMap<String, JSONObject> {
-        val entries = document.getJSONArray("terms")
-        for (i in 0 until entries.length()) {
-            val entry = entries.getJSONObject(i)
-            val aliases = entry.getJSONArray("aliases")
-            for (j in 0 until aliases.length()) put(normalized(aliases.getString(j)), entry)
-        }
-    }
-    fun translated(term: String, locale: String): String? = terms[normalized(term)]?.optString(if (locale == "de") "de" else "en")
+internal class IngredientTranslations {
     fun localize(source: JSONObject, locale: String): JSONObject {
         val language = if (locale == "de") "de" else "en"
         val result = JSONObject(source.toString())
@@ -29,7 +17,7 @@ internal class IngredientTranslations(document: JSONObject) {
             val aiName = (finding.opt("displayTerm") as? String)?.takeIf {
                 finding.optString("displayLocale") == language && it.isNotBlank() && it.length <= 300
             }
-            val display = translated(original, language) ?: aiName
+            val display = aiName
             finding.remove("displayTerm"); finding.remove("displayLocale")
             if (display != null && display != original) finding.put("displayTerm", display).put("displayLocale", language)
             if (finding.optString("status") in setOf("unknown", "ambiguous")) unresolved += display ?: original
@@ -45,12 +33,6 @@ internal class IngredientTranslations(document: JSONObject) {
     }
 }
 
-private object BundledIngredientTranslations {
-    @Volatile private var instance: IngredientTranslations? = null
-    @Synchronized fun get(context: Context): IngredientTranslations = instance ?: IngredientTranslations(
-        context.assets.open("ingredient-translations.json").bufferedReader().use { JSONObject(it.readText()) },
-    ).also { instance = it }
-}
 private object BundledResultTextTranslations {
     private var instance: ResultTextTranslations? = null
     @Synchronized fun get(context: Context): ResultTextTranslations = instance ?: ResultTextTranslations(
@@ -59,4 +41,4 @@ private object BundledResultTextTranslations {
     ).also { instance = it }
 }
 internal fun localizeResultTerms(context: Context, result: JSONObject, locale: String): JSONObject =
-    BundledResultTextTranslations.get(context).localize(BundledIngredientTranslations.get(context).localize(result, locale), locale)
+    BundledResultTextTranslations.get(context).localize(IngredientTranslations().localize(result, locale), locale)

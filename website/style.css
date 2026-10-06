@@ -11,3 +11,5 @@
 .preview-tabs{flex-wrap:wrap;font-size:.65rem}.preview-tabs>span{flex:1 0 auto}.status.certified{background:#e5f1df;border-color:#aec99b}.status.manufacturer{background:#e7eff8;border-color:#aec5e1}@media(prefers-color-scheme:dark){.status.certified{background:#283f25;border-color:#57774e}.status.manufacturer{background:#253849;border-color:#536c88}}
 
 .download-card pre{width:100%;max-width:100%;overflow-x:auto;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--wash);font-size:.75rem;line-height:1.6}.download-card{min-width:0}
+
+.browser-registration details{border-top:1px solid var(--border);padding-block:14px}.browser-registration summary{cursor:pointer;font-weight:650}.browser-registration h4{font-size:.9rem;margin:20px 0 8px}.browser-registration details+p{margin-top:18px}

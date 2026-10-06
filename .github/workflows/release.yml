@@ -79,7 +79,6 @@ jobs:
         run: |
           mkdir -p release
           cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
-          cp README.md release/README.md
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: veguide-release-apps
@@ -90,8 +89,7 @@ jobs:
             release/veguide-chromium.crx
             release/veguide-chromium.zip
             release/veguide-firefox.xpi
-            release/chromium-extension-id.txt
-            release/README.md
+            release/extension-artifacts.json
       - name: Remove signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/veguide-release.p12" "$RUNNER_TEMP/veguide-extension.pem"
@@ -171,8 +169,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
+          veguide_notes="$RUNNER_TEMP/veguide-release-notes.md"
+          veguide_extension_id=$(python -c 'import json,re; identity=json.load(open("release/extension-artifacts.json"))["chromium"]["id"]; assert re.fullmatch("[a-p]{32}", identity); print(identity)')
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK, browser extension packages and desktop companions for Linux, Windows and macOS. Firefox XPI is unsigned; see README for development installation. Regional packs are available in the continuously updated offline-data release. See README.md for data attribution and licensing."
+            cat > "$veguide_notes" <<EOF
+          Signed Android APK, browser extensions and companions for Linux, Windows and macOS.
+
+          [Installation instructions](https://github.com/$GITHUB_REPOSITORY#install-the-browser-extension) cover the unsigned Firefox XPI and Chromium packages. [Companion registration](https://github.com/$GITHUB_REPOSITORY#install-the-chatgpt-companion) is required for ChatGPT sign-in in the extension.
+
+          Regional packs are available in the [regional product packs release](https://github.com/$GITHUB_REPOSITORY/releases/tag/offline-data).
+          EOF
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes-file "$veguide_notes"
           fi
-          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > "$veguide_notes"
+          if ! grep -Fq "$veguide_extension_id" "$veguide_notes"; then
+            printf '\nChromium extension ID: %s. This stays the same across releases signed with the same key.\n' "$veguide_extension_id" >> "$veguide_notes"
+          fi
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$veguide_notes"
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            release/veguide.apk \
+            release/veguide-chromium.crx \
+            release/veguide-chromium.zip \
+            release/veguide-firefox.xpi \
+            release/veguide-companion-linux-x86_64.tar.gz \
+            release/veguide-companion-windows-x86_64.zip \
+            release/veguide-companion-macos-universal.tar.gz
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
