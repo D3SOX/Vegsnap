@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shared manufacturer replies · Vegsnap</title><link rel="stylesheet" href="/style.css"><script type="module" src="/replies.js"></script></head>
+<body><main class="shell">
+<header><a class="brand" href="https://vegsnap.app" rel="noreferrer">Vegsnap</a><label class="language"><span data-copy="language">Language</span><select id="language"><option value="en">English</option><option value="de">Deutsch</option><option value="sv">Svenska</option></select></label></header>
+<h1 data-copy="repliesTitle">Shared manufacturer replies</h1><p class="intro" data-copy="repliesIntro">Find reviewed responses for this product and market. Check the response date, variant and scope before relying on it.</p>
+<div id="message" role="status" tabindex="-1" hidden></div>
+<form id="search" novalidate><fieldset><legend data-copy="product">Product</legend>
+<label for="barcode" data-copy="barcode">Barcode (optional)</label><input id="barcode" name="barcode" maxlength="40" inputmode="numeric" autocomplete="off">
+<label for="productName" data-copy="productName">Product name</label><input id="productName" name="name" maxlength="300" autocomplete="off">
+<label for="brand" data-copy="brand">Brand / manufacturer</label><input id="brand" name="brand" maxlength="300" autocomplete="off">
+<label for="market" data-copy="market">Country code</label><input id="market" name="market" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}" placeholder="DE / SE" aria-describedby="market-help"><small id="market-help" data-copy="marketHelp">Country where this product is sold.</small>
+<button type="submit" class="primary" data-copy="search">Find replies</button></fieldset></form>
+<div id="replies" aria-live="polite"></div>
+<footer><p class="notice" data-copy="reviewNotice">A reviewed contribution is evidence supplied by a community member, not independent authentication of the manufacturer. Recipes and product variants can change.</p><div class="actions"><a class="button" id="share" href="/submit" data-copy="share">Share another reply</a><button id="download" type="button" data-copy="download">Download reviewed dataset</button></div></footer>
+</main></body></html>

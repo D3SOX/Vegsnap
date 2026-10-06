@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Share a manufacturer reply · Vegsnap</title><link rel="stylesheet" href="/style.css"><script type="module" src="/submit.js"></script></head>
+<body><main class="shell">
+<header><a class="brand" href="https://vegsnap.app" rel="noreferrer">Vegsnap</a><label class="language"><span data-copy="language">Language</span><select id="language"><option value="en">English</option><option value="de">Deutsch</option><option value="sv">Svenska</option></select></label></header>
+<h1 data-copy="submitTitle">Share a manufacturer reply</h1>
+<p class="intro" data-copy="submitIntro">Help others by sharing a response you received. We review submissions before publishing them.</p>
+<p class="notice" data-copy="privacy">Only the information you enter here is submitted. Your scans, history and saved photos stay on your device. Remove names, email addresses, signatures and other personal information from both text and evidence.</p>
+<div id="message" role="status" tabindex="-1" hidden></div>
+<form id="submission" novalidate>
+<fieldset><legend data-copy="product">Product</legend>
+<label for="productName" data-copy="productName">Product name</label><input id="productName" name="productName" required maxlength="300" autocomplete="off">
+<label for="brand" data-copy="brand">Brand / manufacturer</label><input id="brand" name="brand" required maxlength="300" autocomplete="off">
+<div class="columns"><div><label for="barcode" data-copy="barcode">Barcode (optional)</label><input id="barcode" name="barcode" inputmode="numeric" maxlength="40" autocomplete="off"></div>
+<div><label for="market" data-copy="market">Country code</label><input id="market" name="market" required minlength="2" maxlength="2" pattern="[A-Za-z]{2}" placeholder="DE / SE" autocomplete="off" aria-describedby="market-help"><small id="market-help" data-copy="marketHelp">Country where this product is sold.</small></div></div>
+<label for="variant" data-copy="variant">Variant / size (optional)</label><input id="variant" name="variant" maxlength="300" autocomplete="off">
+</fieldset>
+<fieldset><legend data-copy="response">Manufacturer response</legend>
+<label for="question" data-copy="question">What did you ask?</label><textarea id="question" name="question" required maxlength="4000" rows="4"></textarea>
+<label for="reply" data-copy="reply">What did they reply?</label><textarea id="reply" name="reply" required maxlength="8000" rows="6"></textarea>
+<p class="hint" data-copy="quoteHelp">Keep the original wording and language. Remove personal information; do not add conclusions the manufacturer did not make.</p>
+<label for="repliedOn" data-copy="repliedOn">Response date</label><input id="repliedOn" name="repliedOn" type="date" required>
+<label for="claim" data-copy="claim">What does the response confirm?</label><select id="claim" name="claim"><option value="inconclusive" data-copy="inconclusive">Still inconclusive</option><option value="vegan" data-copy="vegan">Vegan</option><option value="not_vegan" data-copy="notVegan">Not vegan</option></select>
+<label for="scope" data-copy="scope">What does it cover?</label><select id="scope" name="scope"><option value="ingredients" data-copy="ingredients">Specific ingredients or materials</option><option value="processing" data-copy="processing">Processing aids / production</option><option value="whole_product" data-copy="wholeProduct">The whole product</option></select>
+</fieldset>
+<fieldset><legend data-copy="evidence">Evidence</legend>
+<label for="sourceUrl" data-copy="sourceUrl">Public manufacturer source (optional)</label><input id="sourceUrl" name="sourceUrl" type="url" maxlength="2000" placeholder="https://…" autocomplete="off">
+<label for="evidence" data-copy="upload">Redacted screenshot or PDF</label><input id="evidence" name="evidence" type="file" accept="image/png,image/jpeg,application/pdf" required aria-describedby="evidence-help">
+<p id="evidence-help" class="hint" data-copy="evidenceHelp">Maximum 2 MB after processing. Image metadata is removed. Redact PDFs and their metadata yourself. Evidence stays private until reviewed; a reviewer may publish a redacted attachment. Unreviewed submissions expire after 30 days.</p>
+<div id="preview" hidden><p data-copy="preview">Check your evidence before submitting:</p><img id="image-preview" alt="Evidence preview" hidden><a id="pdf-preview" target="_blank" rel="noreferrer" hidden data-copy="previewPdf">Open the selected PDF</a></div>
+<label class="checkbox"><input id="consent" name="consent" type="checkbox" value="yes" required><span data-copy="consent">I have removed personal information, have permission to share this response, and agree that its reviewed text and redacted evidence may be published.</span></label>
+<div id="challenge" aria-label="Human verification"></div>
+<button class="primary" id="send" type="submit" disabled data-copy="send">Submit for review</button>
+</fieldset>
+</form>
+<footer><a id="view-replies" href="/replies" data-copy="viewReplies">View shared replies</a><p data-copy="reviewNotice">A reviewed contribution is evidence supplied by a community member, not independent authentication of the manufacturer. Recipes and product variants can change.</p></footer>
+</main></body></html>

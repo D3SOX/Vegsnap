@@ -633,6 +633,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                         result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                         ManufacturerContactSection(result)
+                        CommunityRepliesSection(result, settings.offline)
                     }
                 }
                 item(key = "sources-heading") {

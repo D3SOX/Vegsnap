@@ -14,6 +14,7 @@ import './style.css';
 import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
+import { CommunityRepliesSection } from './community-replies';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -277,6 +278,7 @@ export function App() {
         {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
         <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
         <ManufacturerContactSection key={result.id} result={result} locale={config.language}/>
+        <CommunityRepliesSection result={result} locale={config.language}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
       </section> : tab === 'scan' ? <section>
         <h1>{t.scan}</h1>
