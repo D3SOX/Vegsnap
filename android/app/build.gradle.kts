@@ -45,6 +45,7 @@ kotlin {
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.browser:browser:1.10.0")
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
