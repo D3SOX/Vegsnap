@@ -1,4 +1,16 @@
 {
+  "androidTheme": {
+    "seed": "355d40",
+    "style": "TONAL_SPOT",
+    "light": {
+      "primary": "#306a43",
+      "background": "#f6fbf3"
+    },
+    "dark": {
+      "primary": "#97d5a5",
+      "background": "#101510"
+    }
+  },
   "input": {
     "name": "Oat flakes",
     "text": "oats, salt",

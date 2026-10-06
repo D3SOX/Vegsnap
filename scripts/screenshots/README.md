@@ -45,7 +45,7 @@ Capture only one platform with `--platform android` or `--platform extension`, t
 
 ## Reproducibility
 
-Fixtures use fixed IDs and dates. Captures fix English locale, UTC timezone, font scale, viewport/density, system clock, Android color seed and light/dark appearance. They wait for the UI and fonts rather than typing through an Android keyboard or using arbitrary sleep delays.
+Fixtures use fixed IDs and dates. Captures fix English locale, UTC timezone, font scale, viewport/density, system clock, Android color seed, palette style and light/dark appearance. `fixtures.json` pins the green palette used by the website screenshots; Android capture checks the primary and background colors before rendering. They wait for the UI and fonts rather than typing through an Android keyboard or using arbitrary sleep delays.
 
 Playwright and Python rendering versions are pinned, and Actions uses Ubuntu 24.04 and API 35. Android SDK/system-image revisions and host fonts can still change pixels; compare reruns in the same environment rather than treating local and hosted captures as byte-identical. A layout change should change the images. Update the fixtures or semantic capture locators when the intended screens change.
 

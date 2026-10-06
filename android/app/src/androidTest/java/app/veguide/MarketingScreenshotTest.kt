@@ -10,7 +10,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -46,6 +49,13 @@ class MarketingScreenshotTest {
         }
         val localized = target.createConfigurationContext(configuration)
         val fixtures = JSONObject(instrumentation.context.assets.open("fixtures.json").bufferedReader().use { it.readText() })
+        val expectedTheme = fixtures.getJSONObject("androidTheme").getJSONObject(if (dark) "dark" else "light")
+        val expectedPrimary = AndroidColor.parseColor(expectedTheme.getString("primary"))
+        val expectedBackground = AndroidColor.parseColor(expectedTheme.getString("background"))
+        compose.waitUntil(30_000) {
+            val colors = if (dark) dynamicDarkColorScheme(localized) else dynamicLightColorScheme(localized)
+            colors.primary.toArgb() == expectedPrimary && colors.background.toArgb() == expectedBackground
+        }
         val results = fixtures.getJSONArray("results")
         // Android stores the product name as title; extension results store the outcome title.
         for (i in 0 until results.length()) {

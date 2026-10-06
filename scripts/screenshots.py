@@ -75,14 +75,16 @@ def capture_android(output, serial, avd):
             raise ValueError('Use API 35 for the screenshot environment.')
         if avd and read(adb + ['emu', 'avd', 'name']).splitlines()[0] != avd:
             raise ValueError('The requested serial belongs to a different AVD.')
+        theme_config = json.loads((ROOT / 'scripts/screenshots/fixtures.json').read_text())['androidTheme']
         settings = [('system', 'font_scale', '1.0'), ('system', 'accelerometer_rotation', '0'),
                     ('system', 'user_rotation', '0'), ('global', 'sysui_demo_allowed', '1'),
                     ('global', 'window_animation_scale', '0'), ('global', 'transition_animation_scale', '0'),
                     ('global', 'animator_duration_scale', '0'),
                     ('secure', 'theme_customization_overlay_packages', json.dumps({
-                        'android.theme.customization.system_palette': '355d40',
-                        'android.theme.customization.accent_color': '355d40',
-                        'android.theme.customization.color_source': 'preset'}))]
+                        'android.theme.customization.system_palette': theme_config['seed'],
+                        'android.theme.customization.accent_color': theme_config['seed'],
+                        'android.theme.customization.color_source': 'preset',
+                        'android.theme.customization.theme_style': theme_config['style']}))]
         originals = [(space, key, read(adb + ['shell', 'settings', 'get', space, key])) for space, key, _ in settings]
         size = read(adb + ['shell', 'wm', 'size'])
         density = read(adb + ['shell', 'wm', 'density'])
