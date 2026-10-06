@@ -43,25 +43,19 @@ German and English are supported, with Germany and the EU as the first markets. 
 ### Android
 
 <p align="center">
-  <a href="website/images/screenshots/android-check.png"><img src="website/images/store/android/check-portrait.png#gh-light-mode-only" alt="Android: enter a product label, import photos or check a barcode" width="230"></a>
-  <a href="website/images/dark/screenshots/android-check.png"><img src="website/images/dark/store/android/check-portrait.png#gh-dark-mode-only" alt="Android: enter a product label, import photos or check a barcode" width="230"></a>
-  <a href="website/images/screenshots/android-result.png"><img src="website/images/store/android/result-portrait.png#gh-light-mode-only" alt="Android: a honey granola result explains that honey is produced by bees" width="230"></a>
-  <a href="website/images/dark/screenshots/android-result.png"><img src="website/images/dark/store/android/result-portrait.png#gh-dark-mode-only" alt="Android: a honey granola result explains that honey is produced by bees" width="230"></a>
-  <a href="website/images/screenshots/android-history.png"><img src="website/images/store/android/history-portrait.png#gh-light-mode-only" alt="Android: local history shows vegan, non-vegan and uncertain checks" width="230"></a>
-  <a href="website/images/dark/screenshots/android-history.png"><img src="website/images/dark/store/android/history-portrait.png#gh-dark-mode-only" alt="Android: local history shows vegan, non-vegan and uncertain checks" width="230"></a>
+  <a href="website/images/screenshots/android-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/android/check-portrait.png"><img src="website/images/store/android/check-portrait.png" alt="Android: enter a product label, import photos or check a barcode" width="230"></picture></a>
+  <a href="website/images/screenshots/android-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/android/result-portrait.png"><img src="website/images/store/android/result-portrait.png" alt="Android: a honey granola result explains that honey is produced by bees" width="230"></picture></a>
+  <a href="website/images/screenshots/android-history.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/android/history-portrait.png"><img src="website/images/store/android/history-portrait.png" alt="Android: local history shows vegan, non-vegan and uncertain checks" width="230"></picture></a>
 </p>
 
 ### Browser extension
 
 <p align="center">
-  <a href="website/images/screenshots/extension-check.png"><img src="website/images/store/extension/check.png#gh-light-mode-only" alt="Browser extension: check an ingredients list or add a product photo" width="720"></a>
-  <a href="website/images/dark/screenshots/extension-check.png"><img src="website/images/dark/store/extension/check.png#gh-dark-mode-only" alt="Browser extension: check an ingredients list or add a product photo" width="720"></a>
+  <a href="website/images/screenshots/extension-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/extension/check.png"><img src="website/images/store/extension/check.png" alt="Browser extension: check an ingredients list or add a product photo" width="720"></picture></a>
 </p>
 <p align="center">
-  <a href="website/images/screenshots/extension-result.png"><img src="website/images/store/extension/result.png#gh-light-mode-only" alt="Browser extension: ingredient findings explain the result and its limits" width="355"></a>
-  <a href="website/images/dark/screenshots/extension-result.png"><img src="website/images/dark/store/extension/result.png#gh-dark-mode-only" alt="Browser extension: ingredient findings explain the result and its limits" width="355"></a>
-  <a href="website/images/screenshots/extension-history.png"><img src="website/images/store/extension/history.png#gh-light-mode-only" alt="Browser extension: search and revisit checks saved on your device" width="355"></a>
-  <a href="website/images/dark/screenshots/extension-history.png"><img src="website/images/dark/store/extension/history.png#gh-dark-mode-only" alt="Browser extension: search and revisit checks saved on your device" width="355"></a>
+  <a href="website/images/screenshots/extension-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/extension/result.png"><img src="website/images/store/extension/result.png" alt="Browser extension: ingredient findings explain the result and its limits" width="355"></picture></a>
+  <a href="website/images/screenshots/extension-history.png"><picture><source media="(prefers-color-scheme: dark)" srcset="website/images/dark/store/extension/history.png"><img src="website/images/store/extension/history.png" alt="Browser extension: search and revisit checks saved on your device" width="355"></picture></a>
 </p>
 
 Open an image to see the original screenshot.
