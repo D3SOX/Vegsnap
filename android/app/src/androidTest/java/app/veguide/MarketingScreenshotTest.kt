@@ -124,6 +124,9 @@ class MarketingScreenshotTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         instrumentation.waitForIdleSync()
+        check(instrumentation.uiAutomation.rootInActiveWindow?.packageName?.toString() == instrumentation.targetContext.packageName) {
+            "An external window is covering the app; refusing to capture it."
+        }
         val directory = File(instrumentation.targetContext.filesDir, "marketing-screenshots").apply { mkdirs() }
         val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
         File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

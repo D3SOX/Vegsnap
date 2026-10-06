@@ -78,6 +78,7 @@ def capture_android(output, serial, avd):
         theme_config = json.loads((ROOT / 'scripts/screenshots/fixtures.json').read_text())['androidTheme']
         settings = [('system', 'font_scale', '1.0'), ('system', 'accelerometer_rotation', '0'),
                     ('system', 'user_rotation', '0'), ('global', 'sysui_demo_allowed', '1'),
+                    ('global', 'hide_error_dialogs', '1'),
                     ('global', 'window_animation_scale', '0'), ('global', 'transition_animation_scale', '0'),
                     ('global', 'animator_duration_scale', '0'),
                     ('secure', 'theme_customization_overlay_packages', json.dumps({
@@ -103,6 +104,8 @@ def capture_android(output, serial, avd):
             run(adb + ['shell', 'wm', 'size', '1080x2400'])
             run(adb + ['shell', 'wm', 'density', '420'])
             run(adb + ['shell', 'cmd', 'alarm', 'set-timezone', 'UTC'])
+            # The fresh Pixel launcher can ANR under CI load; it is unused by capture.
+            run(adb + ['shell', 'am', 'force-stop', 'com.google.android.apps.nexuslauncher'])
             for theme in ('light', 'dark'):
                 run(adb + ['shell', 'cmd', 'uimode', 'night', 'yes' if theme == 'dark' else 'no'])
                 result = read(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
