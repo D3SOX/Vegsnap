@@ -61,10 +61,13 @@ export function manufacturerMessage(result: CheckResult, locale: ManufacturerMes
   const subject = plain(`${copy.subject}: ${name || copy.thisProduct}`, 200);
   const terms = [...new Set(result.findings.filter(finding => finding.status === 'ambiguous' || finding.status === 'unknown')
     .map(finding => plain(finding.displayLocale === locale ? finding.displayTerm ?? finding.term : finding.term, 100)).filter(Boolean))].slice(0, 15);
-  const originQuestion = /^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Bekräfta ursprunget för:)/;
+  const originQuestion = /^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Bekräfta ursprunget för:)\s*(.+?)\.?$/;
+  const termKeys = new Set(terms.map(identityKey));
   const questions = [...new Set(result.questions.map(question => {
     const translation = messages.questions.find(pair => Object.values(pair).includes(question));
-    if (terms.length && (originQuestion.test(question) || translation?.en === 'Confirm the source of the ambiguous or unrecognized ingredients/materials.')) return '';
+    const originTerms = originQuestion.exec(question)?.[1]?.split(',').map(identityKey);
+    const redundantOrigin = originTerms?.every(term => termKeys.has(term));
+    if (terms.length && (redundantOrigin || translation?.en === 'Confirm the source of the ambiguous or unrecognized ingredients/materials.')) return '';
     return translation?.[locale] ?? question;
   }).map(question => plain(question, 200)).filter(Boolean))].slice(0, 15);
   if (terms.length) questions.push(`${copy.originQuestion} ${terms.join(', ')}.`);

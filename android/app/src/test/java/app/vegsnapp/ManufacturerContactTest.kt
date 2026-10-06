@@ -28,6 +28,38 @@ class ManufacturerContactTest {
             if (savedQuestions.length() > 0) assertTrue(body.contains("A custom manufacturer question"))
         }
     }
+    @Test fun qualifiedOriginQuestionsArePreservedInEveryLanguage() {
+        val questions = listOf(
+            "Confirm the origin of: glycerol in the finished product, not only the raw material.",
+            "Die Herkunft dieser Zutaten klären: glycerol im fertigen Produkt.",
+            "Bekräfta ursprunget för: glycerol i den färdiga produkten.",
+            "Confirm the origin of: glycerol, vitamin D."
+        )
+        val saved = result().put("findings", JSONArray().put(JSONObject().put("term", "glycerol").put("status", "ambiguous")))
+            .put("questions", JSONArray(questions))
+        for (locale in listOf("en", "de", "sv")) {
+            val body = manufacturerDraft(saved, locale).body
+            questions.forEach { assertTrue(body.contains(it)) }
+        }
+    }
+    @Test fun standardQuestionsAddressTheManufacturerDirectly() {
+        val questions = listOf(
+            "Ask the manufacturer about lining, glue, coatings, and trims.",
+            "Den Hersteller nach Futter, Klebstoffen, Beschichtungen und Besatz fragen.",
+            "Confirm processing and fining aids with the manufacturer.",
+            "Verarbeitungs- und Schönungsmittel beim Hersteller bestätigen lassen."
+        )
+        val saved = result().put("questions", JSONArray(questions))
+        for ((locale, materials, processing) in listOf(
+            Triple("en", "Are the lining, glue", "Are any animal-derived processing"),
+            Triple("de", "Sind Futter, Klebstoffe", "Werden tierische Verarbeitungs-"),
+            Triple("sv", "Är foder, lim", "Används några animaliska process-")
+        )) {
+            val body = manufacturerDraft(saved, locale).body
+            assertTrue(body.contains(materials)); assertTrue(body.contains(processing))
+            questions.forEach { assertFalse(body.contains(it)) }
+        }
+    }
     @Test fun swedishDraftTranslatesQuestionsWithoutChangingTheSavedResult() {
         val saved = result()
         saved.put("questions", JSONArray().put("Show the complete ingredients or materials label.")

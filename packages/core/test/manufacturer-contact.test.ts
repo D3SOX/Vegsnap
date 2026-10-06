@@ -22,6 +22,37 @@ describe('manufacturer contact', () => {
       }
     }
   });
+  test('keeps qualifications and additional ingredients in saved origin questions', () => {
+    const result = analyzeText({ text: 'glycerol', complete: true });
+    const questions = [
+      'Confirm the origin of: glycerol in the finished product, not only the raw material.',
+      'Die Herkunft dieser Zutaten klären: glycerol im fertigen Produkt.',
+      'Bekräfta ursprunget för: glycerol i den färdiga produkten.',
+      'Confirm the origin of: glycerol, vitamin D.',
+    ];
+    for (const locale of ['en', 'de', 'sv'] as const) {
+      const body = manufacturerMessage({ ...result, questions }, locale)!.body;
+      for (const question of questions) expect(body).toContain(question);
+    }
+  });
+  test('addresses materials and processing questions directly to the manufacturer in every language', () => {
+    const questions = [
+      'Ask the manufacturer about lining, glue, coatings, and trims.',
+      'Den Hersteller nach Futter, Klebstoffen, Beschichtungen und Besatz fragen.',
+      'Confirm processing and fining aids with the manufacturer.',
+      'Verarbeitungs- und Schönungsmittel beim Hersteller bestätigen lassen.',
+    ];
+    const result = { ...analyzeText('vitamin D'), questions };
+    for (const [locale, materials, processing] of [
+      ['en', 'Are the lining, glue', 'Are any animal-derived processing'],
+      ['de', 'Sind Futter, Klebstoffe', 'Werden tierische Verarbeitungs-'],
+      ['sv', 'Är foder, lim', 'Används några animaliska process-'],
+    ] as const) {
+      const body = manufacturerMessage(result, locale)!.body;
+      expect(body).toContain(materials); expect(body).toContain(processing);
+      for (const question of questions) expect(body).not.toContain(question);
+    }
+  });
   test('Swedish drafts translate standard questions while preserving source identity and custom wording', () => {
     const result = analyzeText({ text: 'vitamin D', name: 'Oat drink', brand: 'Maker', barcode: '4006381333931' });
     result.questions.push('Confirm the origin of: vitamin D.', 'A custom manufacturer question');

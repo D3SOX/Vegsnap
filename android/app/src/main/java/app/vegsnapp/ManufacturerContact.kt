@@ -57,13 +57,16 @@ internal fun manufacturerDraft(result: JSONObject, locale: String, messages: JSO
         findings.optJSONObject(index)?.takeIf { it.optString("status") in setOf("ambiguous", "unknown") }?.let { clean(if (it.optString("displayLocale") == locale) it.optString("displayTerm").ifBlank { it.optString("term") } else it.optString("term"), 100) }
     }.filter { it.isNotBlank() }.distinct().take(15)
     val translations = messages.getJSONArray("questions")
-    val originQuestion = Regex("^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Bekräfta ursprunget för:)")
+    val originQuestion = Regex("^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Bekräfta ursprunget för:)\\s*(.+?)\\.?$")
+    val termKeys = terms.map { it.lowercase(java.util.Locale.ROOT) }.toSet()
     val questions = result.optJSONArray("questions")
     val lines = (if (questions == null) emptyList() else (0 until questions.length()).mapNotNull { index ->
         val question = questions.getString(index)
         val translation = (0 until translations.length()).map { translations.getJSONObject(it) }
-            .firstOrNull { pair -> listOf("en", "de", "sv").any { pair.optString(it) == question } }
-        if (terms.isNotEmpty() && (originQuestion.containsMatchIn(question) || translation?.optString("en") == "Confirm the source of the ambiguous or unrecognized ingredients/materials.")) return@mapNotNull null
+            .firstOrNull { pair -> listOf("en", "de", "sv", "sourceEn", "sourceDe", "sourceSv").any { pair.optString(it) == question } }
+        val originTerms = originQuestion.matchEntire(question)?.groupValues?.get(1)?.split(",")
+        val redundantOrigin = originTerms?.all { clean(it).lowercase(java.util.Locale.ROOT) in termKeys } == true
+        if (terms.isNotEmpty() && (redundantOrigin || translation?.optString("en") == "Confirm the source of the ambiguous or unrecognized ingredients/materials.")) return@mapNotNull null
         clean(translation?.getString(locale) ?: question, 200)
     }.filter { it.isNotBlank() }.distinct().take(15)) +
         if (terms.isNotEmpty()) listOf(copy.getString("originQuestion") + " " + terms.joinToString(", ") + ".") else emptyList()
