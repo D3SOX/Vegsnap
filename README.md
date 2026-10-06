@@ -1,17 +1,32 @@
-# Veguide
+<div align="center">
+  <img src="website/logo.png" alt="Veguide leaf icon" width="88" height="88">
+  <h1>Veguide</h1>
+  <p><strong>Check whether a product appears vegan.</strong></p>
+  <p>Photograph a label on Android, or check ingredients and product images in Chromium or Firefox.</p>
+  <p>
+    <img src="marketing/badges/android-icon.svg" alt="Android" width="40" height="40">
+    &nbsp;&nbsp;
+    <img src="marketing/badges/chromium-icon.svg" alt="Chromium" width="40" height="40">
+    &nbsp;&nbsp;
+    <img src="marketing/badges/firefox-icon.svg" alt="Firefox" width="40" height="40">
+  </p>
+  <p><img src="website/images/readme-preview.png" alt="Real Veguide screens: an ingredient result in the browser extension and label entry on Android" width="560"></p>
+  <p>
+    <a href="https://veguide.app"><img src="marketing/badges/website.svg" alt="Visit the Veguide website" width="200" height="58"></a>
+    <a href="https://github.com/D3SOX/veguide/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
+  </p>
+  <p>
+    <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
+    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="website/icons/obtainium-badge.png" alt="Get it on Obtainium" width="200"></a>
+  </p>
+</div>
+<!-- Official Obtainium artwork: https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png. GPL-3.0; see website/icons/obtainium-LICENSE.txt. -->
 
-Veguide checks whether products appear vegan. Photograph a label on Android, or check selected text and product images in Chromium or Firefox.
-
-It supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
+Veguide supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
 
 You do not need a Veguide account. History stays on your device. The app has no ads or telemetry.
 
 This is an early release. Device, store and provider compatibility tests are ongoing.
-
-[Website](https://veguide.app) · [Android releases](https://github.com/D3SOX/veguide/releases)
-
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="website/icons/obtainium-badge.png" alt="Get it on Obtainium" width="200"></a>
-<!-- Official Obtainium artwork: https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png. GPL-3.0; see website/icons/obtainium-LICENSE.txt. -->
 
 ## What it does
 
@@ -24,6 +39,30 @@ This is an early release. Device, store and provider compatibility tests are ong
 Connected AI can also assess a company using searched sources. Its assessment stays separate from reviewed records and can be inconclusive. Neither changes the product's vegan result. A missing record or no concerns found is not an ethical endorsement.
 
 German and English are supported, with Germany and the EU as the first markets. A native iOS app is planned.
+
+## Screenshots
+
+Veguide 0.2.1 on Android and in the browser, with example ingredient and material lists.
+
+### Android
+
+<p align="center">
+  <a href="website/images/screenshots/android-check.png"><img src="website/images/store/android/check-portrait.png" alt="Android: enter a product label, import photos or check a barcode" width="230"></a>
+  <a href="website/images/screenshots/android-result.png"><img src="website/images/store/android/result-portrait.png" alt="Android: a honey granola result explains that honey is produced by bees" width="230"></a>
+  <a href="website/images/screenshots/android-history.png"><img src="website/images/store/android/history-portrait.png" alt="Android: local history shows vegan, non-vegan and uncertain checks" width="230"></a>
+</p>
+
+### Browser extension
+
+<p align="center">
+  <a href="website/images/screenshots/extension-check.png"><img src="website/images/store/extension/check.png" alt="Browser extension: check an ingredients list or add a product photo" width="720"></a>
+</p>
+<p align="center">
+  <a href="website/images/screenshots/extension-result.png"><img src="website/images/store/extension/result.png" alt="Browser extension: ingredient findings explain the result and its limits" width="355"></a>
+  <a href="website/images/screenshots/extension-history.png"><img src="website/images/store/extension/history.png" alt="Browser extension: search and revisit checks saved on your device" width="355"></a>
+</p>
+
+Open an image to see the original screenshot. For full-size images and editable layouts, see [Marketing assets](marketing/README.md).
 
 ## AI and evidence
 
