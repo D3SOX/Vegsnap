@@ -110,6 +110,9 @@ object HistoryTransfer {
         val clean = JSONObject()
         listOf("schemaVersion", "id", "outcome", "basis", "title", "summary", "category", "identity", "findings", "evidence", "questions", "warnings", "crossContact", "companyConcerns", "checkedAt", "usedAI", "aiStatus", "webSearchStatus")
             .forEach { field -> if (result.has(field)) clean.put(field, result.get(field)) }
+        safeCompanyAssessment(result.optJSONObject("companyAssessment"), saved = true)?.let { assessment ->
+            if (normalizeProductIdentity(assessment.getString("brand")) == normalizeProductIdentity(clean.optJSONObject("identity")?.optString("brand").orEmpty())) clean.put("companyAssessment", assessment)
+        }
         // Never trust a transferred message or extra fields in an error envelope.
         if (clean.optString("outcome") in setOf("uncertain", "conflicting")) {
             safeManufacturerContact(result.optJSONObject("manufacturerContact"))?.let { contact ->
@@ -165,6 +168,14 @@ object HistoryTransfer {
             }
             java.time.Instant.parse(result.getString("checkedAt"))
             val clean = publicResult(result, locale)
+            if (clean.has("companyAssessment")) {
+                val notice = if (locale == "de")
+                    "Importierte Unternehmensbewertung: Quellen und Zitate wurden von dieser App nicht überprüft."
+                else "Imported company assessment: this app has not verified its sources or quotations."
+                val warnings = clean.getJSONArray("warnings")
+                val retained = (0 until warnings.length()).map { warnings.getString(it) }.filter { it != notice }.take(99)
+                clean.put("warnings", JSONArray(retained + notice))
+            }
             HistoryEntry(clean.getString("id"), clean.getString("title"), clean.getString("checkedAt"), clean.toString())
         }
     }

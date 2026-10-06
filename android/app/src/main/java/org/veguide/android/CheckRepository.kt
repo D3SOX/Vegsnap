@@ -156,7 +156,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         val allWarnings = result.getJSONArray("warnings")
         for (index in 0 until warnings.length()) allWarnings.put(warnings.getString(index))
         aiError?.let { result.put("aiError", it) }
-        contactExtraction?.let { applyManufacturerContact(result, original, it) }
+        contactExtraction?.let {
+            applyManufacturerContact(result, original, it)
+            applyCompanyAssessment(result, it)
+        }
         companyConcerns.attach(result.put("aiStatus", aiStatus), original.locale)
     }
     /** Passive camera lookups send only the GTIN; this entry point cannot invoke AI. */
@@ -266,6 +269,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         for ((field, items) in merged) first.put(field, items)
         first.put("research", JSONObject().put("searched", true).put("sources", JSONArray(sources)))
         safeManufacturerContact(followup.optJSONObject("contact"))?.let { first.put("contact", it) }
+        sourcedCompanyAssessment(JSONObject(followup.toString()).put("research", first.getJSONObject("research")))?.let { first.put("companyAssessment", it) }
         return first
     }
 
@@ -332,6 +336,11 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         validateAIEvidence(extracted)
         validateWebClaims(extracted)
         validateWebCompositions(extracted)
+        if (extracted.has("companyAssessment")) {
+            val assessment = safeCompanyAssessment(extracted.optJSONObject("companyAssessment"))
+            extracted.remove("companyAssessment")
+            if (assessment != null) extracted.put("companyAssessment", assessment)
+        }
         if (extracted.has("contact")) {
             val contact = safeManufacturerContact(extracted.optJSONObject("contact"))
             extracted.remove("contact")

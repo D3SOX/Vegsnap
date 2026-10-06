@@ -56,7 +56,6 @@
     <string name="privacy_text">No account, analytics, or cloud history. Analyzed photos are saved only in local history and removed when you delete the check. Metadata is removed before sending. API keys use Android Keystore encryption. Public database queries and AI requests reveal your IP address to those services.</string>
     <string name="offline">Offline mode (local data only)</string>
     <string name="sources">Sources and licenses</string>
-    <string name="source_text">Product data: Open Food Facts, Open Beauty Facts, Open Products Facts (ODbL). OCR: Tesseract4Android and Tesseract fast models (Apache-2.0). Veguide: AGPL-3.0-only.</string>
     <string name="food">Food</string>
     <string name="drink">Drinks</string>
     <string name="cosmetics">Cosmetics</string>

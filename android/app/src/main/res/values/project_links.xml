@@ -1,0 +1,7 @@
+<resources>
+    <string name="project_website">Website</string>
+    <string name="database_contents">Open Food / Beauty / Products Facts contents</string>
+    <string name="source_terms">Terms of use and content reuse</string>
+    <string name="tesseract_models">Tesseract language models</string>
+    <string name="external_link_failed">Could not open this link. Install or enable a browser and try again.</string>
+</resources>

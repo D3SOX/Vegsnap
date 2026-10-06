@@ -52,6 +52,17 @@ export interface CompanyConcern {
   ownershipReviewedAt?: string;
   sourceDate?: string;
 }
+export interface AICompanyAssessment {
+  brand: string;
+  company: string;
+  scope: 'direct' | 'parent';
+  verdict: 'concerns_found' | 'no_concerns_found' | 'inconclusive';
+  summary: string;
+  categories: CompanyConcern['category'][];
+  sources: { url: string; title: string; quote: string }[];
+  ownershipSourceUrl?: string;
+}
+export interface CompanyAssessment extends AICompanyAssessment { assessedAt: string; }
 export type AIErrorCode = 'authentication' | 'access_denied' | 'quota' | 'rate_limit' | 'timeout' | 'network' | 'unsupported_model' | 'invalid_response' | 'incomplete_response' | 'request_rejected' | 'service' | 'unknown';
 export interface ManufacturerContact {
   email?: string;
@@ -83,6 +94,8 @@ export interface CheckResult {
   webSearchStatus?: 'searched' | 'not_used' | 'unsupported';
   /** AI-read contact details from a consulted manufacturer source. Review the source before use. */
   manufacturerContact?: ManufacturerContact;
+  /** AI interpretation of cited company sources, independent of the product verdict and reviewed records. */
+  companyAssessment?: CompanyAssessment;
 }
 export interface AIExtraction {
   text: string;
@@ -96,6 +109,7 @@ export interface AIExtraction {
   webClaims?: { url: string; quote: string; claim: 'vegan' | 'not_vegan'; sourceType: 'manufacturer' | 'certification'; productName: string; brand: string }[];
   webCompositions?: { url: string; text: string; complete: boolean; sourceType: 'manufacturer' | 'retailer'; productName: string; brand: string }[];
   contact?: ManufacturerContact;
+  companyAssessment?: AICompanyAssessment;
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */
   research?: { searched: boolean; sources: { url: string; title: string }[] };
 }

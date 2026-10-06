@@ -56,7 +56,6 @@
     <string name="privacy_text">Kein Konto, keine Nutzungsanalyse und kein Cloud-Verlauf. Analysierte Fotos bleiben nur im lokalen Verlauf und werden mit der Prüfung gelöscht. Metadaten werden vor dem Senden entfernt. API-Schlüssel werden mit Android Keystore verschlüsselt. Datenbank- und KI-Anfragen übermitteln deine IP-Adresse an diese Dienste.</string>
     <string name="offline">Offline-Modus (nur lokale Daten)</string>
     <string name="sources">Quellen und Lizenzen</string>
-    <string name="source_text">Produktdaten: Open Food Facts, Open Beauty Facts, Open Products Facts (ODbL). OCR: Tesseract4Android und Tesseract-Fast-Modelle (Apache-2.0). Veguide: AGPL-3.0-only.</string>
     <string name="food">Lebensmittel</string>
     <string name="drink">Getränke</string>
     <string name="cosmetics">Kosmetik</string>

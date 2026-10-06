@@ -6,6 +6,7 @@ import { applyWebEvidence } from './web-evidence';
 import { mergeResults } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
+import { applyCompanyAssessment } from './company-assessment';
 import type { CheckInput, CheckOptions, CheckResult, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
@@ -105,6 +106,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     }
     if (extracted.barcode && normalizeBarcode(extracted.barcode)) await lookup(extracted.barcode);
     result = applyManufacturerContact(result, input, extracted);
+    result = applyCompanyAssessment(result, input, extracted);
   } catch (error) {
     if (options.signal?.aborted) throw error;
     result.warnings.push(error instanceof Error ? error.message : 'AI could not complete this check.');

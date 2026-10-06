@@ -19,3 +19,5 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .finding > small { display: block; margin-top: 2px; }
 
 .manufacturer-contact{margin-top:24px}.manufacturer-contact details{margin:12px 0}.manufacturer-contact summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px}.manufacturer-contact summary:focus-visible,.contact-action:focus-visible{outline:3px solid #75975b;outline-offset:3px}.contact-action{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:12px;text-decoration:none}.contact-email{overflow-wrap:anywhere;font-size:13px}
+
+.ai-company-assessment blockquote{margin:10px 0 16px;padding-left:12px;border-left:3px solid var(--border);font-size:12px;white-space:pre-line}

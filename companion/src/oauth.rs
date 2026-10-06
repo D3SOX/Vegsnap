@@ -1083,10 +1083,39 @@ fn research_if_needed(
     if sources.len() > 50 {
         return first;
     }
-    // Preserve the optional source-backed contact for downstream identity and URL
-    // validation. A malformed optional field must not discard useful evidence.
+    // Clients validate these optional assessments against the merged tool sources
+    // and product identity. Malformed optional fields must not discard evidence.
     if let Some(contact) = next.get("contact").filter(|value| value.is_object()) {
         original["contact"] = contact.clone();
+    }
+    if let Some(assessment) = next
+        .get("companyAssessment")
+        .filter(|value| value.is_object())
+    {
+        let normalize = |value: &Value| {
+            value.as_str().map(|text| {
+                text.split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    .to_lowercase()
+            })
+        };
+        let cited = |url: &Value| {
+            url.as_str()
+                .is_some_and(|url| sources.iter().any(|source| source["url"] == url))
+        };
+        let matched = normalize(&assessment["brand"])
+            .is_some_and(|brand| !brand.is_empty() && Some(brand) == normalize(&original["brand"]));
+        let sourced = assessment["sources"].as_array().is_some_and(|items| {
+            !items.is_empty() && items.len() <= 5 && items.iter().all(|item| cited(&item["url"]))
+        });
+        let ownership = match assessment.get("ownershipSourceUrl") {
+            Some(url) => cited(url),
+            None => assessment["scope"] != "parent",
+        };
+        if matched && sourced && ownership {
+            original["companyAssessment"] = assessment.clone();
+        }
     }
     crate::stream::AnalysisResponse {
         text: original.to_string(),
@@ -1252,17 +1281,69 @@ mod tests {
     }
 
     #[test]
+    fn research_followup_preserves_company_assessment_with_tool_sources() {
+        let assessment = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The consulted policy does not resolve animal-testing practices.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Company policy","quote":"Our policy"}]});
+        for searched in [false, true] {
+            let result = research_if_needed(research_fixture(false), &[], |_| {
+                let mut next = research_fixture(searched);
+                let mut extracted = extraction_json(&next.text).unwrap();
+                extracted["companyAssessment"] = assessment.clone();
+                next.text = extracted.to_string();
+                next.research["sources"] =
+                    json!([{"url":"https://maker.example/policy","title":"Company policy"}]);
+                Ok(next)
+            });
+            let extracted = extraction_json(&result.text).unwrap();
+            if searched {
+                assert_eq!(extracted["companyAssessment"], assessment);
+                assert_eq!(
+                    result.research["sources"][0]["url"],
+                    assessment["sources"][0]["url"]
+                );
+            } else {
+                assert!(extracted.get("companyAssessment").is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn unsourced_company_followup_keeps_the_initial_assessment() {
+        let mut first = research_fixture(false);
+        let mut extracted = extraction_json(&first.text).unwrap();
+        let assessment = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The policy is unclear.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Policy","quote":"Policy text"}]});
+        extracted["companyAssessment"] = assessment.clone();
+        first.text = extracted.to_string();
+        first.research["sources"] =
+            json!([{"url":"https://maker.example/policy","title":"Policy"}]);
+        let result = research_if_needed(first, &[], |_| {
+            let mut next = research_fixture(true);
+            let mut extracted = extraction_json(&next.text).unwrap();
+            let mut unsupported = assessment.clone();
+            unsupported["sources"][0]["url"] = json!("https://unconsulted.example/policy");
+            extracted["companyAssessment"] = unsupported;
+            next.text = extracted.to_string();
+            Ok(next)
+        });
+        assert_eq!(
+            extraction_json(&result.text).unwrap()["companyAssessment"],
+            assessment
+        );
+    }
+
+    #[test]
     fn malformed_optional_contact_does_not_discard_other_research() {
         let result = research_if_needed(research_fixture(false), &[], |_| {
             let mut next = research_fixture(true);
             let mut extracted = extraction_json(&next.text).unwrap();
             extracted["contact"] = json!("malformed");
+            extracted["companyAssessment"] = json!("malformed");
             extracted["webCompositions"] = json!([{"url":"https://maker.example/granola","text":"oats","complete":true,"sourceType":"manufacturer","productName":"Granola Kakao & Hallon","brand":"Paulúns"}]);
             next.text = extracted.to_string();
             Ok(next)
         });
         let extracted = extraction_json(&result.text).unwrap();
         assert!(extracted.get("contact").is_none());
+        assert!(extracted.get("companyAssessment").is_none());
         assert_eq!(extracted["webCompositions"].as_array().unwrap().len(), 1);
     }
 

@@ -17,10 +17,16 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
@@ -34,10 +40,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -53,6 +61,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ScanScreen(state: ScanState, model: VeguideViewModel) {
@@ -365,23 +374,54 @@ private fun SelectedPhotos(photos: List<Uri>, enabled: Boolean, onOpen: (Uri) ->
 
 @Composable
 internal fun PhotoGallery(photos: List<Uri>, initial: Uri, enabled: Boolean, onRemove: ((Uri) -> Unit)?, onClose: () -> Unit) {
-    var selected by remember(initial) { mutableStateOf(initial) }
-    val current = selected.takeIf { it in photos } ?: photos.lastOrNull()
-    if (current == null) { LaunchedEffect(Unit) { onClose() }; return }
-    val index = photos.indexOf(current)
+    if (photos.isEmpty()) { LaunchedEffect(Unit) { onClose() }; return }
+    val pager = rememberPagerState(initialPage = photos.indexOf(initial).coerceAtLeast(0), pageCount = { photos.size })
+    val scope = rememberCoroutineScope()
+    val close by rememberUpdatedState(onClose)
+    val dismissThreshold = with(LocalDensity.current) { 96.dp.toPx() }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    val dragOffset by animateFloatAsState(dragDistance, animationSpec = if (dragging) snap() else spring(), label = "photo-dismiss")
+    val index = pager.currentPage.coerceIn(photos.indices)
+    val current = photos[index]
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, stringResource(R.string.close)) }
-                    Text(stringResource(R.string.photo_position, index + 1, photos.size), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    if (onRemove != null) IconButton(onClick = { onRemove(current) }, enabled = enabled) { Icon(Icons.Outlined.Delete, stringResource(R.string.remove_photo, index + 1)) }
+            Column(Modifier.fillMaxSize().safeDrawingPadding().graphicsLayer { translationY = dragOffset }) {
+                HorizontalPager(state = pager, key = { photos[it].toString() },
+                    modifier = Modifier.fillMaxWidth().weight(1f).testTag("photo-pager")
+                        .pointerInput(dismissThreshold) {
+                            detectVerticalDragGestures(
+                                onDragStart = { dragDistance = dragOffset; dragging = true },
+                                onDragCancel = { dragging = false; dragDistance = 0f },
+                                onDragEnd = {
+                                    dragging = false
+                                    if (dragDistance >= dismissThreshold) close() else dragDistance = 0f
+                                },
+                                onVerticalDrag = { change, amount ->
+                                    change.consume()
+                                    dragDistance = (dragDistance + amount).coerceAtLeast(0f)
+                                },
+                            )
+                        }) { page ->
+                    PhotoImage(photos[page], stringResource(R.string.photo_number, page + 1), Modifier.fillMaxSize(), maxEdge = 1600)
                 }
-                PhotoImage(current, stringResource(R.string.photo_number, index + 1), Modifier.fillMaxWidth().weight(1f), maxEdge = 1600)
-                Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    IconButton(onClick = { selected = photos[index - 1] }, enabled = index > 0) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.previous_photo)) }
-                    TextButton(onClick = onClose) { Text(stringResource(R.string.close)) }
-                    IconButton(onClick = { selected = photos[index + 1] }, enabled = index < photos.lastIndex) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.next_photo)) }
+                Surface(modifier = Modifier.align(Alignment.CenterHorizontally).padding(12.dp).widthIn(max = 480.dp).fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 3.dp) {
+                    Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FilledTonalIconButton(onClick = onClose) { Icon(Icons.Outlined.Close, stringResource(R.string.close)) }
+                        IconButton(onClick = { scope.launch { pager.animateScrollToPage((index - 1).coerceAtLeast(0)) } },
+                            enabled = index > 0 && !pager.isScrollInProgress) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.previous_photo)) }
+                        Text(stringResource(R.string.photo_position, index + 1, photos.size),
+                            Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.labelLarge,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        IconButton(onClick = { scope.launch { pager.animateScrollToPage((index + 1).coerceAtMost(photos.lastIndex)) } },
+                            enabled = index < photos.lastIndex && !pager.isScrollInProgress) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.next_photo)) }
+                        if (onRemove != null) FilledTonalIconButton(onClick = { onRemove(current) }, enabled = enabled && !pager.isScrollInProgress,
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
+                            Icon(Icons.Outlined.Delete, stringResource(R.string.remove_photo, index + 1))
+                        }
+                    }
                 }
             }
         }
