@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { parseAIExtraction, validateAIExtraction, type ProviderAdapter } from '@vegsnap/core';
 import { isRecord } from './protocol';
+import { ACCOUNT_DATA, CONTENT_DATA, requireDataConsent } from './data-consent';
 let nativeQueue = Promise.resolve();
 /** Native processes share one OS session lock, including inference and read-only status. */
 export function companion(command: string, payload?: unknown, signal?: AbortSignal): Promise<unknown> {
@@ -17,6 +18,7 @@ export function companion(command: string, payload?: unknown, signal?: AbortSign
 async function sendCompanion(command: string, payload?: unknown, signal?: AbortSignal): Promise<unknown> {
   signal?.throwIfAborted();
   if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) throw new Error('Enable the desktop companion in settings first.');
+  await requireDataConsent(command === 'check' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : ACCOUNT_DATA);
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();

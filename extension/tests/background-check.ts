@@ -10,6 +10,8 @@ let listener: (message: unknown, sender: Sender) => Promise<Reply<unknown>>;
 let startupListener: () => void;
 let installedListener: () => void;
 let browserLanguage = 'en-GB';
+let extensionScheme = 'chrome-extension:';
+let dataAllowed = true;
 let menuTitle: string | undefined;
 let permissionsRemovedListener: () => void;
 const local: Record<string, unknown> = { settings: { ...defaultSettings, connection: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'test-model', stores: ['dm'] } };
@@ -68,10 +70,10 @@ function matchesOrigin(url: string, pattern: string) {
 function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string) { delete values[key]; } }; }
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => browserLanguage },
-  runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
+  runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `${extensionScheme}//vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
   storage: { local: storage(local), session: storage(session) },
   contextMenus: { onClicked: { addListener() {} }, async update(_id: string, properties: { title: string }) { if (menuTitle === undefined) throw new Error('Menu missing'); menuTitle = properties.title; }, create(properties: { title: string }) { assert.equal(menuTitle, undefined, 'Only one context menu is created'); menuTitle = properties.title; } },
-  permissions: { async contains(request: { origins?: string[] }) { return !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
+  permissions: { async contains(request: { origins?: string[]; data_collection?: string[] }) { return (!request.data_collection || dataAllowed) && !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
   scripting: {
     async getRegisteredContentScripts() { return [...registeredScripts]; },
     async registerContentScripts(scripts: RegisteredScript[]) { registeredScripts.push(...scripts); },
@@ -471,3 +473,19 @@ installedListener!(); await tick();
 assert.equal(menuTitle, 'Mit Vegsnap prüfen', 'Extension language wins over browser language');
 local.settings = savedSettings;
 console.log('Context menu: a single localized label follows saved settings or the browser language');
+
+// Firefox can revoke data consent independently of an existing host permission.
+extensionScheme = 'moz-extension:';
+dataAllowed = false;
+const firefoxPage = { ...page, url: 'https://www.dm.de/example' };
+const firefoxTrusted = { ...trusted, url: 'moz-extension://vegsnap/app.html' };
+const beforeConsentDenial = calls.length;
+assert.equal((await listener!({ type: 'background-check', barcode: '4006381333931' }, firefoxPage)).ok, false, 'Revoked consent also blocks cached/background requests');
+assert.equal((await listener!({ type: 'set-store', store: 'dm', enabled: true }, firefoxTrusted)).ok, false, 'Host access alone cannot enable data sharing');
+assert.equal(calls.length, beforeConsentDenial);
+local.settings = { ...defaultSettings, connection: 'database', stores: ['dm'] };
+permissionsRemovedListener!(); await tick();
+assert(!registeredScripts.some(script => script.id === 'vegsnap-dm'), 'Revoking data consent unregisters the store script');
+assert.equal((await listener!({ type: 'check', input: { text: 'ingredients: oats', complete: true } }, firefoxTrusted)).ok, true, 'Local checks remain available without consent');
+await assert.rejects(() => calls.at(-1)!.fetch!('https://example.invalid'), /Allow data sharing/);
+console.log('Firefox background: data revocation blocks cached checks, unregisters integrations, and preserves local checks');

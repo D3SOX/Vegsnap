@@ -7,7 +7,7 @@ let failure = '';
 const commands: string[] = [];
 mock.module('wxt/browser', () => ({ browser: {
   permissions: { async contains() { return true; } },
-  runtime: { connectNative() {
+  runtime: { getURL: (path: string) => `chrome-extension://fixture${path}`, connectNative() {
     let listener: (message: unknown) => void = () => {};
     let disconnect: () => void = () => {};
     return {

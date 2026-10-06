@@ -5,6 +5,7 @@ import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { history } from '../src/history';
 import { offlineLibrary } from '../src/offline';
+import { CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, STORES, endpointOrigin, parseSettings, storeMarket } from '../src/settings';
 import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type Pending, type Reply } from '../src/protocol';
 
@@ -57,6 +58,7 @@ export default defineBackground(() => {
           if (sender.id !== browser.runtime.id || !isBackgroundRequest(message) || !allowBackground(sender.url, STORES.filter(store => config.stores.includes(store.id)).flatMap(store => store.origins))) throw new Error('This request is not allowed.');
           const origin = `${new URL(sender.url!).origin}/*`;
           if (!(await browser.permissions.contains({ origins: [origin] }))) throw new Error('Site permission has been removed.');
+          await requireDataConsent(CONTENT_DATA);
           if (message.type === 'open-check') {
             const sourceUrl = message.sourceUrl ? new URL(message.sourceUrl) : undefined;
             if (sourceUrl && (sourceUrl.origin !== new URL(sender.url!).origin || sourceUrl.username || sourceUrl.password)) throw new Error('Invalid product link.');
@@ -69,7 +71,7 @@ export default defineBackground(() => {
           if (cached && Date.now() - cached.time < 3_600_000) return { ok: true, result: cached.result };
           if (Date.now() - (lastCheck.get(tab) ?? 0) < 1500) throw new Error('Please wait before the next lookup.');
           lastCheck.set(tab, Date.now());
-          const result = await checkProduct({ barcode: message.barcode, locale: config.language, market: storeMarket(sender.url!) }, { mode: 'background', offlineProducts: await offlineLibrary().index() });
+          const result = await checkProduct({ barcode: message.barcode, locale: config.language, market: storeMarket(sender.url!) }, { mode: 'background', fetch: contentFetch, offlineProducts: await offlineLibrary().index() });
           if (cache.size > 200) cache.clear();
           cache.set(`${config.language}:${storeMarket(sender.url!)}:${message.barcode}`, { result, time: Date.now() });
           return { ok: true, result };
@@ -140,6 +142,7 @@ export default defineBackground(() => {
             let stores: string[] = [];
             await changeSettings(async () => {
               if (enabled && !(await browser.permissions.contains({ origins: [...store.origins] }))) throw new Error('Site permission was not granted.');
+              if (enabled) await requireDataConsent(CONTENT_DATA);
               const current = await settings();
               stores = enabled ? [...new Set([...current.stores, store.id])] : current.stores.filter(id => id !== store.id);
               await browser.storage.local.set({ settings: { ...current, stores } });
@@ -171,9 +174,9 @@ export default defineBackground(() => {
               if (!(await browser.permissions.contains({ origins: [origin] }))) throw new Error('Allow access to this AI endpoint in settings first.');
               const credential: unknown = (await browser.storage.session.get('credential')).credential;
               const token = isRecord(credential) && credential.endpoint === config.baseUrl && typeof credential.token === 'string' ? credential.token : undefined;
-              provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) });
+              provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) }, aiFetch);
             }
-            const result = await checkProduct(input, { mode: 'explicit', provider, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
+            const result = await checkProduct(input, { mode: 'explicit', provider, fetch: contentFetch, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
               const progress: CheckProgressMessage = { type: 'check-progress', requestId, stage };
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
@@ -212,7 +215,7 @@ export default defineBackground(() => {
             }
           }
         }
-        const enabled = config.stores.includes(store.id);
+        const enabled = config.stores.includes(store.id) && await hasDataConsent(CONTENT_DATA);
         if (enabled && granted.length) await browser.scripting.registerContentScripts([{ id: `vegsnap-${store.id}`, matches: granted, js: ['content-scripts/store.js'], runAt: 'document_idle', persistAcrossSessions: true }]);
         const tabs = granted.length ? await browser.tabs.query({ url: granted }) : [];
         const activeIds = new Set(enabled ? tabs.flatMap(tab => tab.id === undefined ? [] : [tab.id]) : []);

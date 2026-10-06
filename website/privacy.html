@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vegsnap privacy policy</title><meta name="description" content="What Vegsnap stores on your device and what its optional online features send to other services.">
+<link rel="canonical" href="https://vegsnap.app/privacy.html"><link rel="icon" href="/logo.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+<style>.policy{max-width:760px;padding-block:40px 64px}.policy h1{font-size:clamp(2rem,6vw,3rem);line-height:1.15}.policy h2{font-size:1.3rem;margin-top:36px}.policy p,.policy li{overflow-wrap:anywhere}.policy li+li{margin-top:10px}</style>
+</head>
+<body>
+<header class="site-header wrap"><a class="brand" href="/" aria-label="Vegsnap home"><img src="/logo.svg" width="40" height="40" alt=""><span>Vegsnap</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="https://github.com/D3SOX/vegsnap/issues">Support</a></nav></header>
+<main class="wrap policy">
+<h1>Vegsnap privacy policy</h1><p class="muted">Effective October 6, 2026 · Browser extension and optional desktop companion</p>
+<p>Vegsnap checks ingredients, materials and product evidence. You do not need a Vegsnap account. The extension has no ads, analytics or telemetry. The extension does not send your check history or AI credentials to its maintainers.</p>
+<h2>Data on your device</h2>
+<p>Settings, imported offline product packs, saved results and attached photos stay in this browser’s local extension storage. History is enabled by default; you can disable future saving, delete individual checks or clear your history. Exporting history creates a file on your device. Uninstalling the extension removes its browser storage; exported files and the separately installed companion remain until you remove them.</p>
+<p>API keys are stored in browser session storage and cleared when the browser closes. The optional companion stores ChatGPT credentials in your operating system’s credential store. The extension may temporarily display account status and your email address; it keeps connection status and the model list in session storage.</p>
+<h2>Online product databases</h2>
+<p>When a barcode is not in the partial offline data, Vegsnap queries Open Food Facts, Open Beauty Facts and Open Products Facts. Requests contain the barcode and application identifier. Those services also receive your IP address and ordinary network request information. They do not receive your check history, photos or AI credentials. Their own privacy policies apply.</p>
+<h2>Optional website features</h2>
+<p>Selected text and product information are read when you use the toolbar or context menu. Shop integrations are off by default. Enabling a supported shop grants access to that shop and allows automatic barcode lookups. Background browsing never calls AI and does not save checks to history.</p>
+<p>Importing a remote product image requires permission for its host. The image host receives the image URL, your IP address and normal request information; Vegsnap omits credentials and the referrer for this download. You can import a saved photo instead.</p>
+<h2>Optional AI and the desktop companion</h2>
+<p>You choose whether to configure an AI provider. For checks you start, when local rules and databases cannot answer, Vegsnap can send your selected or entered text, photos, product name, brand, source-page URL, category, market and language to that provider. A source URL can reveal which product page you visited. API-key requests authenticate with your configured provider. Local model requests go to the local endpoint you configure.</p>
+<p>ChatGPT connections use the separately installed companion. Sign-in and model discovery exchange account and authentication information with OpenAI; product checks send the selected check input to the companion and then to OpenAI. Connected providers may use product details for web research. Provider retention policies, terms, charges and usage limits apply. Never include unrelated personal information in product input.</p>
+<p>Vegsnap does not run AI during background browsing. Disconnect the companion, choose “Databases only”, clear your API key or revoke endpoint permissions to stop using a provider. Companion credentials and any provider-side data must be managed separately through the companion, the operating system or your provider.</p>
+<h2>Firefox consent and permissions</h2>
+<p>In Firefox, online content sharing, source-page URLs, authentication information and account information are declared as optional data permissions. Vegsnap requests the relevant permissions when you start an online feature. Declining or revoking them prevents the corresponding network or native-companion requests; local ingredient checks and offline product data remain available. Manage these choices in Firefox’s extension “Permissions and data” settings. Browser host permissions and native messaging are also requested for the features that use them.</p>
+<h2>Community manufacturer replies</h2>
+<p>Community buttons open the separately configured community service in a browser tab. Product identity and language are prefilled through the URL fragment, which is not sent in the initial web request. The community page can use that identity to search replies or prefill its form. The link does not include your saved result, photos, credentials or history, and no referrer is sent. The service receives ordinary network information when you visit it. Opening a contribution form does not submit a manufacturer reply. Only content you deliberately submit in that form is uploaded; redact personal details before submission. Reviewed contributions may be published by that service.</p>
+<h2>Use and sharing</h2>
+<p>Vegsnap uses information only to provide the product-checking features described here. It does not sell user data, use it for advertising, or use it to determine creditworthiness or lending eligibility. It shares information only with the services you use for these features. Information received from Google APIs is used in accordance with the Chrome Web Store User Data Policy and its Limited Use requirements.</p>
+<h2>Links and third-party services</h2>
+<p>Opening evidence, manufacturer, support, community or download links takes you to a third-party service governed by its own privacy policy. The Vegsnap website is hosted by GitHub Pages, which receives normal web request information. The site uses no analytics, tracking cookies or remote fonts.</p>
+<h2>Contact and changes</h2>
+<p>Vegsnap is maintained by D3SOX. For privacy questions, contact the maintainer using the <a href="https://github.com/D3SOX/vegsnap/issues">project support page</a>. Do not post credentials or private product-check data in a public issue. Updates to this policy will be published on this page with a revised effective date.</p>
+</main><footer class="site-footer wrap"><p>Vegsnap · <a href="https://github.com/D3SOX/vegsnap">Source code</a> · <a href="/">Home</a></p></footer>
+</body></html>

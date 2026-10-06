@@ -15,6 +15,7 @@ import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
+import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, requestDataConsent } from './data-consent';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -127,7 +128,11 @@ export function App() {
   async function check(input: CheckInput) {
     await act(async () => {
       const current = configRef.current;
-      if (!['chatgpt', 'database'].includes(current.connection) && !(await browser.permissions.request({ origins: [endpointOrigin(current.baseUrl)] }))) throw new Error('Endpoint permission was not granted.');
+      const api = !['chatgpt', 'database'].includes(current.connection);
+      if ((input.barcode || current.model && current.connection !== 'database') && !(await requestDataConsent(
+        current.model && current.connection !== 'database' ? current.connection === 'chatgpt' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : AI_DATA : CONTENT_DATA,
+        api ? { origins: [endpointOrigin(current.baseUrl)] } : {},
+      ))) throw new Error(t.dataConsentDenied);
       await settingsWrites.current;
       const checked = await runCheck(input); setResult(checked); setImages([]); setImageUrl(undefined); await refresh(); });
   }
@@ -208,7 +213,7 @@ export function App() {
     const current = () => operation === connectionOperation.current;
     setConnectionTask(command); setConnectionError('');
     try {
-      if (command === 'signIn' && !(await browser.permissions.request({ permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
+      if (command === 'signIn' && !(await requestDataConsent(ACCOUNT_DATA, { permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
       if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) {
         if (current()) { setAccount({ state: 'signedout' }); setModels([]); setModelsLoaded(false); }
         return;
@@ -241,7 +246,7 @@ export function App() {
   }
   async function toggleStore(store: typeof STORES[number], grantAll = false) {
     const enabled = configRef.current.stores.includes(store.id);
-    if ((!enabled || grantAll) && !(await browser.permissions.request({ origins: [...store.origins] }))) throw new Error('Site permission was not granted.');
+    if ((!enabled || grantAll) && !(await requestDataConsent(CONTENT_DATA, { origins: [...store.origins] }))) throw new Error(t.dataConsentDenied);
     await settingsWrites.current;
     const stores = await request<string[]>({ type: 'set-store', store: store.id, enabled: grantAll || !enabled });
     if (enabled && !grantAll) await browser.permissions.remove({ origins: [...store.origins] });
@@ -251,8 +256,8 @@ export function App() {
     if (!imageUrl) return;
     const url = new URL(imageUrl);
     if (url.protocol !== 'https:') throw new Error('Save this image and import it as a file.');
-    if (!(await browser.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error('Image permission was not granted.');
-    const response = await fetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
+    if (!(await requestDataConsent(CONTENT_DATA, { origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error(t.dataConsentDenied);
+    const response = await contentFetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error('Image could not be loaded. Save it and import the file.');
     setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
   }
@@ -324,7 +329,7 @@ export function App() {
             {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
             <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.'); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
           </section>
-          <h2>{t.privacy}</h2><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
+          <h2>{t.privacy}</h2><p class="hint"><a href="https://vegsnap.app/privacy.html" target="_blank" rel="noreferrer">{t.privacyPolicy}</a></p><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
         </form>
         <footer>Vegsnap · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
       </section>}

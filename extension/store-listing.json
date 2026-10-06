@@ -1,0 +1,47 @@
+{
+  "name": "Vegsnap",
+  "summary": "Check whether a product appears vegan. Review ingredient and material findings, product evidence and the details that still need confirmation.",
+  "description": "Check whether a product appears vegan while you browse. Select an ingredients list, right-click a product image, paste label text, or enter a barcode. Vegsnap shows its findings and explains what is uncertain.\n\n• Check food, cosmetics, household products, clothing and shoes.\n• See which ingredients or materials appear plant-derived, animal-derived, ambiguous or unknown.\n• Look up exact barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts. A partial offline database is included; you can import additional regional packs.\n• Review the evidence and source dates. Incomplete labels and conflicting information can leave a result uncertain.\n• Save and search checks on your device. Turn off history or delete saved checks at any time.\n• Optionally enable shop buttons for Amazon, dm.de, REWE and Zalando. Automatic browsing checks use product databases, never AI.\n• Use English or German.\n\nOptional AI\nConnect an OpenAI-compatible API or a compatible local model for labels and ingredients that local rules and databases cannot resolve. ChatGPT sign-in requires the separately installed Vegsnap desktop companion. Basic ingredient and database checks work without an AI account or the companion. Providers have their own retention policies, usage limits and charges.\n\nPrivacy\nNo Vegsnap account, ads, analytics or telemetry. Your history stays in this browser. Online barcode lookups send product identifiers to Open Facts. AI checks you start can send the selected text, photos and product details, including a source URL, to your chosen provider. Website, endpoint and companion access are requested for the features that use them. Firefox also requests optional data-sharing consent; declining it leaves local checks available.\n\nVegsnap is an early release. Results explain available evidence and missing details; community database labels and AI assessments are not independently verified certifications. Company concerns are shown separately and do not change the product’s vegan result.\n\nFree and open source under AGPL-3.0-only.\nWebsite and companion setup: https://vegsnap.app/\nPrivacy policy: https://vegsnap.app/privacy.html\nSupport and source: https://github.com/D3SOX/vegsnap",
+  "homepage_url": "https://vegsnap.app/",
+  "support_url": "https://github.com/D3SOX/vegsnap/issues",
+  "privacy_policy_url": "https://vegsnap.app/privacy.html",
+  "category": "Shopping",
+  "language": "en",
+  "visibility": "public",
+  "price": "free",
+  "single_purpose": "Help users assess whether a product appears vegan by checking its ingredients, materials and product evidence.",
+  "permission_justifications": {
+    "storage": "Save user preferences, optional on-device check history and imported offline product packs. API keys and connection state use session storage.",
+    "contextMenus": "Offer “Check with Vegsnap” for text or product images the user explicitly selects.",
+    "activeTab": "Read selected text and structured product data from the active page when the user invokes the toolbar.",
+    "scripting": "Inspect the invoked active tab and inject packaged shop buttons only on sites the user enables. No remote code is executed.",
+    "host_permissions": "Query exact product barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts when the offline data has no matching record.",
+    "optional_host_permissions": "Support user-enabled shops, product-image hosts and user-configured HTTPS AI endpoints. Loopback HTTP supports local models. Access is requested for each feature’s hosts.",
+    "nativeMessaging": "Optional connection to the locally installed Vegsnap companion for ChatGPT sign-in, model discovery and explicit AI product checks. Core features work without it."
+  },
+  "remote_code": "No. All executable JavaScript is packaged with the extension. Remote responses are product data and AI output validated as data; no downloaded code is executed.",
+  "chrome_data_types": [
+    "Personally identifiable information",
+    "Authentication information",
+    "Web history",
+    "Website content"
+  ],
+  "chrome_data_explanation": "The optional companion handles ChatGPT account status/email; optional API requests authenticate with a session-only API key. Explicit checks can send selected product content and a source-page URL to the chosen provider. No passive browsing history, analytics or telemetry is collected. Select these categories to disclose feature data even though maintainers do not receive it.",
+  "chrome_certifications": {
+    "no_data_sales": true,
+    "only_single_purpose_use": true,
+    "no_credit_or_lending_use": true
+  },
+  "firefox_data_collection_permissions": {
+    "required": [
+      "none"
+    ],
+    "optional": [
+      "websiteContent",
+      "browsingActivity",
+      "authenticationInfo",
+      "personallyIdentifyingInfo"
+    ]
+  },
+  "reviewer_instructions": "No Vegsnap login is required. To test basic checks, open the toolbar, go to Settings and select “Databases only”. Return to Check, paste “Ingredients: oats, sugar, sunflower oil”, mark it as a complete list and run the check. Then test “Ingredients: oats, milk powder” and “Ingredients: unspecified flavouring”. The first list should look vegan by composition, milk should be flagged as animal-derived, and unspecified flavouring should remain uncertain. No provider credentials are needed for these cases.\n\nUse History to reopen or delete the checks; disable history in Settings to stop saving new ones. Inspect a page only after invoking the toolbar, or select text and use the context menu. Shop integrations are off by default. Enabling a shop requests its hosts; automatic exact-barcode checks use databases only. No AI request runs during background browsing.\n\nFirefox: start with optional data sharing ungranted. Local text checks still work. Starting an online barcode/AI feature, importing a remote image or enabling a shop requests the corresponding data consent. Decline it and verify that requests are blocked. Grant it to use the feature, then revoke it in about:addons → Permissions and data; subsequent network/native requests are blocked and shop scripts are unregistered. Authentication/account data is separately requested when connecting the optional companion.\n\nOptional AI needs a provider configured by the tester. API connections need your own endpoint, model and session-only API key; a local model can be used without a paid account. ChatGPT uses the separately installed companion from https://github.com/D3SOX/vegsnap/releases/latest. Setup: https://github.com/D3SOX/vegsnap#install-the-chatgpt-companion. No shared reviewer credentials are provided. Firefox native ID: vegsnap@vegsnap.app. The Chrome Web Store assigns its own extension ID. Register the companion using the ID displayed by the Web Store, which may differ from the GitHub sideload package.\n\nAll JavaScript is bundled locally with WXT/Vite/Preact. The source ZIP contains the exact bundled offline dataset and build instructions in AMO-README.txt. Rebuild directly with WXT as instructed; do not refresh the live offline dataset before comparison."
+}
