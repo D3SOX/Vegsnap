@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import zipfile
@@ -30,6 +31,7 @@ def archive_tree(path, directory, overrides=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'artifacts/store-submission')
+    parser.add_argument('--packages-only', action='store_true', help='Skip screenshots and promotional graphics (no image dependencies required)')
     args = parser.parse_args()
     chrome = ROOT / 'extension/.output/chrome-mv3'
     firefox = ROOT / 'extension/.output/firefox-mv3'
@@ -44,13 +46,15 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     archive_tree(output / 'vegsnap-chrome-store.zip', chrome, {'manifest.json': (json.dumps(chrome_manifest, indent=2) + '\n').encode()})
     archive_tree(output / 'vegsnap-firefox.xpi', firefox)
+    node_version = subprocess.check_output(['node', '--version'], text=True).strip()
+    bun_version = subprocess.check_output(['bun', '--version'], text=True).strip()
     instructions = f'''Vegsnap {version} — Mozilla source review
 
 The source archive contains the exact input files used for this submission.
-Build environment: Linux x86_64 (Arch); Node.js 24.21.0; Bun 1.4.2; WXT 0.21.4/Vite 8.3.2
-and other dependencies pinned in bun.lock. GitHub release builds use Ubuntu.
-Tools are open source. Install Bun 1.4.2 from https://bun.sh/docs/installation
-(versioned releases: https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2).
+Build environment: {platform.system()} {platform.machine()}; Node.js {node_version}; Bun {bun_version}.
+WXT, Vite and other dependencies are pinned in bun.lock.
+Tools are open source. Install Bun {bun_version} from https://bun.sh/docs/installation
+(versioned releases: https://github.com/oven-sh/bun/releases/tag/bun-v{bun_version}).
 
 From the extracted source root:
   bun install --frozen-lockfile
@@ -80,6 +84,20 @@ components do not use dangerouslySetInnerHTML or insert product HTML.
     with zipfile.ZipFile(output / 'vegsnap-firefox-source.zip') as archive:
         if archive.testzip() is not None:
             raise ValueError('Invalid source archive')
+    shutil.copyfile(ROOT / 'extension/store-listing.json', output / 'store-listing.json')
+    upload_files = [output / name for name in ('vegsnap-chrome-store.zip', 'vegsnap-firefox.xpi', 'vegsnap-firefox-source.zip', 'store-listing.json')]
+    if not args.packages_only:
+        prepare_graphics(output)
+        upload_files.extend(output / name for name in ('icon-128.png', 'chrome-small-promo.png'))
+        upload_files.extend((output / 'screenshots').rglob('*.png'))
+    metadata = {'version': version, 'chromium_store_id': json.loads((ROOT / 'extension/store-listing.json').read_text()).get('chromium_store_id'), 'firefox_id': firefox_manifest['browser_specific_settings']['gecko']['id'],
+                'files': {path.relative_to(output).as_posix(): sha256(path.read_bytes()) for path in sorted(upload_files) if path.is_file()}}
+    (output / 'submission.json').write_text(json.dumps(metadata, indent=2) + '\n')
+    print(f'Prepared Vegsnap {version}: {output}')
+    print(f'Chromium ID: {metadata["chromium_store_id"] or "assigned after store upload"}; Firefox ID: {metadata["firefox_id"]}')
+
+
+def prepare_graphics(output):
     for variant in ('light', 'dark'):
         destination = output / 'screenshots' / variant
         if destination.exists():
@@ -89,7 +107,6 @@ components do not use dangerouslySetInnerHTML or insert product HTML.
         for path in sorted(source.glob('*.png')):
             shutil.copyfile(path, destination / path.name)
     shutil.copyfile(ROOT / 'extension/public/icons/128.png', output / 'icon-128.png')
-    shutil.copyfile(ROOT / 'extension/store-listing.json', output / 'store-listing.json')
     # Brand-only promotional art; screenshots are reused without modification.
     import cairosvg
     from PIL import Image
@@ -99,13 +116,6 @@ components do not use dangerouslySetInnerHTML or insert product HTML.
     cairosvg.svg2png(bytestring=promo.encode(), write_to=str(output / 'chrome-small-promo.png'))
     with Image.open(output / 'chrome-small-promo.png') as rendered:
         rendered.convert('RGB').save(output / 'chrome-small-promo.png', optimize=True)
-    upload_files = [output / name for name in ('vegsnap-chrome-store.zip', 'vegsnap-firefox.xpi', 'vegsnap-firefox-source.zip', 'icon-128.png', 'store-listing.json', 'chrome-small-promo.png')]
-    upload_files.extend((output / 'screenshots').rglob('*.png'))
-    metadata = {'version': version, 'chromium_store_id': json.loads((ROOT / 'extension/store-listing.json').read_text()).get('chromium_store_id'), 'firefox_id': firefox_manifest['browser_specific_settings']['gecko']['id'],
-                'files': {path.relative_to(output).as_posix(): sha256(path.read_bytes()) for path in sorted(upload_files) if path.is_file()}}
-    (output / 'submission.json').write_text(json.dumps(metadata, indent=2) + '\n')
-    print(f'Prepared Vegsnap {version}: {output}')
-    print(f'Chromium ID: {metadata["chromium_store_id"] or "assigned after store upload"}; Firefox ID: {metadata["firefox_id"]}')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,107 @@
+name: Publish browser extensions
+
+on:
+  release:
+    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      AMO_JWT_ISSUER:
+        required: true
+      AMO_JWT_SECRET:
+        required: true
+      CHROME_CLIENT_ID:
+        required: true
+      CHROME_CLIENT_SECRET:
+        required: true
+      CHROME_REFRESH_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag (for example v0.2.9)
+        required: true
+        type: string
+      store:
+        description: Store to submit (retry only the failed store)
+        type: choice
+        default: both
+        options: [both, amo, chrome]
+
+permissions:
+  contents: read
+
+# Serialize versions as well as retries; never cancel a submission in progress.
+concurrency:
+  group: extension-store-publishing
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: ${{ !github.event.release.prerelease && !contains(inputs.tag || github.event.release.tag_name, '-') }}
+    name: Submit to ${{ matrix.store }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        store: [amo, chrome]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download published release packages
+        if: ${{ !inputs.store || inputs.store == 'both' || inputs.store == matrix.store }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'A stable version tag is required.'; exit 1; }
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)' | grep -qx true
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir store-release \
+            --pattern vegsnap-chrome-store.zip --pattern vegsnap-firefox.xpi \
+            --pattern vegsnap-firefox-source.zip --pattern submission.json --pattern store-listing.json
+          python3 scripts/publish-extension-stores.py validate --tag "$RELEASE_TAG" --directory store-release
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > store-release/release-notes.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          folder = Path('store-release')
+          listing = json.loads((folder / 'store-listing.json').read_text())
+          metadata = {'version': {'approval_notes': listing['reviewer_instructions'], 'release_notes': {'en-US': (folder / 'release-notes.txt').read_text()}}}
+          (folder / 'amo-metadata.json').write_text(json.dumps(metadata))
+          PY
+      - name: Check AMO credentials
+        if: ${{ matrix.store == 'amo' && (!inputs.store || inputs.store == 'both' || inputs.store == 'amo') }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          [[ -n "$AMO_JWT_ISSUER" && -n "$AMO_JWT_SECRET" ]] || { echo 'Configure AMO_JWT_ISSUER and AMO_JWT_SECRET repository secrets. See extension/RELEASING.md.'; exit 1; }
+      - name: Submit Firefox version and matching sources to AMO
+        if: ${{ matrix.store == 'amo' && (!inputs.store || inputs.store == 'both' || inputs.store == 'amo') }}
+        uses: kewisch/action-web-ext@1cb1251a9b02273b501fdb7dd0b98ce6cdfa5633
+        with:
+          cmd: sign
+          channel: listed
+          source: store-release/vegsnap-firefox.xpi
+          sourceCode: store-release/vegsnap-firefox-source.zip
+          metaDataFile: store-release/amo-metadata.json
+          apiKey: ${{ secrets.AMO_JWT_ISSUER }}
+          apiSecret: ${{ secrets.AMO_JWT_SECRET }}
+          approvalTimeout: 0
+      - name: Submit Chrome version for review and automatic publication
+        if: ${{ matrix.store == 'chrome' && (!inputs.store || inputs.store == 'both' || inputs.store == 'chrome') }}
+        env:
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: python3 scripts/publish-extension-stores.py chrome --tag "$RELEASE_TAG" --directory store-release
+      - name: Record submission
+        if: ${{ success() && (!inputs.store || inputs.store == 'both' || inputs.store == matrix.store) }}
+        env:
+          STORE: ${{ matrix.store }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: printf 'Submitted %s to %s. Store approval can still be pending.\n' "$RELEASE_TAG" "$STORE" >> "$GITHUB_STEP_SUMMARY"

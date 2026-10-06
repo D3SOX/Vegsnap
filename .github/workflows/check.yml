@@ -20,6 +20,7 @@ jobs:
       - run: bun run test
       - run: bun run test:package
       - run: bun run test:screenshots
+      - run: python3 -m unittest discover -s scripts -p 'test_extension_stores.py' -v
 
   android:
     runs-on: ubuntu-latest
