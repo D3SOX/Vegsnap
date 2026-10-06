@@ -12,6 +12,4 @@ if (os) {
   }
   const download = document.querySelector(`[data-download-os="${os}"]`);
   download?.classList.add('primary');
-  const label = download?.querySelector('.download-match');
-  if (label) label.hidden = false;
 }

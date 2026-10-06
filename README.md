@@ -10,7 +10,8 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 [Website](https://veguide.app) · [Android releases](https://github.com/D3SOX/veguide/releases)
 
-[![Get it on Obtainium](https://img.shields.io/badge/Get_it_on-Obtainium-526442?style=for-the-badge)](https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D)
+<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="website/icons/obtainium-badge.png" alt="Get it on Obtainium" width="200"></a>
+<!-- Official Obtainium artwork: https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png. GPL-3.0; see website/icons/obtainium-LICENSE.txt. -->
 
 ## What it does
 
@@ -33,10 +34,6 @@ Veguide accepts a web claim only if its URL came from the search tool and its pr
 Incomplete composition, ambiguous ingredient origins or conflicting sources can produce an uncertain result. Store badges require an exact barcode in the page's structured product data. Use a right-click check when a listing does not supply one.
 
 Connecting a cloud provider can send selected text and photos to that provider when you start a check. The provider's retention policy, usage limits and charges apply. Database checks and local rules need no AI account.
-
-## Website deployment
-
-The static site in `website/` is hosted on GitHub Pages at [veguide.app](https://veguide.app). Changes to that folder or `.github/workflows/website.yml` on `main` deploy automatically. You can also run **Deploy website** manually from GitHub Actions. No site build or separate deployment token is needed.
 
 ## Run from source
 
