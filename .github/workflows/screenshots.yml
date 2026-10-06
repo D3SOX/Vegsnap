@@ -1,0 +1,126 @@
+name: Refresh screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to capture
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+      - id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - run: bun install --frozen-lockfile
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          avd-name: veguide_screenshots
+          force-avd-creation: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swangle -no-snapshot
+          disable-animations: true
+          script: python3 scripts/screenshots.py capture --platform android --serial emulator-5554 --avd veguide_screenshots
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: screenshot-input-android
+          path: |
+            artifacts/screenshots/website
+            artifacts/screenshots/capture-android.json
+          if-no-files-found: error
+
+  extension:
+    needs: source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun x playwright install --with-deps chromium
+      - run: python3 scripts/screenshots.py capture --platform extension
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: screenshot-input-extension
+          path: |
+            artifacts/screenshots/website
+            artifacts/screenshots/capture-extension.json
+          if-no-files-found: error
+
+  render:
+    needs: [source, android, extension]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.commit }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: screenshot-input-*
+          merge-multiple: true
+          path: artifacts/screenshots
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libcairo2 fonts-dejavu-core
+          python3 -m venv /tmp/screenshot-tools
+          /tmp/screenshot-tools/bin/pip install -r scripts/screenshots/requirements.txt
+          /tmp/screenshot-tools/bin/python scripts/screenshots.py render
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: veguide-screenshots
+          path: |
+            artifacts/screenshots/website/images
+            artifacts/screenshots/marketing/sources
+            artifacts/screenshots/manifest.json
+            artifacts/screenshots/contact-sheet.png
+          if-no-files-found: error
+      - name: Review instructions
+        run: |
+          {
+            echo "Download **veguide-screenshots** and inspect contact-sheet.png."
+            echo "From the captured checkout, apply with:"
+            echo "bun run screenshots:apply --run $GITHUB_RUN_ID --commit"
+            echo "This creates a signed asset-only commit locally. It does not push or deploy."
+          } >> "$GITHUB_STEP_SUMMARY"

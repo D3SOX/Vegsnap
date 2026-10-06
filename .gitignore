@@ -24,3 +24,5 @@ docs/
 *.p12
 *.pfx
 .wrangler/
+
+.venv-screenshots/

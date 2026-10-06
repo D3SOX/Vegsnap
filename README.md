@@ -100,6 +100,8 @@ cd android
 
 Automated tests use fixtures and mocked network responses. They do not establish live provider eligibility, store coverage or camera accuracy on real packaging.
 
+Screenshot refreshes run through the **Refresh screenshots** GitHub Actions workflow or the local capture script. See [the capture instructions](scripts/screenshots/README.md) for reviewing and applying a bundle with a signed commit.
+
 ## Install the browser extension
 
 Download the browser packages from the [latest release](https://github.com/D3SOX/veguide/releases/latest).

@@ -14,10 +14,14 @@
     "typecheck": "bun run --filter '*' typecheck",
     "check:companion": "cargo test --manifest-path companion/Cargo.toml",
     "check:android": "cd android && ./gradlew testDebugUnitTest lintDebug",
-    "data:offline": "bun scripts/offline-snapshot.ts"
+    "data:offline": "bun scripts/offline-snapshot.ts",
+    "screenshots": "python3 scripts/screenshots.py capture",
+    "screenshots:apply": "python3 scripts/screenshots.py apply",
+    "test:screenshots": "python3 -m unittest discover -s scripts/screenshots -p \"test_*.py\" && bun x tsc -p scripts/screenshots/tsconfig.json"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "playwright": "1.63.0",
     "typescript": "^5.9.3"
   }
 }

@@ -2,12 +2,14 @@
 """Render editable SVG layouts with genuine, unmodified app captures."""
 from pathlib import Path
 from html import escape
+import argparse
 import base64
 import cairosvg
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "marketing"
+OUTPUT_ROOT = ROOT
+ASSETS = OUTPUT_ROOT / "marketing"
 IMAGES = ROOT / "website" / "images"
 GREEN = "#183e2c"
 CREAM = "#f8f5e9"
@@ -23,7 +25,7 @@ def text(x, y, value, size=24, color=CREAM, weight="normal", serif=False, italic
 
 def image(path, x, y, width, height, clip=""):
     # Embed the originals so each SVG is portable and CairoSVG can load them.
-    original = ROOT / path
+    original = (OUTPUT_ROOT if path.startswith("website/images/") else ROOT) / path
     mime = "image/svg+xml" if original.suffix == ".svg" else "image/png"
     encoded = base64.b64encode(original.read_bytes()).decode("ascii")
     return f'<image xlink:href="data:{mime};base64,{encoded}" x="{x}" y="{y}" width="{width}" height="{height}" {clip}/>'
@@ -156,6 +158,13 @@ def render_badges():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-root", type=Path, default=ROOT)
+    args = parser.parse_args()
+    OUTPUT_ROOT = args.output_root.resolve()
+    ASSETS = OUTPUT_ROOT / "marketing"
+    IMAGES = OUTPUT_ROOT / "website" / "images"
+    (ASSETS / "badges").mkdir(parents=True, exist_ok=True)
     for dark in (False, True):
         render_panels(dark)
         render_header(dark)

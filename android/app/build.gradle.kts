@@ -24,6 +24,11 @@ android {
         }
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
+    // Capture tests install beside the real app and never touch its data.
+    if (providers.gradleProperty("marketingCapture").isPresent) {
+        buildTypes.getByName("debug").applicationIdSuffix = ".screenshots"
+    }
+    sourceSets["androidTest"].assets.directories.add("../../scripts/screenshots")
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
