@@ -34,6 +34,10 @@ Incomplete composition, ambiguous ingredient origins or conflicting sources can 
 
 Connecting a cloud provider can send selected text and photos to that provider when you start a check. The provider's retention policy, usage limits and charges apply. Database checks and local rules need no AI account.
 
+## Website deployment
+
+The static site in `website/` is hosted on GitHub Pages at [veguide.app](https://veguide.app). Changes to that folder or `.github/workflows/website.yml` on `main` deploy automatically. You can also run **Deploy website** manually from GitHub Actions. No site build or separate deployment token is needed.
+
 ## Run from source
 
 Use Bun 1.4.2 for the extension. Android needs JDK 21 and Android SDK 37. The optional companion needs Rust. Automated tests do not require provider credentials.
