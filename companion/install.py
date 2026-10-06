@@ -32,6 +32,11 @@ def manifest(binary: Path, browser: str, extension_id: str) -> dict:
 
 
 def destination(browser: str) -> Path:
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA")
+        if not local or not Path(local).is_absolute():
+            raise ValueError("LOCALAPPDATA must name an absolute current-user directory")
+        return Path(local) / "Veguide/NativeMessagingHosts" / browser
     home = Path.home()
     if sys.platform == "linux":
         if browser == "firefox":
@@ -41,11 +46,6 @@ def destination(browser: str) -> Path:
     if sys.platform == "darwin":
         support = home / "Library/Application Support"
         return support / {"firefox": "Mozilla/NativeMessagingHosts", "chromium": "Chromium/NativeMessagingHosts", "chrome": "Google/Chrome/NativeMessagingHosts"}[browser]
-    if sys.platform == "win32":
-        local = os.environ.get("LOCALAPPDATA")
-        if not local or not Path(local).is_absolute():
-            raise ValueError("LOCALAPPDATA must name an absolute current-user directory")
-        return Path(local) / "Veguide/NativeMessagingHosts" / browser
     raise ValueError(f"Unsupported operating system: {sys.platform}")
 
 

@@ -32,7 +32,7 @@ class InstallerTest(unittest.TestCase):
             "chromium": r"Software\Chromium\NativeMessagingHosts\org.veguide.companion",
         }
         paths = []
-        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}), patch.dict(sys.modules, {"winreg": self.registry}):
+        with patch.object(sys, "platform", "win32"), patch.object(Path, "home", side_effect=RuntimeError("Home is not required on Windows")), patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}), patch.dict(sys.modules, {"winreg": self.registry}):
             for browser, key in expected.items():
                 extension_id = "veguide@veguide.app" if browser == "firefox" else "a" * 32
                 path = installer.install(self.binary, browser, extension_id)

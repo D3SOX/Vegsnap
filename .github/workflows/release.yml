@@ -131,7 +131,7 @@ jobs:
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
               lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/veguide-companion -output companion-release/veguide-companion
               codesign --force --sign - companion-release/veguide-companion
-              lipo -verify_arch arm64 x86_64 companion-release/veguide-companion
+              lipo companion-release/veguide-companion -verify_arch arm64 x86_64
               codesign --verify companion-release/veguide-companion
               tar -czf companion-artifacts/veguide-companion-macos-universal.tar.gz -C companion-release .
               ;;
