@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="website/logo.png" alt="Veguide leaf icon" width="88" height="88">
+  <picture><img src="website/logo.png" alt="Veguide leaf icon" width="88" height="88"></picture>
   <h1>Veguide</h1>
   <p><strong>Check whether a product appears vegan.</strong></p>
   <p>Photograph a label on Android, or check ingredients and product images in Chromium or Firefox.</p>
