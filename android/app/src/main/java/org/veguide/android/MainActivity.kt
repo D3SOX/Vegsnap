@@ -574,6 +574,7 @@ private fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onReche
             } }
         }
         ManufacturerContactSection(result)
+        CompanyAssessmentSection(result)
         CompanyConcernSection(result)
         TextButton(onClick = { model.recheck(originalResult) }) { Icon(Icons.Outlined.EditNote, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.edit_result)) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

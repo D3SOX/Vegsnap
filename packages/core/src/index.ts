@@ -11,3 +11,4 @@ export { resolveCompanyConcerns, attachCompanyConcerns, createCompanyConcernReso
 export type { CompanyEntity, CompanyConcernRecord, CompanyConcernDataset } from './company-concerns';
 export { parseManufacturerContact, applyManufacturerContact, manufacturerMessage, safeContactEmail, safeContactUrl } from './manufacturer-contact';
 export type { ManufacturerMessage } from './manufacturer-contact';
+export { parseCompanyAssessment, parseResultCompanyAssessment, sourcedCompanyAssessment, applyCompanyAssessment } from './company-assessment';

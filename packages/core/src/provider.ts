@@ -6,6 +6,7 @@ import { analyzeText, safeSourceUrl } from './analyze';
 import { applyAIEvidence } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
+import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
 
 export const EXTRACTION_PROMPT = promptData.prompt;
 export const PROVIDER_PRESETS = [
@@ -18,7 +19,7 @@ export const PROVIDER_PRESETS = [
 const categories: Category[] = ['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'];
 function object(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 export function validateAIExtraction(value: unknown, options: { allowResearch?: boolean } = {}): AIExtraction {
-  const keys = ['text', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', ...(options.allowResearch ? ['research'] : [])];
+  const keys = ['text', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
   if (!object(value) || Object.keys(value).some(key => !keys.includes(key)) ||
     typeof value.text !== 'string' || value.text.length > 20_000 || typeof value.complete !== 'boolean' ||
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
@@ -65,9 +66,10 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
       typeof item.url !== 'string' || item.url.length > 2000 || !safeSourceUrl(item.url) || typeof item.title !== 'string' || item.title.length > 300))) {
     throw new Error('Provider returned invalid web search metadata.');
   }
-  const { contact: rawContact, ...assessment } = value;
+  const { contact: rawContact, companyAssessment: rawCompanyAssessment, ...assessment } = value;
   const contact = parseManufacturerContact(rawContact);
-  return { ...assessment, ...(contact ? { contact } : {}) } as unknown as AIExtraction;
+  const companyAssessment = parseCompanyAssessment(rawCompanyAssessment);
+  return { ...assessment, ...(contact ? { contact } : {}), ...(companyAssessment ? { companyAssessment } : {}) } as unknown as AIExtraction;
 }
 export function parseAIExtraction(text: string): AIExtraction {
   if (text.length > 100_000) throw new Error('AI extraction is too large.');
@@ -133,8 +135,10 @@ function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtr
   const sources = [...new Map([...(original.research?.sources ?? []), ...researched.research.sources].map(source => [source.url, source])).values()];
   // Preserve all original evidence and later contradictions, or keep the original intact when bounds are exceeded.
   if (assessments.length > 100 || webClaims.length > 5 || webCompositions.length > 3 || sources.length > 50) return original;
+  const companyAssessment = sourcedCompanyAssessment({ ...researched, research: { searched: true, sources } });
   return { ...original, webClaims, webCompositions, ingredientAssessments: assessments,
-    ...(researched.contact ? { contact: researched.contact } : {}), research: { searched: true, sources } };
+    ...(researched.contact ? { contact: researched.contact } : {}),
+    ...(companyAssessment ? { companyAssessment } : {}), research: { searched: true, sources } };
 }
 export function validateProviderConfig(config: ProviderConfig): URL {
   const base = new URL(config.baseUrl);

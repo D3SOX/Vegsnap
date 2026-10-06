@@ -110,6 +110,9 @@ object HistoryTransfer {
         val clean = JSONObject()
         listOf("schemaVersion", "id", "outcome", "basis", "title", "summary", "category", "identity", "findings", "evidence", "questions", "warnings", "crossContact", "companyConcerns", "checkedAt", "usedAI", "aiStatus", "webSearchStatus")
             .forEach { field -> if (result.has(field)) clean.put(field, result.get(field)) }
+        safeCompanyAssessment(result.optJSONObject("companyAssessment"), saved = true)?.let { assessment ->
+            if (normalizeProductIdentity(assessment.getString("brand")) == normalizeProductIdentity(clean.optJSONObject("identity")?.optString("brand").orEmpty())) clean.put("companyAssessment", assessment)
+        }
         // Never trust a transferred message or extra fields in an error envelope.
         if (clean.optString("outcome") in setOf("uncertain", "conflicting")) {
             safeManufacturerContact(result.optJSONObject("manufacturerContact"))?.let { contact ->
