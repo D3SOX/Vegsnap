@@ -92,7 +92,7 @@ class MarketingScreenshotTest {
         for ((index, name) in listOf(1 to "android-result", 2 to "android-uncertain")) {
             compose.runOnIdle { model.update { it.copy(result = results.getJSONObject(index).toString()) } }
             compose.onNodeWithTag("result-sheet-content").assertIsDisplayed()
-            compose.onNodeWithText("Share result").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Share result").assertIsDisplayed()
             capture(name)
             compose.runOnIdle { model.update { it.copy(result = null) } }
             compose.waitForIdle()
