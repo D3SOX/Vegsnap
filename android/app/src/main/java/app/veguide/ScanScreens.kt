@@ -305,9 +305,10 @@ internal fun ManualScreen(state: ScanState, model: VeguideViewModel) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                 value = state.complete, enabled = enabled, role = Role.Checkbox,
                 onValueChange = { value -> model.update { it.copy(complete = value) } },
-            ), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(state.complete, onCheckedChange = null, enabled = enabled)
-                Text(stringResource(R.string.complete), Modifier.weight(1f))
+            ).padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(state.complete, onCheckedChange = null, enabled = enabled, modifier = Modifier.size(24.dp))
+                Text(stringResource(R.string.complete), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             }
             Button(onClick = { keyboard?.hide(); model.check() }, enabled = enabled && (state.text.isNotBlank() || state.name.isNotBlank() || state.barcode.isNotBlank() || state.photos.isNotEmpty()), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Icon(Icons.Outlined.Search, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.check))
