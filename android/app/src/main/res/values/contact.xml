@@ -1,6 +1,8 @@
 <resources>
     <string name="contact_manufacturer">Ask the manufacturer</string>
+    <string name="contact_language">Message language: %1$s</string>
     <string name="contact_ai_read">AI found this contact in a source it consulted. Check the original source before using it. Review the draft before sending.</string>
+    <string name="contact_missing">Contact details were not found for this check. Copy the message and find a contact on the manufacturer’s official website.</string>
     <string name="contact_source">Review contact source</string>
     <string name="contact_email_app">Open in email app</string>
     <string name="contact_form">Open contact page</string>

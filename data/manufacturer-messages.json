@@ -1,0 +1,62 @@
+{
+  "templates": {
+    "en": {
+      "name": "English",
+      "subject": "Vegan suitability question",
+      "thisProduct": "this product",
+      "by": "by",
+      "greeting": "Hello,",
+      "request": "Could you confirm whether {product} is vegan? Please include ingredients or materials and animal-derived processing aids.",
+      "barcode": "Product code",
+      "conflict": "The available information conflicts. Could you confirm the current information for this product variant?",
+      "questions": "Could you help with these unresolved questions?",
+      "processing": "Could you confirm whether the product, including its processing aids, is vegan?",
+      "originQuestion": "Confirm the origin of:",
+      "specification": "A product-specific statement or specification would be helpful.",
+      "source": "Contact source",
+      "thanks": "Thank you."
+    },
+    "de": {
+      "name": "Deutsch",
+      "subject": "Frage zur veganen Eignung",
+      "thisProduct": "dieses Produkt",
+      "by": "von",
+      "greeting": "Guten Tag,",
+      "request": "können Sie bestätigen, ob {product} vegan ist? Bitte berücksichtigen Sie Zutaten bzw. Materialien und tierische Verarbeitungshilfsstoffe.",
+      "barcode": "Produktcode",
+      "conflict": "Die mir vorliegenden Angaben widersprechen sich. Können Sie den aktuellen Stand für diese Produktvariante bestätigen?",
+      "questions": "Bitte helfen Sie mir bei diesen offenen Fragen:",
+      "processing": "Können Sie bestätigen, ob das Produkt einschließlich seiner Verarbeitungshilfsmittel vegan ist?",
+      "originQuestion": "Die Herkunft dieser Zutaten klären:",
+      "specification": "Eine produktspezifische Angabe oder Spezifikation wäre hilfreich.",
+      "source": "Kontaktquelle",
+      "thanks": "Vielen Dank."
+    },
+    "sv": {
+      "name": "Svenska",
+      "subject": "Fråga om produkten är vegansk",
+      "thisProduct": "den här produkten",
+      "by": "från",
+      "greeting": "Hej,",
+      "request": "Kan ni bekräfta om {product} är vegansk? Ta även hänsyn till ingredienser eller material och animaliska processhjälpmedel.",
+      "barcode": "Produktkod",
+      "conflict": "De uppgifter jag har är motstridiga. Kan ni bekräfta vad som gäller för den här produktvarianten i dag?",
+      "questions": "Kan ni hjälpa mig med följande frågor?",
+      "processing": "Kan ni bekräfta om produkten, inklusive processhjälpmedel, är vegansk?",
+      "originQuestion": "Bekräfta ursprunget för:",
+      "specification": "Ett produktspecifikt uttalande eller en specifikation skulle vara till hjälp.",
+      "source": "Kontaktkälla",
+      "thanks": "Tack på förhand."
+    }
+  },
+  "questions": [
+    { "en": "Provide the complete ingredients or materials list.", "de": "Bitte die vollständige Zutaten- oder Materialliste angeben.", "sv": "Ange den fullständiga listan över ingredienser eller material." },
+    { "en": "Show the complete ingredients or materials label.", "de": "Zeige die vollständige Zutaten- oder Materialliste.", "sv": "Visa den fullständiga ingrediens- eller materialförteckningen." },
+    { "en": "Confirm the source of the ambiguous or unrecognized ingredients/materials.", "de": "Die Herkunft unklarer oder unbekannter Zutaten/Materialien muss bestätigt werden.", "sv": "Bekräfta ursprunget för oklara eller okända ingredienser eller material." },
+    { "en": "Are the lining, glue, coatings, and trims free from animal-derived materials?", "de": "Sind Futter, Klebstoffe, Beschichtungen und Besatz frei von tierischen Materialien?", "sv": "Är foder, lim, ytbehandlingar och detaljer fria från animaliska material?", "sourceEn": "Ask the manufacturer about lining, glue, coatings, and trims.", "sourceDe": "Den Hersteller nach Futter, Klebstoffen, Beschichtungen und Besatz fragen.", "sourceSv": "Fråga tillverkaren om foder, lim, ytbehandlingar och detaljer." },
+    { "en": "Are any animal-derived processing or fining aids used?", "de": "Werden tierische Verarbeitungs- oder Schönungsmittel verwendet?", "sv": "Används några animaliska process- eller klarningsmedel?", "sourceEn": "Confirm processing and fining aids with the manufacturer.", "sourceDe": "Verarbeitungs- und Schönungsmittel beim Hersteller bestätigen lassen.", "sourceSv": "Be tillverkaren bekräfta vilka process- och klarningsmedel som används." },
+    { "en": "Identify the product category and its complete composition.", "de": "Produktkategorie und vollständige Zusammensetzung angeben.", "sv": "Ange produktkategori och fullständig sammansättning." },
+    { "en": "Identify the product category to assess its ingredients and production requirements.", "de": "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten.", "sv": "Ange produktkategori för att bedöma ingredienser och tillverkningsprocesser." },
+    { "en": "Is there a product-specific manufacturer vegan declaration covering processing aids, adhesives, and finishes?", "de": "Gibt es eine produktspezifische Vegan-Erklärung des Herstellers (einschließlich Hilfsstoffen, Klebstoffen und Beschichtungen)?", "sv": "Finns det ett produktspecifikt veganintyg från tillverkaren som omfattar processhjälpmedel, lim och ytbehandlingar?" }
+  ]
+}

@@ -46,27 +46,42 @@ private fun boundedContactText(value: String, limit: Int): String {
 }
 
 internal data class ManufacturerDraft(val subject: String, val body: String)
-internal fun manufacturerDraft(result: JSONObject, locale: String): ManufacturerDraft {
-    val de = locale == "de"
+internal fun manufacturerDraft(result: JSONObject, locale: String, messages: JSONObject): ManufacturerDraft {
+    val copy = messages.getJSONObject("templates").getJSONObject(locale)
     val identity = result.optJSONObject("identity") ?: JSONObject()
     fun clean(value: String, limit: Int = 300) = boundedContactText(value.replace(Regex("[\\p{Cc}\\p{Cf}]"), " ").replace(Regex("\\s+"), " ").trim(), limit)
     val product = listOf(clean(identity.optString("brand")), clean(identity.optString("name"))).filter { it.isNotBlank() }.joinToString(" ")
-    val questions = result.optJSONArray("questions")
-    val lines = if (questions == null) emptyList() else (0 until questions.length()).map { clean(questions.optString(it), 200) }.filter { it.isNotBlank() }.distinct().take(15)
+        .ifBlank { copy.getString("thisProduct") }
     val findings = result.optJSONArray("findings")
     val terms = if (findings == null) emptyList() else (0 until findings.length()).mapNotNull { index ->
         findings.optJSONObject(index)?.takeIf { it.optString("status") in setOf("ambiguous", "unknown") }?.let { clean(if (it.optString("displayLocale") == locale) it.optString("displayTerm").ifBlank { it.optString("term") } else it.optString("term"), 100) }
     }.filter { it.isNotBlank() }.distinct().take(15)
+    val translations = messages.getJSONArray("questions")
+    val templates = messages.getJSONObject("templates")
+    val originPrefixes = listOf("en", "de", "sv").map { templates.getJSONObject(it).getString("originQuestion") }
+    val termKeys = terms.map { it.lowercase(java.util.Locale.ROOT) }.toSet()
+    val questions = result.optJSONArray("questions")
+    val lines = (if (questions == null) emptyList() else (0 until questions.length()).mapNotNull { index ->
+        val question = questions.getString(index)
+        val translation = (0 until translations.length()).map { translations.getJSONObject(it) }
+            .firstOrNull { pair -> listOf("en", "de", "sv", "sourceEn", "sourceDe", "sourceSv").any { pair.optString(it) == question } }
+        val originPrefix = originPrefixes.firstOrNull { question.startsWith(it) }
+        val originTerms = originPrefix?.let { question.substring(it.length).trim().removeSuffix(".").split(",") }
+        val redundantOrigin = originTerms?.all { clean(it).lowercase(java.util.Locale.ROOT) in termKeys } == true
+        if (terms.isNotEmpty() && (redundantOrigin || translation?.optString("en") == "Confirm the source of the ambiguous or unrecognized ingredients/materials.")) return@mapNotNull null
+        clean(translation?.getString(locale) ?: question, 200)
+    }.filter { it.isNotBlank() }.distinct().take(15)) +
+        if (terms.isNotEmpty()) listOf(copy.getString("originQuestion") + " " + terms.joinToString(", ") + ".") else emptyList()
     val barcode = clean(identity.optString("barcode"))
     val source = safeManufacturerContact(result.optJSONObject("manufacturerContact"))?.getString("sourceUrl")
-    val subject = clean((if (de) "Frage zur veganen Eignung: " else "Vegan suitability question: ") + product, 200)
+    val subject = clean(copy.getString("subject") + ": " + product, 200)
     val body = buildString {
-        append(if (de) "Guten Tag,\n\nkönnen Sie bestätigen, ob $product vegan ist? Bitte berücksichtigen Sie Zutaten bzw. Materialien und tierische Verarbeitungshilfsstoffe.\n" else "Hello,\n\nCould you confirm whether $product is vegan? Please include ingredients or materials and animal-derived processing aids.\n")
-        if (barcode.isNotBlank()) append("\n" + (if (de) "Produktcode: " else "Product code: ") + barcode + "\n")
-        if (lines.isNotEmpty()) { append(if (de) "\nOffene Fragen:\n" else "\nOpen questions:\n"); lines.forEach { append("- $it\n") } }
-        if (terms.isNotEmpty()) append("\n" + (if (de) "Unklare Herkunft: " else "Unresolved origin: ") + terms.joinToString(", ") + "\n")
-        if (source != null) append("\n" + (if (de) "Kontaktquelle: " else "Contact source: ") + source + "\n")
-        append(if (de) "\nVielen Dank." else "\nThank you.")
+        append(copy.getString("greeting") + "\n\n" + copy.getString("request").replace("{product}", product) + "\n")
+        if (barcode.isNotBlank()) append("\n" + copy.getString("barcode") + ": " + barcode + "\n")
+        if (result.optString("outcome") == "conflicting") append("\n" + copy.getString("conflict") + "\n")
+        if (lines.isNotEmpty()) { append("\n" + copy.getString("questions") + "\n"); lines.forEach { append("- $it\n") } }
+        if (source != null) append("\n" + copy.getString("source") + ": " + source + "\n")
+        append("\n" + copy.getString("thanks"))
     }
     return ManufacturerDraft(subject, boundedContactText(body, 8000))
 }

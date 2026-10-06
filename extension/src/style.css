@@ -21,6 +21,7 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .manufacturer-contact{margin-top:24px}.manufacturer-contact details{margin:12px 0}.manufacturer-contact summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px}.manufacturer-contact summary:focus-visible,.contact-action:focus-visible{outline:3px solid #75975b;outline-offset:3px}.contact-action{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:12px;text-decoration:none}.contact-email{overflow-wrap:anywhere;font-size:13px}
 
 .ai-company-assessment blockquote{margin:10px 0 16px;padding-left:12px;border-left:3px solid var(--border);font-size:12px;white-space:pre-line}
+.manufacturer-message-language{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.manufacturer-message-language select{width:auto;min-width:140px;margin-top:0}
 
 .finding-name{display:flex;align-items:center;gap:10px}.finding-name strong{min-width:0;overflow-wrap:anywhere}
 .mobile-app{margin-top:24px;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--wash)}

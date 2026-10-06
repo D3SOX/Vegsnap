@@ -100,7 +100,8 @@ class ResultDetailsSheetTest {
                         VegsnapBottomSheet(onDismissRequest = {}, dragHandle = {
                             BottomSheetDefaults.DragHandle(Modifier.onGloballyPositioned { tops.add(it.positionInWindow().y) })
                         }) {
-                            CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
+                            CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration,
+                                LocalResources provides localized.resources, LocalDensity provides Density(density, fontScale)) {
                                 ResultSheet(displayedResult.value, {}, { rechecks++ }, {}, model)
                             }
                         }
@@ -158,6 +159,66 @@ class ResultDetailsSheetTest {
         compose.runOnIdle { displayedResult.value = JSONObject(original.toString()).put("outcome", "not_vegan") }
         compose.onNodeWithText("An KI senden").assertDoesNotExist()
         actions("de")
+    }
+
+    @Test fun savedManufacturerSourceWithoutContactStillOffersADraft() {
+        val saved = result(concerns = false)
+            .put("findings", JSONArray().put(JSONObject().put("term", "vitamin D").put("status", "ambiguous")
+                .put("explanation", "Confirm its origin.")))
+            .put("identity", JSONObject().put("name", "Oat drink").put("brand", "Fixture Maker").put("barcode", "4006381333931"))
+            .put("evidence", JSONArray().put(JSONObject().put("title", "Manufacturer composition (AI)")
+                .put("url", "https://maker.example/product").put("excerpt", "vitamin D")
+                .put("retrievedAt", "2026-10-06T00:00:00Z")))
+        show(saved, dark = true)
+        compose.onNodeWithTag("result-details-scroll").performScrollToNode(hasText("Ask the manufacturer"))
+        compose.onNodeWithText("Ask the manufacturer").assertIsDisplayed()
+        compose.onNodeWithTag("result-details-scroll").performScrollToNode(hasText("Copy message"))
+        compose.onNodeWithText("Copy message").assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithText("Open in email app").assertDoesNotExist()
+        compose.onNodeWithText("Open contact page").assertDoesNotExist()
+        compose.onNodeWithText("Review contact source").assertDoesNotExist()
+        compose.onNodeWithText("Review message").performClick()
+        compose.onNodeWithTag("result-details-scroll").performScrollToNode(hasText("Vegan suitability question: Fixture Maker Oat drink"))
+        compose.onNodeWithText("Vegan suitability question: Fixture Maker Oat drink").assertIsDisplayed()
+        compose.onNodeWithText("4006381333931", substring = true).assertExists()
+    }
+
+    @Test fun manufacturerDraftWithoutContactsRemainsReachableInGermanWithLargeText() {
+        show(result(concerns = false).put("findings", JSONArray()).put("evidence", JSONArray()), language = "de", fontScale = 1.6f)
+        compose.onNodeWithTag("result-details-scroll").performScrollToNode(hasText("Nachricht kopieren"))
+        compose.onNodeWithText("Nachricht kopieren").assertIsDisplayed().assertHasClickAction()
+        compose.onNodeWithText("Nachricht prüfen").performClick()
+        compose.onNodeWithText("Frage zur veganen Eignung: Fixture Maker").assertExists()
+        compose.onNodeWithText("Frage zur veganen Eignung: Fixture Maker").performScrollTo().assertIsDisplayed()
+        actions("de")
+    }
+
+    @Test fun inlineDraftLanguageChangesPreviewAndCopiedMessageWithoutChangingAppLanguage() {
+        val saved = result(concerns = false).put("title", "Hand cream").put("evidence", JSONArray())
+            .put("findings", JSONArray().put(JSONObject().put("term", "glycerol").put("status", "ambiguous").put("explanation", "Confirm its origin.")))
+            .put("questions", JSONArray().put("Confirm the source of the ambiguous or unrecognized ingredients/materials.").put("Confirm the origin of: glycerol."))
+        saved.getJSONObject("identity").put("name", "Hand cream")
+        show(saved, dark = true)
+        val scroll = compose.onNodeWithTag("result-details-scroll")
+        scroll.performScrollToNode(hasText("Message language: English"))
+        compose.onNodeWithText("Message language: English").performClick()
+        compose.onNodeWithText("Svenska").performClick()
+        compose.onNodeWithText("Fråga om produkten är vegansk: Fixture Maker Hand cream").assertExists()
+        scroll.performScrollToNode(hasText("Copy message"))
+        compose.onNodeWithText("Copy message").performClick()
+        compose.runOnIdle {
+            val clipboard = instrumentation.targetContext.getSystemService(android.content.ClipboardManager::class.java)
+            val copied = clipboard.primaryClip!!.getItemAt(0).text.toString()
+            assertTrue(copied.startsWith("Fråga om produkten är vegansk:"))
+            assertTrue(copied.contains("Hej,"))
+            assertTrue(copied.contains("Bekräfta ursprunget för: glycerol."))
+            assertEquals(1, Regex("glycerol").findAll(copied).count())
+        }
+        scroll.performScrollToNode(hasText("Message language: Svenska"))
+        compose.onNodeWithText("Message language: Svenska").performClick()
+        compose.onNodeWithText("Deutsch").performClick()
+        compose.onNodeWithText("Frage zur veganen Eignung: Fixture Maker Hand cream").assertExists()
+        actions()
     }
 
     @Test fun continuousScrollAndSectionAnchorsKeepActionsReachableWithoutSheetOscillation() {
