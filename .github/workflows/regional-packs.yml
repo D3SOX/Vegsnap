@@ -1,0 +1,44 @@
+name: Publish regional packs
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'regional-packs/**'
+      - 'scripts/regional-catalog*'
+      - 'packages/core/src/offline.ts'
+      - '.github/workflows/regional-packs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regional-packs
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Validate packs and prepare catalog
+        run: |
+          bun test scripts/regional-catalog.test.ts
+          mkdir pack-release
+          cp regional-packs/{germany,sweden,eu}.json pack-release/
+          bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/offline-data/" pack-release/catalog.json
+      - name: Update regional pack release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "Continuously updated regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Veguide. See the repository README for data licenses." --latest=false
+          fi
+          gh release upload offline-data pack-release/{germany,sweden,eu}.json --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload offline-data pack-release/catalog.json --repo "$GITHUB_REPOSITORY" --clobber

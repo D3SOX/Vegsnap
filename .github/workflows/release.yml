@@ -1,4 +1,4 @@
-name: Release Android and regional packs
+name: Release apps and companion
 on:
   push:
     tags: ['v*']
@@ -65,28 +65,40 @@ jobs:
           VEGUIDE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+      - name: Build extension packages
+        env:
+          CHROMIUM_EXTENSION_KEY: ${{ secrets.CHROMIUM_EXTENSION_KEY }}
+          VEGUIDE_EXTENSION_KEY_PATH: ${{ runner.temp }}/veguide-extension.pem
+          VEGUIDE_CHROMIUM_BINARY: google-chrome
+        run: |
+          umask 077
+          printf '%s' "$CHROMIUM_EXTENSION_KEY" > "$VEGUIDE_EXTENSION_KEY_PATH"
+          bun run --filter @veguide/extension build:chromium
+          bun run --filter @veguide/extension build:firefox
+          bun scripts/extension-release-check.ts
+          bun scripts/extension-release.ts release
+      - name: Build Linux companion
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
+          cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+          mkdir companion-release
+          cp companion/target/release/veguide-companion companion/install.py companion-release/
+          tar -czf release/veguide-companion-linux-x86_64.tar.gz -C companion-release .
       - name: Prepare release files
         run: |
-          mkdir release
+          mkdir -p release
           cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
-          cp regional-packs/{germany,sweden,eu}.json release/
           cp README.md release/README.md
-          bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" release/catalog.json
-          cd release
-          sha256sum veguide.apk germany.json sweden.json eu.json catalog.json > SHA256SUMS
-      - name: Publish release and download catalog
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK and partial regional offline product snapshots. See README.md for data attribution and licensing."
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK, browser extension packages and Linux companion. Firefox XPI is unsigned; see README for development installation. Regional packs are available in the continuously updated offline-data release. See README.md for data attribution and licensing."
           fi
-          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$RELEASE_TAG" release/veguide.apk release/veguide-{chromium.crx,chromium.zip,firefox.xpi,companion-linux-x86_64.tar.gz} release/chromium-extension-id.txt release/README.md --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
-          if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional pack catalog" --notes "Stable catalog address for Veguide. Pack URLs point to versioned releases; snapshots are partial and dated." --latest=false
-          fi
-          gh release upload offline-data release/catalog.json --repo "$GITHUB_REPOSITORY" --clobber
       - name: Remove signing material
         if: always()
-        run: rm -f "$RUNNER_TEMP/veguide-release.p12"
+        run: rm -f "$RUNNER_TEMP/veguide-release.p12" "$RUNNER_TEMP/veguide-extension.pem"

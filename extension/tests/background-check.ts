@@ -8,6 +8,9 @@ import type { Pending, Reply } from '../src/protocol';
 type Sender = { id: string; url: string; tab?: { id: number } };
 let listener: (message: unknown, sender: Sender) => Promise<Reply<unknown>>;
 let startupListener: () => void;
+let installedListener: () => void;
+let browserLanguage = 'en-GB';
+let menuTitle: string | undefined;
 let permissionsRemovedListener: () => void;
 const local: Record<string, unknown> = { settings: { ...defaultSettings, connection: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'test-model', stores: ['dm'] } };
 const session: Record<string, unknown> = {};
@@ -64,10 +67,10 @@ function matchesOrigin(url: string, pattern: string) {
 }
 function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string) { delete values[key]; } }; }
 mock.module('wxt/browser', () => ({ browser: {
-  i18n: { getUILanguage: () => 'en-GB' },
-  runtime: { id: 'veguide', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://veguide${path}`, onInstalled: { addListener() {} }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
+  i18n: { getUILanguage: () => browserLanguage },
+  runtime: { id: 'veguide', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://veguide${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
   storage: { local: storage(local), session: storage(session) },
-  contextMenus: { onClicked: { addListener() {} } },
+  contextMenus: { onClicked: { addListener() {} }, async update(_id: string, properties: { title: string }) { if (menuTitle === undefined) throw new Error('Menu missing'); menuTitle = properties.title; }, create(properties: { title: string }) { assert.equal(menuTitle, undefined, 'Only one context menu is created'); menuTitle = properties.title; } },
   permissions: { async contains(request: { origins?: string[] }) { return !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
   scripting: {
     async getRegisteredContentScripts() { return [...registeredScripts]; },
@@ -320,6 +323,7 @@ assert(notifiedTabs.slice(beforeRevocation).some(tab => tab.id === 1), 'Revoking
 // Cross-window state refreshes carry no product data, account credentials or tokens.
 const beforeMutation = progressMessages.length;
 await listener!({ type: 'set-language', language: 'de' }, trusted);
+assert.equal(menuTitle, 'Mit Veguide prüfen', 'Saved extension language immediately updates the menu');
 assert.deepEqual(progressMessages.slice(beforeMutation), [{ type: 'state-changed' }], 'A completed settings mutation refreshes every extension window');
 await listener!({ type: 'update-settings', patch: { saveHistory: true } }, trusted);
 const firstSave = deferred(), deletion = deferred();
@@ -454,3 +458,16 @@ assert.equal((await listener!({ type: 'remove-offline-pack', region: 'Sweden' },
 assert.equal((await listener!({ type: 'import-offline-pack', text: 'fixture-pack' }, trusted)).ok, true);
 assert.deepEqual(offlineImports, ['fixture-pack']);
 console.log('Offline packs: local-first indexes for explicit/background checks and trusted-page-only import/remove routing verified');
+
+// With no saved choice, installation uses the browser language. Saved choices win.
+const savedSettings = local.settings;
+delete local.settings; browserLanguage = 'de-DE';
+installedListener!(); await tick();
+assert.equal(menuTitle, 'Mit Veguide prüfen');
+browserLanguage = 'sv-SE'; installedListener!(); await tick();
+assert.equal(menuTitle, 'Check with Veguide', 'Unsupported browser languages use English');
+local.settings = { ...defaultSettings, language: 'de' };
+installedListener!(); await tick();
+assert.equal(menuTitle, 'Mit Veguide prüfen', 'Extension language wins over browser language');
+local.settings = savedSettings;
+console.log('Context menu: a single localized label follows saved settings or the browser language');

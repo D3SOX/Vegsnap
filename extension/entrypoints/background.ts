@@ -31,10 +31,19 @@ export default defineBackground(() => {
     await browser.storage.session.set({ [`pending:${id}`]: { ...input, createdAt: Date.now() } });
     await browser.tabs.create({ url: browser.runtime.getURL('/app.html') + `?pending=${id}` });
   }
-  browser.runtime.onInstalled.addListener(async () => {
-    await browser.contextMenus.removeAll();
-    browser.contextMenus.create({ id: 'veguide-check', title: 'Check with Veguide / Mit Veguide prüfen', contexts: ['selection', 'image'] });
-  });
+  let menuQueue = Promise.resolve();
+  function syncContextMenu() {
+    const next = menuQueue.catch(() => {}).then(async () => {
+      const title = (await settings()).language === 'de' ? 'Mit Veguide prüfen' : 'Check with Veguide';
+      try { await browser.contextMenus.update('veguide-check', { title }); }
+      catch { browser.contextMenus.create({ id: 'veguide-check', title, contexts: ['selection', 'image'] }); }
+    });
+    menuQueue = next;
+    return next;
+  }
+  browser.runtime.onInstalled.addListener(() => { void syncContextMenu(); });
+  browser.runtime.onStartup.addListener(() => { void syncContextMenu(); });
+  void syncContextMenu();
   browser.contextMenus.onClicked.addListener(info => {
     if (info.menuItemId === 'veguide-check') void openCheck({ ...(info.selectionText ? { text: info.selectionText.slice(0, 30_000) } : {}), ...(info.srcUrl ? { imageUrl: info.srcUrl } : {}) });
   });
@@ -82,7 +91,7 @@ export default defineBackground(() => {
           case 'set-language': {
             if (message.language !== 'en' && message.language !== 'de') throw new Error('Unsupported language.');
             const language = message.language;
-            await changeSettings(async () => { await browser.storage.local.set({ settings: { ...await settings(), language } }); });
+            await changeSettings(async () => { await browser.storage.local.set({ settings: { ...await settings(), language } }); await syncContextMenu(); });
             return { ok: true, result: null };
           }
           case 'set-chatgpt-model': {

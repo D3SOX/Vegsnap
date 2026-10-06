@@ -40,7 +40,7 @@ def destination(browser: str) -> Path:
     if sys.platform == "darwin":
         support = home / "Library/Application Support"
         return support / {"firefox": "Mozilla/NativeMessagingHosts", "chromium": "Chromium/NativeMessagingHosts", "chrome": "Google/Chrome/NativeMessagingHosts"}[browser]
-    raise ValueError("On Windows use --output and register that manifest path as described in docs/COMPANION.md")
+    raise ValueError("On Windows use --output and register that manifest path as described in the repository README")
 
 
 def main() -> None:

@@ -4,14 +4,14 @@ plugins {
     id("com.google.devtools.ksp")
 }
 android {
-    namespace = "org.veguide.android"
+    namespace = "app.veguide"
     compileSdk = 37
     defaultConfig {
-        applicationId = "org.veguide.android"
+        applicationId = "app.veguide"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.environmentVariable("VEGUIDE_VERSION_CODE").orNull?.toInt() ?: 3
-        versionName = providers.environmentVariable("VEGUIDE_VERSION_NAME").orNull ?: "0.1.1"
+        versionCode = providers.environmentVariable("VEGUIDE_VERSION_CODE").orNull?.toInt() ?: 4
+        versionName = providers.environmentVariable("VEGUIDE_VERSION_NAME").orNull ?: "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     val releaseKeystore = providers.environmentVariable("VEGUIDE_KEYSTORE_PATH").orNull
