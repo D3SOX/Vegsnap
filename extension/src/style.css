@@ -23,6 +23,11 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .ai-company-assessment blockquote{margin:10px 0 16px;padding-left:12px;border-left:3px solid var(--border);font-size:12px;white-space:pre-line}
 
 .finding-name{display:flex;align-items:center;gap:10px}.finding-name strong{min-width:0;overflow-wrap:anywhere}
+.mobile-app{margin-top:24px;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--wash)}
+.mobile-app h2{margin:0 0 6px}
+.mobile-app p{margin:0 0 12px;font-size:13px;color:var(--muted)}
+.mobile-app a{gap:12px;background:var(--paper);font-weight:650;transition:background .15s ease}
+.mobile-app a:hover{background:var(--border)}
 .ingredient-status{display:inline-grid;place-items:center;flex-shrink:0;width:28px;height:28px;border-radius:50%;color:#635000;background:#ffeca5}
 .ingredient-status.plant{color:#205b29;background:#d7f5d6}.ingredient-status.animal{color:#922c34;background:#ffdADB}
 @media(prefers-color-scheme:dark){.ingredient-status{color:#e5ce78;background:#443700}.ingredient-status.plant{color:#ace5ab;background:#173e20}.ingredient-status.animal{color:#ffb3b7;background:#641b23}}

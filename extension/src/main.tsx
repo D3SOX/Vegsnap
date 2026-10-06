@@ -326,6 +326,11 @@ export function App() {
         </form>
         <footer>Veguide · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
       </section>}
+      <aside class="mobile-app" aria-labelledby="mobile-app-heading">
+        <h2 id="mobile-app-heading">{t.mobileHeading}</h2>
+        <p>{t.mobileHint}</p>
+        <a class="contact-action" href={`https://veguide.app/${config.language === 'de' ? 'de/' : ''}#download`} target="_blank" rel="noreferrer">{t.mobileAction}<span aria-hidden="true">↗</span></a>
+      </aside>
     </main>
   </div>;
 }
