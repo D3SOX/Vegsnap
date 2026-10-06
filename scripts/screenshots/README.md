@@ -16,6 +16,8 @@ This downloads the bundle, verifies its source commit, source fingerprint, file 
 
 No signing key is stored in GitHub Actions. The workflow only uploads review artifacts.
 
+The workflow uses GitHub's [read-only cache mode](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#cache-mode), enforced by the cache service. Captured branches, tags and commits can restore dependency caches but cannot save or poison caches used by trusted workflows. Gradle is also configured to only restore caches.
+
 ## Local captures
 
 Install the project dependencies, Playwright's Chromium, and the Python rendering dependencies in a virtual environment:
