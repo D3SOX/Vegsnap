@@ -34,6 +34,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -45,6 +46,7 @@ class ResultDetailsSheetTest {
     private val store = ViewModelStore()
     private val tops = mutableListOf<Float>()
     private val displayedResult = mutableStateOf(JSONObject())
+    private var rechecks = 0
 
     @After fun cleanUp() {
         compose.runOnIdle { store.clear() }
@@ -73,6 +75,10 @@ class ResultDetailsSheetTest {
         } })
 
     private fun show(value: JSONObject, language: String = "en", fontScale: Float = 1f, dark: Boolean = false) {
+        if (InstrumentationRegistry.getArguments().getString("orientation") == "landscape") {
+            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(5_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
+        }
         val target = instrumentation.targetContext
         val configuration = Configuration(target.resources.configuration).apply {
             setLocales(LocaleList.forLanguageTags(language))
@@ -95,7 +101,7 @@ class ResultDetailsSheetTest {
                             BottomSheetDefaults.DragHandle(Modifier.onGloballyPositioned { tops.add(it.positionInWindow().y) })
                         }) {
                             CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
-                                ResultSheet(displayedResult.value, {}, {}, {}, model)
+                                ResultSheet(displayedResult.value, {}, { rechecks++ }, {}, model)
                             }
                         }
                     }
@@ -135,6 +141,23 @@ class ResultDetailsSheetTest {
         val difference = heading(section).fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y -
             compose.onNodeWithTag("result-details-scroll").fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y
         assertTrue("$section heading was not anchored: $difference px", difference in -1f..32f)
+    }
+
+    @Test fun inconclusiveBuiltinBarcodeOffersAiFromTheSharedResultSheet() {
+        val original = result().put("usedAI", false)
+        original.getJSONObject("identity").put("barcode", "4006381333931")
+        original.getJSONArray("evidence").getJSONObject(0).put("kind", "database")
+        show(original, language = "de", fontScale = 1.5f, dark = true)
+        val send = compose.onNodeWithText("An KI senden")
+        send.assertIsDisplayed().assertHasClickAction().performClick()
+        compose.runOnIdle { assertEquals(1, rechecks) }
+        screenshot("barcode-send-to-ai-de-large.png")
+        compose.runOnIdle { displayedResult.value = JSONObject(original.toString()).put("usedAI", true) }
+        compose.onNodeWithText("An KI senden").assertDoesNotExist()
+        actions("de")
+        compose.runOnIdle { displayedResult.value = JSONObject(original.toString()).put("outcome", "not_vegan") }
+        compose.onNodeWithText("An KI senden").assertDoesNotExist()
+        actions("de")
     }
 
     @Test fun continuousScrollAndSectionAnchorsKeepActionsReachableWithoutSheetOscillation() {
@@ -203,10 +226,6 @@ class ResultDetailsSheetTest {
     }
 
     @Test fun germanLargeTextKeepsActionsAndSectionNavigationAvailable() {
-        if (InstrumentationRegistry.getArguments().getString("orientation") == "landscape") {
-            compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
-            compose.waitUntil(5_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
-        }
         show(result(concerns = false), language = "de", fontScale = 1.6f)
         actions("de")
         val scroll = compose.onNodeWithTag("result-details-scroll")

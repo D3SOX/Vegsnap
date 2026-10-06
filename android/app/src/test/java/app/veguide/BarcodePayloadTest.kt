@@ -9,6 +9,7 @@ import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 class BarcodePayloadTest {
@@ -60,6 +61,56 @@ class BarcodePayloadTest {
                 fail("A different product must never be accepted")
             } catch (expected: java.io.IOException) { assertEquals("Product identity mismatch", expected.message) }
         }
+    }
+
+    @Test fun inconclusiveBarcodeCanBeSentToAiAndReplacesItsHistoryItem() = runBlocking {
+        val storage = Files.createTempDirectory("veguide-barcode-ai").toFile()
+        try {
+            MockWebServer().use { server ->
+                val repository = repository(server)
+                val input = CheckInput(category = "food", barcode = barcode)
+                server.enqueue(product("glycerin"))
+                val original = requireNotNull(repository.lookupBarcode(input))
+                assertTrue(canSendBarcodeToAI(original))
+                assertEquals(1, server.requestCount)
+                val id = original.getString("id")
+                val rows = mutableMapOf(id to HistoryEntry(id, original.getString("title"), original.getString("checkedAt"), original.toString()))
+                val photos = HistoryPhotoStore(File(storage, "history"))
+                photos.save(id, emptyList(), input) { }
+                val queue = AnalysisQueueStore(File(storage, "queue"))
+                queue.enqueueHistory(id, requireNotNull(photos.input(id)),
+                    AppSettings(connection = "api", aiEnabled = true, model = "test", baseUrl = server.url("/v1").toString()), emptyList())
+                val extraction = """{"text":"glycerin","complete":false,"category":"food","name":"Test product"}"""
+                server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(JSONObject()
+                    .put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop")
+                        .put("message", JSONObject().put("content", extraction)))).toString()))
+                AnalysisQueueRunner(queue, { job, progress -> repository.check(job.input, emptyList(), job.settings, "", progress) }, { job, result ->
+                    publishAnalysisResult(job, result, photos, { emptyList() }, rows::containsKey) { rows[it.id] = it }
+                }).run(requireNotNull(queue.next(false)))
+                assertTrue(queue.jobs.value.toString(), queue.jobs.value.isEmpty())
+                assertEquals(setOf(id), rows.keys)
+                val updated = JSONObject(rows.getValue(id).json)
+                assertEquals(id, updated.getString("id"))
+                assertTrue(updated.getBoolean("usedAI"))
+                assertEquals("text", updated.getString("aiStatus"))
+                assertEquals(input, photos.input(id))
+                assertEquals(2, server.requestCount)
+                assertEquals("GET", server.takeRequest(1, TimeUnit.SECONDS)?.method)
+                val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+                assertEquals("POST", request.method)
+                val context = JSONObject(JSONObject(request.body.readUtf8()).getJSONArray("messages").getJSONObject(1).getJSONArray("content")
+                    .getJSONObject(0).getString("text"))
+                assertEquals(barcode, context.getString("barcode"))
+                assertEquals("Test product", context.getString("name"))
+                assertEquals("glycerin", context.getString("text"))
+                assertFalse(context.getBoolean("complete"))
+                val evidence = updated.getJSONArray("evidence")
+                assertFalse((0 until evidence.length()).any {
+                    val source = evidence.getJSONObject(it)
+                    source.optString("kind") == "user_text" && source.optString("excerpt").isNotBlank()
+                })
+            }
+        } finally { storage.deleteRecursively() }
     }
 
     @Test fun selectedNameAndBarcodeReachBothOpenAiResponsesAndCompatibleVisionRequests() = runBlocking {

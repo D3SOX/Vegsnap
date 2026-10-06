@@ -523,6 +523,8 @@ private enum class ResultDetailSection(val title: Int) {
 @Composable
 internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRecheck: () -> Unit, onSettings: () -> Unit, model: VeguideViewModel, failedRetry: AnalysisJob? = null) {
     val context = LocalContext.current
+    val settings by model.settings.collectAsState()
+    val sendToAI = canSendBarcodeToAI(originalResult)
     val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
     val result = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
     val resultId = result.getString("id")
@@ -572,6 +574,10 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                         aiStatusText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium,
                             color = if (aiStatus == "failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (sendToAI && settings.offline && aiStatusText != R.string.ai_status_offline) {
+                            Text(stringResource(R.string.ai_status_offline), style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         (failedRetry?.failureReason?.json(locale)?.optString("message") ?: result.optJSONObject("aiError")?.optString("message"))?.takeIf { it.isNotBlank() }?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                         }
@@ -709,10 +715,11 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                 Spacer(Modifier.width(4.dp))
                 Text(stringResource(R.string.edit_result), textAlign = TextAlign.Center)
             }
-            Button(modifier = Modifier.weight(1.25f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp), onClick = onRecheck) {
-                Icon(Icons.Outlined.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
+            Button(modifier = Modifier.weight(1.25f).heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp), onClick = onRecheck,
+                enabled = !sendToAI || !settings.offline) {
+                Icon(if (sendToAI) Icons.Outlined.AutoAwesome else Icons.Outlined.Refresh, null, Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(4.dp))
-                Text(stringResource(R.string.recheck), textAlign = TextAlign.Center)
+                Text(stringResource(if (sendToAI) R.string.barcode_send_to_ai else R.string.recheck), textAlign = TextAlign.Center)
             }
             IconButton(modifier = Modifier.size(48.dp), onClick = onClose) {
                 Icon(Icons.Outlined.Close, stringResource(R.string.close))

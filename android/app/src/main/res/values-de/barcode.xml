@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="barcode_send_to_ai">An KI senden</string>
     <string name="barcode_database_loading">Datenbanken werden geprüft…</string>
     <string name="barcode_saved_for_check">Barcode für deine Fotoprüfung gespeichert</string>
     <string name="barcode_offline_saved">Offline für die nächste Prüfung gespeichert</string>

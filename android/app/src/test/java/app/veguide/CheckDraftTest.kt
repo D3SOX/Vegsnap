@@ -6,6 +6,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CheckDraftTest {
+    @Test fun `only inconclusive builtin barcode results offer AI escalation`() {
+        val result = JSONObject().put("outcome", "uncertain").put("usedAI", false)
+            .put("identity", JSONObject().put("barcode", "4006381333931"))
+            .put("evidence", JSONArray().put(JSONObject().put("kind", "database")))
+        assertTrue(canSendBarcodeToAI(result))
+        for (outcome in listOf("vegan", "not_vegan")) {
+            result.put("outcome", outcome)
+            assertFalse(canSendBarcodeToAI(result))
+        }
+        result.put("outcome", "uncertain").put("usedAI", true)
+        assertFalse(canSendBarcodeToAI(result))
+        result.put("usedAI", false).getJSONObject("identity").put("barcode", "invalid")
+        assertFalse(canSendBarcodeToAI(result))
+        result.getJSONObject("identity").put("barcode", "4006381333931")
+        result.put("evidence", JSONArray().put(JSONObject().put("kind", "user_text")))
+        assertFalse(canSendBarcodeToAI(result))
+    }
+
     @Test fun `original draft round trip keeps complete user input and selected category`() {
         val original = CheckInput("Wasser, Salz", "other", true, "Product", "4006381333931", "de", true)
         assertEquals(original, decodeDraftInput(encodeDraftInput(original)))

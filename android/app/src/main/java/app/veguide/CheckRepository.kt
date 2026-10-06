@@ -64,6 +64,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             }
         }
         var aiStatus = "not_needed"
+        var extractionInput = input
         var aiError: JSONObject? = null
         var contactExtraction: JSONObject? = null
         val warnings = JSONArray()
@@ -72,8 +73,15 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             try {
                 onProgress(CheckStage.DATABASE)
                 val database = lookup(barcode, input, settings.offline)
-                if (database != null) result = mergeResults(result, databaseResult(database, barcode))
-                else if (settings.offline) warnings.put(if (input.locale == "de") "Nicht im begrenzten Offline-Datenstand gefunden. Das sagt nichts über Existenz oder vegane Eigenschaften des Produkts aus." else "Not found in the limited offline snapshot. This does not establish whether the product exists or is vegan.")
+                if (database != null) {
+                    result = mergeResults(result, databaseResult(database, barcode))
+                    // Give AI the community record without promoting it to user-supplied evidence.
+                    val useDatabaseText = photos.isEmpty() && input.text.isBlank()
+                    extractionInput = input.copy(name = input.name.ifBlank { database.first.name },
+                        category = if (input.category == "other") database.first.category else input.category,
+                        text = if (useDatabaseText) database.first.text else input.text,
+                        complete = if (useDatabaseText) false else input.complete)
+                } else if (settings.offline) warnings.put(if (input.locale == "de") "Nicht im begrenzten Offline-Datenstand gefunden. Das sagt nichts über Existenz oder vegane Eigenschaften des Produkts aus." else "Not found in the limited offline snapshot. This does not establish whether the product exists or is vegan.")
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: Exception) { warnings.put(if (input.locale == "de") "Datenbank nicht erreichbar; lokale Analyse verwendet." else "Database unavailable; using local analysis.") }
         }
@@ -90,7 +98,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         if (aiStatus == "pending") {
             try {
                 onProgress(if (photos.isNotEmpty() && settings.vision) CheckStage.ANALYZING_PHOTO else CheckStage.ANALYZING_TEXT)
-                val extracted = extract(input, photos, settings, token, onProgress)
+                val extracted = extract(extractionInput, photos, settings, token, onProgress)
                 contactExtraction = extracted
                 onProgress(CheckStage.EVALUATING)
                 val localComplete = input.complete ?: Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:", RegexOption.IGNORE_CASE).containsMatchIn(input.text)
