@@ -17,10 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  apps:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -77,30 +75,104 @@ jobs:
           bun run --filter @veguide/extension build:firefox
           bun scripts/extension-release-check.ts
           bun scripts/extension-release.ts release
-      - name: Build Linux companion
-        run: |
-          rustup toolchain install 1.98.1 --profile minimal
-          cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
-          cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
-          mkdir companion-release
-          cp companion/target/release/veguide-companion companion/install.py LICENSE companion-release/
-          veguide_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python3 -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
-          cp "$(dirname "$veguide_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
-          tar -czf release/veguide-companion-linux-x86_64.tar.gz -C companion-release .
       - name: Prepare release files
         run: |
           mkdir -p release
           cp android/app/build/outputs/apk/release/app-release.apk release/veguide.apk
           cp README.md release/README.md
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK, browser extension packages and Linux companion. Firefox XPI is unsigned; see README for development installation. Regional packs are available in the continuously updated offline-data release. See README.md for data attribution and licensing."
-          fi
-          gh release upload "$RELEASE_TAG" release/veguide.apk release/veguide-{chromium.crx,chromium.zip,firefox.xpi,companion-linux-x86_64.tar.gz} release/chromium-extension-id.txt release/README.md --repo "$GITHUB_REPOSITORY" --clobber
-          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: veguide-release-apps
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            release/veguide.apk
+            release/veguide-chromium.crx
+            release/veguide-chromium.zip
+            release/veguide-firefox.xpi
+            release/chromium-extension-id.txt
+            release/README.md
       - name: Remove signing material
         if: always()
         run: rm -f "$RUNNER_TEMP/veguide-release.p12" "$RUNNER_TEMP/veguide-extension.pem"
+
+  companion:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: windows-latest
+            platform: windows-x86_64
+          - os: macos-latest
+            platform: macos-universal
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test companion and installer
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
+          python -m unittest discover -s companion -p 'test_install.py' -v
+      - name: Build companion
+        env:
+          VEGUIDE_COMPANION_PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir companion-release companion-artifacts
+          cp companion/install.py LICENSE companion-release/
+          case "$VEGUIDE_COMPANION_PLATFORM" in
+            macos-universal)
+              rustup +1.98.1 target add aarch64-apple-darwin x86_64-apple-darwin
+              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target aarch64-apple-darwin
+              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
+              lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/veguide-companion -output companion-release/veguide-companion
+              codesign --force --sign - companion-release/veguide-companion
+              lipo -verify_arch arm64 x86_64 companion-release/veguide-companion
+              codesign --verify companion-release/veguide-companion
+              tar -czf companion-artifacts/veguide-companion-macos-universal.tar.gz -C companion-release .
+              ;;
+            windows-x86_64)
+              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+              cp companion/target/release/veguide-companion.exe companion-release/
+              python -c "import shutil; shutil.make_archive('companion-artifacts/veguide-companion-windows-x86_64', 'zip', 'companion-release')"
+              ;;
+            linux-x86_64)
+              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+              cp companion/target/release/veguide-companion companion-release/
+              veguide_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
+              cp "$(dirname "$veguide_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
+              tar -czf companion-artifacts/veguide-companion-linux-x86_64.tar.gz -C companion-release .
+              ;;
+          esac
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: veguide-release-${{ matrix.platform }}
+          path: companion-artifacts/*
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [apps, companion]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: veguide-release-*
+          path: release
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --title "Veguide $RELEASE_TAG" --notes "Early development release. Signed Android APK, browser extension packages and desktop companions for Linux, Windows and macOS. Firefox XPI is unsigned; see README for development installation. Regional packs are available in the continuously updated offline-data release. See README.md for data attribution and licensing."
+          fi
+          gh release upload "$RELEASE_TAG" release/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest

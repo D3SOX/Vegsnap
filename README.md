@@ -69,7 +69,11 @@ Download the browser packages from the [latest release](https://github.com/D3SOX
 
 The extension needs a desktop companion for ChatGPT sign-in. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
 
-On Linux x86_64, download `veguide-companion-linux-x86_64.tar.gz` from the latest release. Extract it somewhere permanent, such as `~/.local/lib/veguide`, then register it for your browser:
+Download the archive for your computer from the [latest release](https://github.com/D3SOX/veguide/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
+
+### Linux x86_64
+
+Download `veguide-companion-linux-x86_64.tar.gz`, then run:
 
 ```sh
 mkdir -p ~/.local/lib/veguide
@@ -80,9 +84,46 @@ python3 ~/.local/lib/veguide/install.py \
   --browser firefox --extension-id veguide@veguide.app
 ```
 
-For Chromium, use `--browser chromium` and replace the extension ID with the value shown on `chrome://extensions`. Google Chrome uses `--browser chrome`. The release's `chromium-extension-id.txt` also contains the package's ID. Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
+Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
 
-For macOS or other architectures, build from source with Rust:
+### macOS, Apple silicon and Intel
+
+Download `veguide-companion-macos-universal.tar.gz`, then run:
+
+```sh
+mkdir -p "$HOME/Library/Application Support/Veguide"
+tar -xzf ~/Downloads/veguide-companion-macos-universal.tar.gz \
+  -C "$HOME/Library/Application Support/Veguide"
+chmod +x "$HOME/Library/Application Support/Veguide/veguide-companion"
+python3 "$HOME/Library/Application Support/Veguide/install.py" \
+  --binary "$HOME/Library/Application Support/Veguide/veguide-companion" \
+  --browser firefox --extension-id veguide@veguide.app
+```
+
+The companion uses macOS Keychain. The release is not notarized. If macOS blocks it, review the downloaded executable in System Settings under Privacy & Security.
+
+### Windows x86_64
+
+Download `veguide-companion-windows-x86_64.zip`. With Python 3 installed, run these commands in PowerShell:
+
+```powershell
+$veguideDirectory = Join-Path $env:LOCALAPPDATA "Veguide\Companion"
+New-Item -ItemType Directory -Force -Path $veguideDirectory | Out-Null
+Expand-Archive -Force -Path "$HOME\Downloads\veguide-companion-windows-x86_64.zip" -DestinationPath $veguideDirectory
+py -3 "$veguideDirectory\install.py" `
+  --binary "$veguideDirectory\veguide-companion.exe" `
+  --browser firefox --extension-id veguide@veguide.app
+```
+
+The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Veguide\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
+
+### Connect your browser
+
+The commands above register Firefox. For Chromium, use `--browser chromium` and replace the extension ID with the value shown on `chrome://extensions`. Google Chrome uses `--browser chrome`. The release's `chromium-extension-id.txt` also contains the package's ID. Run registration once for each browser you use.
+
+After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
+
+`--output PATH` writes a manifest to the chosen path without registering it. For other architectures, build the companion with Rust and register the resulting executable:
 
 ```sh
 cargo build --locked --release --manifest-path companion/Cargo.toml
@@ -91,13 +132,9 @@ python3 companion/install.py \
   --browser firefox --extension-id veguide@veguide.app
 ```
 
-On Windows, build the companion with Rust and use `install.py --output` to write a native-host manifest with the absolute `.exe` path. Register that manifest as the default value of `HKEY_CURRENT_USER\Software\Mozilla\NativeMessagingHosts\org.veguide.companion` for Firefox, or `HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\org.veguide.companion` for Chrome.
-
-After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
-
 ## Releases
 
-[GitHub Releases](https://github.com/D3SOX/veguide/releases) provides signed Android APKs, browser packages and a Linux companion. Obtainium can track app releases. [Regional product packs](https://github.com/D3SOX/veguide/releases/tag/offline-data) live in one continuously updated release; the app downloads them from its catalog.
+[GitHub Releases](https://github.com/D3SOX/veguide/releases) provides signed Android APKs, browser packages and desktop companions. Obtainium can track app releases. [Regional product packs](https://github.com/D3SOX/veguide/releases/tag/offline-data) live in one continuously updated release; the app downloads them from its catalog.
 
 The release workflow runs on `v*` tags or a manual dispatch. Signing credentials are GitHub Actions secrets. Release APKs use a different certificate from local debug builds. Switching requires a reinstall, which can delete local history and settings.
 

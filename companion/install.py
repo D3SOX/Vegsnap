@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Optional
 
 
 def manifest(binary: Path, browser: str, extension_id: str) -> dict:
@@ -40,7 +41,34 @@ def destination(browser: str) -> Path:
     if sys.platform == "darwin":
         support = home / "Library/Application Support"
         return support / {"firefox": "Mozilla/NativeMessagingHosts", "chromium": "Chromium/NativeMessagingHosts", "chrome": "Google/Chrome/NativeMessagingHosts"}[browser]
-    raise ValueError("On Windows use --output and register that manifest path as described in the repository README")
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA")
+        if not local or not Path(local).is_absolute():
+            raise ValueError("LOCALAPPDATA must name an absolute current-user directory")
+        return Path(local) / "Veguide/NativeMessagingHosts" / browser
+    raise ValueError(f"Unsupported operating system: {sys.platform}")
+
+
+def register_windows(browser: str, path: Path) -> None:
+    import winreg
+
+    key = {
+        "firefox": r"Software\Mozilla\NativeMessagingHosts",
+        "chrome": r"Software\Google\Chrome\NativeMessagingHosts",
+        "chromium": r"Software\Chromium\NativeMessagingHosts",
+    }[browser] + r"\org.veguide.companion"
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_SET_VALUE) as registry:
+        winreg.SetValueEx(registry, "", 0, winreg.REG_SZ, str(path))
+
+
+def install(binary: Path, browser: str, extension_id: str, output: Optional[Path] = None) -> Path:
+    data = manifest(binary, browser, extension_id)
+    path = output or destination(browser) / "org.veguide.companion.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    if sys.platform == "win32" and output is None:
+        register_windows(browser, path)
+    return path
 
 
 def main() -> None:
@@ -51,10 +79,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, help="Write the manifest here instead of registering it")
     args = parser.parse_args()
     try:
-        data = manifest(args.binary, args.browser, args.extension_id)
-        path = args.output or destination(args.browser) / "org.veguide.companion.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2) + "\n")
+        path = install(args.binary, args.browser, args.extension_id, args.output)
         print(f"Wrote {path}")
     except (ValueError, OSError) as error:
         parser.exit(1, f"{error}\n")
