@@ -12,7 +12,7 @@
     },
     "extension": {
       "name": "@vegsnap/extension",
-      "version": "0.2.6",
+      "version": "0.2.8",
       "dependencies": {
         "@vegsnap/core": "workspace:*",
         "preact": "^10.27.0",

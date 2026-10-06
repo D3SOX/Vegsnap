@@ -3,19 +3,24 @@ import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
 import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
+import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
 import { defaultSettings, STORES } from '../src/settings';
-import type { Pending, Reply } from '../src/protocol';
+import type { CheckReply, Pending, Reply } from '../src/protocol';
 type Sender = { id: string; url: string; tab?: { id: number } };
 let listener: (message: unknown, sender: Sender) => Promise<Reply<unknown>>;
 let startupListener: () => void;
 let installedListener: () => void;
 let browserLanguage = 'en-GB';
+let extensionScheme = 'chrome-extension:';
+let dataAllowed = true;
 let menuTitle: string | undefined;
 let permissionsRemovedListener: () => void;
 const local: Record<string, unknown> = { settings: { ...defaultSettings, connection: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'test-model', stores: ['dm'] } };
 const session: Record<string, unknown> = {};
 const calls: CheckOptions[] = [];
-const offlineIndex = { lookup: () => null };
+const offlineIndex: NonNullable<CheckOptions['offlineProducts']> = { lookup: () => null };
+let useRealEvaluator = false;
+let providerExtractions = 0;
 const offlineImports: string[] = [];
 mock.module('../src/offline', () => ({ offlineLibrary: () => ({ index: async () => offlineIndex, info: async () => [],
   import: async (text: string) => { offlineImports.push(text); }, remove: async () => {} }) }));
@@ -68,10 +73,10 @@ function matchesOrigin(url: string, pattern: string) {
 function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string) { delete values[key]; } }; }
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => browserLanguage },
-  runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `chrome-extension://vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
+  runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `${extensionScheme}//vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
   storage: { local: storage(local), session: storage(session) },
   contextMenus: { onClicked: { addListener() {} }, async update(_id: string, properties: { title: string }) { if (menuTitle === undefined) throw new Error('Menu missing'); menuTitle = properties.title; }, create(properties: { title: string }) { assert.equal(menuTitle, undefined, 'Only one context menu is created'); menuTitle = properties.title; } },
-  permissions: { async contains(request: { origins?: string[] }) { return !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
+  permissions: { async contains(request: { origins?: string[]; data_collection?: string[] }) { return (!request.data_collection || dataAllowed) && !(request.origins ?? []).some(origin => deniedOrigins.has(origin)); }, onRemoved: { addListener(fn: () => void) { permissionsRemovedListener = fn; } } },
   scripting: {
     async getRegisteredContentScripts() { return [...registeredScripts]; },
     async registerContentScripts(scripts: RegisteredScript[]) { registeredScripts.push(...scripts); },
@@ -93,8 +98,8 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
 } }));
 mock.module('@vegsnap/core', () => ({
   acceptsImages,
-  checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
-  createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => ({ text: 'test', complete: false, category: 'other' }) }; },
+  checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return realCheckProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
+  createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => { providerExtractions++; return { text: 'test', complete: false, category: 'other' }; } }; },
   validateAIExtraction: (value: unknown) => value,
   parseAIExtraction: () => ({ text: '', complete: false, category: 'other' }),
 }));
@@ -471,3 +476,54 @@ installedListener!(); await tick();
 assert.equal(menuTitle, 'Mit Vegsnap prüfen', 'Extension language wins over browser language');
 local.settings = savedSettings;
 console.log('Context menu: a single localized label follows saved settings or the browser language');
+
+// Firefox can revoke data consent independently of an existing host permission.
+extensionScheme = 'moz-extension:';
+dataAllowed = false;
+const firefoxPage = { ...page, url: 'https://www.dm.de/example' };
+const firefoxTrusted = { ...trusted, url: 'moz-extension://vegsnap/app.html' };
+const beforeConsentDenial = calls.length;
+assert.equal((await listener!({ type: 'background-check', barcode: '4006381333931' }, firefoxPage)).ok, false, 'Revoked consent also blocks cached/background requests');
+assert.equal((await listener!({ type: 'set-store', store: 'dm', enabled: true }, firefoxTrusted)).ok, false, 'Host access alone cannot enable data sharing');
+assert.equal(calls.length, beforeConsentDenial);
+local.settings = { ...defaultSettings, connection: 'database', stores: ['dm'] };
+permissionsRemovedListener!(); await tick();
+assert(!registeredScripts.some(script => script.id === 'vegsnap-dm'), 'Revoking data consent unregisters the store script');
+assert.equal((await listener!({ type: 'check', input: { text: 'ingredients: oats', complete: true } }, firefoxTrusted)).ok, true, 'Local checks remain available without consent');
+await assert.rejects(() => calls.at(-1)!.fetch!('https://example.invalid'), /Allow data sharing/);
+console.log('Firefox background: data revocation blocks cached checks, unregisters integrations, and preserves local checks');
+
+// Exercise the real evaluator, including its offline-before-network ordering.
+useRealEvaluator = true;
+local.settings = { ...defaultSettings, language: 'en', connection: 'openai', model: 'fixture', baseUrl: 'https://api.openai.com/v1' };
+deniedOrigins.add('https://api.openai.com/*');
+const beforeExtractions = providerExtractions;
+async function explicit(input: CheckInput) {
+  const reply = await listener!({ type: 'check', input }, firefoxTrusted);
+  assert(reply.ok);
+  return reply.result as CheckReply;
+}
+for (const text of ['Ingredients: oats, sugar, sunflower oil', 'Ingredients: milk']) {
+  const checked = await explicit({ text, complete: true, category: 'food' });
+  assert.notEqual(checked.outcome, 'uncertain');
+  assert.equal(checked.onlineConsent, undefined, 'Conclusive text needs no online consent, even with a configured AI model and revoked endpoint access');
+}
+offlineIndex.lookup = () => ({ input: { text: 'Ingredients: milk', complete: true, category: 'food' }, labels: [], evidence: {
+  id: 'offline-fixture', kind: 'database', title: 'Offline fixture', excerpt: 'Milk', retrievedAt: new Date().toISOString(),
+} });
+const offlineCheck = await explicit({ barcode: '4006381333931' });
+assert.equal(offlineCheck.identity.match, 'exact_barcode');
+assert.equal(offlineCheck.onlineConsent, undefined, 'A local barcode match needs no data sharing');
+offlineIndex.lookup = () => null;
+const uncertainCheck = await explicit({ text: 'Ingredients: unspecified flavouring', complete: true });
+assert.equal(uncertainCheck.outcome, 'uncertain');
+assert.equal(uncertainCheck.onlineConsent, 'ai', 'Only an unresolved check offers AI consent');
+assert.equal(providerExtractions, beforeExtractions, 'Declined sharing never invokes the provider');
+const missingBarcode = await explicit({ barcode: '4006381333931' });
+assert.equal(missingBarcode.onlineConsent, 'database', 'An offline miss offers database consent without losing local results');
+dataAllowed = true;
+assert.equal((await explicit({ text: 'Ingredients: unspecified flavouring', complete: true })).onlineConsent, 'ai', 'Data consent cannot bypass revoked endpoint access');
+deniedOrigins.delete('https://api.openai.com/*');
+await explicit({ text: 'Ingredients: unspecified flavouring', complete: true });
+assert.equal(providerExtractions, beforeExtractions + 1, 'Granting data and endpoint access allows the requested provider check');
+console.log('Real checks: conclusive text and offline barcodes survive declined sharing; online consent is offered only at needed network boundaries');

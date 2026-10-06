@@ -6,7 +6,7 @@ import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { messages } from './i18n';
 import { PRESETS, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
-import { isRecord, scanInput, pendingInput, inspectedInput, type Pending, type Reply, type Request, type State } from './protocol';
+import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
 import { extractProducts } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { historyExport, type HistoryResult } from './history';
@@ -15,6 +15,7 @@ import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
+import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, requestDataConsent } from './data-consent';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -38,6 +39,7 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [result, setResult] = useState<HistoryResult>();
+  const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
   const [offlinePacks, setOfflinePacks] = useState<OfflinePackInfo[]>([]);
   const [inspectedIdentity, setInspectedIdentity] = useState<Pick<CheckInput, 'name' | 'barcode'>>();
@@ -118,18 +120,35 @@ export function App() {
   }, []);
   async function act(work: () => Promise<void>) { setError(''); setNotice(''); setBusy(true); try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to complete this action.'); } finally { setBusy(false); } }
   async function runCheck(input: CheckInput): Promise<HistoryResult> {
+    setOnlineCheck(undefined);
     const requestId = crypto.randomUUID();
     activeCheckId.current = requestId;
     setElapsedSeconds(0); setCheckProgress({ stage: 'evaluating', startedAt: Date.now() });
-    try { return await request<HistoryResult>({ type: 'check', input, requestId }); }
+    try {
+      const checked = await request<CheckReply>({ type: 'check', input, requestId });
+      if (checked.onlineConsent) setOnlineCheck({ id: checked.id, input, kind: checked.onlineConsent });
+      return checked;
+    }
     finally { if (activeCheckId.current === requestId) { activeCheckId.current = undefined; setCheckProgress(undefined); } }
   }
   async function check(input: CheckInput) {
     await act(async () => {
-      const current = configRef.current;
-      if (!['chatgpt', 'database'].includes(current.connection) && !(await browser.permissions.request({ origins: [endpointOrigin(current.baseUrl)] }))) throw new Error('Endpoint permission was not granted.');
       await settingsWrites.current;
       const checked = await runCheck(input); setResult(checked); setImages([]); setImageUrl(undefined); await refresh(); });
+  }
+  function allowOnlineCheck() {
+    if (!onlineCheck) return;
+    const { input, kind } = onlineCheck;
+    const current = configRef.current;
+    const api = kind === 'ai' && !['chatgpt', 'database'].includes(current.connection);
+    // Request immediately from this click, before any asynchronous work.
+    const consent = requestDataConsent(kind === 'database' ? CONTENT_DATA : current.connection === 'chatgpt' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : AI_DATA,
+      api ? { origins: [endpointOrigin(current.baseUrl)] } : {});
+    void act(async () => {
+      if (!(await consent)) { setNotice(t.dataConsentDenied); return; }
+      await settingsWrites.current;
+      setResult(await runCheck(input)); await refresh();
+    });
   }
   useEffect(() => {
     const onProgress = (message: unknown, sender: { id?: string }): undefined => {
@@ -208,7 +227,7 @@ export function App() {
     const current = () => operation === connectionOperation.current;
     setConnectionTask(command); setConnectionError('');
     try {
-      if (command === 'signIn' && !(await browser.permissions.request({ permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
+      if (command === 'signIn' && !(await requestDataConsent(ACCOUNT_DATA, { permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
       if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) {
         if (current()) { setAccount({ state: 'signedout' }); setModels([]); setModelsLoaded(false); }
         return;
@@ -241,7 +260,7 @@ export function App() {
   }
   async function toggleStore(store: typeof STORES[number], grantAll = false) {
     const enabled = configRef.current.stores.includes(store.id);
-    if ((!enabled || grantAll) && !(await browser.permissions.request({ origins: [...store.origins] }))) throw new Error('Site permission was not granted.');
+    if ((!enabled || grantAll) && !(await requestDataConsent(CONTENT_DATA, { origins: [...store.origins] }))) throw new Error(t.dataConsentDenied);
     await settingsWrites.current;
     const stores = await request<string[]>({ type: 'set-store', store: store.id, enabled: grantAll || !enabled });
     if (enabled && !grantAll) await browser.permissions.remove({ origins: [...store.origins] });
@@ -251,8 +270,8 @@ export function App() {
     if (!imageUrl) return;
     const url = new URL(imageUrl);
     if (url.protocol !== 'https:') throw new Error('Save this image and import it as a file.');
-    if (!(await browser.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error('Image permission was not granted.');
-    const response = await fetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
+    if (!(await requestDataConsent(CONTENT_DATA, { origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error(t.dataConsentDenied);
+    const response = await contentFetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
     if (!response.ok) throw new Error('Image could not be loaded. Save it and import the file.');
     setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
   }
@@ -272,6 +291,7 @@ export function App() {
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
+        {onlineCheck?.id === result.id && <div class="alert"><p>{t.onlineConsentHint}</p><button type="button" disabled={busy} onClick={allowOnlineCheck}>{t.allowOnlineChecks}</button></div>}
         {result.webSearchStatus === 'searched' && <p class="muted">{t.webSearched}</p>}
         {result.webSearchStatus === 'unsupported' && <p class="muted">{t.webUnsupported}</p>}
         {result.findings.length > 0 && <section><h2>{t.findings}</h2>{localizeResult(result, config.language).findings.map((finding, i) => <div class="finding" key={i}><div class="finding-name"><IngredientStatus status={finding.status} language={config.language}/><strong>{finding.displayTerm ?? finding.term}</strong></div>{finding.displayTerm && finding.displayTerm !== finding.term && <small class="hint">{t.originalTerm}: {finding.term}</small>}<p>{finding.explanation}</p></div>)}</section>}
@@ -324,7 +344,7 @@ export function App() {
             {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
             <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.'); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
           </section>
-          <h2>{t.privacy}</h2><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
+          <h2>{t.privacy}</h2><p class="hint"><a href="https://vegsnap.app/privacy.html" target="_blank" rel="noreferrer">{t.privacyPolicy}</a></p><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
         </form>
         <footer>Vegsnap · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
       </section>}
