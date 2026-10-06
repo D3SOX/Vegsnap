@@ -14,13 +14,11 @@
   <p>
     <a href="https://veguide.app"><img src="marketing/badges/website.svg" alt="Visit the Veguide website" width="200" height="58"></a>
     <a href="https://github.com/D3SOX/veguide/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
-  </p>
-  <p>
+    <br>
     <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
-    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="website/icons/obtainium-badge.png" alt="Get it on Obtainium" width="200"></a>
+    <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.veguide%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fveguide%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Veguide%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
   </p>
 </div>
-<!-- Official Obtainium artwork: https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png. GPL-3.0; see website/icons/obtainium-LICENSE.txt. -->
 
 Veguide supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
 

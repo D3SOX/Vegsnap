@@ -130,9 +130,10 @@ def render_badges():
     icons = {
         "website": '<circle cx="30" cy="30" r="13"/><ellipse cx="30" cy="30" rx="6" ry="13"/><path d="M17 30h26M20 23h20M20 37h20"/>',
         "android": '<path d="M18 25h24v17H18zM18 25a12 10 0 0 1 24 0M22 14l-3-5m19 5 3-5M14 27v12m32-12v12M23 42v7m14-7v7"/><path d="M24 20h1m10 0h1"/>',
+        "obtainium": '<path d="M18 27a13 13 0 0 1 22-7l4 4M44 16v8h-8M42 35a13 13 0 0 1-22 7l-4-4M16 46v-8h8"/>',
         "extension": '<rect x="15" y="17" width="30" height="27" rx="4"/><path d="M15 25h30M21 21h1m4 0h1M25 31l-5 5 5 5m10-10 5 5-5 5"/>',
     }
-    for key, label, action in [("website", "VEGUIDE.APP", "Visit the website"), ("android", "ANDROID APK", "Download releases"), ("extension", "BROWSER EXTENSION", "Install from releases")]:
+    for key, label, action in [("website", "VEGUIDE.APP", "Visit the website"), ("android", "ANDROID APK", "Download releases"), ("extension", "BROWSER EXTENSION", "Install from releases"), ("obtainium", "OBTAINIUM", "Add to Obtainium")]:
         canvas = f'<rect x="1" y="1" width="218" height="62" rx="12" fill="{GREEN}" stroke="#789180"/>'
         canvas += f'<g stroke="{SAGE}" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round">{icons[key]}</g>'
         canvas += text(59, 25, label, 10, SAGE, "bold") + text(59, 44, action, 13, weight="bold")
