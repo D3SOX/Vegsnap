@@ -42,6 +42,10 @@ class ManufacturerContactTest {
             questions.forEach { assertTrue(body.contains(it)) }
         }
     }
+    @Test fun longWhitespaceInOriginQuestionsKeepsQualifications() {
+        val saved = result().put("questions", JSONArray().put("Confirm the origin of:" + " ".repeat(60_000) + "glycerol in the finished product."))
+        assertTrue(manufacturerDraft(saved, "en").body.contains("Confirm the origin of: glycerol in the finished product."))
+    }
     @Test fun standardQuestionsAddressTheManufacturerDirectly() {
         val questions = listOf(
             "Ask the manufacturer about lining, glue, coatings, and trims.",

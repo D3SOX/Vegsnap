@@ -35,6 +35,12 @@ describe('manufacturer contact', () => {
       for (const question of questions) expect(body).toContain(question);
     }
   });
+  test('handles long whitespace in origin questions without discarding qualifications', () => {
+    const result = { ...analyzeText('glycerol'), questions: [
+      `Confirm the origin of:${' '.repeat(60_000)}glycerol in the finished product.`,
+    ] };
+    expect(manufacturerMessage(result)!.body).toContain('Confirm the origin of: glycerol in the finished product.');
+  });
   test('addresses materials and processing questions directly to the manufacturer in every language', () => {
     const questions = [
       'Ask the manufacturer about lining, glue, coatings, and trims.',
