@@ -104,7 +104,7 @@ The companion uses macOS Keychain. The release is not notarized. If macOS blocks
 
 ### Windows x86_64
 
-Download `veguide-companion-windows-x86_64.zip`. With Python 3 installed, run these commands in PowerShell:
+Download `veguide-companion-windows-x86_64.zip`. Install Python 3 and the [Microsoft Visual C++ v14 Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/), then run these commands in PowerShell:
 
 ```powershell
 $veguideDirectory = Join-Path $env:LOCALAPPDATA "Veguide\Companion"
