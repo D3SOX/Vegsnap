@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="barcode_send_to_ai">Send to AI</string>
     <string name="barcode_database_loading">Checking databases…</string>
     <string name="barcode_saved_for_check">Barcode saved for your photo check</string>
     <string name="barcode_offline_saved">Saved offline for your next check</string>

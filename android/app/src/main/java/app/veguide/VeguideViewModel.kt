@@ -415,13 +415,25 @@ class VeguideViewModel(application: Application) : AndroidViewModel(application)
             try {
                 settingsReady.await()
                 settingsWrites.withLock { }
+                val sendToAI = canSendBarcodeToAI(result)
+                val connection = settings.value.let { if (sendToAI) it.copy(aiEnabled = true) else it }
+                if (sendToAI) {
+                    if (connection.offline) return@launch
+                    val configured = if (connection.connection == "chatgpt") chatGPTState.value.connected && connection.chatgptModel.isNotBlank()
+                        else validEndpoint(connection.baseUrl) && connection.model.isNotBlank()
+                    if (!configured) {
+                        update { it.copy(result = null) }
+                        selectTab("settings")
+                        return@launch
+                    }
+                }
                 val id = result.getString("id")
                 val job = withContext(Dispatchers.IO) {
                     queueStore.withHistoryMutation {
                         if (database.history().find(id) == null) null
                         else {
                             val input = historyPhotos.input(id) ?: recheckInput(result)
-                            queueStore.enqueueHistory(id, input, settings.value, historyPhotos.files(id).map { it.readBytes() })
+                            queueStore.enqueueHistory(id, input, connection, historyPhotos.files(id).map { it.readBytes() })
                         }
                     }
                 } ?: return@launch

@@ -2,6 +2,13 @@ package app.veguide
 
 import org.json.JSONObject
 
+internal fun canSendBarcodeToAI(result: JSONObject): Boolean {
+    val evidence = result.optJSONArray("evidence")
+    return result.optString("outcome") == "uncertain" && !result.optBoolean("usedAI") &&
+        validGtin(result.optJSONObject("identity")?.optString("barcode").orEmpty()) &&
+        (0 until (evidence?.length() ?: 0)).any { evidence?.optJSONObject(it)?.optString("kind") == "database" }
+}
+
 /** Keep original input separate from the evidence discovered during analysis. */
 internal fun encodeDraftInput(input: CheckInput): JSONObject = JSONObject()
     .put("text", input.text).put("category", input.category).put("complete", input.complete)

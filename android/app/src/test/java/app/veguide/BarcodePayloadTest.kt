@@ -9,6 +9,7 @@ import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 class BarcodePayloadTest {
@@ -24,8 +25,8 @@ class BarcodePayloadTest {
             JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText()).getString("prompt"), http = http,
             productRequests = OpenFactsProductRequests(now = { clock }, wait = { clock += it }))
     }
-    private fun product(ingredients: String? = null, code: String = barcode) = MockResponse().setHeader("Content-Type", "application/json")
-        .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", "Test product")
+    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product") = MockResponse().setHeader("Content-Type", "application/json")
+        .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", name)
             .put("countries_tags", JSONArray().put("en:sweden")).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
 
     @Test fun passiveIdentityOnlyMatchRemainsUncertainAndDoesNotInvokeAi() = runBlocking {
@@ -62,6 +63,56 @@ class BarcodePayloadTest {
         }
     }
 
+    @Test fun inconclusiveBarcodeCanBeSentToAiAndReplacesItsHistoryItem() = runBlocking {
+        val storage = Files.createTempDirectory("veguide-barcode-ai").toFile()
+        try {
+            MockWebServer().use { server ->
+                val repository = repository(server)
+                val input = CheckInput(category = "food", barcode = barcode)
+                server.enqueue(product("glycerin"))
+                val original = requireNotNull(repository.lookupBarcode(input))
+                assertTrue(canSendBarcodeToAI(original))
+                assertEquals(1, server.requestCount)
+                val id = original.getString("id")
+                val rows = mutableMapOf(id to HistoryEntry(id, original.getString("title"), original.getString("checkedAt"), original.toString()))
+                val photos = HistoryPhotoStore(File(storage, "history"))
+                photos.save(id, emptyList(), input) { }
+                val queue = AnalysisQueueStore(File(storage, "queue"))
+                queue.enqueueHistory(id, requireNotNull(photos.input(id)),
+                    AppSettings(connection = "api", aiEnabled = true, model = "test", baseUrl = server.url("/v1").toString()), emptyList())
+                val extraction = """{"text":"glycerin","complete":false,"category":"food","name":"Test product"}"""
+                server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(JSONObject()
+                    .put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop")
+                        .put("message", JSONObject().put("content", extraction)))).toString()))
+                AnalysisQueueRunner(queue, { job, progress -> repository.check(job.input, emptyList(), job.settings, "", progress) }, { job, result ->
+                    publishAnalysisResult(job, result, photos, { emptyList() }, rows::containsKey) { rows[it.id] = it }
+                }).run(requireNotNull(queue.next(false)))
+                assertTrue(queue.jobs.value.toString(), queue.jobs.value.isEmpty())
+                assertEquals(setOf(id), rows.keys)
+                val updated = JSONObject(rows.getValue(id).json)
+                assertEquals(id, updated.getString("id"))
+                assertTrue(updated.getBoolean("usedAI"))
+                assertEquals("text", updated.getString("aiStatus"))
+                assertEquals(input, photos.input(id))
+                assertEquals(2, server.requestCount)
+                assertEquals("GET", server.takeRequest(1, TimeUnit.SECONDS)?.method)
+                val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+                assertEquals("POST", request.method)
+                val context = JSONObject(JSONObject(request.body.readUtf8()).getJSONArray("messages").getJSONObject(1).getJSONArray("content")
+                    .getJSONObject(0).getString("text"))
+                assertEquals(barcode, context.getString("barcode"))
+                assertEquals("Test product", context.getString("name"))
+                assertEquals("glycerin", context.getString("text"))
+                assertFalse(context.getBoolean("complete"))
+                val evidence = updated.getJSONArray("evidence")
+                assertFalse((0 until evidence.length()).any {
+                    val source = evidence.getJSONObject(it)
+                    source.optString("kind") == "user_text" && source.optString("excerpt").isNotBlank()
+                })
+            }
+        } finally { storage.deleteRecursively() }
+    }
+
     @Test fun selectedNameAndBarcodeReachBothOpenAiResponsesAndCompatibleVisionRequests() = runBlocking {
         for (official in listOf(false, true)) MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(404))
@@ -86,6 +137,40 @@ class BarcodePayloadTest {
             assertEquals(2, content.length())
             val image = if (official) content.getJSONObject(1).getString("image_url") else content.getJSONObject(1).getJSONObject("image_url").getString("url")
             assertEquals("data:image/jpeg;base64,AQID", image)
+        }
+    }
+
+    @Test fun communityFieldsAreBoundedBeforeBeingSentToAi() = runBlocking {
+        for (savedName in listOf("", "Long product name ".repeat(100))) MockWebServer().use { server ->
+            val text = "water, ".repeat(5_000)
+            val name = "Long product name ".repeat(100)
+            server.enqueue(product(text, name = name))
+            server.enqueue(MockResponse().setResponseCode(503))
+            val result = repository(server).check(CheckInput(category = "food", name = savedName, barcode = barcode), emptyList(),
+                AppSettings(connection = "api", model = "test", baseUrl = server.url("/v1").toString()), "")
+            assertEquals("failed", result.getString("aiStatus"))
+            assertEquals("GET", server.takeRequest(1, TimeUnit.SECONDS)?.method)
+            val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+            val context = JSONObject(JSONObject(request.body.readUtf8()).getJSONArray("messages").getJSONObject(1)
+                .getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals(text.take(30_000), context.getString("text"))
+            assertEquals(name.take(300), context.getString("name"))
+            assertFalse(context.getBoolean("complete"))
+        }
+    }
+
+    @Test fun barcodeOnlyCompletenessCannotPromoteCommunityIngredientsToACompleteComposition() = runBlocking {
+        for (text in listOf("water, salt", "Ingredients: water, salt")) MockWebServer().use { server ->
+            server.enqueue(product(text))
+            val extraction = JSONObject().put("text", text).put("complete", true).put("category", "food").put("name", "Test product")
+            server.enqueue(MockResponse().setBody(JSONObject().put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop")
+                .put("message", JSONObject().put("content", extraction.toString())))).toString()))
+            val result = repository(server).check(CheckInput(category = "food", complete = true, barcode = barcode), emptyList(),
+                AppSettings(connection = "api", model = "test", baseUrl = server.url("/v1").toString()), "")
+            assertEquals("text", result.getString("aiStatus"))
+            assertTrue(result.getBoolean("usedAI"))
+            assertEquals("uncertain", result.getString("outcome"))
+            assertEquals("insufficient", result.getString("basis"))
         }
     }
 
