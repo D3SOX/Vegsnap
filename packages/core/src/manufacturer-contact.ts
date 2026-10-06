@@ -1,5 +1,5 @@
-import { localizeResult } from './ingredient-display';
-import type { AIExtraction, CheckInput, CheckResult, Locale, ManufacturerContact } from './types';
+import messages from '../../../data/manufacturer-messages.json';
+import type { AIExtraction, CheckInput, CheckResult, ManufacturerContact } from './types';
 
 const identityKey = (value: string | undefined) => (value ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
 const wellFormed = (value: string) => value.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD');
@@ -48,29 +48,32 @@ export function applyManufacturerContact(result: CheckResult, input: CheckInput,
 }
 
 export interface ManufacturerMessage { subject: string; body: string; mailto?: string; }
+export type ManufacturerMessageLanguage = keyof typeof messages.templates;
+export const manufacturerMessageLanguages = ['en', 'de', 'sv'] as const;
 /** Draft only. No provider call, clipboard write, browser navigation or message send happens here. */
-export function manufacturerMessage(result: CheckResult, locale: Locale = 'en'): ManufacturerMessage | undefined {
+export function manufacturerMessage(result: CheckResult, locale: ManufacturerMessageLanguage = 'en'): ManufacturerMessage | undefined {
   const contact = parseManufacturerContact(result.manufacturerContact);
-  if (!contact || !unresolved(result)) return;
-  const localized = localizeResult(result, locale);
-  const de = locale === 'de';
-  const name = plain(contact.productName, 300);
-  const brand = plain(contact.brand, 300);
-  const subject = plain(`${de ? 'Frage zum veganen Status' : 'Question about vegan status'}: ${name}`, 200);
-  const questions = [...new Set(localized.questions.map(question => plain(question, 200)).filter(Boolean))].slice(0, 15);
-  const terms = [...new Set(localized.findings.filter(finding => finding.status === 'ambiguous' || finding.status === 'unknown')
-    .map(finding => plain(finding.displayTerm ?? finding.term, 100)).filter(Boolean))].slice(0, 15);
+  if (!unresolved(result)) return;
+  const copy = messages.templates[locale];
+  const name = plain(contact?.productName ?? result.identity.name ?? '', 300);
+  const brand = plain(contact?.brand ?? result.identity.brand ?? '', 300);
+  const product = `${name || copy.thisProduct}${brand ? ` ${copy.by} ${brand}` : ''}`;
+  const subject = plain(`${copy.subject}: ${name || copy.thisProduct}`, 200);
+  const terms = [...new Set(result.findings.filter(finding => finding.status === 'ambiguous' || finding.status === 'unknown')
+    .map(finding => plain(finding.displayLocale === locale ? finding.displayTerm ?? finding.term : finding.term, 100)).filter(Boolean))].slice(0, 15);
+  const originQuestion = /^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Bekräfta ursprunget för:)/;
+  const questions = [...new Set(result.questions.map(question => {
+    const translation = messages.questions.find(pair => Object.values(pair).includes(question));
+    if (terms.length && (originQuestion.test(question) || translation?.en === 'Confirm the source of the ambiguous or unrecognized ingredients/materials.')) return '';
+    return translation?.[locale] ?? question;
+  }).map(question => plain(question, 200)).filter(Boolean))].slice(0, 15);
+  if (terms.length) questions.push(`${copy.originQuestion} ${terms.join(', ')}.`);
   const body = bounded([
-    de ? 'Guten Tag,' : 'Hello,', '',
-    de ? `ich möchte wissen, ob das Produkt ${name} von ${brand} vegan ist.` : `I would like to know whether ${name} by ${brand} is vegan.`,
-    ...(result.identity.barcode ? [`Barcode: ${plain(result.identity.barcode, 30)}`] : []), '',
-    ...(result.outcome === 'conflicting' ? [de ? 'Die mir vorliegenden Angaben widersprechen sich. Können Sie den aktuellen Stand für diese Produktvariante bestätigen?' : 'The available information conflicts. Could you confirm the current information for this product variant?', ''] : []),
-    ...(questions.length ? [de ? 'Bitte helfen Sie mir bei diesen offenen Fragen:' : 'Could you help with these unresolved questions?', ...questions.map(question => `- ${question}`), ''] :
-      [de ? 'Können Sie bestätigen, ob das Produkt einschließlich seiner Verarbeitungshilfsmittel vegan ist?' : 'Could you confirm whether the product, including its processing aids, is vegan?', '']),
-    ...(terms.length ? [`${de ? 'Bei diesen Zutaten oder Materialien ist die Herkunft unklar' : 'The origin of these ingredients or materials is unclear'}: ${terms.join(', ')}.`, ''] : []),
-    de ? 'Eine produktspezifische Angabe oder Spezifikation wäre hilfreich.' : 'A product-specific statement or specification would be helpful.', '',
-    `${de ? 'Quelle der Kontaktdaten' : 'Contact source'}: ${contact.sourceUrl}`, '',
-    de ? 'Vielen Dank.' : 'Thank you.',
+    copy.greeting, '', copy.request.replace('{product}', product),
+    ...(result.identity.barcode ? [`${copy.barcode}: ${plain(result.identity.barcode, 30)}`] : []), '',
+    ...(result.outcome === 'conflicting' ? [copy.conflict, ''] : []),
+    ...(questions.length ? [copy.questions, ...questions.map(question => `- ${question}`), ''] : [copy.processing, '']),
+    copy.specification, '', ...(contact ? [`${copy.source}: ${contact.sourceUrl}`, ''] : []), copy.thanks,
   ].join('\n'), 8000);
-  return { subject, body, ...(contact.email ? { mailto: `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` } : {}) };
+  return { subject, body, ...(contact?.email ? { mailto: `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` } : {}) };
 }

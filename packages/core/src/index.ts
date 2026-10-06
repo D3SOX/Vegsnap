@@ -9,6 +9,6 @@ export { imageSupport, acceptsImages, type ImageSupport } from './model-capabili
 export { localizeResult } from './ingredient-display';
 export { resolveCompanyConcerns, attachCompanyConcerns, createCompanyConcernResolver } from './company-concerns';
 export type { CompanyEntity, CompanyConcernRecord, CompanyConcernDataset } from './company-concerns';
-export { parseManufacturerContact, applyManufacturerContact, manufacturerMessage, safeContactEmail, safeContactUrl } from './manufacturer-contact';
-export type { ManufacturerMessage } from './manufacturer-contact';
+export { parseManufacturerContact, applyManufacturerContact, manufacturerMessage, manufacturerMessageLanguages, safeContactEmail, safeContactUrl } from './manufacturer-contact';
+export type { ManufacturerMessage, ManufacturerMessageLanguage } from './manufacturer-contact';
 export { parseCompanyAssessment, parseResultCompanyAssessment, sourcedCompanyAssessment, applyCompanyAssessment } from './company-assessment';

@@ -10,11 +10,54 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ManufacturerContactTest {
+    private val messages by lazy { JSONObject(File(requireNotNull(System.getProperty("vegsnap.repo")), "data/manufacturer-messages.json").readText()) }
+    private fun manufacturerDraft(result: JSONObject, locale: String) = app.vegsnapp.manufacturerDraft(result, locale, messages)
+    @Test fun unresolvedIngredientsAppearOnceWithOrWithoutSavedQuestionsInEveryLanguage() {
+        val prefixes = mapOf("en" to "Confirm the origin of:", "de" to "Die Herkunft dieser Zutaten klären:", "sv" to "Bekräfta ursprunget för:")
+        val saved = result().put("findings", JSONArray().put(JSONObject().put("term", "vitamin d").put("status", "ambiguous"))
+            .put(JSONObject().put("term", "glycerol").put("status", "unknown")))
+        val questions = JSONArray().put("Confirm the source of the ambiguous or unrecognized ingredients/materials.")
+        prefixes.values.forEach { questions.put("$it vitamin d, glycerol.") }
+        questions.put("A custom manufacturer question")
+        for ((locale, prefix) in prefixes) for (savedQuestions in listOf(JSONArray(), questions)) {
+            saved.put("questions", savedQuestions)
+            val body = manufacturerDraft(saved, locale).body
+            assertEquals(1, Regex("vitamin d").findAll(body).count())
+            assertEquals(1, Regex("glycerol").findAll(body).count())
+            assertTrue(body.contains("$prefix vitamin d, glycerol."))
+            if (savedQuestions.length() > 0) assertTrue(body.contains("A custom manufacturer question"))
+        }
+    }
+    @Test fun swedishDraftTranslatesQuestionsWithoutChangingTheSavedResult() {
+        val saved = result()
+        saved.put("questions", JSONArray().put("Show the complete ingredients or materials label.")
+            .put("Confirm the origin of: vitamin D.").put("A custom manufacturer question"))
+        val original = saved.toString()
+        val draft = manufacturerDraft(saved, "sv")
+        assertTrue(draft.subject.startsWith("Fråga om produkten är vegansk"))
+        assertTrue(draft.body.startsWith("Hej,"))
+        assertTrue(draft.body.contains("Visa den fullständiga"))
+        assertTrue(draft.body.contains("Bekräfta ursprunget för:"))
+        assertFalse(draft.body.contains("Confirm the origin"))
+        assertTrue(draft.body.contains("A custom manufacturer question"))
+        assertTrue(draft.body.contains("4006381333931"))
+        assertEquals(original, saved.toString())
+    }
     private val source = "https://maker.example/contact"
     private fun contact() = JSONObject().put("email", "care+food@maker.example").put("url", source).put("sourceUrl", source).put("productName", "Soy Drink").put("brand", "Maker")
     private fun extraction() = JSONObject().put("name", "Soy Drink").put("brand", "Maker").put("contact", contact()).put("research", JSONObject().put("searched", true).put("sources", JSONArray().put(JSONObject().put("url", source))))
     private fun result(): JSONObject = Evaluator(JSONObject(File(requireNotNull(System.getProperty("vegsnap.repo")), "data/rules.json").readText()))
         .evaluate(CheckInput("vitamin D", "food", true, "Soy Drink", "4006381333931")).apply { getJSONObject("identity").put("brand", "Maker") }
+    @Test fun savedResultsWithoutContactsHaveUsefulDraftsEvenWithoutProductIdentity() {
+        val saved = result()
+        val draft = manufacturerDraft(saved, "en")
+        assertTrue(draft.subject.contains("Maker Soy Drink"))
+        assertTrue(draft.body.contains("4006381333931"))
+        assertFalse(draft.body.contains("Contact source"))
+        saved.put("identity", JSONObject())
+        assertTrue(manufacturerDraft(saved, "en").body.contains("this product"))
+        assertTrue(manufacturerDraft(saved, "de").body.contains("dieses Produkt"))
+    }
     @Test fun malformedOptionalModelContactDoesNotFailProductAnalysis() = runBlocking {
         val root = File(requireNotNull(System.getProperty("vegsnap.repo")))
         val repository = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), "Extract evidence")

@@ -9,6 +9,47 @@ const input = { name: contact.productName, brand: contact.brand, images: ['data:
 const check = (value = extraction) => checkProduct(input, { mode: 'explicit', provider: { supportsWebSearch: true, extract: async () => value } });
 
 describe('manufacturer contact', () => {
+  test('lists unresolved ingredients once in each language, including without saved questions', () => {
+    const result = analyzeText({ text: 'vitamin D, glycerol', complete: true });
+    const originQuestions = ['Confirm the origin of:', 'Die Herkunft dieser Zutaten klären:', 'Bekräfta ursprunget för:'];
+    for (const locale of ['en', 'de', 'sv'] as const) {
+      for (const questions of [[], [...result.questions, ...originQuestions.map(prefix => `${prefix} vitamin d, glycerol.`), 'A custom manufacturer question']]) {
+        const body = manufacturerMessage({ ...result, questions }, locale)!.body;
+        expect(body.match(/vitamin d/g)).toHaveLength(1);
+        expect(body.match(/glycerol/g)).toHaveLength(1);
+        expect(body).toContain(`${originQuestions[['en', 'de', 'sv'].indexOf(locale)]} vitamin d, glycerol.`);
+        if (questions.length) expect(body).toContain('A custom manufacturer question');
+      }
+    }
+  });
+  test('Swedish drafts translate standard questions while preserving source identity and custom wording', () => {
+    const result = analyzeText({ text: 'vitamin D', name: 'Oat drink', brand: 'Maker', barcode: '4006381333931' });
+    result.questions.push('Confirm the origin of: vitamin D.', 'A custom manufacturer question');
+    const original = JSON.stringify(result);
+    const draft = manufacturerMessage(result, 'sv')!;
+    expect(draft.subject).toStartWith('Fråga om produkten är vegansk');
+    expect(draft.body).toContain('Hej,');
+    expect(draft.body).toContain('Bekräfta ursprunget för: vitamin d.');
+    expect(draft.body).not.toContain('Confirm the origin');
+    expect(draft.body).not.toContain('Provide the complete');
+    expect(draft.body).toContain('A custom manufacturer question');
+    expect(draft.body).toContain('4006381333931');
+    expect(JSON.stringify(result)).toBe(original);
+  });
+  test('prepares a draft for unresolved saved results without discovered contact details', () => {
+    const result = analyzeText({ text: 'vitamin D', name: 'Oat drink', brand: 'Maker', barcode: '4006381333931' });
+    for (const outcome of ['uncertain', 'conflicting'] as const) {
+      const draft = manufacturerMessage({ ...result, outcome });
+      expect(draft?.body).toContain('Oat drink by Maker');
+      expect(draft?.body).toContain('4006381333931');
+      expect(draft?.body).toContain('vitamin d');
+      expect(draft?.body).not.toContain('Contact source');
+      expect(draft?.mailto).toBeUndefined();
+    }
+    expect(manufacturerMessage(analyzeText('vitamin D'))?.body).toContain('this product');
+    expect(manufacturerMessage(analyzeText('vitamin D'), 'de')?.body).toContain('dieses Produkt');
+    expect(manufacturerMessage({ ...result, outcome: 'not_vegan' })).toBeUndefined();
+  });
   test('attaches consulted matching contact without changing uncertain assessment', async () => {
     const result = await check();
     expect(result.outcome).toBe('uncertain');
