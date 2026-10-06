@@ -4,11 +4,11 @@
   <p><strong>Check whether a product appears vegan.</strong></p>
   <p>Photograph a label on Android, or check ingredients and product images in Chromium or Firefox.</p>
   <p>
-    <img src="marketing/badges/android-icon.svg" alt="Android" width="40" height="40">
+    <picture><img src="marketing/badges/android-icon.svg" alt="Android" width="40" height="40"></picture>
     &nbsp;&nbsp;
-    <img src="marketing/badges/chromium-icon.svg" alt="Chromium" width="40" height="40">
+    <picture><img src="marketing/badges/chromium-icon.svg" alt="Chromium" width="40" height="40"></picture>
     &nbsp;&nbsp;
-    <img src="marketing/badges/firefox-icon.svg" alt="Firefox" width="40" height="40">
+    <picture><img src="marketing/badges/firefox-icon.svg" alt="Firefox" width="40" height="40"></picture>
   </p>
   <p><img src="website/images/readme-preview.png" alt="Real Veguide screens: an ingredient result in the browser extension and label entry on Android" width="560"></p>
   <p>
