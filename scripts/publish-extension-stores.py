@@ -101,7 +101,7 @@ def publish_chrome(api, directory, version, listing, sleep=time.sleep):
         raise ValueError('Refusing to replace an equal or newer published Chrome version')
     submitted = status.get('submittedItemRevisionStatus', {})
     if submitted.get('state') in ('PENDING_REVIEW', 'STAGED'):
-        if revision_versions(submitted) != [version]:
+        if set(revision_versions(submitted)) != {version}:
             raise ValueError('Another Chrome version is under review or staged; finish it in the dashboard first')
         if submitted['state'] == 'PENDING_REVIEW':
             return 'Already pending review'

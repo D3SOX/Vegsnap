@@ -53,8 +53,8 @@ def main():
 The source archive contains the exact input files used for this submission.
 Build environment: {platform.system()} {platform.machine()}; Node.js {node_version}; Bun {bun_version}.
 WXT, Vite and other dependencies are pinned in bun.lock.
-Tools are open source. Install Bun 1.4.2 from https://bun.sh/docs/installation
-(versioned releases: https://github.com/oven-sh/bun/releases/tag/bun-v1.4.2).
+Tools are open source. Install Bun {bun_version} from https://bun.sh/docs/installation
+(versioned releases: https://github.com/oven-sh/bun/releases/tag/bun-v{bun_version}).
 
 From the extracted source root:
   bun install --frozen-lockfile

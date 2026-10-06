@@ -137,6 +137,19 @@ class StoreTests(unittest.TestCase):
             self.submit(api)
         self.assertEqual(len(api.calls), 1)
 
+    def test_accepts_matching_versions_across_multiple_distribution_channels(self):
+        for state in ('PENDING_REVIEW', 'STAGED'):
+            submitted = revision('0.2.9', state)
+            submitted['distributionChannels'].append({'crxVersion': '0.2.9'})
+            api = FakeAPI({'submittedItemRevisionStatus': submitted}, {'state': 'PUBLISHED'})
+            result = self.submit(api)
+            self.assertEqual(result, 'Already pending review' if state == 'PENDING_REVIEW' else 'PUBLISHED')
+
+    def test_rejects_empty_or_mixed_versions_in_pending_distribution_channels(self):
+        for channels in ([], [{'crxVersion': '0.2.9'}, {'crxVersion': '0.3.0'}]):
+            with self.subTest(channels=channels), self.assertRaisesRegex(ValueError, 'Another Chrome version'):
+                self.submit(FakeAPI({'submittedItemRevisionStatus': {'state': 'PENDING_REVIEW', 'distributionChannels': channels}}))
+
     def test_prevents_downgrade_and_rejected_version_resubmission(self):
         for field, version, state in (('publishedItemRevisionStatus', '0.3.0', 'PUBLISHED'), ('submittedItemRevisionStatus', '0.2.9', 'REJECTED')):
             with self.subTest(state=state), self.assertRaises(ValueError):
@@ -186,7 +199,7 @@ class PackagingTests(unittest.TestCase):
             def command(args, **kwargs):
                 if args[0] == 'git':
                     return ('\0'.join(source) + '\0').encode()
-                return 'v24.21.0\n' if args[0] == 'node' else '1.4.2\n'
+                return 'v24.21.0\n' if args[0] == 'node' else '1.4.1\n'
 
             with patch.object(packager, 'ROOT', root), patch.object(packager.subprocess, 'check_output', side_effect=command), \
                     patch.object(packager, 'prepare_graphics', side_effect=AssertionError('Graphics must not run in CI')), \
@@ -203,6 +216,8 @@ class PackagingTests(unittest.TestCase):
                 self.assertEqual(archive.read('data/offline/bundle.json'), source['data/offline/bundle.json'].encode())
                 self.assertNotIn('extension/.output', '\n'.join(archive.namelist()))
                 self.assertIn('Node.js v24.21.0', archive.read('AMO-README.txt').decode())
+                self.assertIn('Install Bun 1.4.1', archive.read('AMO-README.txt').decode())
+                self.assertIn('/bun-v1.4.1', archive.read('AMO-README.txt').decode())
             self.assertEqual((chrome / 'manifest.json').read_text(), json.dumps({'version': '0.2.9', 'key': 'sideload-key'}))
 
 
