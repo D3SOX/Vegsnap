@@ -77,9 +77,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                     result = mergeResults(result, databaseResult(database, barcode))
                     // Give AI the community record without promoting it to user-supplied evidence.
                     val useDatabaseText = photos.isEmpty() && input.text.isBlank()
-                    extractionInput = input.copy(name = input.name.ifBlank { database.first.name },
+                    extractionInput = input.copy(name = input.name.ifBlank { database.first.name }.take(300),
                         category = if (input.category == "other") database.first.category else input.category,
-                        text = if (useDatabaseText) database.first.text else input.text,
+                        text = if (useDatabaseText) database.first.text.take(30_000) else input.text,
                         complete = if (useDatabaseText) false else input.complete)
                 } else if (settings.offline) warnings.put(if (input.locale == "de") "Nicht im begrenzten Offline-Datenstand gefunden. Das sagt nichts über Existenz oder vegane Eigenschaften des Produkts aus." else "Not found in the limited offline snapshot. This does not establish whether the product exists or is vegan.")
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
@@ -101,8 +101,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val extracted = extract(extractionInput, photos, settings, token, onProgress)
                 contactExtraction = extracted
                 onProgress(CheckStage.EVALUATING)
-                val localComplete = input.complete ?: Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:", RegexOption.IGNORE_CASE).containsMatchIn(input.text)
-                val complete = input.complete != false && (photos.isNotEmpty() && settings.vision || localComplete) && extracted.getBoolean("complete")
+                val localComplete = extractionInput.complete ?: Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:", RegexOption.IGNORE_CASE).containsMatchIn(extractionInput.text)
+                val complete = extractionInput.complete != false && (photos.isNotEmpty() && settings.vision || localComplete) && extracted.getBoolean("complete")
                 val recognizedBarcode = extracted.optString("barcode").takeIf(::validGtin).orEmpty()
                 require(barcode.isBlank() || recognizedBarcode.isBlank() || barcode.padStart(14, '0') == recognizedBarcode.padStart(14, '0')) { "AI identified a different product" }
                 val authoritativeText = when {

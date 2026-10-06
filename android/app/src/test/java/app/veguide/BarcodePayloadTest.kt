@@ -25,8 +25,8 @@ class BarcodePayloadTest {
             JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText()).getString("prompt"), http = http,
             productRequests = OpenFactsProductRequests(now = { clock }, wait = { clock += it }))
     }
-    private fun product(ingredients: String? = null, code: String = barcode) = MockResponse().setHeader("Content-Type", "application/json")
-        .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", "Test product")
+    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product") = MockResponse().setHeader("Content-Type", "application/json")
+        .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", name)
             .put("countries_tags", JSONArray().put("en:sweden")).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
 
     @Test fun passiveIdentityOnlyMatchRemainsUncertainAndDoesNotInvokeAi() = runBlocking {
@@ -137,6 +137,40 @@ class BarcodePayloadTest {
             assertEquals(2, content.length())
             val image = if (official) content.getJSONObject(1).getString("image_url") else content.getJSONObject(1).getJSONObject("image_url").getString("url")
             assertEquals("data:image/jpeg;base64,AQID", image)
+        }
+    }
+
+    @Test fun communityFieldsAreBoundedBeforeBeingSentToAi() = runBlocking {
+        for (savedName in listOf("", "Long product name ".repeat(100))) MockWebServer().use { server ->
+            val text = "water, ".repeat(5_000)
+            val name = "Long product name ".repeat(100)
+            server.enqueue(product(text, name = name))
+            server.enqueue(MockResponse().setResponseCode(503))
+            val result = repository(server).check(CheckInput(category = "food", name = savedName, barcode = barcode), emptyList(),
+                AppSettings(connection = "api", model = "test", baseUrl = server.url("/v1").toString()), "")
+            assertEquals("failed", result.getString("aiStatus"))
+            assertEquals("GET", server.takeRequest(1, TimeUnit.SECONDS)?.method)
+            val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
+            val context = JSONObject(JSONObject(request.body.readUtf8()).getJSONArray("messages").getJSONObject(1)
+                .getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals(text.take(30_000), context.getString("text"))
+            assertEquals(name.take(300), context.getString("name"))
+            assertFalse(context.getBoolean("complete"))
+        }
+    }
+
+    @Test fun barcodeOnlyCompletenessCannotPromoteCommunityIngredientsToACompleteComposition() = runBlocking {
+        for (text in listOf("water, salt", "Ingredients: water, salt")) MockWebServer().use { server ->
+            server.enqueue(product(text))
+            val extraction = JSONObject().put("text", text).put("complete", true).put("category", "food").put("name", "Test product")
+            server.enqueue(MockResponse().setBody(JSONObject().put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop")
+                .put("message", JSONObject().put("content", extraction.toString())))).toString()))
+            val result = repository(server).check(CheckInput(category = "food", complete = true, barcode = barcode), emptyList(),
+                AppSettings(connection = "api", model = "test", baseUrl = server.url("/v1").toString()), "")
+            assertEquals("text", result.getString("aiStatus"))
+            assertTrue(result.getBoolean("usedAI"))
+            assertEquals("uncertain", result.getString("outcome"))
+            assertEquals("insufficient", result.getString("basis"))
         }
     }
 
