@@ -63,14 +63,17 @@ def phone(path, x, y, width):
             + image(path, x, y, width, height, 'clip-path="url(#phone)"'))
 
 
-def browser(path, x, y, width):
+def browser(path, x, y, width, dark=False):
+    chrome = "#283c2d" if dark else "#e5ebdf"
+    paper = "#1b2a21" if dark else CREAM
+    label = SAGE if dark else GREEN
     height = width * 880 / 760
     return (f'<defs><clipPath id="browser"><rect x="{x}" y="{y}" width="{width}" height="{height+32}" rx="14"/></clipPath></defs>'
             f'<rect x="{x-12}" y="{y+12}" width="{width+24}" height="{height+40}" rx="22" fill="#0c241b" opacity=".4"/>'
-            f'<g clip-path="url(#browser)"><rect x="{x}" y="{y}" width="{width}" height="{height+32}" fill="{CREAM}"/>'
-            f'<rect x="{x}" y="{y}" width="{width}" height="32" fill="#e5ebdf"/>'
+            f'<g clip-path="url(#browser)"><rect x="{x}" y="{y}" width="{width}" height="{height+32}" fill="{paper}"/>'
+            f'<rect x="{x}" y="{y}" width="{width}" height="32" fill="{chrome}"/>'
             + ''.join(f'<circle cx="{x+18+i*13}" cy="{y+16}" r="3.5" fill="#789180"/>' for i in range(3))
-            + text(x+width/2-32, y+21, "Veguide", 11, GREEN)
+            + text(x+width/2-32, y+21, "Veguide", 11, label)
             + image(path, x, y+32, width, height) + '</g>')
 
 
@@ -87,7 +90,9 @@ PANELS = [
 ]
 
 
-def render_panels():
+def render_panels(dark=False):
+    prefix = "dark/" if dark else ""
+    suffix = "-dark" if dark else ""
     for key, eyebrow, title, subtitle, body, extension_subtitle, extension_body in PANELS:
         # Android portrait: a full, undistorted screen beneath the feature copy.
         canvas = background(1080, 1920) + brand(76, 62, 1.2)
@@ -95,8 +100,8 @@ def render_panels():
         canvas += text(76, 300, title, 76, weight="bold")
         canvas += text(76, 392, subtitle, 72, SAGE, serif=True, italic=True)
         canvas += ''.join(text(76, 458+i*36, line, 25) for i, line in enumerate(body))
-        canvas += phone(f"website/images/screenshots/android-{key}.png", 247, 570, 586)
-        save(f"android-{key}-portrait", 1080, 1920, canvas, f"store/android/{key}-portrait.png")
+        canvas += phone(f"website/images/{prefix}screenshots/android-{key}.png", 247, 570, 586)
+        save(f"android-{key}-portrait{suffix}", 1080, 1920, canvas, f"{prefix}store/android/{key}-portrait.png")
 
         # Landscape version puts the explanatory copy beside the phone.
         canvas = background(1920, 1080) + brand(104, 84, 1.4)
@@ -105,8 +110,8 @@ def render_panels():
         canvas += text(104, 556, subtitle, 98, SAGE, serif=True, italic=True)
         canvas += ''.join(text(108, 658+i*49, line, 32) for i, line in enumerate(body))
         canvas += text(108, 956, "ANDROID  /  PHOTOS · TEXT · BARCODES", 21, SAGE)
-        canvas += phone(f"website/images/screenshots/android-{key}.png", 1338, 50, 438)
-        save(f"android-{key}-landscape", 1920, 1080, canvas, f"store/android/{key}-landscape.png")
+        canvas += phone(f"website/images/{prefix}screenshots/android-{key}.png", 1338, 50, 438)
+        save(f"android-{key}-landscape{suffix}", 1920, 1080, canvas, f"{prefix}store/android/{key}-landscape.png")
 
         canvas = background(1280, 800) + brand(54, 48)
         canvas += text(54, 214, eyebrow, 15, SAGE, "bold")
@@ -114,16 +119,18 @@ def render_panels():
         canvas += text(54, 388, extension_subtitle, 49, SAGE, serif=True, italic=True)
         canvas += ''.join(text(56, 473+i*32, line, 19) for i, line in enumerate(extension_body))
         canvas += text(56, 706, "CHROMIUM + FIREFOX", 16, SAGE, "bold")
-        canvas += browser(f"website/images/screenshots/extension-{key}.png", 610, 38, 620)
-        save(f"extension-{key}", 1280, 800, canvas, f"store/extension/{key}.png")
+        canvas += browser(f"website/images/{prefix}screenshots/extension-{key}.png", 610, 38, 620, dark)
+        save(f"extension-{key}{suffix}", 1280, 800, canvas, f"{prefix}store/extension/{key}.png")
 
 
-def render_header():
+def render_header(dark=False):
+    prefix = "dark/" if dark else ""
+    suffix = "-dark" if dark else ""
     # A compact image of both real interfaces for the README introduction.
     canvas = background(1400, 760)
-    canvas += browser("website/images/screenshots/extension-result.png", 135, 37, 575)
-    canvas += phone("website/images/screenshots/android-check.png", 878, 35, 310)
-    save("readme-preview", 1400, 760, canvas, "readme-preview.png")
+    canvas += browser(f"website/images/{prefix}screenshots/extension-result.png", 135, 37, 575, dark)
+    canvas += phone(f"website/images/{prefix}screenshots/android-check.png", 878, 35, 310)
+    save(f"readme-preview{suffix}", 1400, 760, canvas, f"{prefix}readme-preview.png")
 
 
 def render_badges():
@@ -149,7 +156,8 @@ def render_badges():
 
 
 if __name__ == "__main__":
-    render_panels()
-    render_header()
+    for dark in (False, True):
+        render_panels(dark)
+        render_header(dark)
     render_badges()
     print("Rendered website images, editable marketing sources, and README badges.")

@@ -13,3 +13,15 @@ if (os) {
   const download = document.querySelector(`[data-download-os="${os}"]`);
   download?.classList.add('primary');
 }
+
+// Match full-size screenshot links to the images selected by <picture>.
+const screenshotTheme = matchMedia('(prefers-color-scheme: dark)');
+const screenshotLinks = [...document.querySelectorAll('a[data-dark-href]')]
+  .map(link => ({ link, lightHref: link.getAttribute('href') }));
+function updateScreenshotLinks() {
+  for (const { link, lightHref } of screenshotLinks) {
+    link.href = screenshotTheme.matches ? link.dataset.darkHref : lightHref;
+  }
+}
+updateScreenshotLinks();
+screenshotTheme.addEventListener('change', updateScreenshotLinks);
