@@ -417,6 +417,9 @@ fun mergeResults(current: JSONObject, next: JSONObject): JSONObject {
     })
     if (contradictory) result.put("outcome", "conflicting").put("basis", "insufficient")
         .put("summary", "The supplied composition and another source disagree. Check the product variant and source dates.")
+    val databaseSources = listOf(current, next).flatMap { source -> source.getJSONArray("evidence").let { items ->
+        (0 until items.length()).map { items.getJSONObject(it) }.filter { it.optString("kind") == "database" }.map { it.getString("id") }
+    } }.toSet()
     for (field in listOf("evidence", "findings", "warnings", "crossContact")) {
         val merged = linkedMapOf<String, Any>()
         for (source in listOf(current, next)) {
@@ -425,7 +428,11 @@ fun mergeResults(current: JSONObject, next: JSONObject): JSONObject {
                 val item = values.get(index)
                 val key = when (field) {
                     "evidence" -> (item as JSONObject).getString("id")
-                    "findings" -> (item as JSONObject).let { "${normalizeCompositionTerm(it.getString("term"))}:${it.getString("status")}" }
+                    "findings" -> (item as JSONObject).let {
+                        val key = "${normalizeCompositionTerm(it.getString("term"))}:${it.getString("status")}"
+                        // Separate database misses from assessments, retaining existing transcription deduplication.
+                        if (it.getString("status") == "unknown" && it.optString("evidenceId") in databaseSources) "$key:${it.optString("evidenceId")}" else key
+                    }
                     else -> item.toString()
                 }
                 val previous = merged[key] as? JSONObject
@@ -439,7 +446,38 @@ fun mergeResults(current: JSONObject, next: JSONObject): JSONObject {
     }
     result.put("companyConcerns", current.getJSONArray("companyConcerns"))
     result.put("usedAI", current.getBoolean("usedAI") || next.getBoolean("usedAI"))
-    return result
+    val findings = result.getJSONArray("findings")
+    val filtered = withoutDatabaseRuleMisses(findings, result.getJSONArray("evidence"))
+    if (filtered.length() < findings.length()) result.put("questions", reconcileOriginQuestions(result.getJSONArray("questions"), filtered))
+    return result.put("findings", filtered)
+}
+
+/** Keep the established ingredient and source instead of a duplicate database rule miss. */
+internal fun withoutDatabaseRuleMisses(findings: JSONArray, evidence: JSONArray): JSONArray {
+    val values = (0 until findings.length()).map { findings.getJSONObject(it) }
+    val established = values.filter { it.getString("status") != "unknown" }.flatMap { finding ->
+        val term = normalizeCompositionTerm(finding.getString("term"))
+        // The curry label's country of origin does not change the ingredient's identity.
+        if (finding.getString("status") == "plant") listOf(term, term.replace(Regex("\\s+\\((?:thaimaa|thailand)\\)$"), "")) else listOf(term)
+    }.toSet()
+    val databaseSources = (0 until evidence.length()).map { evidence.getJSONObject(it) }
+        .filter { it.optString("kind") == "database" }.map { it.getString("id") }.toSet()
+    return JSONArray(values.filter { finding -> finding.getString("status") != "unknown" || finding.optString("evidenceId") !in databaseSources || normalizeCompositionTerm(finding.getString("term")) !in established })
+}
+
+/** Keep existing origin questions aligned with the ingredients still requiring clarification. */
+internal fun reconcileOriginQuestions(questions: JSONArray, findings: JSONArray, locale: String? = null): JSONArray {
+    val unresolved = (0 until findings.length()).map { findings.getJSONObject(it) }
+        .filter { it.getString("status") in setOf("unknown", "ambiguous") }
+        .map { if (locale != null) it.optString("displayTerm", it.getString("term")) else it.getString("term") }.distinct()
+    val originQuestion = Regex("^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Confirm the source of the ambiguous|Die Herkunft unklarer)")
+    return JSONArray((0 until questions.length()).mapNotNull { index ->
+        val question = questions.getString(index)
+        if (!originQuestion.containsMatchIn(question)) question else {
+            val de = if (locale != null) locale == "de" else question.startsWith("Die Herkunft")
+            if (unresolved.isEmpty()) null else (if (de) "Die Herkunft dieser Zutaten klären: " else "Confirm the origin of: ") + unresolved.joinToString(", ") + "."
+        }
+    })
 }
 
 /** Shared by ChatGPT plan and OpenAI-compatible requests, so photo checks retain known identity. */
