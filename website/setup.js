@@ -1,10 +1,20 @@
 // Read the browser's basic OS hint locally. No account, storage, or network request.
 const userAgent = navigator.userAgent;
-const platform = navigator.userAgentData?.platform || navigator.platform || userAgent;
-const mobile = navigator.userAgentData?.mobile || /Android|iPhone|iPad|iPod|CrOS|Windows Phone/i.test(userAgent)
+const platform = navigator.userAgentData?.platform || navigator.platform || '';
+const mobile = navigator.userAgentData?.mobile || /Android|iPhone|iPad|iPod|CrOS|Chrome OS|Windows Phone|\biOS\b/i.test(`${userAgent} ${platform}`)
   || /mac/i.test(platform) && navigator.maxTouchPoints > 1;
-const os = mobile ? null : /win/i.test(platform) ? 'windows'
-  : /mac/i.test(platform) ? 'macos' : /linux/i.test(platform) ? 'linux' : null;
+
+function desktopOs(hint) {
+  if (/\bWindows\b|^Win/i.test(hint)) return 'windows';
+  if (/\bMacintosh\b|\bMac OS X\b|^Mac/i.test(hint)) return 'macos';
+  if (/\bLinux\b/i.test(hint)) return 'linux';
+  return null;
+}
+
+// User-agent overrides may leave platform hints unchanged. Honor the advertised
+// desktop OS first, then fall back to client hints and the legacy platform.
+const os = mobile ? null : desktopOs(userAgent)
+  || desktopOs(navigator.userAgentData?.platform || '') || desktopOs(navigator.platform || '');
 
 if (os) {
   for (const section of document.querySelectorAll('.companion-setup details[data-os]')) {
