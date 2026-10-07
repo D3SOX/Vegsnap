@@ -2546,7 +2546,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "vegsnap-companion"
-version = "0.2.6"
+version = "0.2.9"
 dependencies = [
  "base64 0.23.1",
  "directories",
