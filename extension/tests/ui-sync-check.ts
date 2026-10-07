@@ -28,6 +28,8 @@ let nativeConnected = true;
 let extensionScheme = 'chrome-extension:';
 let checkConsent: CheckReply['onlineConsent'];
 let permissionRequests = 0, checkRequests = 0;
+let startupWait: Promise<void> | undefined;
+let checkWait: Promise<void> | undefined;
 let grantConsent = false;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
@@ -37,8 +39,8 @@ mock.module('wxt/browser', () => ({ browser: {
     onMessage: { addListener: (listener: MessageListener) => messageListeners.add(listener), removeListener: (listener: MessageListener) => messageListeners.delete(listener) },
     async sendMessage(message: Request) {
       switch (message.type) {
-        case 'check': checkRequests++; return { ok: true, result: { ...fixtureResult, ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
-        case 'state': return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
+        case 'check': checkRequests++; await checkWait; return { ok: true, result: { ...fixtureResult, ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
+        case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
@@ -78,8 +80,25 @@ const fixtureResult: HistoryResult = {
   identity: { name: 'Fictional oat drink', market: 'DE', match: 'unconfirmed' }, findings: [], evidence: [], questions: [], warnings: [], crossContact: [], companyConcerns: [], checkedAt: '2026-10-05T10:00:00Z', usedAI: false,
 };
 try {
+  window.history.replaceState(null, '', '/popup.html');
+  let finishStartup!: () => void;
+  startupWait = new Promise(resolve => { finishStartup = resolve; });
+  await act(async () => { render(h(App, {}), roots[0]!); });
+  await flush();
+  assert(!roots[0]!.querySelector('.spinner'), 'Opening the popup does not flash a spinner');
+  assert(!roots[0]!.textContent?.includes('Checking the evidence'), 'Startup never claims to check evidence');
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 550)); });
+  assert.equal(roots[0]!.querySelector('[role="status"]')?.textContent, 'Loading Vegsnap…', 'Slow startup explains what is loading');
+  assert(roots[0]!.querySelector('.spinner'), 'Slow startup provides loading feedback');
+  assert.equal(checkRequests, 0, 'Opening the popup does not run a product check');
+  finishStartup(); startupWait = undefined;
+  await until(() => !roots[0]!.querySelector('.spinner'), 'Startup feedback disappears when data is ready');
+  await act(async () => { render(null, roots[0]!); });
+  window.history.replaceState(null, '', '/app.html');
+
   await act(async () => { roots.forEach(root => render(h(App, {}), root)); });
   await until(() => roots.every(root => root.querySelector('nav')), 'Both real Apps mounted');
+  assert(roots.every(root => !root.querySelector('.spinner')), 'Fast startup needs no loading indicator');
   await tab(roots[0]!, 1); await tab(roots[1]!, 1);
   assert(roots.every(root => historyItems(root).length === 0));
   history = [fixtureResult];
@@ -159,7 +178,15 @@ try {
     await act(async () => { roots[0]!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
     await until(() => !!roots[0]!.querySelector('.verdict'), 'Local result is displayed');
   }
-  await submitCheck();
+  let finishCheck!: () => void;
+  checkWait = new Promise(resolve => { finishCheck = resolve; });
+  const firstCheck = submitCheck();
+  await until(() => !!roots[0]!.querySelector('.check-progress progress'), 'Product checks retain their progress indicator');
+  assert.equal(roots[0]!.querySelector('.check-progress [role="status"]')?.textContent, 'Evaluating the evidence…');
+  assert(roots[0]!.querySelector('.check-progress .spinner'), 'Actual checks still display a spinner');
+  finishCheck(); checkWait = undefined;
+  await firstCheck;
+  assert(!roots[0]!.querySelector('.check-progress'), 'Check progress disappears after the result arrives');
   assert.equal(permissionRequests, 0, 'A local check never prompts before it runs');
   checkConsent = 'ai'; await submitCheck();
   const onlineButton = () => [...roots[0]!.querySelectorAll('button')].find(button => button.textContent === 'Allow online checks');
