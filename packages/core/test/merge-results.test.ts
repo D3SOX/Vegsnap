@@ -4,7 +4,7 @@ import { analyzeText, localizeResult, type CheckResult, type Finding } from '../
 import { mergeResults } from '../src/merge-results';
 
 const assessedCurry = (): CheckResult => ({ ...analyzeText({ category: 'food' }), outcome: 'vegan', basis: 'composition', usedAI: true,
-  findings: curry.findings as Finding[], evidence: [{ id: 'web-composition-0', kind: 'ai_extraction', title: 'Retailer composition (AI)',
+  findings: curry.findings.map(finding => ({ ...finding })) as Finding[], evidence: [{ id: 'web-composition-0', kind: 'ai_extraction', title: 'Retailer composition (AI)',
     excerpt: curry.composition, retrievedAt: '2026-10-07T10:49:12Z' },
   { id: 'web-composition-0-assessment', kind: 'ai_extraction', title: 'AI ingredient assessment', excerpt: 'Ingredient origins assessed by AI.', retrievedAt: '2026-10-07T10:49:12Z' }] });
 const databaseCurry = () => {
@@ -60,4 +60,33 @@ test('opening the already-saved Pixel result removes database duplicates without
   expect(shown.findings.every(finding => finding.status === 'plant' && finding.displayTerm)).toBe(true);
   expect(shown.evidence).toEqual(saved.evidence);
   expect(JSON.stringify(saved)).toBe(original);
+});
+
+test('a source-defining parenthetical does not resolve an unqualified database ingredient', () => {
+  const ai = assessedCurry();
+  ai.findings = [{ term: 'protein (soy)', status: 'plant', explanation: 'Soy protein.', evidenceId: 'web-composition-0-assessment' }];
+  const database = databaseCurry();
+  database.findings = [{ term: 'protein', status: 'unknown', explanation: 'Origin unresolved.', evidenceId: 'database' }];
+  expect(mergeResults(ai, database).findings.some(finding => finding.term === 'protein' && finding.status === 'unknown')).toBe(true);
+});
+
+test('source-distinct unknowns retain the explicit AI uncertainty in either merge order', () => {
+  const ai = assessedCurry();
+  ai.findings.push({ term: 'valkosipuli', status: 'unknown', explanation: 'Explicit AI uncertainty.', evidenceId: 'web-composition-0-assessment' });
+  const database = databaseCurry();
+  for (const result of [mergeResults(ai, database), mergeResults(database, ai)]) {
+    expect(result.findings.filter(finding => finding.status === 'unknown').map(finding => finding.evidenceId)).toEqual(['web-composition-0-assessment']);
+  }
+});
+
+test('origin questions follow remaining findings in merged and saved results', () => {
+  const ai = assessedCurry(), database = databaseCurry();
+  ai.questions = ['Confirm the origin of: valkosipuli.', 'Keep the packaging.'];
+  expect(mergeResults(ai, database).questions).toEqual(['Keep the packaging.']);
+  const saved = { ...ai, evidence: [...ai.evidence, ...database.evidence], findings: [...ai.findings, ...database.findings] };
+  expect(localizeResult(saved, 'en').questions).toEqual(['Keep the packaging.']);
+  database.findings.push({ term: 'rare extract', status: 'unknown', explanation: 'Unresolved.', evidenceId: 'database' });
+  expect(mergeResults(ai, database).questions).toEqual(['Confirm the origin of: rare extract.', 'Keep the packaging.']);
+  expect(localizeResult({ ...saved, findings: [...saved.findings, database.findings.at(-1)!] }, 'de').questions)
+    .toEqual(['Die Herkunft dieser Zutaten klären: rare extract.', 'Keep the packaging.']);
 });
