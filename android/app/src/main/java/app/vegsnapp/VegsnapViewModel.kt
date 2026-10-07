@@ -265,12 +265,12 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         hasSharedInput = true
         selectTab("settings")
     }
-    fun connectChatGPT(openBrowser: (String) -> Unit) {
+    fun connectChatGPT(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -> Unit) {
         if (disconnectingChatGPT || settings.value.offline || chatGPTState.value.busy) return
         authJob = viewModelScope.launch {
             mutableChatGPT.update { it.copy(busy = true, message = null) }
             try {
-                mutableChatGPT.value = chatGPT.signIn(openBrowser).copy(busy = true)
+                mutableChatGPT.value = chatGPT.signIn(newAccount, accountId, openBrowser).copy(busy = true)
                 try {
                     val models = chatGPT.models()
                     mutableChatGPT.update { it.copy(models = models) }
@@ -279,7 +279,16 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_models_error) } }
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutableChatGPT.update { it.copy(message = chatGPTSignInMessage(error)) } }
-            finally { mutableChatGPT.update { it.copy(busy = false) } }
+            finally { withContext(NonCancellable) {
+                // Even cancellation may follow a saved registration or completed credential write.
+                val refreshed = try { chatGPT.status() } catch (error: CancellationException) { throw error }
+                    catch (_: Exception) { null }
+                mutableChatGPT.update { current ->
+                    refreshed?.copy(message = current.message,
+                        models = if (current.selectedAccount == refreshed.selectedAccount) current.models else emptyList())
+                        ?: current.copy(busy = false)
+                }
+            } }
         }
     }
     fun loadChatGPTModels() {
@@ -308,7 +317,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 scan?.join()
                 stopConnectionQueue("chatgpt")
                 chatGPT.disconnect()
-                mutableChatGPT.value = ChatGPTStatus()
+                mutableChatGPT.value = chatGPT.status()
                 updateSettings { it.copy(aiEnabled = false, chatgptModel = "") }.join()
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_error) } }

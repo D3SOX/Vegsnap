@@ -265,6 +265,7 @@ private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTou
     val context = LocalContext.current
     val chatGPT by model.chatGPTState.collectAsStateWithLifecycle()
     var modelMenu by remember { mutableStateOf(false) }
+    var accountMenu by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     var startMenu by remember { mutableStateOf(false) }
     val presets = linkedMapOf("OpenAI" to "https://api.openai.com/v1", "OpenRouter" to "https://openrouter.ai/api/v1",
@@ -314,8 +315,32 @@ private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTou
                     Text(stringResource(R.string.model_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             } else {
-                Button(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                    modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) { Text(stringResource(R.string.chatgpt_continue)) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                        modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                        Text(if (chatGPT.selectedAccount == null) stringResource(R.string.chatgpt_continue)
+                            else stringResource(R.string.chatgpt_reconnect_account, chatGPT.savedAccounts.indexOf(chatGPT.selectedAccount) + 1))
+                    }
+                    if (chatGPT.savedAccounts.isNotEmpty()) {
+                        OutlinedButton(onClick = { model.connectChatGPT(newAccount = true) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                            modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                            Text(stringResource(R.string.chatgpt_another_account))
+                        }
+                    }
+                    if (chatGPT.savedAccounts.size > 1) Box {
+                        TextButton(onClick = { accountMenu = true }, modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                            Text(stringResource(R.string.chatgpt_saved_accounts))
+                        }
+                        DropdownMenu(accountMenu, { accountMenu = false }) { chatGPT.savedAccounts.forEachIndexed { index, clientId ->
+                            DropdownMenuItem(text = { Text(stringResource(R.string.chatgpt_reconnect_account, index + 1)) },
+                                enabled = !chatGPT.busy && !settings.offline, onClick = {
+                                    accountMenu = false
+                                    model.connectChatGPT(accountId = clientId) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                })
+                        } }
+                    }
+                }
+                Text(stringResource(R.string.chatgpt_plan_requirement), style = MaterialTheme.typography.bodySmall)
                 if (!settings.offline && settings.aiEnabled && !chatGPT.busy) {
                     Text(stringResource(R.string.chatgpt_setup_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }

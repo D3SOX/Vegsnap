@@ -42,7 +42,8 @@ private const val CHATGPT_SCOPE = "openid profile email offline_access resource.
 
 data class ChatGPTModel(val id: String, val name: String, val supportsVision: Boolean? = null)
 data class ChatGPTStatus(val connected: Boolean = false, val email: String = "", val busy: Boolean = false,
-    val message: Int? = null, val models: List<ChatGPTModel> = emptyList())
+    val message: Int? = null, val models: List<ChatGPTModel> = emptyList(), val savedAccounts: List<String> = emptyList(),
+    val selectedAccount: String? = null)
 internal data class ChatGPTIdentity(val subject: String, val email: String)
 
 internal fun oauthRandom(): String = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32).also { SecureRandom().nextBytes(it) })
@@ -241,12 +242,14 @@ class ChatGPTConnection(private val context: Context) {
     private fun load(): JSONObject? = vault.read(CHATGPT_ISSUER).takeIf { it.isNotBlank() }?.let(::JSONObject)?.also { registrations.selected(it) }
     private fun save(session: JSONObject) = vault.save(CHATGPT_ISSUER, session.toString())
     suspend fun status(): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
-        load()?.let { ChatGPTStatus(true, it.optString("email")) } ?: ChatGPTStatus()
+        val session = load()
+        ChatGPTStatus(session != null, session?.optString("email").orEmpty(),
+            savedAccounts = registrations.accounts().map { it.clientId }, selectedAccount = registrations.selected(session)?.clientId)
     } }
     suspend fun disconnect() = withContext(Dispatchers.IO) { mutex.withLock { load(); vault.clear() } }
-    suspend fun signIn(openBrowser: (String) -> Unit): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
+    suspend fun signIn(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -> Unit): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
         val previous = load()
-        val registration = registrations.selected(previous)
+        val registration = registrations.forSignIn(previous, newAccount, accountId)
         val returning = registration?.clientId
         val host = chatGPTHostId({ hostPreferences.getString("id", null) }) { check(hostPreferences.edit().putString("id", it).commit()) }
         val nonce = oauthRandom(); val state = oauthRandom(); val verifier = oauthRandom()
@@ -297,7 +300,7 @@ class ChatGPTConnection(private val context: Context) {
                     return@withLock completeChatGPTCallback({
                         // Retain the state-validated registration even if token exchange fails.
                         // It is not a connected session until tokens and identity are verified.
-                        chatGPTSignInStage(ChatGPTSignInStage.STORAGE) { registrations.rememberIssued(clientId) }
+                        chatGPTSignInStage(ChatGPTSignInStage.STORAGE) { registrations.rememberIssued(clientId, newAccount) }
                         val tokens = chatGPTSignInStage(ChatGPTSignInStage.EXCHANGE) {
                             json(Request.Builder().url("$CHATGPT_ISSUER/api/accounts/oauth/token").post(FormBody.Builder()
                                 .add("grant_type", "authorization_code").add("client_id", clientId).add("code", code).add("code_verifier", verifier)
@@ -318,7 +321,7 @@ class ChatGPTConnection(private val context: Context) {
                             registrations.verified(clientId, identity.subject)
                             save(session)
                         }
-                        ChatGPTStatus(true, identity.email)
+                        ChatGPTStatus(true, identity.email, savedAccounts = registrations.accounts().map { it.clientId }, selectedAccount = clientId)
                     }, { respond(true) })
                 }
             }

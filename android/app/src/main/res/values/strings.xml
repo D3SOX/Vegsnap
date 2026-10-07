@@ -91,6 +91,10 @@
     <string name="api_connection">API key</string>
     <string name="chatgpt_connected">Connected</string>
     <string name="chatgpt_continue">Continue with ChatGPT</string>
+    <string name="chatgpt_another_account">Use another account</string>
+    <string name="chatgpt_saved_accounts">Saved accounts</string>
+    <string name="chatgpt_reconnect_account">Reconnect account %1$d</string>
+    <string name="chatgpt_plan_requirement">AI checks through ChatGPT require an eligible Plus or Pro plan. Free accounts can use database checks or a separate API connection.</string>
     <string name="chatgpt_error">Could not complete the ChatGPT request. Check your connection and try again.</string>
     <string name="load_models">Load models</string>
     <string name="select_model">Choose a model</string>
@@ -124,9 +128,9 @@
     <string name="chatgpt_signin_timeout">Sign-in timed out while waiting for the browser after three minutes. Try connecting again.</string>
     <string name="chatgpt_signin_callback_error">The browser returned an invalid or declined sign-in. Try connecting again.</string>
     <string name="chatgpt_signin_exchange_error">Browser approval received, but the connection to ChatGPT could not be completed. Check your network and try connecting again.</string>
-    <string name="chatgpt_signin_grant_error">ChatGPT did not return the required plan access. Check the permissions on the consent screen and try again.</string>
+    <string name="chatgpt_signin_grant_error">ChatGPT did not grant AI access. Use an eligible Plus or Pro account and allow plan usage on the consent screen, or choose an API connection.</string>
     <string name="chatgpt_signin_identity_error">Could not verify the ChatGPT account. Check your network and device clock, then try again.</string>
-    <string name="chatgpt_signin_account_error">A different ChatGPT account was selected. Disconnect the current account before switching.</string>
+    <string name="chatgpt_signin_account_error">This saved connection belongs to a different ChatGPT account. Disconnect if needed, then choose Use another account.</string>
     <string name="chatgpt_signin_storage_error">Could not save the ChatGPT connection on this device. Try connecting again.</string>
     <string name="chatgpt_models_error">Connected to ChatGPT, but available models could not be loaded. Check your connection and plan access, then retry loading models.</string>
     <string name="chatgpt_browser_pending">Finish connecting in Vegsnap</string>
