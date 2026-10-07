@@ -91,6 +91,10 @@
     <string name="api_connection">API-Schlüssel</string>
     <string name="chatgpt_connected">Verbunden</string>
     <string name="chatgpt_continue">Mit ChatGPT fortfahren</string>
+    <string name="chatgpt_another_account">Anderes Konto verwenden</string>
+    <string name="chatgpt_saved_accounts">Gespeicherte Konten</string>
+    <string name="chatgpt_reconnect_account">Konto %1$d erneut verbinden</string>
+    <string name="chatgpt_plan_requirement">KI-Prüfungen über ChatGPT erfordern einen berechtigten Plus- oder Pro-Tarif. Kostenlose Konten können Datenbankprüfungen oder eine separate API-Verbindung nutzen.</string>
     <string name="chatgpt_error">Die ChatGPT-Anfrage konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="load_models">Modelle laden</string>
     <string name="select_model">Modell auswählen</string>
@@ -124,9 +128,9 @@
     <string name="chatgpt_signin_timeout">Die Anmeldung wurde nach drei Minuten Wartezeit auf den Browser abgebrochen. Verbinde dich erneut.</string>
     <string name="chatgpt_signin_callback_error">Der Browser hat eine ungültige oder abgelehnte Anmeldung zurückgegeben. Verbinde dich erneut.</string>
     <string name="chatgpt_signin_exchange_error">Die Browser-Freigabe wurde empfangen, aber die Verbindung zu ChatGPT konnte nicht abgeschlossen werden. Prüfe dein Netzwerk und verbinde dich erneut.</string>
-    <string name="chatgpt_signin_grant_error">ChatGPT hat den erforderlichen Tarifzugriff nicht gewährt. Prüfe die Berechtigungen auf der Freigabeseite und versuche es erneut.</string>
+    <string name="chatgpt_signin_grant_error">ChatGPT hat keinen KI-Zugriff gewährt. Verwende ein berechtigtes Plus- oder Pro-Konto und erlaube die Tarifnutzung auf der Freigabeseite oder wähle eine API-Verbindung.</string>
     <string name="chatgpt_signin_identity_error">Das ChatGPT-Konto konnte nicht verifiziert werden. Prüfe dein Netzwerk und die Gerätezeit und versuche es erneut.</string>
-    <string name="chatgpt_signin_account_error">Ein anderes ChatGPT-Konto wurde ausgewählt. Trenne zuerst das aktuelle Konto, bevor du wechselst.</string>
+    <string name="chatgpt_signin_account_error">Diese gespeicherte Verbindung gehört zu einem anderen ChatGPT-Konto. Trenne sie bei Bedarf und wähle dann „Anderes Konto verwenden“.</string>
     <string name="chatgpt_signin_storage_error">Die ChatGPT-Verbindung konnte auf diesem Gerät nicht gespeichert werden. Verbinde dich erneut.</string>
     <string name="chatgpt_models_error">Mit ChatGPT verbunden, aber die verfügbaren Modelle konnten nicht geladen werden. Prüfe deine Verbindung und deinen Tarifzugriff und lade die Modelle erneut.</string>
     <string name="chatgpt_browser_pending">Verbindung in Vegsnap abschließen</string>
