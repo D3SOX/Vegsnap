@@ -9,6 +9,7 @@ internal class IngredientTranslations {
     fun localize(source: JSONObject, locale: String): JSONObject {
         val language = if (locale == "de") "de" else "en"
         val result = JSONObject(source.toString())
+        result.optJSONArray("findings")?.let { result.put("findings", withoutDatabaseRuleMisses(it, result.optJSONArray("evidence") ?: JSONArray())) }
         val findings = result.optJSONArray("findings") ?: JSONArray()
         val unresolved = linkedSetOf<String>()
         for (index in 0 until findings.length()) {

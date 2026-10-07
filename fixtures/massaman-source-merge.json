@@ -1,0 +1,114 @@
+{
+  "description": "Public product evidence from the Pixel photo check: AI-assessed retailer ingredients followed by a local database composition.",
+  "composition": "AINESOSAT: Salottisipuli (Thaimaa), valkosipuli, chili 20 %, sitruunaruoho, suola, galangajuuri, korianteri, neilikka, juustokumina, muskottipähkinä, kardemumma, kafferilimetin kuori, valkopippuri. Saattaa sisältää pieniä määriä maapähkinää, soijaa ja seesaminsiementä.",
+  "databaseComposition": "Salottisipuli, valkosipuli, chili 20%, sitruunaruoho, suola, galangajuuri, korianteri, neilikka, juustokumina, muskottipähkinä, kardemumma, kafferilimetin kuori, valkopippuri.",
+  "findings": [
+    {
+      "term": "salottisipuli (thaimaa)",
+      "status": "plant",
+      "explanation": "AI assessment: Shallot is a bulb vegetable of plant origin.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Shallot (Thailand)",
+      "displayLocale": "en"
+    },
+    {
+      "term": "valkosipuli",
+      "status": "plant",
+      "explanation": "AI assessment: Garlic is a plant bulb.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Garlic",
+      "displayLocale": "en"
+    },
+    {
+      "term": "chili",
+      "status": "plant",
+      "ruleId": "chili",
+      "explanation": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+      "evidenceId": "web-composition-0",
+      "displayTerm": "Chili 20%",
+      "displayLocale": "en"
+    },
+    {
+      "term": "sitruunaruoho",
+      "status": "plant",
+      "explanation": "AI assessment: Lemongrass is a plant herb.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Lemongrass",
+      "displayLocale": "en"
+    },
+    {
+      "term": "suola",
+      "status": "plant",
+      "ruleId": "salt",
+      "explanation": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
+      "evidenceId": "web-composition-0",
+      "displayTerm": "Salt",
+      "displayLocale": "en"
+    },
+    {
+      "term": "galangajuuri",
+      "status": "plant",
+      "explanation": "AI assessment: Galangal root is a plant rhizome.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Galangal root",
+      "displayLocale": "en"
+    },
+    {
+      "term": "korianteri",
+      "status": "plant",
+      "explanation": "AI assessment: Coriander is a plant herb or spice.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Coriander",
+      "displayLocale": "en"
+    },
+    {
+      "term": "neilikka",
+      "status": "plant",
+      "explanation": "AI assessment: Clove is a dried flower bud from a plant.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Clove",
+      "displayLocale": "en"
+    },
+    {
+      "term": "juustokumina",
+      "status": "plant",
+      "explanation": "AI assessment: Cumin is a plant seed spice.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Cumin",
+      "displayLocale": "en"
+    },
+    {
+      "term": "muskottipähkinä",
+      "status": "plant",
+      "explanation": "AI assessment: Nutmeg is a plant seed spice.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Nutmeg",
+      "displayLocale": "en"
+    },
+    {
+      "term": "kardemumma",
+      "status": "plant",
+      "ruleId": "cardamom",
+      "explanation": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
+      "evidenceId": "web-composition-0",
+      "displayTerm": "Cardamom",
+      "displayLocale": "en"
+    },
+    {
+      "term": "kafferilimetin kuori",
+      "status": "plant",
+      "explanation": "AI assessment: Kaffir lime peel is plant material.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "Kaffir lime peel",
+      "displayLocale": "en"
+    },
+    {
+      "term": "valkopippuri",
+      "status": "plant",
+      "explanation": "AI assessment: White pepper is a plant seed spice.",
+      "evidenceId": "web-composition-0-assessment",
+      "displayTerm": "White pepper",
+      "displayLocale": "en"
+    }
+  ]
+}

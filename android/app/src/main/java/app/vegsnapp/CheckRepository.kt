@@ -439,7 +439,20 @@ fun mergeResults(current: JSONObject, next: JSONObject): JSONObject {
     }
     result.put("companyConcerns", current.getJSONArray("companyConcerns"))
     result.put("usedAI", current.getBoolean("usedAI") || next.getBoolean("usedAI"))
-    return result
+    return result.put("findings", withoutDatabaseRuleMisses(result.getJSONArray("findings"), result.getJSONArray("evidence")))
+}
+
+/** Keep the established ingredient and source instead of a duplicate database rule miss. */
+internal fun withoutDatabaseRuleMisses(findings: JSONArray, evidence: JSONArray): JSONArray {
+    val values = (0 until findings.length()).map { findings.getJSONObject(it) }
+    val established = values.filter { it.getString("status") != "unknown" }.flatMap { finding ->
+        val term = normalizeCompositionTerm(finding.getString("term"))
+        // A simple qualifier such as "shallot (Thailand)" still names the same plant ingredient.
+        if (finding.getString("status") == "plant") listOf(term, term.replace(Regex("\\s+\\([^(),;]*\\)$"), "")) else listOf(term)
+    }.toSet()
+    val databaseSources = (0 until evidence.length()).map { evidence.getJSONObject(it) }
+        .filter { it.optString("kind") == "database" }.map { it.getString("id") }.toSet()
+    return JSONArray(values.filter { finding -> finding.getString("status") != "unknown" || finding.optString("evidenceId") !in databaseSources || normalizeCompositionTerm(finding.getString("term")) !in established })
 }
 
 /** Shared by ChatGPT plan and OpenAI-compatible requests, so photo checks retain known identity. */
