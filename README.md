@@ -33,7 +33,7 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 - On Android, take or import photos, share a product, or enter text. The app has local history and offline text recognition with downloadable language models.
 - In Chromium and Firefox, check selected text or right-click a product image. Enable store integrations if you want database checks while browsing. Background checks never use AI.
-- Connect ChatGPT, an OpenAI-compatible API, or a compatible local model for AI checks. The extension needs the optional desktop companion for ChatGPT sign-in. API-key connections work without it.
+- Connect ChatGPT with a Plus or Pro plan, an OpenAI-compatible API, or a compatible local model for AI checks. The extension needs the optional desktop companion for ChatGPT sign-in. API-key connections work without it.
 - Look up barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts. Regional packs provide a selection of these records offline.
 - Review company concerns alongside the product result. A reviewed list records documented animal testing, opposition to animal-welfare protections and other animal exploitation. Each entry has a source, a review date and a status. Parent-company links need their own ownership source. Selling animal products alone does not qualify.
 
@@ -65,6 +65,8 @@ Open an image to see the original screenshot.
 
 ## AI and evidence
 
+ChatGPT sign-in on Android and in the browser extension requires a **[ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart)**. Free ChatGPT accounts are not supported for this connection. Public database checks and local rules work without a ChatGPT plan.
+
 AI can identify a product, read its label and assess unfamiliar ingredients. ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
 
 Vegsnap accepts a web claim only if its URL came from the search tool and its product and brand match the check. AI-read labels and claims remain marked unverified. Community database labels do not establish verified certification.
@@ -88,7 +90,7 @@ Download the browser packages from the [latest release](https://github.com/D3SOX
 
 ## Install the ChatGPT companion
 
-The extension needs a desktop companion for ChatGPT sign-in. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
+ChatGPT sign-in requires a ChatGPT Plus or Pro plan. The extension also needs a desktop companion. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
 
 Download the archive for your computer from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
 
