@@ -131,11 +131,28 @@ class StoreTests(unittest.TestCase):
             self.assertTrue(self.submit(api).startswith('Already'))
             self.assertEqual(len(api.calls), 1)
 
-    def test_does_not_cancel_or_overwrite_another_pending_version(self):
+    def test_skips_an_older_pending_version_without_mutations(self):
         api = FakeAPI({'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')})
-        with self.assertRaisesRegex(ValueError, 'Another Chrome version'):
-            self.submit(api)
+        self.assertEqual(self.submit(api), 'Skipped: Chrome 0.2.8 is still pending review; retry 0.2.9 after it finishes')
         self.assertEqual(len(api.calls), 1)
+
+    def test_records_skipped_chrome_submission_in_workflow_summary(self):
+        api = FakeAPI({'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')})
+        summary = self.directory / 'summary.md'
+        summary.write_text('Previous step\n')
+        with patch.object(publisher, 'ChromeAPI', return_value=api), \
+                patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': str(summary)}), \
+                patch('sys.argv', ['publish-extension-stores.py', 'chrome', '--tag', 'v0.2.9', '--directory', str(self.directory)]):
+            publisher.main()
+        self.assertEqual(summary.read_text(), 'Previous step\nChrome 0.2.9: Skipped: Chrome 0.2.8 is still pending review; retry 0.2.9 after it finishes\n')
+        self.assertEqual(len(api.calls), 1)
+
+    def test_does_not_overwrite_a_newer_pending_or_different_staged_version(self):
+        for version, state in (('0.3.0', 'PENDING_REVIEW'), ('0.2.8', 'STAGED')):
+            api = FakeAPI({'submittedItemRevisionStatus': revision(version, state)})
+            with self.subTest(version=version, state=state), self.assertRaisesRegex(ValueError, 'Another Chrome version'):
+                self.submit(api)
+            self.assertEqual(len(api.calls), 1)
 
     def test_accepts_matching_versions_across_multiple_distribution_channels(self):
         for state in ('PENDING_REVIEW', 'STAGED'):

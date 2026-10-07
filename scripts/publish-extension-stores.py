@@ -101,7 +101,12 @@ def publish_chrome(api, directory, version, listing, sleep=time.sleep):
         raise ValueError('Refusing to replace an equal or newer published Chrome version')
     submitted = status.get('submittedItemRevisionStatus', {})
     if submitted.get('state') in ('PENDING_REVIEW', 'STAGED'):
-        if set(revision_versions(submitted)) != {version}:
+        submitted_versions = set(revision_versions(submitted))
+        if submitted_versions != {version}:
+            if submitted['state'] == 'PENDING_REVIEW' and len(submitted_versions) == 1:
+                pending_version = next(iter(submitted_versions))
+                if tuple(map(int, pending_version.split('.'))) < target:
+                    return f'Skipped: Chrome {pending_version} is still pending review; retry {version} after it finishes'
             raise ValueError('Another Chrome version is under review or staged; finish it in the dashboard first')
         if submitted['state'] == 'PENDING_REVIEW':
             return 'Already pending review'
@@ -135,7 +140,11 @@ def main():
     args = parser.parse_args()
     version, listing = validate(args.directory, args.tag)
     if args.command == 'chrome':
-        print(f'Chrome {version}: {publish_chrome(ChromeAPI(), args.directory, version, listing)}')
+        result = f'Chrome {version}: {publish_chrome(ChromeAPI(), args.directory, version, listing)}'
+        print(result)
+        if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+            with Path(summary).open('a') as output:
+                output.write(result + '\n')
     else:
         print(f'Validated store release {version}')
 

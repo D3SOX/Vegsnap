@@ -99,8 +99,8 @@ jobs:
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: python3 scripts/publish-extension-stores.py chrome --tag "$RELEASE_TAG" --directory store-release
-      - name: Record submission
-        if: ${{ success() && (!inputs.store || inputs.store == 'both' || inputs.store == matrix.store) }}
+      - name: Record Firefox submission
+        if: ${{ success() && matrix.store == 'amo' && (!inputs.store || inputs.store == 'both' || inputs.store == 'amo') }}
         env:
           STORE: ${{ matrix.store }}
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
