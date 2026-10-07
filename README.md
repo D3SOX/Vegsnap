@@ -79,6 +79,8 @@ Download the signed APK using the Android badge above. You can also use the Obta
 
 ## Install the browser extension
 
+The extension is currently under review for Firefox and Chromium-based browsers. Store installation links will be added once it is approved. In the meantime, you can install it manually using the packages below.
+
 Download the browser packages from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest).
 
 - Chromium: extract `vegsnap-chromium.zip`, open `chrome://extensions`, enable developer mode and choose **Load unpacked**. Select the extracted folder. The release also includes `vegsnap-chromium.crx`, but some browsers restrict direct CRX installation. The ZIP works for development installation.

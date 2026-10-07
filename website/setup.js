@@ -1,3 +1,13 @@
+// Keep CSS tooltips dismissible without moving keyboard focus.
+for (const placeholder of document.querySelectorAll('.store-placeholder')) {
+  placeholder.addEventListener('keydown', event => {
+    if (event.key === 'Escape') placeholder.classList.add('tooltip-dismissed');
+  });
+  for (const event of ['pointerleave', 'focusout']) {
+    placeholder.addEventListener(event, () => placeholder.classList.remove('tooltip-dismissed'));
+  }
+}
+
 // Read the browser's basic OS hint locally. No account, storage, or network request.
 const userAgent = navigator.userAgent;
 const platform = navigator.userAgentData?.platform || navigator.platform || '';
