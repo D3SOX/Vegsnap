@@ -54,6 +54,7 @@ export function App() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const activeCheckId = useRef<string>();
   const [ready, setReady] = useState(false);
+  const [showStartupLoading, setShowStartupLoading] = useState(false);
   const [token, setToken] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [search, setSearch] = useState('');
@@ -166,6 +167,11 @@ export function App() {
     const timer = setInterval(() => setElapsedSeconds(Math.floor((Date.now() - checkProgress.startedAt) / 1000)), 1000);
     return () => clearInterval(timer);
   }, [checkProgress?.startedAt]);
+  useEffect(() => {
+    if (ready) return;
+    const timer = setTimeout(() => setShowStartupLoading(true), 500);
+    return () => clearTimeout(timer);
+  }, [ready]);
   useEffect(() => {
     void act(async () => {
       await refresh(); setReady(true);
@@ -285,7 +291,7 @@ export function App() {
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
-      {busy && <div class="check-progress"><p role="status" class="working"><span class="spinner" aria-hidden="true"/>{checkProgress?.stage === 'database' ? t.progressDatabase : checkProgress?.stage === 'ai' ? t.progressAI : checkProgress ? t.progressEvaluating : t.checking}</p>{checkProgress && <><progress aria-label={t.checking}/><span class="hint">{elapsedSeconds}s</span></>}</div>}
+      {busy && (ready || showStartupLoading) && <div class="check-progress"><p role="status" class="working"><span class="spinner" aria-hidden="true"/>{!ready ? t.loadingApp : checkProgress?.stage === 'database' ? t.progressDatabase : checkProgress?.stage === 'ai' ? t.progressAI : checkProgress ? t.progressEvaluating : t.checking}</p>{checkProgress && <><progress aria-label={t.checking}/><span class="hint">{elapsedSeconds}s</span></>}</div>}
       {result ? <section class="result">
         <button class="text-button" onClick={() => setResult(undefined)}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
