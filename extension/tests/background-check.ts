@@ -162,6 +162,14 @@ state = await listener!({ type: 'state' }, trusted);
 assert(state.ok);
 assert.deepEqual((state.result as { settings: { model: string; connection: string; language: string } }).settings, { ...(local.settings as object), model: 'chosen-model', connection: 'chatgpt', language: 'en' });
 console.log('ChatGPT model selection is persisted immediately for checks and reopening');
+for (const connection of ['hosted', 'database', 'openai']) {
+  assert.equal((await listener!({ type: 'update-settings', patch: { connection } }, trusted)).ok, true);
+  assert.equal((await listener!({ type: 'update-settings', patch: { connection: 'chatgpt' } }, trusted)).ok, true);
+  state = await listener!({ type: 'state' }, trusted);
+  assert(state.ok);
+  assert.equal((state.result as { settings: { model: string } }).settings.model, 'chosen-model', 'Switching away and back restores the selected ChatGPT model');
+}
+console.log('ChatGPT selection survives hosted, database and API connection switching and settings reload');
 
 assert.equal((await listener!({ type: 'update-settings', patch: { connection: 'openai' } }, page)).ok, false);
 assert.equal((await listener!({ type: 'update-settings', patch: { connection: 'openai', baseUrl: 'https://api.openai.com/v1' } }, trusted)).ok, true);

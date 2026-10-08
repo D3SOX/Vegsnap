@@ -37,6 +37,7 @@ export interface Settings {
   stores: string[];
   saveHistory: boolean;
   api?: { connection: keyof typeof PRESETS; baseUrl: string; model: string };
+  chatgptModel?: string;
 }
 export const defaultSettings: Settings = { language: 'en', connection: 'hosted', baseUrl: HOSTED_AI.baseUrl, model: HOSTED_AI.model, stores: [], saveHistory: true };
 export function endpointOrigin(endpoint: string): string {
@@ -50,13 +51,14 @@ export function preferredLanguage(locale: string): Settings['language'] {
   return /^de(?:[-_]|$)/i.test(locale) ? 'de' : 'en';
 }
 export function changeConnectionSettings(current: Settings, connection: Connection): Settings {
+  const chatgptModel = current.connection === 'chatgpt' ? current.model : current.chatgptModel;
   const api = current.connection in PRESETS
     ? { connection: current.connection as keyof typeof PRESETS, baseUrl: current.baseUrl, model: current.model } : current.api;
   if (connection in PRESETS) {
     const selected = api?.connection === connection ? api : { connection: connection as keyof typeof PRESETS, baseUrl: PRESETS[connection as keyof typeof PRESETS], model: '' };
-    return { ...current, ...selected, api: selected };
+    return { ...current, ...selected, api: selected, chatgptModel };
   }
-  return { ...current, connection, api, ...(connection === 'chatgpt' ? { model: '' } : {}) };
+  return { ...current, connection, api, chatgptModel, ...(connection === 'chatgpt' ? { model: chatgptModel ?? '' } : {}) };
 }
 export function parseSettings(value: unknown, locale = 'en'): Settings {
   if (!value || typeof value !== 'object') return { ...defaultSettings, language: preferredLanguage(locale) };
@@ -64,6 +66,8 @@ export function parseSettings(value: unknown, locale = 'en'): Settings {
   const connection = typeof v.connection === 'string' && ['chatgpt', 'database', 'hosted', ...Object.keys(PRESETS)].includes(v.connection) ? v.connection as Connection : defaultSettings.connection;
   const settings: Settings = { language: v.language === 'en' || v.language === 'de' ? v.language : preferredLanguage(locale), connection, baseUrl: typeof v.baseUrl === 'string' ? v.baseUrl : connection === 'hosted' ? HOSTED_AI.baseUrl : PRESETS.openai, model: typeof v.model === 'string' ? v.model.slice(0, 200) : connection === 'hosted' ? HOSTED_AI.model : '', stores: Array.isArray(v.stores) ? v.stores.filter((s): s is string => typeof s === 'string' && STORES.some(store => store.id === s)) : [], saveHistory: v.saveHistory !== false };
   const api = v.api;
+  if (connection === 'chatgpt') settings.chatgptModel = settings.model;
+  else if (typeof v.chatgptModel === 'string') settings.chatgptModel = v.chatgptModel.slice(0, 200);
   if (connection in PRESETS) settings.api = { connection: connection as keyof typeof PRESETS, baseUrl: settings.baseUrl, model: settings.model };
   else if (api && typeof api === 'object' && !Array.isArray(api)) {
     const saved = api as Record<string, unknown>;

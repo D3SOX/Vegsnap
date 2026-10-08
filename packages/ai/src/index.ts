@@ -41,7 +41,7 @@ async function hashToken(request: Request): Promise<string> {
 function product(value: unknown): CheckInput {
   const fields = ['text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images'];
   if (!record(value) || Object.keys(value).some(key => !fields.includes(key))) throw new HttpError(400, 'Invalid product input.');
-  for (const [key, maximum] of [['text', 20_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
+  for (const [key, maximum] of [['text', 30_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
     if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > maximum)) throw new HttpError(400, `Invalid ${key}.`);
   }
   if (value.locale !== undefined && !['en', 'de'].includes(String(value.locale)) ||

@@ -102,7 +102,7 @@ export default defineBackground(() => {
             const model = message.model;
             await changeSettings(async () => {
               const current = await settings();
-              await browser.storage.local.set({ settings: { ...changeConnectionSettings(current, 'chatgpt'), model } });
+              await browser.storage.local.set({ settings: { ...changeConnectionSettings(current, 'chatgpt'), model, chatgptModel: model } });
             });
             return { ok: true, result: null };
           }

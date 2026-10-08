@@ -357,7 +357,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         require(extracted.get("text") is String && extracted.get("complete") is Boolean)
         require(extracted.optString("category") in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other"))
         for (field in listOf("name", "brand", "barcode")) require(!extracted.has(field) || extracted.get(field) is String)
-        require(extracted.getString("text").length <= 20_000)
+        require(extracted.getString("text").length <= 30_000)
         validateAIEvidence(extracted)
         validateWebClaims(extracted)
         validateWebCompositions(extracted)

@@ -44,6 +44,18 @@ class HostedAIFlowTest {
             assertFalse(result.getBoolean("usedAI"))
         }
     }
+    @Test fun hostedTextAtClientLimitAcceptsTheFullTranscription() = runBlocking {
+        MockWebServer().use { server ->
+            val text = "unknown additive ".repeat(2000).take(30_000)
+            server.enqueue(MockResponse().setBody(JSONObject(extraction).put("text", text).put("ingredients", org.json.JSONArray()).toString()))
+            val origin = server.url("/").toString().trimEnd('/')
+            val result = repository(origin).check(CheckInput(text, "food", complete = true), emptyList(),
+                AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
+            assertEquals("text", result.getString("aiStatus"))
+            assertEquals("uncertain", result.getString("outcome"))
+            assertEquals(text, JSONObject(server.takeRequest().body.readUtf8()).getString("text"))
+        }
+    }
     @Test fun clientCannotSendHostedSessionToAnArbitraryEndpoint() = runBlocking {
         MockWebServer().use { server ->
             val result = repository("https://trusted.example").check(CheckInput("unknown additive", "food"), emptyList(),
