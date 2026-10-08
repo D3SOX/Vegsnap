@@ -29,7 +29,7 @@ python3 -m venv .venv-screenshots
 .venv-screenshots/bin/pip install -r scripts/screenshots/requirements.txt
 ```
 
-Use Java 21, an Android SDK that can build the app, and a running API 35 `google_apis` x86_64 emulator. The screenshot APK uses `app.vegsnapp.screenshots`, so the regular app and its data are untouched. The runner acquires the Android lab lock and restores display, theme, clock, timezone and animation settings when finished.
+Use Java 21, an Android SDK that can build the app, and a running API 35 `google_apis` x86_64 emulator. The screenshot APK uses `app.vegsnap.screenshots`, so the regular app and its data are untouched. The runner acquires the Android lab lock and restores display, theme, clock, timezone and animation settings when finished.
 
 ```sh
 .venv-screenshots/bin/python scripts/screenshots.py capture --serial emulator-5556

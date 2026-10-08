@@ -4,10 +4,10 @@ plugins {
     id("com.google.devtools.ksp")
 }
 android {
-    namespace = "app.vegsnapp"
+    namespace = "app.vegsnap"
     compileSdk = 37
     defaultConfig {
-        applicationId = "app.vegsnapp"
+        applicationId = "app.vegsnap"
         minSdk = 26
         targetSdk = 36
         versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 17

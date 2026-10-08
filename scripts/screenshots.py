@@ -15,7 +15,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / 'artifacts/screenshots'
-PACKAGE = 'app.vegsnapp.screenshots'
+PACKAGE = 'app.vegsnap.screenshots'
 KEYS = ('check', 'result', 'history', 'uncertain')
 
 
@@ -109,7 +109,7 @@ def capture_android(output, serial, avd):
             for theme in ('light', 'dark'):
                 run(adb + ['shell', 'cmd', 'uimode', 'night', 'yes' if theme == 'dark' else 'no'])
                 result = read(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
-                                    'app.vegsnapp.MarketingScreenshotTest', '-e', 'screenshotTheme', theme,
+                                    'app.vegsnap.MarketingScreenshotTest', '-e', 'screenshotTheme', theme,
                                     PACKAGE + '.test/androidx.test.runner.AndroidJUnitRunner'])
                 print(result)
                 if 'OK (1 test)' not in result:
