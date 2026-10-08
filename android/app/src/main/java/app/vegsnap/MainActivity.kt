@@ -354,8 +354,12 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
     val context = LocalContext.current
     val chatGPT by model.chatGPTState.collectAsStateWithLifecycle()
     val hostedAI by model.hostedAIState.collectAsStateWithLifecycle()
-    LaunchedEffect(settings.connection, settings.offline, hostedToken) {
-        if (settings.connection == "hosted" && hostedToken.isNotBlank()) model.refreshHostedAI()
+    val queuedJobs by model.queuedJobs.collectAsStateWithLifecycle()
+    val hostedAttempts = queuedJobs.filter { it.settings.connection == "hosted" && it.status == AnalysisStatus.RUNNING }
+        .map { it.id to it.attempt }
+    LaunchedEffect(settings.connection, settings.offline, hostedToken, hostedAttempts) {
+        // Starting/finishing attempts change allowance; stage updates do not require another request.
+        if (settings.connection == "hosted" && hostedToken.isNotBlank()) model.resumeHostedAI()
     }
     var modelMenu by remember { mutableStateOf(false) }
     var accountMenu by remember { mutableStateOf(false) }
