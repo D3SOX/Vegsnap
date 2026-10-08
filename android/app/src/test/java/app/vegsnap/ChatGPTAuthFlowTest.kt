@@ -7,6 +7,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ChatGPTAuthFlowTest {
+    @Test fun backgroundNetworkPolicyCannotStartExchangeBeforeTheAppReturns() = runBlocking {
+        val foreground = CompletableDeferred<Unit>()
+        val page = CompletableDeferred<Unit>()
+        var exchanged = false
+        val attempt = async {
+            completeChatGPTCallback({
+                check(foreground.isCompleted) { "Background network is blocked" }
+                exchanged = true
+                "connected"
+            }, { page.complete(Unit) }, { foreground.await() })
+        }
+        try {
+            page.await()
+            assertFalse(exchanged)
+            foreground.complete(Unit)
+            assertEquals("connected", attempt.await())
+        } finally { attempt.cancel() }
+    }
     @Test fun browserGetsReturnPageWhileBackgroundExchangeIsStillSuspended() = runBlocking {
         val exchangeStarted = CompletableDeferred<Unit>()
         val allowExchange = CompletableDeferred<Unit>()
@@ -16,7 +34,7 @@ class ChatGPTAuthFlowTest {
                 exchangeStarted.complete(Unit)
                 allowExchange.await()
                 "connected"
-            }) { browserReceivedPage.complete(Unit) }
+            }, { browserReceivedPage.complete(Unit) })
         }
         try {
             exchangeStarted.await()
@@ -28,9 +46,9 @@ class ChatGPTAuthFlowTest {
     }
     @Test fun appSuccessWaitsForTokenVerificationAndSessionSave() = runBlocking {
         val events = mutableListOf<String>()
-        val result = completeChatGPTCallback({ events += "verified and saved"; "connected" }) {
+        val result = completeChatGPTCallback({ events += "verified and saved"; "connected" }, {
             events += "browser pending"
-        }
+        })
         events += "app $result"
         assertEquals(listOf("browser pending", "verified and saved", "app connected"), events)
     }
@@ -54,7 +72,7 @@ class ChatGPTAuthFlowTest {
                     exchangeStarted.complete(Unit)
                     allowExchange.await()
                     "connected"
-                }) { sendChatGPTBrowserResponse(socket, chatGPTCompletionResponse("Finish connecting in Vegsnap", true)) }
+                }, { sendChatGPTBrowserResponse(socket, chatGPTCompletionResponse("Finish connecting in Vegsnap", true)) })
             }
             java.net.Socket(java.net.InetAddress.getLoopbackAddress(), server.localPort).use { browser ->
                 browser.soTimeout = 1000
@@ -70,7 +88,7 @@ class ChatGPTAuthFlowTest {
     }
 
     @Test fun closedBrowserDoesNotUndoSavedConnection() = runBlocking {
-        assertEquals("connected", completeChatGPTCallback({ "connected" }) { throw java.io.IOException("tab closed") })
+        assertEquals("connected", completeChatGPTCallback({ "connected" }, { throw java.io.IOException("tab closed") }))
     }
     @Test fun onlyBrowserDeadlineMapsToTimeoutAndStageFailuresDoNotLeakDetails() = runBlocking {
         ChatGPTSignInStage.entries.forEach { stage ->
@@ -84,6 +102,23 @@ class ChatGPTAuthFlowTest {
         }
         assertEquals(R.string.chatgpt_signin_error, chatGPTSignInMessage(java.io.IOException("network")))
     }
+    @Test fun rejectedCodeIsDistinguishedFromNetworkFailureWithoutLeakingDetails() = runBlocking {
+        val rejection = providerHttpFailure(400, """{"error":"invalid_grant","error_description":"private authorization code"}""".byteInputStream())
+        val error = try {
+            chatGPTSignInStage(ChatGPTSignInStage.EXCHANGE) { throw rejection }
+            error("Must fail")
+        } catch (error: ChatGPTSignInException) { error }
+        assertEquals(R.string.chatgpt_signin_code_error, chatGPTSignInMessage(error))
+        assertEquals("sign_in stage=exchange reason=authentication", chatGPTSignInDiagnostic(error))
+        assertNull(error.cause)
+        assertFalse(error.toString().contains("private"))
+        val network = try {
+            chatGPTSignInStage(ChatGPTSignInStage.EXCHANGE) { throw java.io.IOException("private endpoint and token") }
+            error("Must fail")
+        } catch (error: ChatGPTSignInException) { error }
+        assertEquals(R.string.chatgpt_signin_exchange_error, chatGPTSignInMessage(network))
+        assertEquals("sign_in stage=exchange reason=network", chatGPTSignInDiagnostic(network))
+    }
     @Test fun cancellationIsNotReportedAsAnExpiredSignIn() = runBlocking {
         try {
             chatGPTSignInStage(ChatGPTSignInStage.EXCHANGE) { throw kotlinx.coroutines.CancellationException() }
@@ -94,6 +129,15 @@ class ChatGPTAuthFlowTest {
         assertTrue(isChatGPTAppReturn("vegsnap://auth/complete"))
         listOf(null, "vegsnap://auth/complete?code=secret", "vegsnap://auth/complete#token", "vegsnap://auth/other",
             "https://auth/complete", "vegsnap://other/complete").forEach { assertFalse(isChatGPTAppReturn(it)) }
+    }
+    @Test fun completionPageTargetsTheInstalledBuildPackage() {
+        val template = java.io.File(System.getProperty("vegsnap.repo"), "contracts/auth-completion.html").readText()
+        val page = chatGPTCompletionPage(template, true, "Pending", "Return", "Open", packageName = "app.vegsnap.screenshots")
+        assertTrue(page.contains("package=app.vegsnap.screenshots;"))
+        assertFalse(page.contains("package=app.vegsnap;"))
+        assertThrows(IllegalArgumentException::class.java) {
+            chatGPTCompletionPage(template, true, "Pending", "Return", "Open", packageName = "app.vegsnap;extra=bad")
+        }
     }
     @Test fun completionPageUsesBrandedAssetAndPrivatePackageTargetedReturn() {
         val template = java.io.File(System.getProperty("vegsnap.repo"), "contracts/auth-completion.html").readText()

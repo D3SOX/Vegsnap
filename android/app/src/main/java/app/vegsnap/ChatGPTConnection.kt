@@ -41,8 +41,9 @@ internal const val CHATGPT_BOOTSTRAP = "dynamic_agent_client"
 private const val CHATGPT_SCOPE = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct"
 
 data class ChatGPTModel(val id: String, val name: String, val supportsVision: Boolean? = null)
+data class ChatGPTSavedAccount(val clientId: String, val email: String)
 data class ChatGPTStatus(val connected: Boolean = false, val email: String = "", val busy: Boolean = false,
-    val message: Int? = null, val models: List<ChatGPTModel> = emptyList(), val savedAccounts: List<String> = emptyList(),
+    val message: Int? = null, val models: List<ChatGPTModel> = emptyList(), val savedAccounts: List<ChatGPTSavedAccount> = emptyList(),
     val selectedAccount: String? = null)
 internal data class ChatGPTIdentity(val subject: String, val email: String)
 
@@ -60,12 +61,17 @@ internal fun chatGPTHostId(read: () -> String?, save: (String) -> Unit): String 
 }
 internal fun pkceChallenge(verifier: String): String = Base64.getUrlEncoder().withoutPadding()
     .encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII)))
-internal fun chatGPTAuthorization(host: String, clientId: String, redirect: String, state: String, nonce: String, verifier: String): String {
+internal fun chatGPTAuthorization(host: String, clientId: String, redirect: String, state: String, nonce: String, verifier: String,
+    email: String = "", idToken: String = ""): String {
     val url = "$CHATGPT_ISSUER/api/accounts/authorize".toHttpUrl().newBuilder()
     mapOf("client_id" to clientId, "ext_agent_host_id" to host, "response_type" to "code", "redirect_uri" to redirect,
         "scope" to CHATGPT_SCOPE, "resource" to CHATGPT_RESOURCE, "state" to state, "nonce" to nonce,
         "code_challenge_method" to "S256", "code_challenge" to pkceChallenge(verifier)).forEach { (key, value) -> url.addQueryParameter(key, value) }
     if (clientId == CHATGPT_BOOTSTRAP) url.addQueryParameter("agent_name_hint", "Vegsnap")
+    else {
+        if (email.isNotBlank()) url.addQueryParameter("login_hint", email)
+        if (idToken.isNotBlank()) url.addQueryParameter("id_token_hint", idToken)
+    }
     return url.build().toString()
 }
 internal fun chatGPTCallback(target: String, state: String, returningId: String?): Pair<String, String> {
@@ -244,10 +250,15 @@ class ChatGPTConnection(private val context: Context) {
     suspend fun status(): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
         val session = load()
         ChatGPTStatus(session != null, session?.optString("email").orEmpty(),
-            savedAccounts = registrations.accounts().map { it.clientId }, selectedAccount = registrations.selected(session)?.clientId)
+            savedAccounts = registrations.accounts().map { ChatGPTSavedAccount(it.clientId, it.email) }, selectedAccount = registrations.selected(session)?.clientId)
     } }
     suspend fun disconnect() = withContext(Dispatchers.IO) { mutex.withLock { load(); vault.clear() } }
-    suspend fun signIn(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -> Unit): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
+    suspend fun removeAccount(clientId: String) = withContext(Dispatchers.IO) { mutex.withLock {
+        val session = load()
+        registrations.remove(clientId, session) { vault.clear() }
+    } }
+    suspend fun signIn(newAccount: Boolean = false, accountId: String? = null, awaitForeground: suspend () -> Unit,
+        openBrowser: (String) -> Unit): ChatGPTStatus = withContext(Dispatchers.IO) { mutex.withLock {
         val previous = load()
         val registration = registrations.forSignIn(previous, newAccount, accountId)
         val returning = registration?.clientId
@@ -258,7 +269,9 @@ class ChatGPTConnection(private val context: Context) {
         val redirect = "http://127.0.0.1:${callback.localPort}/auth/callback"
         callback.use { listener ->
             listener.soTimeout = 500
-            withContext(Dispatchers.Main) { openBrowser(chatGPTAuthorization(host, returning ?: CHATGPT_BOOTSTRAP, redirect, state, nonce, verifier)) }
+            val retainedIdToken = previous?.takeIf { it.optString("client_id") == returning }?.optString("id_token").orEmpty()
+            withContext(Dispatchers.Main) { openBrowser(chatGPTAuthorization(host, returning ?: CHATGPT_BOOTSTRAP, redirect, state, nonce, verifier,
+                registration?.email.orEmpty(), retainedIdToken)) }
             val deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(3)
             while (true) {
                 currentCoroutineContext().ensureActive()
@@ -286,7 +299,7 @@ class ChatGPTConnection(private val context: Context) {
                         val page = chatGPTCompletionPage(template, accepted,
                             context.getString(if (accepted) R.string.chatgpt_browser_pending else R.string.chatgpt_browser_failed),
                             context.getString(if (accepted) R.string.chatgpt_browser_pending_message else R.string.chatgpt_browser_failure_message),
-                            context.getString(R.string.chatgpt_browser_return), context.resources.configuration.locales[0].language)
+                            context.getString(R.string.chatgpt_browser_return), context.resources.configuration.locales[0].language, context.packageName)
                         sendChatGPTBrowserResponse(socket, chatGPTCompletionResponse(page, accepted))
                     }
                     if (parsed.isFailure) {
@@ -318,11 +331,14 @@ class ChatGPTConnection(private val context: Context) {
                         }
                         currentCoroutineContext().ensureActive()
                         chatGPTSignInStage(ChatGPTSignInStage.STORAGE) {
-                            registrations.verified(clientId, identity.subject)
+                            registrations.verified(clientId, identity.subject, identity.email)
                             save(session)
                         }
-                        ChatGPTStatus(true, identity.email, savedAccounts = registrations.accounts().map { it.clientId }, selectedAccount = clientId)
-                    }, { respond(true) })
+                        ChatGPTStatus(true, identity.email, savedAccounts = registrations.accounts().map { ChatGPTSavedAccount(it.clientId, it.email) }, selectedAccount = clientId)
+                    }, { respond(true) }, {
+                        if (kotlinx.coroutines.withTimeoutOrNull(60_000) { awaitForeground(); true } != true)
+                            throw ChatGPTSignInException(ChatGPTSignInStage.EXCHANGE, AIErrorCode.TIMEOUT)
+                    })
                 }
             }
             @Suppress("UNREACHABLE_CODE")
@@ -374,7 +390,9 @@ class ChatGPTConnection(private val context: Context) {
         val call = http.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) { if (continuation.isActive) continuation.resumeWithException(e) }
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) continuation.resumeWithException(e)
+            }
             override fun onResponse(call: Call, response: Response) { response.use {
                 try {
                     if (!response.isSuccessful) throw providerHttpFailure(response.code, response.body.byteStream())

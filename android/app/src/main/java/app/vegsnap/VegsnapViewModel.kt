@@ -54,6 +54,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     }
     private val chatGPT = ChatGPTConnection(application)
     private var authJob: Job? = null
+    private val activityResumed = MutableStateFlow(false)
     private val mutableChatGPT = MutableStateFlow(ChatGPTStatus())
     val chatGPTState = mutableChatGPT.asStateFlow()
     private val ocrLanguages = ApplicationOcrLanguages.get(application)
@@ -342,12 +343,16 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         hasSharedInput = true
         selectTab("settings")
     }
+    internal fun setActivityResumed(resumed: Boolean) { activityResumed.value = resumed }
     fun connectChatGPT(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -> Unit) {
         if (disconnectingChatGPT || settings.value.offline || chatGPTState.value.busy) return
         authJob = viewModelScope.launch {
             mutableChatGPT.update { it.copy(busy = true, message = null) }
             try {
-                mutableChatGPT.value = chatGPT.signIn(newAccount, accountId, openBrowser).copy(busy = true)
+                mutableChatGPT.value = chatGPT.signIn(newAccount, accountId, { activityResumed.first { it } }) { url ->
+                    activityResumed.value = false
+                    openBrowser(url)
+                }.copy(busy = true)
                 try {
                     val models = chatGPT.models()
                     mutableChatGPT.update { it.copy(models = models) }
@@ -355,7 +360,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 } catch (error: CancellationException) { throw error }
                 catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_models_error) } }
             } catch (error: CancellationException) { throw error }
-            catch (error: Exception) { mutableChatGPT.update { it.copy(message = chatGPTSignInMessage(error)) } }
+            catch (error: Exception) {
+                android.util.Log.i("VegsnapAuth", chatGPTSignInDiagnostic(error))
+                mutableChatGPT.update { it.copy(message = chatGPTSignInMessage(error)) }
+            }
             finally { withContext(NonCancellable) {
                 // Even cancellation may follow a saved registration or completed credential write.
                 val refreshed = try { chatGPT.status() } catch (error: CancellationException) { throw error }
@@ -381,24 +389,32 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     fun cancelChatGPT() { authJob?.cancel() }
-    fun disconnectChatGPT() {
+    fun disconnectChatGPT() = clearChatGPTAccount(null)
+    fun removeChatGPTAccount(accountId: String) {
+        if (chatGPTState.value.busy) return
+        clearChatGPTAccount(accountId)
+    }
+    private fun clearChatGPTAccount(accountId: String?) {
         if (disconnectingChatGPT) return
         disconnectingChatGPT = true
+        val clearActive = accountId == null || chatGPTState.value.connected && chatGPTState.value.selectedAccount == accountId
         val auth = authJob
-        val scan = checkJob
+        val scan = if (clearActive) checkJob else null
         auth?.cancel()
         scan?.cancel()
         viewModelScope.launch {
             try {
                 auth?.join()
                 scan?.join()
-                stopConnectionQueue("chatgpt")
-                chatGPT.disconnect()
-                mutableChatGPT.value = chatGPT.status()
-                updateSettings { it.copy(aiEnabled = false, chatgptModel = "") }.join()
+                mutableChatGPT.update { it.copy(busy = true, message = null) }
+                if (clearActive) stopConnectionQueue("chatgpt")
+                if (accountId == null) chatGPT.disconnect() else chatGPT.removeAccount(accountId)
+                val models = if (clearActive) emptyList() else mutableChatGPT.value.models
+                mutableChatGPT.value = chatGPT.status().copy(models = models)
+                if (clearActive) updateSettings { it.copy(aiEnabled = false, chatgptModel = "") }.join()
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_error) } }
-            finally { disconnectingChatGPT = false }
+            finally { disconnectingChatGPT = false; mutableChatGPT.update { it.copy(busy = false) } }
         }
     }
 

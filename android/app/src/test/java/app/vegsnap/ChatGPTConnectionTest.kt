@@ -56,6 +56,20 @@ class ChatGPTConnectionTest {
         val returning = chatGPTAuthorization(host, "oaiapp_test", "http://127.0.0.1:12/auth/callback", "s", "n", "v").toHttpUrl()
         assertNull(returning.queryParameter("agent_name_hint"))
     }
+    @Test fun returningAuthorizationUsesOnlyTheSelectedAccountHints() {
+        val url = chatGPTAuthorization("host", "oaiapp_selected", "http://127.0.0.1:1234/auth/callback", "s", "n", "v",
+            "selected+test@example.test", "retained-id-token").toHttpUrl()
+        assertEquals("selected+test@example.test", url.queryParameter("login_hint"))
+        assertEquals("retained-id-token", url.queryParameter("id_token_hint"))
+        assertNull(url.queryParameter("agent_name_hint"))
+        val signedOut = chatGPTAuthorization("host", "oaiapp_selected", "http://127.0.0.1:1234/auth/callback", "s", "n", "v",
+            "selected@example.test").toHttpUrl()
+        assertNull(signedOut.queryParameter("id_token_hint"))
+        val newAccount = chatGPTAuthorization("host", CHATGPT_BOOTSTRAP, "http://127.0.0.1:1234/auth/callback", "s", "n", "v",
+            "old@example.test", "old-token").toHttpUrl()
+        assertNull(newAccount.queryParameter("login_hint"))
+        assertNull(newAccount.queryParameter("id_token_hint"))
+    }
     @Test fun callbackRejectsMissingIssuedRegistrationWrongStateDuplicatesAndRefusal() {
         assertEquals("code" to "issued", chatGPTCallback("/auth/callback?state=s&code=code&client_id=issued", "s", null))
         assertEquals("code" to "issued", chatGPTCallback("/auth/callback?state=s&code=code", "s", "issued"))

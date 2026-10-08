@@ -92,8 +92,15 @@
     <string name="chatgpt_connected">Connected</string>
     <string name="chatgpt_continue">Continue with ChatGPT</string>
     <string name="chatgpt_another_account">Use another account</string>
+    <string name="chatgpt_remove_account">Remove %1$s</string>
+    <string name="chatgpt_remove_account_title">Remove saved account?</string>
+    <string name="chatgpt_remove_account_message">Remove %1$s from this device? If connected, it will disconnect. You will need to sign in again to use it. This does not revoke access in ChatGPT Settings.</string>
     <string name="chatgpt_saved_accounts">Saved accounts</string>
-    <string name="chatgpt_reconnect_account">Reconnect account %1$d</string>
+    <string name="chatgpt_switch_account">Switch account</string>
+    <string name="chatgpt_unknown_account">Account %1$d (email unavailable)</string>
+    <string name="chatgpt_account_with_email">%1$s · account %2$d</string>
+    <string name="chatgpt_reconnect">Reconnect</string>
+    <string name="chatgpt_reconnect_account">Reconnect %1$s</string>
     <string name="chatgpt_plan_requirement">AI checks through ChatGPT require an eligible Plus or Pro plan. Free accounts can use database checks or a separate API connection.</string>
     <string name="chatgpt_error">Could not complete the ChatGPT request. Check your connection and try again.</string>
     <string name="load_models">Load models</string>
@@ -127,6 +134,7 @@
     <string name="chatgpt_signin_error">Could not start ChatGPT sign-in. Check your connection and try again.</string>
     <string name="chatgpt_signin_timeout">Sign-in timed out while waiting for the browser after three minutes. Try connecting again.</string>
     <string name="chatgpt_signin_callback_error">The browser returned an invalid or declined sign-in. Try connecting again.</string>
+    <string name="chatgpt_signin_code_error">ChatGPT rejected or expired this sign-in code. Start a new sign-in; do not reload the browser callback page.</string>
     <string name="chatgpt_signin_exchange_error">Browser approval received, but the connection to ChatGPT could not be completed. Check your network and try connecting again.</string>
     <string name="chatgpt_signin_grant_error">ChatGPT did not grant AI access. Use an eligible Plus or Pro account and allow plan usage on the consent screen, or choose an API connection.</string>
     <string name="chatgpt_signin_identity_error">Could not verify the ChatGPT account. Check your network and device clock, then try again.</string>

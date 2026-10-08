@@ -71,7 +71,8 @@ class MainActivity : ComponentActivity() {
         setContent { VegsnapApp(model) }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
-    override fun onResume() { super.onResume(); model.resumeHostedAI() }
+    override fun onResume() { super.onResume(); model.setActivityResumed(true); model.resumeHostedAI() }
+    override fun onPause() { model.setActivityResumed(false); super.onPause() }
     @Suppress("DEPRECATION")
     private fun receive(intent: Intent) {
         if (intent.action == AnalysisQueueService.ACTION_HISTORY) { model.openQueueHistory(); return }
@@ -363,18 +364,27 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
     }
     var modelMenu by remember { mutableStateOf(false) }
     var accountMenu by remember { mutableStateOf(false) }
+    var accountToRemove by remember { mutableStateOf<Pair<String, String>?>(null) }
     var menu by remember { mutableStateOf(false) }
     val presets = linkedMapOf("OpenAI" to "https://api.openai.com/v1", "OpenRouter" to "https://openrouter.ai/api/v1",
         "Gemini" to "https://generativelanguage.googleapis.com/v1beta/openai", "Ollama" to "http://127.0.0.1:11434/v1")
     Text(stringResource(R.string.provider), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(R.string.provider_hint))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(settings.connection == "hosted", { model.updateSettings { it.copy(connection = "hosted", aiEnabled = true) } }, label = { Text(stringResource(R.string.hosted_ai)) }, enabled = !settings.offline)
-        FilterChip(settings.connection == "chatgpt", { model.updateSettings { it.copy(connection = "chatgpt") } }, label = { Text("ChatGPT") }, enabled = !settings.offline)
-        FilterChip(settings.connection == "api", { model.updateSettings { it.copy(connection = "api") } }, label = { Text(stringResource(R.string.api_connection)) }, enabled = !settings.offline)
+        FilterChip(settings.connection == "hosted", { model.updateSettings { it.copy(connection = "hosted", aiEnabled = true) } }, label = { Text(stringResource(R.string.hosted_ai)) })
+        FilterChip(settings.connection == "chatgpt", { model.updateSettings { it.copy(connection = "chatgpt") } }, label = { Text("ChatGPT") })
+        FilterChip(settings.connection == "api", { model.updateSettings { it.copy(connection = "api") } }, label = { Text(stringResource(R.string.api_connection)) })
     }
     ToggleRow(stringResource(R.string.enable_ai), settings.aiEnabled && !settings.offline, { enabled -> model.updateSettings { it.copy(aiEnabled = enabled) } }, enabled = !settings.offline)
     if (settings.connection == "chatgpt") {
+        val accountLabels = chatGPT.savedAccounts.mapIndexed { index, account ->
+            if (account.email.isBlank()) stringResource(R.string.chatgpt_unknown_account, index + 1)
+            else if (chatGPT.savedAccounts.count { it.email == account.email } > 1)
+                stringResource(R.string.chatgpt_account_with_email, account.email, index + 1)
+            else account.email
+        }
+        val selectedAccountIndex = chatGPT.savedAccounts.indexOfFirst { it.clientId == chatGPT.selectedAccount }
+        val selectedAccountLabel = accountLabels.getOrNull(selectedAccountIndex)
         Text(stringResource(R.string.chatgpt), style = MaterialTheme.typography.bodySmall)
         if (chatGPT.connected) {
             Text(stringResource(R.string.chatgpt_connected))
@@ -398,6 +408,10 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
                     enabled = !chatGPT.busy && !settings.offline) {
                     Text(stringResource(if (chatGPT.models.isEmpty()) R.string.load_models else R.string.refresh_models))
                 }
+                TextButton(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                    modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                    Text(stringResource(R.string.chatgpt_reconnect))
+                }
                 TextButton(onClick = { model.disconnectChatGPT() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) {
                     Text(stringResource(R.string.chatgpt_disconnect))
                 }
@@ -411,26 +425,8 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
                     modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                    Text(if (chatGPT.selectedAccount == null) stringResource(R.string.chatgpt_continue)
-                        else stringResource(R.string.chatgpt_reconnect_account, chatGPT.savedAccounts.indexOf(chatGPT.selectedAccount) + 1))
-                }
-                if (chatGPT.savedAccounts.isNotEmpty()) {
-                    OutlinedButton(onClick = { model.connectChatGPT(newAccount = true) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                        modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                        Text(stringResource(R.string.chatgpt_another_account))
-                    }
-                }
-                if (chatGPT.savedAccounts.size > 1) Box {
-                    TextButton(onClick = { accountMenu = true }, modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                        Text(stringResource(R.string.chatgpt_saved_accounts))
-                    }
-                    DropdownMenu(accountMenu, { accountMenu = false }) { chatGPT.savedAccounts.forEachIndexed { index, clientId ->
-                        DropdownMenuItem(text = { Text(stringResource(R.string.chatgpt_reconnect_account, index + 1)) },
-                            enabled = !chatGPT.busy && !settings.offline, onClick = {
-                                accountMenu = false
-                                model.connectChatGPT(accountId = clientId) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                            })
-                    } }
+                    Text(if (selectedAccountLabel == null) stringResource(R.string.chatgpt_continue)
+                        else stringResource(R.string.chatgpt_reconnect_account, selectedAccountLabel))
                 }
             }
             Text(stringResource(R.string.chatgpt_plan_requirement), style = MaterialTheme.typography.bodySmall)
@@ -438,9 +434,49 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
                 Text(stringResource(R.string.chatgpt_setup_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
+        if (chatGPT.savedAccounts.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { model.connectChatGPT(newAccount = true) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                    modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                    Text(stringResource(R.string.chatgpt_another_account))
+                }
+                Box {
+                    TextButton(onClick = { accountMenu = true }, modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy) {
+                        Text(stringResource(if (chatGPT.connected) R.string.chatgpt_switch_account else R.string.chatgpt_saved_accounts))
+                    }
+                    DropdownMenu(accountMenu, { accountMenu = false }) { chatGPT.savedAccounts.forEachIndexed { index, account ->
+                        Row(Modifier.widthIn(min = 240.dp, max = 320.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = {
+                                accountMenu = false
+                                model.connectChatGPT(accountId = account.clientId) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                            }, enabled = !chatGPT.busy && !settings.offline, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                if (chatGPT.connected && account.clientId == chatGPT.selectedAccount) {
+                                    Icon(Icons.Outlined.Check, stringResource(R.string.chatgpt_connected))
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Text(accountLabels[index])
+                            }
+                            IconButton(onClick = { accountMenu = false; accountToRemove = account.clientId to accountLabels[index] },
+                                enabled = !chatGPT.busy, modifier = Modifier.size(48.dp)) {
+                                Icon(Icons.Outlined.Delete, stringResource(R.string.chatgpt_remove_account, accountLabels[index]))
+                            }
+                        }
+                    } }
+                }
+            }
+        }
         if (chatGPT.busy) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             TextButton(onClick = { model.cancelChatGPT() }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
+        }
+        accountToRemove?.let { (clientId, label) ->
+            AlertDialog(onDismissRequest = { accountToRemove = null },
+                title = { Text(stringResource(R.string.chatgpt_remove_account_title)) },
+                text = { Text(stringResource(R.string.chatgpt_remove_account_message, label)) },
+                confirmButton = { TextButton(onClick = { accountToRemove = null; model.removeChatGPTAccount(clientId) }, enabled = !chatGPT.busy) {
+                    Text(stringResource(R.string.delete))
+                } },
+                dismissButton = { TextButton(onClick = { accountToRemove = null }) { Text(stringResource(R.string.cancel)) } })
         }
         chatGPT.message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
     } else if (settings.connection == "hosted") {
