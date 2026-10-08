@@ -52,11 +52,13 @@ class ChatGPTAccountsUiTest {
             finally { withContext(NonCancellable) { releaseWorker.await() } }
         }
         val previousCancellation = ApplicationAnalysisQueue.cancelRunning
-        ApplicationAnalysisQueue.cancelRunning = { id -> if (id == running.id) worker.also { it.cancel() } else null }
+        val cancelInvoked = CompletableDeferred<Unit>()
+        ApplicationAnalysisQueue.cancelRunning = { id -> if (id == running.id) worker.also { it.cancel(); cancelInvoked.complete(Unit) } else null }
         val browserOpened = CompletableDeferred<Unit>()
         try {
             compose.runOnUiThread { model.connectChatGPT(newAccount = true) { browserOpened.complete(Unit) } }
-            compose.waitUntil(10_000) { browserOpened.isCompleted || queue.get(running.id)?.status == AnalysisStatus.CANCELLED }
+            compose.waitUntil(10_000) { cancelInvoked.isCompleted || browserOpened.isCompleted }
+            assertTrue("Cancellation hook must run before sign-in", cancelInvoked.isCompleted)
             assertEquals(AnalysisStatus.CANCELLED, queue.get(running.id)?.status)
             assertFalse("Sign-in must wait for the old running request to finish cancelling", browserOpened.isCompleted)
             releaseWorker.complete(Unit)
