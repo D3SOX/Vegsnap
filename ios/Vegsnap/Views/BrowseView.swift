@@ -18,7 +18,7 @@ struct BrowseView: View {
                 TextField(L("Product or company"), text: $query).submitLabel(.search).onSubmit { search() }.accessibilityIdentifier("browseQuery")
                 Button { search() } label: { Label(L("Search"), systemImage: "magnifyingglass") }.disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || busy)
             } footer: { Text(store.settings.offline ? L("Searching the partial offline snapshot. Missing records do not establish a product’s vegan status.") : L("Searches use public databases, never AI. Review the original source and market.")) }
-            if busy { ProgressView(L("Searching…")); Button(L("Cancel")) { searchTask?.cancel() } }
+            if busy { ProgressView(L("Searching…")); Button(L("Cancel")) { cancelSearch() } }
             if let failure { Section { Text(failure).foregroundStyle(.secondary); Button(L("Retry")) { search() } } }
             if searched && records.isEmpty && !busy && failure == nil { ContentUnavailableView.search(text: query) }
             ForEach(records) { record in
@@ -29,15 +29,16 @@ struct BrowseView: View {
             if let next, !busy { Button(L("Load more")) { search(cursor: next) } }
             if !searched { ContentUnavailableView(L("Explore product records"), systemImage: "books.vertical", description: Text(L("Search food, cosmetics, products, beverages, and companies."))) }
         }.navigationTitle(L("Browse"))
-            .onChange(of: source) { _, _ in searchTask?.cancel(); records = []; next = nil; searched = false; failure = nil }
-            .onDisappear { searchTask?.cancel() }
+            .onChange(of: source) { _, _ in cancelSearch(); records = []; next = nil; searched = false; failure = nil }
+            .onDisappear { cancelSearch() }
     }
+    private func cancelSearch() { searchTask?.cancel(); busy = false }
     private func search(cursor: Int = 0) {
         searchTask?.cancel(); busy = true; failure = nil; searched = true
         if cursor == 0 { records = [] }
         let submittedSource = source; let submittedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         searchTask = Task {
-            defer { busy = false }
+            defer { if !Task.isCancelled { busy = false } }
             do {
                 let page: BrowsePage
                 if store.settings.offline {
@@ -49,7 +50,10 @@ struct BrowseView: View {
                 } else { page = try await service.search(submittedQuery, source: submittedSource, cursor: cursor, locale: store.locale) }
                 try Task.checkCancellation()
                 records += page.records.filter { new in !records.contains { $0.id == new.id } }; next = page.next
-            } catch is CancellationError {} catch { failure = error.localizedDescription }
+            } catch {
+                guard !Task.isCancelled, !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
+                failure = error.localizedDescription
+            }
         }
     }
 }

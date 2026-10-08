@@ -63,8 +63,10 @@ struct CheckView: View {
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(L("Done")) { editing = nil } }; ToolbarItem(placement: .topBarTrailing) { Button(L("Clear")) { store.clearDraft() }.disabled(!store.draft.hasContent && store.draftPhotos.isEmpty) } }
         .onChange(of: store.draft) { _, _ in store.saveDraft() }
         .onChange(of: selection) { _, items in
+            guard !items.isEmpty, !importing else { return }
+            importing = true
             Task {
-                importing = true; defer { importing = false; selection = [] }
+                defer { importing = false; selection = [] }
                 do { for item in items.prefix(3 - store.draftPhotos.count) { if let data = try await item.loadTransferable(type: Data.self) { try store.addPhoto(data) } } }
                 catch { store.report(error) }
             }
@@ -76,7 +78,7 @@ struct CheckView: View {
         }
     }
     private var cameraButton: some View { Button { camera = true } label: { Label(L("Camera"), systemImage: "camera").frame(minHeight: 44) }.buttonStyle(.borderless).disabled(!UIImagePickerController.isSourceTypeAvailable(.camera) || store.draftPhotos.count >= 3) }
-    private var photoButton: some View { PhotosPicker(selection: $selection, maxSelectionCount: max(1, 3 - store.draftPhotos.count), matching: .images) { Label(L("Photos"), systemImage: "photo.on.rectangle").frame(minHeight: 44) }.buttonStyle(.borderless).disabled(store.draftPhotos.count >= 3) }
+    private var photoButton: some View { PhotosPicker(selection: $selection, maxSelectionCount: max(1, 3 - store.draftPhotos.count), matching: .images) { Label(L("Photos"), systemImage: "photo.on.rectangle").frame(minHeight: 44) }.buttonStyle(.borderless).disabled(importing || store.draftPhotos.count >= 3) }
     private var barcodeButton: some View { Button { scanner = true } label: { Label(L("Scan"), systemImage: "barcode.viewfinder").frame(minHeight: 44) }.buttonStyle(.borderless).disabled(!UIImagePickerController.isSourceTypeAvailable(.camera)) }
 }
 struct JobRow: View {

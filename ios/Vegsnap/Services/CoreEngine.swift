@@ -42,7 +42,7 @@ import JavaScriptCore
                     struct Options: Decodable { var method: String; var headers: [String: String]; var body: String?; var chatGPT: Bool? }
                     let config = try JSONDecoder().decode(Options.self, from: Data(options.utf8))
                     guard let endpoint = URL(string: url), endpoint.user == nil, endpoint.password == nil,
-                          endpoint.scheme == "https" || endpoint.scheme == "http" && ["localhost", "127.0.0.1", "[::1]"].contains(endpoint.host ?? "") else { throw AppError("Invalid service URL") }
+                          endpoint.scheme == "https" || endpoint.scheme == "http" && ["localhost", "127.0.0.1", "[::1]", "::1"].contains(endpoint.host ?? "") else { throw AppError("Invalid service URL") }
                     var request = URLRequest(url: endpoint); request.httpMethod = config.method; request.httpBody = config.body.map { Data($0.utf8) }
                     config.headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
                     if config.chatGPT == true { request.setValue("Bearer " + (try await ChatGPTConnection.accessToken()), forHTTPHeaderField: "Authorization") }

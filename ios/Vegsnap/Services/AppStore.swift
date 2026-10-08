@@ -6,6 +6,8 @@ import CryptoKit
 @MainActor @Observable final class AppStore {
     let engine: CoreEngine
     let files: FileStore
+    let inboxDirectory: URL?
+    struct Draft: Codable { var input: CheckInput; var photos: [String] }
     let hosted: HostedAIConnection
     let chatGPT = ChatGPTConnection()
     var switchingChatGPT = false
@@ -26,7 +28,8 @@ import CryptoKit
     private var packTask: Task<Void, Never>?
     private var backgroundID: UIBackgroundTaskIdentifier = .invalid
 
-    init(root: URL? = nil) throws {
+    init(root: URL? = nil, inboxDirectory: URL? = nil) throws {
+        self.inboxDirectory = inboxDirectory ?? FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.vegsnap.ios")
         files = try FileStore(root: root)
         engine = try CoreEngine()
         hosted = try HostedAIConnection(configuration: ServiceConfiguration.load("hosted-ai"))
@@ -34,7 +37,6 @@ import CryptoKit
         settings = loadedSettings
         history = try files.read("history.json") ?? []
         jobs = try files.read("queue.json") ?? []
-        struct Draft: Codable { var input: CheckInput; var photos: [String] }
         let saved: Draft? = try files.read("draft.json")
         draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, locale: language)
         draftPhotos = saved?.photos ?? []
@@ -50,7 +52,6 @@ import CryptoKit
     func report(_ error: Error) { if !(error is CancellationError) { self.error = error.localizedDescription } }
     func saveSettings() { do { try files.save(settings, "settings.json") } catch { report(error) } }
     func saveDraft() {
-        struct Draft: Encodable { var input: CheckInput; var photos: [String] }
         do { try files.save(Draft(input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
     }
     func addPhoto(_ data: Data) throws {
@@ -60,7 +61,7 @@ import CryptoKit
         try files.saveData(clean, name); draftPhotos.append(name); saveDraft()
     }
     func removePhoto(_ name: String) { draftPhotos.removeAll { $0 == name }; saveDraft(); cleanPhotos() }
-    func clearDraft() { draft = CheckInput(category: settings.defaultCategory, locale: locale); draftPhotos = []; saveDraft(); cleanPhotos() }
+    func clearDraft() { draft = CheckInput(category: settings.defaultCategory, locale: locale); draftPhotos = []; saveDraft(); cleanPhotos(); consumeInbox() }
     func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) {
         do {
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return }
@@ -175,7 +176,7 @@ import CryptoKit
     func enterBackground() {
         guard !tasks.isEmpty, backgroundID == .invalid else { return }
         backgroundID = UIApplication.shared.beginBackgroundTask(withName: "Finish product checks") { [weak self] in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 guard let self else { return }
                 self.stopNetworkWork()
                 self.endBackground()

@@ -122,6 +122,63 @@ import Security
         XCTAssertTrue(result.warnings.contains(L("Local text recognition also failed; earlier evidence has been kept.")))
         XCTAssertTrue(store.jobs.isEmpty)
     }
+    func testFailedSharedPhotoIsQuarantinedWithoutPartialDraft() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let inbox = root.appendingPathComponent("inbox")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
+        let entry = inbox.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: entry, withIntermediateDirectories: true)
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 40, height: 40))
+        }
+        try XCTUnwrap(image.pngData()).write(to: entry.appendingPathComponent("good.png"))
+        try Data("invalid image".utf8).write(to: entry.appendingPathComponent("bad.png"))
+        try Data(#"{"text":"failed share","photos":["good.png","bad.png"]}"#.utf8).write(to: entry.appendingPathComponent("input.json"))
+        store.consumeInbox()
+        XCTAssertFalse(store.draft.hasContent); XCTAssertTrue(store.draftPhotos.isEmpty)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: entry.appendingPathExtension("failed").path))
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("app").path).contains { $0.hasSuffix(".jpg") })
+        let next = inbox.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: next, withIntermediateDirectories: true)
+        try Data(#"{"text":"next share","photos":[]}"#.utf8).write(to: next.appendingPathComponent("input.json"))
+        store.consumeInbox()
+        XCTAssertEqual(store.draft.text, "next share")
+        XCTAssertEqual(try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox).draft.text, "next share")
+    }
+    func testSubmittingAndClearingDraftAdvanceSharedInbox() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let inbox = root.appendingPathComponent("inbox")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
+        store.settings.offline = true
+        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food)
+        func queueShare(_ text: String) throws {
+            let entry = inbox.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: entry, withIntermediateDirectories: true)
+            try JSONSerialization.data(withJSONObject: ["text": text, "photos": []]).write(to: entry.appendingPathComponent("input.json"))
+        }
+        try queueShare("second share")
+        store.consumeInbox()
+        XCTAssertEqual(store.draft.text, "Ingredients: oats, honey")
+        store.enqueue()
+        XCTAssertEqual(store.draft.text, "second share")
+        try queueShare("third share")
+        store.clearDraft()
+        XCTAssertEqual(store.draft.text, "third share")
+        for _ in 0..<500 {
+            if !store.history.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(store.history.first?.result.outcome, .notVegan)
+        XCTAssertTrue(store.jobs.isEmpty)
+    }
+    func testIPv6LoopbackProviderReachesNativeNetworkBridge() async throws {
+        Network.testProtocolClasses = [FixtureProtocol.self]
+        var settings = Settings(); settings.connection = "api"; settings.baseUrl = "http://[::1]:11434/v1"; settings.model = "fixture"
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(text: "Ingredients: water, mystery", category: .food, complete: true), settings: settings, token: "fixture-key")
+        XCTAssertTrue(result.usedAI); XCTAssertEqual(result.aiStatus, "text")
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")
@@ -256,7 +313,7 @@ import Security
 }
 
 final class FixtureProtocol: URLProtocol, @unchecked Sendable {
-    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "fixture.invalid" }
+    override class func canInit(with request: URLRequest) -> Bool { ["fixture.invalid", "::1", "[::1]"].contains(request.url?.host ?? "") }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let content = #"{"text":"Ingredients: water, mystery","complete":true,"category":"food"}"#

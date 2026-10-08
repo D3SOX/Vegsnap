@@ -138,7 +138,7 @@ struct SettingsView: View {
             }
             struct Config: Encodable { var baseUrl: String; var model = "validation" }
             let _: Bool = try store.engine.call("provider", Config(baseUrl: store.settings.baseUrl))
-            let url = URL(string: store.settings.baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/models")!
+            guard let url = URL(string: store.settings.baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/models") else { throw AppError(L("Could not load models. Check the saved key and endpoint.")) }
             var request = URLRequest(url: url)
             let saved = try Keychain.read(store.settings.baseUrl)
             if !saved.isEmpty { request.setValue("Bearer " + saved, forHTTPHeaderField: "Authorization") }

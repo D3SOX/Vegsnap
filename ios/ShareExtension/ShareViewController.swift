@@ -14,9 +14,10 @@ final class ShareViewController: UIViewController {
     @MainActor private func save() async throws {
         guard let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.vegsnap.ios") else { throw NSError(domain: "Vegsnap", code: 1, userInfo: [NSLocalizedDescriptionKey: NSLocalizedString("The shared container is unavailable.", comment: "")]) }
         let id = UUID().uuidString
-        var staging = directory.appendingPathComponent(id + ".pending", isDirectory: true)
+        let staging = directory.appendingPathComponent(id + ".pending", isDirectory: true)
         try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-        var resources = URLResourceValues(); resources.isExcludedFromBackup = true; try staging.setResourceValues(resources)
+        var resources = URLResourceValues(); resources.isExcludedFromBackup = true
+        var resourceStaging = staging; try resourceStaging.setResourceValues(resources)
         defer { try? FileManager.default.removeItem(at: staging) }
         var text: [String] = []; var photos: [String] = []
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
