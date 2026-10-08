@@ -8,7 +8,7 @@ let mf: Miniflare, client = 0;
 beforeAll(async () => { mf = await fixture(); },30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  const db = await mf.getD1Database('DB'); await db.batch([db.prepare('DELETE FROM submissions'),db.prepare('DELETE FROM submission_budget')]);
+  const db = await mf.getD1Database('DB'); await db.batch(['submissions', 'submission_budget', 'content_reports', 'report_budget'].map(table => db.prepare(`DELETE FROM ${table}`)));
   const bucket = await mf.getR2Bucket('EVIDENCE'); const list = await bucket.list();
   if (list.objects.length) await bucket.delete(list.objects.map(object => object.key));
 });
@@ -18,9 +18,10 @@ const request = async (path:string, options:RequestInit = {}) => {
   return new Response(await response.arrayBuffer(),{status:response.status,headers:response.headers});
 };
 const reviewHeaders = {Authorization:`Bearer ${adminToken}`,'Content-Type':'application/json'};
-async function submit(token = 'valid', origin = 'https://community.example') {
+async function submit(token = 'valid', origin = 'https://community.example', terms = true) {
   const body = new FormData(); for (const [key,value] of Object.entries(submission)) body.set(key,value);
-  body.set('consent','yes'); body.set('cf-turnstile-response',token); body.set('evidence',new Blob([png],{type:'image/png'}),'private-name.png');
+  body.set('consent','yes'); body.set('terms','yes'); body.set('cf-turnstile-response',token); body.set('evidence',new Blob([png],{type:'image/png'}),'private-name.png');
+  if (!terms) body.delete('terms');
   return request('/api/submissions',{method:'POST',headers:{Origin:origin,'CF-Connecting-IP':`192.0.2.${++client}`},body});
 }
 async function create() { const response = await submit(); expect(response.status).toBe(201); return (await response.json() as {id:string}).id; }
@@ -69,6 +70,12 @@ test('same origin and the strict daily budget are required',async () => {
   expect((await submit('valid','https://other.example')).status).toBe(403);
   const db = await mf.getD1Database('DB'); await db.prepare('INSERT INTO submission_budget VALUES (?,100)').bind(new Date().toISOString().slice(0,10)).run();
   expect((await submit()).status).toBe(429); expect((await (await mf.getR2Bucket('EVIDENCE')).list()).objects).toHaveLength(0);
+});
+test('contribution rules must be accepted before uploading evidence', async () => {
+  const response = await submit('valid', 'https://community.example', false);
+  expect(response.status).toBe(422);
+  expect(await response.json()).toMatchObject({field:'terms'});
+  expect((await (await mf.getR2Bucket('EVIDENCE')).list()).objects).toHaveLength(0);
 });
 test('oversized requests are rejected before storing or parsing attachments',async () => {
   const body = new Uint8Array(2_200_000);

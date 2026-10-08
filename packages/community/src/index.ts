@@ -1,6 +1,7 @@
 import { communityIdentityKey, SubmissionError, validateCommunitySubmission, type CommunityReply, type CommunitySubmission } from '@vegsnap/core/community';
 import { normalizeBarcode } from '@vegsnap/core/barcode';
 import { cleanEvidence, MAX_EVIDENCE_BYTES } from './evidence';
+import { ReportError, submitReport, reviewReports } from './reports';
 
 export interface Env {
   DB: D1Database;
@@ -94,6 +95,7 @@ async function submit(request: Request, env: Env): Promise<Response> {
   for (const key of ['productName', 'brand', 'barcode', 'market', 'variant', 'question', 'reply', 'repliedOn', 'claim', 'scope', 'sourceUrl']) raw[key] = form.get(key) ?? '';
   const submission = validateCommunitySubmission(raw);
   if (form.get('consent') !== 'yes') throw new SubmissionError('consent', 'Confirm that you have removed personal information and may share this response.');
+  if (form.get('terms') !== 'yes') throw new SubmissionError('terms', 'Accept the contribution rules before sharing a reply.');
   const file = form.get('evidence');
   if (!(file instanceof File) || file.size === 0) throw new SubmissionError('evidence', 'Attach a redacted screenshot or PDF of the response.');
   if (file.size > MAX_EVIDENCE_BYTES) throw new SubmissionError('evidence', 'Evidence must be no larger than 2 MB.');
@@ -160,6 +162,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url), path = url.pathname;
   if (request.method === 'GET' && path === '/api/config') return json({ siteKey: env.TURNSTILE_SITE_KEY, submissionsEnabled: env.SUBMISSIONS_ENABLED === 'true' && !!env.TURNSTILE_SECRET, maxEvidenceBytes: MAX_EVIDENCE_BYTES });
   if (request.method === 'POST' && path === '/api/submissions') return submit(request, env);
+  if (request.method === 'POST' && path === '/api/reports') return submitReport(request, env);
   if (request.method === 'GET' && path === '/api/replies') return lookup(url, env);
   if (request.method === 'GET' && path === '/api/snapshot') {
     const cursor = url.searchParams.get('cursor') ?? '';
@@ -176,6 +179,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
   if (path.startsWith('/api/review')) {
     if (!await isAdmin(request, env)) throw new HttpError(401, 'Enter a valid review access code.');
+    if (path === '/api/review/reports' || path.startsWith('/api/review/reports/')) return reviewReports(request, env);
     if (request.method === 'GET' && path === '/api/review') {
       const status = url.searchParams.get('status') ?? 'pending';
       if (!['pending', 'approved', 'rejected'].includes(status)) throw new HttpError(400, 'Invalid review status.');
@@ -221,6 +225,8 @@ async function expire(env: Env): Promise<void> {
     if (deleted?.evidence_key) await env.EVIDENCE.delete(deleted.evidence_key);
   }
   await env.DB.prepare('DELETE FROM submission_budget WHERE day < ?').bind(new Date(now - 7 * 86400_000).toISOString().slice(0, 10)).run();
+  await env.DB.prepare('DELETE FROM report_budget WHERE day < ?').bind(new Date(now - 7 * 86400_000).toISOString().slice(0, 10)).run();
+  await env.DB.prepare('DELETE FROM content_reports WHERE created_at < ?').bind(pending).run();
 }
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -228,7 +234,7 @@ export default {
     try { response = await route(request, env); }
     catch (error) {
       response = error instanceof SubmissionError ? json({ error: error.message, field: error.field }, 422)
-        : error instanceof HttpError ? json({ error: error.message }, error.status)
+        : error instanceof HttpError || error instanceof ReportError ? json({ error: error.message }, error.status)
         : json({ error: 'The service is temporarily unavailable. Please try again.' }, 503);
     }
     const headers = new Headers(response.headers);

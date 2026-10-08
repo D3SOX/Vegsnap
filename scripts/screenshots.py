@@ -43,6 +43,10 @@ def expected_files():
                     paths.add(f'marketing/sources/{platform}-{stem}{suffix}.svg')
         paths.add(f'website/images/{prefix}readme-preview.png')
         paths.add(f'marketing/sources/readme-preview{suffix}.svg')
+        paths.add(f'website/images/{prefix}store/android/feature-graphic.png')
+        paths.add(f'marketing/sources/android-feature-graphic{suffix}.svg')
+    paths.add('website/images/store/android/icon.png')
+    paths.add('marketing/sources/android-play-icon.svg')
     return paths
 
 

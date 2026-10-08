@@ -1,0 +1,16 @@
+<resources>
+    <string name="report_ai">KI-Ausgabe melden</string>
+    <string name="report_reply">Diese Antwort melden</string>
+    <string name="report_ai_notice">Prüfe den Text und entferne persönliche Angaben. Nur dieser Text und dein Meldegrund werden an Vegsnaps Moderationsdienst auf Cloudflare gesendet. Fotos, Zugangsdaten und Verlauf werden nicht angehängt. Meldungen bleiben privat und laufen nach 30 Tagen ab.</string>
+    <string name="report_reply_notice">Nur die Referenz dieser Antwort und dein Meldegrund werden an Vegsnaps Moderationsdienst auf Cloudflare gesendet. Entferne persönliche Angaben aus deinem Meldegrund. Meldungen bleiben privat und laufen nach 30 Tagen ab.</string>
+    <string name="report_text">Zu meldender KI-Text</string>
+    <string name="report_reason">Warum meldest du diesen Inhalt?</string>
+    <string name="report_send">Meldung senden</string>
+    <string name="report_sending">Wird gesendet…</string>
+    <string name="report_sent">Meldung eingegangen. Vielen Dank. Referenz: %1$s</string>
+    <string name="report_failed">Die Meldung konnte nicht gesendet werden. Versuche es in Kürze erneut. Der Eingang ist noch nicht bestätigt.</string>
+    <string name="report_offline">Gehe online, um eine Meldung zu senden.</string>
+    <string name="community_block_reply">Diese Antwort blockieren</string>
+    <string name="community_restore_replies">Blockierte Antworten wieder anzeigen</string>
+    <string name="community_blocked_notice">Blockierte Antworten werden auf diesem Gerät ausgeblendet.</string>
+</resources>

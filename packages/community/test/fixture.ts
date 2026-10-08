@@ -22,7 +22,9 @@ export async function fixture(port?: number, host = '127.0.0.1') {
   }));
   await mf.ready;
   const db = await mf.getD1Database('DB');
-  const migration = await Bun.file(resolve(root,'migrations/0001_submissions.sql')).text();
-  await db.batch(migration.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
+  for (const name of ['0001_submissions.sql', '0002_content_reports.sql']) {
+    const migration = await Bun.file(resolve(root, 'migrations', name)).text();
+    await db.batch(migration.split(';').map(sql => sql.trim()).filter(Boolean).map(sql => db.prepare(sql)));
+  }
   return mf;
 }

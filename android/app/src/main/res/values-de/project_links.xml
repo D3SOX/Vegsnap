@@ -1,4 +1,5 @@
 <resources>
+    <string name="privacy_policy">Datenschutzerklärung</string>
     <string name="project_website">Webseite</string>
     <string name="database_contents">Inhalte von Open Food / Beauty / Products Facts</string>
     <string name="source_terms">Nutzungsbedingungen und Weiterverwendung</string>

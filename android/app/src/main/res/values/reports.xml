@@ -1,0 +1,16 @@
+<resources>
+    <string name="report_ai">Report AI output</string>
+    <string name="report_reply">Report this reply</string>
+    <string name="report_ai_notice">Review the text below and remove personal information. Only this text and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, credentials and history are not attached. Reports are private and expire after 30 days.</string>
+    <string name="report_reply_notice">Only this reply’s reference and your reason are sent to Vegsnap’s moderation service on Cloudflare. Remove personal information from your reason. Reports are private and expire after 30 days.</string>
+    <string name="report_text">AI text to report</string>
+    <string name="report_reason">Why are you reporting this content?</string>
+    <string name="report_send">Send report</string>
+    <string name="report_sending">Sending…</string>
+    <string name="report_sent">Report received. Thank you. Reference: %1$s</string>
+    <string name="report_failed">Could not send the report. Try again shortly. Your report has not been confirmed.</string>
+    <string name="report_offline">Go online to send a report.</string>
+    <string name="community_block_reply">Block this reply</string>
+    <string name="community_restore_replies">Restore blocked replies</string>
+    <string name="community_blocked_notice">Blocked replies are hidden on this device.</string>
+</resources>

@@ -58,13 +58,13 @@ jobs:
         run: |
           umask 077
           printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/vegsnap-release.p12"
-      - name: Verify and build signed APK
+      - name: Verify and build signed Android releases
         env:
           VEGSNAP_KEYSTORE_PATH: ${{ runner.temp }}/vegsnap-release.p12
           VEGSNAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           VEGSNAP_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+        run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease bundleRelease
       - name: Build extension packages
         env:
           CHROMIUM_EXTENSION_KEY: ${{ secrets.CHROMIUM_EXTENSION_KEY }}
@@ -90,6 +90,7 @@ jobs:
         run: |
           mkdir -p release
           cp android/app/build/outputs/apk/release/app-release.apk release/vegsnap.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab release/vegsnap.aab
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vegsnap-release-apps
@@ -97,6 +98,7 @@ jobs:
           if-no-files-found: error
           path: |
             release/vegsnap.apk
+            release/vegsnap.aab
             release/vegsnap-chromium.crx
             release/vegsnap-chromium.zip
             release/vegsnap-firefox.xpi
@@ -203,6 +205,7 @@ jobs:
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$vegsnap_notes"
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             release/vegsnap.apk \
+            release/vegsnap.aab \
             release/vegsnap-chromium.crx \
             release/vegsnap-chromium.zip \
             release/vegsnap-firefox.xpi \

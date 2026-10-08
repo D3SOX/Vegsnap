@@ -671,6 +671,14 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                         aiStatusText?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium,
                             color = if (aiStatus == "failed") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (result.optBoolean("usedAI")) {
+                            val reportText = buildString {
+                                appendLine(result.optString("summary"))
+                                for (index in 0 until findings.length()) appendLine(findings.getJSONObject(index).optString("explanation"))
+                                result.optJSONObject("companyAssessment")?.let { appendLine(it.optString("summary")) }
+                            }.trim()
+                            ContentReportButton("ai", settings.offline, initialText = reportText)
+                        }
                         if (sendToAI && settings.offline && aiStatusText != R.string.ai_status_offline) {
                             Text(stringResource(R.string.ai_status_offline), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

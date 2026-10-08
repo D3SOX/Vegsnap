@@ -33,9 +33,13 @@ import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
 
 class CommunityRepliesViewerTest {
     @get:Rule val compose = createComposeRule()
+    @Before fun resetBlocks() { HiddenCommunityReplies(InstrumentationRegistry.getInstrumentation().targetContext).clear() }
+    @After fun cleanBlocks() { resetBlocks() }
     private val result = JSONObject().put("identity", JSONObject().put("name", "Oat drink").put("brand", "Maker").put("market", "SE"))
         .put("outcome", "uncertain").put("photos", "private-photo")
     private val links = CommunityLinks("https://community.example/submit#name=Oat+drink", "https://community.example/replies#name=Oat+drink")
@@ -165,6 +169,17 @@ class CommunityRepliesViewerTest {
         show(open = { opened.add(it) }) { fail("Sharing must not fetch replies"); CommunityReplyPage(emptyList(), false) }
         click("Share a reply")
         compose.runOnIdle { assertEquals(listOf(links.submit), opened) }
+    }
+    @Test fun blockedRepliesPersistLocallyAndCanBeRestored() {
+        show { CommunityReplyPage(listOf(reply), false) }
+        click("View shared replies")
+        click("Block this reply")
+        compose.onNodeWithText("Maker · Oat drink").assertDoesNotExist()
+        compose.runOnIdle {
+            assertTrue(reply.id in HiddenCommunityReplies(InstrumentationRegistry.getInstrumentation().targetContext).ids())
+        }
+        click("Restore blocked replies")
+        compose.onNodeWithText("Maker · Oat drink").assertExists()
     }
     @Test fun darkViewerWithLargeTextCanReadAndCloseReplies() {
         show(dark = true, fontScale = 2f) { CommunityReplyPage(listOf(reply.copy(evidencePublic = true)), false) }

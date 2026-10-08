@@ -38,6 +38,9 @@ internal fun ProjectLinks() {
         OutlinedButton(onClick = { open(website) }) {
             Icon(Icons.Outlined.Language, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.project_website))
         }
+        OutlinedButton(onClick = { open("https://vegsnap.app/privacy.html#android") }) {
+            Text(stringResource(R.string.privacy_policy))
+        }
     }
 }
 

@@ -157,6 +157,21 @@ def render_badges():
         (ASSETS / "badges" / f"{platform}-icon.svg").write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">{canvas}</svg>\n')
 
 
+def render_play_assets(dark=False):
+    prefix = "dark/" if dark else ""
+    suffix = "-dark" if dark else ""
+    canvas = background(1024, 500) + brand(48, 40)
+    canvas += text(48, 198, "Check the label", 49, weight="bold")
+    canvas += text(48, 264, "before you buy.", 47, SAGE, serif=True, italic=True)
+    canvas += text(50, 336, "Photos, ingredients and barcodes.", 22)
+    canvas += text(50, 376, "See the evidence and what is uncertain.", 20)
+    canvas += phone(f"website/images/{prefix}screenshots/android-result.png", 768, 38, 190)
+    save(f"android-feature-graphic{suffix}", 1024, 500, canvas, f"{prefix}store/android/feature-graphic.png")
+    if not dark:
+        save("android-play-icon", 512, 512, '<rect width="512" height="512" fill="#355D40"/>'
+             + image("website/logo.svg", 0, 0, 512, 512), "store/android/icon.png")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, default=ROOT)
@@ -168,5 +183,6 @@ if __name__ == "__main__":
     for dark in (False, True):
         render_panels(dark)
         render_header(dark)
+        render_play_assets(dark)
     render_badges()
     print("Rendered website images, editable marketing sources, and README badges.")

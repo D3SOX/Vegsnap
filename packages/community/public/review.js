@@ -67,11 +67,47 @@ function reviewForm(record) {
 }
 async function load() {
   const current = ++generation;
+  if (document.querySelector('#queue-type').value === 'reports') {
+    const value = await api('/api/review/reports', {headers:headers()});
+    if (current !== generation || !token) return;
+    records.replaceChildren(...value.reports.map(reportCard));
+    if (!value.reports.length) records.append(element('p','No content reports.','notice'));
+    nextCursor = null; document.querySelector('#next').hidden = true;
+    document.querySelector('#status').disabled = true;
+    return;
+  }
+  document.querySelector('#status').disabled = false;
   const value = await api(`/api/review?${new URLSearchParams({status:document.querySelector('#status').value,cursor})}`,{headers:headers()});
   if (current !== generation || !token) return;
   records.replaceChildren(...value.submissions.map(reviewForm));
   if (!value.submissions.length) records.append(element('p','No submissions in this queue.','notice'));
   nextCursor = value.nextCursor; document.querySelector('#next').hidden = !nextCursor;
+}
+function reportCard(report) {
+  const card = element('article',null,'reply-card');
+  card.append(element('h2',report.kind === 'ai' ? 'Reported AI output' : 'Reported community reply'),
+    element('p',`${report.created_at} · ${report.id}`,'hint'),element('h3','Reason'),element('p',report.reason,'quote'),
+    element('h3','Reported content'),element('p',report.kind === 'ai' ? report.text : report.reply ?? 'Reply already removed.','quote'));
+  const actions = element('div',null,'actions');
+  if (report.kind === 'community' && report.reply_status === 'approved') {
+    card.append(element('p',`${report.brand} · ${report.product_name} · ${report.content_id}`,'hint'));
+    const withdraw = element('button','Withdraw reported reply'); withdraw.type = 'button';
+    withdraw.addEventListener('click',async () => {
+      withdraw.disabled = true;
+      try {
+        await api(`/api/review/${report.content_id}`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},
+          body:JSON.stringify({revision:report.revision,decision:'rejected',reviewNote:'Withdrawn after a content report.'})});
+        await load(); message('Reported reply withdrawn. Review the report before clearing it.');
+      } catch (error) { withdraw.disabled = false; message(error.message,true); }
+    }); actions.append(withdraw);
+  }
+  const clear = element('button','Mark handled and delete report'); clear.type = 'button';
+  clear.addEventListener('click',async () => {
+    clear.disabled = true;
+    try { await api(`/api/review/reports/${report.id}`,{method:'DELETE',headers:headers()}); await load(); message('Report deleted.'); }
+    catch (error) { clear.disabled = false; message(error.message,true); }
+  }); actions.append(clear); card.append(actions);
+  return card;
 }
 access.addEventListener('submit',async event => {
   event.preventDefault(); token = document.querySelector('#code').value; cursor = '';
@@ -80,6 +116,7 @@ access.addEventListener('submit',async event => {
 });
 const refresh = async () => { cursor = ''; try { await load(); } catch (error) { message(error.message,true); } };
 document.querySelector('#status').addEventListener('change',refresh); document.querySelector('#refresh').addEventListener('click',refresh);
+document.querySelector('#queue-type').addEventListener('change',refresh);
 document.querySelector('#next').addEventListener('click',async () => { if (!nextCursor) return; cursor = nextCursor; try { await load(); } catch (error) { message(error.message,true); } });
 document.querySelector('#logout').addEventListener('click',() => {
   token = ''; generation++; records.replaceChildren(); queue.hidden = true; access.hidden = false; document.querySelector('#message').hidden = true; document.querySelector('#code').focus();

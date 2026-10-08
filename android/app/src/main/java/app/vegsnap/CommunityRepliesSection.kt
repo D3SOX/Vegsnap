@@ -55,6 +55,9 @@ internal fun CommunityRepliesViewer(
     result: JSONObject, offline: Boolean, links: CommunityLinks,
     loadReplies: suspend (CommunityLookup) -> CommunityReplyPage, open: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val hiddenStore = remember(context) { HiddenCommunityReplies(context) }
+    var hidden by remember { mutableStateOf(hiddenStore.ids()) }
     val identity = result.optJSONObject("identity") ?: JSONObject()
     var lookup by remember { mutableStateOf(CommunityLookup(identity.optString("name"), identity.optString("brand"), identity.optString("barcode"), identity.optString("market"))) }
     var expanded by remember { mutableStateOf(false) }
@@ -86,6 +89,10 @@ internal fun CommunityRepliesViewer(
             Text(stringResource(R.string.community_replies), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.community_notice), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.community_lookup_notice), style = MaterialTheme.typography.bodySmall)
+            if (hidden.isNotEmpty()) {
+                Text(stringResource(R.string.community_blocked_notice), style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { hiddenStore.clear(); hidden = emptySet() }) { Text(stringResource(R.string.community_restore_replies)) }
+            }
             if (offline) Text(stringResource(R.string.community_offline), style = MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(onClick = { open(links.submit) }, enabled = !offline) { Text(stringResource(R.string.community_share)) }
@@ -117,7 +124,9 @@ internal fun CommunityRepliesViewer(
                     page?.let { value ->
                         if (value.replies.isEmpty()) Text(stringResource(R.string.community_empty), style = MaterialTheme.typography.bodySmall)
                         else Text(stringResource(R.string.community_review_notice), style = MaterialTheme.typography.bodySmall)
-                        value.replies.forEach { reply -> key(reply.id) { CommunityReplyCard(reply, links, open) } }
+                        value.replies.filter { it.id !in hidden }.forEach { reply -> key(reply.id) {
+                            CommunityReplyCard(reply, links, open, offline) { hidden = hiddenStore.hide(reply.id) }
+                        } }
                         if (value.more) {
                             Text(stringResource(R.string.community_more), style = MaterialTheme.typography.bodySmall)
                             val queryResult = JSONObject().put("identity", JSONObject().put("name", submitted.name).put("brand", submitted.brand)
@@ -133,7 +142,7 @@ internal fun CommunityRepliesViewer(
 }
 
 @Composable
-private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, open: (String) -> Unit) {
+private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, open: (String) -> Unit, offline: Boolean, block: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -153,6 +162,10 @@ private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, ope
             }))
             CommunityReplyField(R.string.community_reviewed, reply.reviewedAt.take(10))
             TextButton(onClick = { expanded = !expanded }) { Text(stringResource(if (expanded) R.string.community_hide_reply else R.string.community_read_reply)) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ContentReportButton("community", offline, contentId = reply.id)
+                TextButton(onClick = block) { Text(stringResource(R.string.community_block_reply)) }
+            }
             if (expanded) {
                 SelectionContainer {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

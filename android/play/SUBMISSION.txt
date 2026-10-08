@@ -1,0 +1,166 @@
+Vegsnap — Google Play submission handoff
+
+Prepared application ID: app.vegsnap (keep this existing ID).
+Listing: listing.json contains English and German descriptions and release notes.
+Graphics: website/images/store/android/icon.png (512×512), feature-graphic.png
+(1024×500), and three portrait screenshots. Dark variants are included.
+Public support email: gplay@d3sox.me (confirmed by the owner).
+Price/category proposal: free / Shopping. The owner confirms audience and regions.
+
+1. RELEASE SIGNING AND THE APP BUNDLE
+
+The release workflow now builds and publishes both vegsnap.apk and vegsnap.aab
+using the existing ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD and
+ANDROID_KEY_ALIAS repository secrets. GitHub does not reveal secret values.
+No replacement app-signing key is generated. An unsigned local bundle is for
+verification only and must not be uploaded as a signed release.
+
+To produce a local signed bundle with the original key available securely:
+  cd android
+  VEGSNAP_KEYSTORE_PATH=/absolute/path/to/original.p12 \
+  VEGSNAP_KEYSTORE_PASSWORD=<supplied-securely> \
+  VEGSNAP_KEY_ALIAS=vegsnap ./gradlew bundleRelease
+Do not paste a password into shared logs or commit it. Prefer a protected shell
+environment or Android Studio. Use the key's actual alias.
+
+The next normal release run produces a signed AAB alongside the GitHub APK.
+Every Play upload needs a versionCode greater than previously uploaded codes.
+The release workflow derives it from its monotonically increasing run number.
+
+The owner chose Google-generated Play app signing keys. Play installs and the
+existing GitHub/Obtainium APKs may have separate signing identities and cannot
+update each other; this is accepted. Keep the existing GitHub APK signing key.
+The AAB still needs an upload signature before Google accepts it. Use a distinct
+protected upload key for Play, or the existing release key as the upload key.
+Keep an encrypted backup and register the certificate shown by Play Console.
+Google holds the distribution signing keys; do not upload a replacement private
+key for GitHub APK signing or attempt to retrieve Google's private signing keys.
+
+Generate the handoff package:
+  python3 scripts/prepare-play-store.py \
+    --bundle android/app/build/outputs/bundle/release/app-release.aab \
+    --support-email YOUR_PUBLIC_SUPPORT_EMAIL
+The script copies text/graphics/policy and reports whether a signature is present.
+Verify the signature and certificate separately before submission.
+
+2. PUBLISH POLICY AND MODERATION BEFORE SHIPPING
+
+Publish website/privacy.html at https://vegsnap.app/privacy.html. The app links
+directly to its Android section. Check the deployed page, not just this checkout.
+
+The existing community service has production schema 0001_submissions.sql.
+0002_content_reports.sql adds private content reports without deleting existing
+manufacturer replies. From packages/community:
+  bun run typecheck
+  bun run test
+  bun run migrate:remote
+  bun run deploy
+Apply the migration before deploying the new Worker. The new report routes must
+be live before shipping the app. The previous live Worker does not support them.
+
+Using the existing private review code, open /review and select Content reports.
+Read both report reason and content. Withdraw offensive/inaccurate community
+replies using the provided action; review AI reports and improve safeguards as
+needed. Only then mark a report handled and delete it. Monitor this queue daily.
+Reports never include photos, credentials, history or IP addresses in stored rows.
+The endpoint accepts at most 5 reports per minute per IP and 200 reports per day.
+It rejects unrecognized fields and limits body size. Reports expire after 30 days.
+
+Contribution rules require affirmative acceptance before submission. Every reply
+is reviewed before publication. Users can report and locally block a reply and
+restore blocked replies. Contributions are anonymous with no public contributor
+profiles or direct messaging. Confirm Google's interpretation of user-blocking
+requirements for this moderated dataset; do not claim guaranteed approval.
+
+3. PLAY CONSOLE ACCOUNT AND APP SETUP (OWNER)
+
+The owner reports that the Play Console account is created and verified and the
+Vegsnap app entry exists. Confirm the remaining tasks on its dashboard.
+New personal accounts also need
+Android-device verification in the Play Console mobile app.
+For personal accounts, Google publishes legal name, country and developer email;
+additional address information can be required for monetization/trader status.
+
+Create Vegsnap as a free app. Select Shopping, choose the actual target audience
+and distribution countries, add the public support email and listing graphics,
+and configure Play App Signing. Package IDs are permanent; keep app.vegsnap.
+
+Complete all App content dashboard questions: privacy policy, ads (none), app
+access, Data safety, target audience, content rating, foreground service and any
+other declarations requested. data-safety.json is a substantiated draft, not an
+automatically approved declaration. Verify actual providers' retention/sharing.
+Vegsnap checks product composition and evidence; it provides no diagnosis,
+treatment, allergy-safety guarantee or nutritional advice. Describe this accurately
+in any Health apps questionnaire and follow the Console's category definitions.
+Answer content rating questions accurately for food/drink browsing (which includes
+alcoholic drinks), online content and moderated community contributions.
+
+4. APP ACCESS / REVIEWER INSTRUCTIONS
+
+No Vegsnap account is needed. In Settings, turn optional AI off for local checks.
+In manual entry, choose Food and mark the supplied list complete. Test:
+  Ingredients: oats, sugar, sunflower oil — vegan by composition.
+  Ingredients: oats, milk powder — animal-derived ingredient.
+  Ingredients: unspecified flavouring — uncertain origin.
+Open History to revisit/delete results. Camera capture/import and barcode lookup
+are available from the scan screen. Offline mode prevents new online checks.
+In a product result, View shared replies explicitly loads community contributions.
+Report this reply submits the reference/reason inside the app; Block this reply
+hides it locally. Restore blocked replies reverses the local block.
+After an AI-assisted check, Report AI output allows editing/redacting the report
+text and submitting it without leaving the app.
+
+For optional AI, reviewers can connect to Vegsnap AI through its real browser
+verification flow without a subscription or API key. Confirm the live service
+works for reviewers and its free allowance permits review. For any remaining
+restricted provider-only features, provide a dedicated working endpoint/model
+and restricted test API key through Play Console App access. Do not use personal
+ChatGPT credentials, ask reviewers to buy a plan, or embed a shared API key in the
+app/listing. A local endpoint on your computer is not accessible to reviewers.
+Explain all access steps and restrictions accurately in Play Console.
+
+5. FOREGROUND SERVICE DECLARATION
+
+Permission/type: FOREGROUND_SERVICE_DATA_SYNC / dataSync.
+Feature: user-initiated product checks upload selected input to the chosen AI
+provider, fetch results and save them locally; OCR and result processing are part
+of that task. The analysis queue continues while the user changes screens.
+User benefit: a requested check completes without keeping the check screen open.
+Deferral/interruption impact: delays the requested result; unfinished jobs remain
+visible in History and can be resumed or cancelled. The notification shows active
+and waiting checks and opens History, where the user can stop work.
+Do not claim guaranteed task completion; Android can terminate foreground work.
+
+Attach a short video showing a real check being started, the active notification,
+switching apps while it runs, and cancellation/result in History. Capture with
+fixed product fixtures and no personal notifications. Google's required video
+must show actual service behavior; screenshot-only animations do not satisfy it.
+The owner must confirm that dataSync covers all relevant execution paths.
+
+6. TEST AND SUBMIT
+
+Run the repository checks and inspect the final signed bundle in Play's bundle
+explorer. Test the Play-generated install, cold launch, camera permission denial,
+OCR/barcodes, image import, offline checks, API/ChatGPT auth, history deletion,
+report retry/cancellation, local blocking and background cancellation. Verify
+Android 8/API 26 minimum support and Android 16/API 36; test a 16 KB environment.
+Inspect the Play pre-launch report and fix actionable failures.
+
+For a personal account created after November 13, 2023: complete a closed test
+with at least 12 testers opted in continuously for 14 days. Recruit real testers,
+record feedback and fixes, then apply for production access. Internal testing and
+GitHub APK installs do not replace this requirement. After production access,
+create the production release and send it for Google's review.
+
+OFFICIAL REFERENCES (checked October 8, 2026)
+Account: https://support.google.com/googleplay/android-developer/answer/6112435
+Identity: https://support.google.com/googleplay/android-developer/answer/13628312
+App setup: https://support.google.com/googleplay/android-developer/answer/9859152
+Signing: https://support.google.com/googleplay/android-developer/answer/9842756
+Testing: https://support.google.com/googleplay/android-developer/answer/14151465
+Data safety: https://support.google.com/googleplay/android-developer/answer/10787469
+Privacy: https://support.google.com/googleplay/android-developer/answer/10144311
+FGS: https://support.google.com/googleplay/android-developer/answer/13392821
+AI: https://support.google.com/googleplay/android-developer/answer/14094294
+UGC: https://support.google.com/googleplay/android-developer/answer/9876937
+16 KB: https://developer.android.com/guide/practices/page-sizes
