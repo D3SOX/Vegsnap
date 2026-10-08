@@ -1,6 +1,7 @@
 const parameters = new URLSearchParams(location.hash.slice(1));
 const token = parameters.get('token') ?? '';
-const android = parameters.get('client') === 'android';
+const client = parameters.get('client');
+const appReturn = client === 'ios' ? 'vegsnap-ios://ai/complete' : client === 'android' ? 'intent://ai/complete#Intent;scheme=vegsnap;package=app.vegsnap;end' : null;
 history.replaceState(null, '', location.pathname);
 const status = document.querySelector('#status');
 async function connect() {
@@ -24,7 +25,9 @@ async function connect() {
           throw new Error(typeof problem?.error?.message === 'string' ? problem.error.message.slice(0, 300) : 'Verification failed or expired. Start again in Vegsnap.');
         }
         status.textContent = 'Connected. Your free AI access is ready. Return to Vegsnap to start checking products.';
-        document.querySelector('#return').hidden = !android;
+        const action = document.querySelector('#return');
+        if (appReturn) action.href = appReturn;
+        action.hidden = !appReturn;
         window.turnstile.remove(widget);
       } catch (error) { status.textContent = error.message; window.turnstile.reset(widget); }
     },

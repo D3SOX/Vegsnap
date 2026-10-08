@@ -1,0 +1,269 @@
+import XCTest
+import CryptoKit
+import UIKit
+import Security
+@testable import Vegsnap
+
+@MainActor final class CoreTests: XCTestCase {
+    var engine: CoreEngine!
+    override func setUp() async throws { Keychain.testService = "app.vegsnap.ios.tests." + UUID().uuidString; engine = try CoreEngine() }
+    override func tearDown() async throws {
+        SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: Keychain.service] as CFDictionary)
+        Keychain.testService = nil; Network.testProtocolClasses = nil
+    }
+    func analyze(_ text: String, category: Vegsnap.Category = .food, complete: Bool? = true, name: String = "", locale: String = "en") throws -> CheckResult {
+        try engine.call("analyze", CheckInput(text: text, name: name, category: category, complete: complete, locale: locale))
+    }
+    func testKnownAnimalAndPlantComposition() throws {
+        XCTAssertEqual(try analyze("Ingredients: oats, honey, salt").outcome, .notVegan)
+        XCTAssertEqual(try analyze("Ingredients: oats, water, salt").outcome, .vegan)
+        XCTAssertEqual(try analyze("Ingredients: oats, water, salt", complete: false).outcome, .uncertain)
+    }
+    func testCrossContactIsNotAnIngredient() throws {
+        let result = try analyze("Ingredients: oats, water, salt. May contain milk.")
+        XCTAssertEqual(result.outcome, .vegan); XCTAssertEqual(result.crossContact.count, 1)
+    }
+    func testMaterialsAndProcessingRequireEvidence() throws {
+        XCTAssertEqual(try analyze("Materials: cotton, rubber", category: .shoes).outcome, .uncertain)
+        XCTAssertEqual(try analyze("Ingredients: grapes, water", category: .drink, name: "Wine").outcome, .uncertain)
+        XCTAssertEqual(try analyze("Materials: leather, rubber", category: .shoes).outcome, .notVegan)
+    }
+    func testUnknownAndAmbiguousRemainUncertain() throws {
+        XCTAssertEqual(try analyze("Ingredients: water, E471").outcome, .uncertain)
+        XCTAssertEqual(try analyze("Ingredients: water, novel mystery extract").outcome, .uncertain)
+    }
+    func testGermanAndSoyRegression() throws {
+        XCTAssertEqual(try analyze("Zutaten: Haferflocken, Honig, Salz", locale: "de").outcome, .notVegan)
+        let result = try analyze("Ingredients: soy lecithin, water")
+        XCTAssertNotEqual(result.outcome, .notVegan)
+    }
+    func testBarcodeAndProviderValidation() throws {
+        let valid: String? = try engine.call("barcode", "4006381333931"); XCTAssertEqual(valid, "4006381333931")
+        let invalid: String? = try engine.call("barcode", "4006381333932"); XCTAssertNil(invalid)
+        struct Config: Encodable { var baseUrl: String; var model = "model" }
+        XCTAssertThrowsError(try engine.call("provider", Config(baseUrl: "https://secret@example.org/v1"), as: Bool.self))
+        XCTAssertThrowsError(try engine.call("provider", Config(baseUrl: "http://example.org/v1"), as: Bool.self))
+        XCTAssertTrue(try engine.call("provider", Config(baseUrl: "http://127.0.0.1:11434/v1"), as: Bool.self))
+    }
+    func testAsyncOfflineCheckAndBundledSnapshot() async throws {
+        var settings = Settings(); settings.offline = true
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(text: "Ingredients: honey", category: .food), settings: settings, token: "")
+        XCTAssertEqual(result.outcome, .notVegan)
+        let packs: [PackInfo] = try engine.call("packs", "")
+        XCTAssertFalse(packs.isEmpty); XCTAssertGreaterThan(packs[0].count, 0)
+    }
+    func testOCRCannotPromoteIncompleteLabel() throws {
+        let original = try analyze("", complete: false)
+        struct Args: Encodable { var result: CheckResult; var input: CheckInput; var text: String }
+        let result: CheckResult = try engine.call("mergeOCR", Args(result: original, input: CheckInput(category: .food), text: "Ingredients: oats, water, salt"))
+        XCTAssertEqual(result.outcome, .uncertain)
+        XCTAssertTrue(result.evidence.contains { $0.kind == "ocr" })
+        let negative: CheckResult = try engine.call("mergeOCR", Args(result: original, input: CheckInput(category: .food), text: "Ingredients: oats, honey"))
+        XCTAssertEqual(negative.outcome, .notVegan)
+    }
+    func testHistoryRoundTripAndRejectInvalidVersion() throws {
+        let result = try analyze("Ingredients: oats, honey")
+        let data = try HistoryDocument(results: [result]).jsonData()
+        XCTAssertEqual(try HistoryTransfer.parse(data).first?.outcome, .notVegan)
+        var document = HistoryDocument(results: [result]); document.schemaVersion = 2
+        XCTAssertThrowsError(try HistoryTransfer.parse(document.jsonData()))
+        XCTAssertThrowsError(try HistoryTransfer.parse(Data(repeating: 32, count: 5_000_001)))
+    }
+    func testDraftQueueAndDeletionPersistence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); store.settings.offline = true
+        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food); store.saveDraft()
+        XCTAssertEqual(try AppStore(root: root).draft.text, store.draft.text)
+        store.enqueue()
+        for _ in 0..<100 { if !store.history.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(store.history.count, 1); XCTAssertTrue(store.jobs.isEmpty)
+        let restored = try AppStore(root: root); XCTAssertEqual(restored.history.count, 1)
+        restored.delete(Set(restored.history.map(\.id)))
+        XCTAssertTrue(try AppStore(root: root).history.isEmpty)
+    }
+    func testInterruptedQueueDoesNotAutomaticallyResend() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = try FileStore(root: root)
+        try files.save([CheckJob(input: CheckInput(text: "pending"), photos: [], status: "ai")], "queue.json")
+        let store = try AppStore(root: root)
+        XCTAssertEqual(store.jobs.first?.status, "interrupted"); XCTAssertTrue(store.history.isEmpty)
+        store.jobs.append(CheckJob(input: CheckInput(text: "waiting"), photos: []))
+        store.stopNetworkWork(); store.schedule()
+        XCTAssertTrue(store.jobs.allSatisfy { $0.status == "interrupted" })
+        XCTAssertTrue(try AppStore(root: root).jobs.allSatisfy { $0.status == "interrupted" })
+    }
+    func testPhotoSanitizationAndVisionOCR() async throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 1300, height: 400), format: format).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 1300, height: 400))
+            ("Ingredients: oats, honey, salt" as NSString).draw(at: CGPoint(x: 40, y: 100), withAttributes: [.font: UIFont.systemFont(ofSize: 56), .foregroundColor: UIColor.black])
+        }
+        let clean = try PhotoProcessor.sanitize(XCTUnwrap(image.pngData()))
+        XCTAssertLessThan(clean.count, 3_000_000)
+        let recognized = try await PhotoProcessor.recognize(clean, languages: ["en-US"])
+        XCTAssertTrue(recognized.text.lowercased().contains("honey"))
+    }
+    func testOCRFailurePreservesEarlierEvidence() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        store.settings.offline = true; store.settings.vision = false
+        try store.files.saveData(Data("corrupted photo".utf8), "invalid.jpg")
+        store.enqueue(input: CheckInput(text: "Ingredients: water, mystery", category: .food), photos: ["invalid.jpg"])
+        for _ in 0..<500 {
+            if !store.history.isEmpty || store.jobs.contains(where: { $0.status == "failed" }) { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let result = try XCTUnwrap(store.history.first?.result)
+        XCTAssertEqual(result.outcome, .uncertain)
+        XCTAssertTrue(result.evidence.contains { $0.kind == "user_text" && $0.excerpt.contains("mystery") })
+        XCTAssertTrue(result.warnings.contains(L("Local text recognition also failed; earlier evidence has been kept.")))
+        XCTAssertTrue(store.jobs.isEmpty)
+    }
+    func testChatGPTCallbackGuards() throws {
+        let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
+        XCTAssertEqual(result.clientID, "oaiapp_test")
+        XCTAssertThrowsError(try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=wrong&client_id=oaiapp_test")!, state: "expected", returning: nil))
+        XCTAssertThrowsError(try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil))
+    }
+    func testSignedIdentityRejectsWrongNonceAndTampering() throws {
+        let key = P256.Signing.PrivateKey(); let raw = key.publicKey.x963Representation
+        let header = try ["alg": "ES256", "kid": "test"].jsonData().base64URL
+        let claims: [String: Any] = ["iss": "https://auth.openai.com", "aud": "oaiapp_test", "sub": "subject", "nonce": "expected", "iat": 1000, "exp": 2000]
+        let body = try JSONSerialization.data(withJSONObject: claims).base64URL
+        let message = header + "." + body
+        let token = message + "." + (try key.signature(for: Data(message.utf8))).rawRepresentation.base64URL
+        let jwks = try JSONSerialization.data(withJSONObject: ["keys": [["kty": "EC", "crv": "P-256", "alg": "ES256", "kid": "test", "x": raw.subdata(in: 1..<33).base64URL, "y": raw.subdata(in: 33..<65).base64URL]]])
+        XCTAssertEqual(try ChatGPTConnection.verifyIdentity(token, clientID: "oaiapp_test", nonce: "expected", jwks: jwks, now: 1500).subject, "subject")
+        XCTAssertThrowsError(try ChatGPTConnection.verifyIdentity(token, clientID: "oaiapp_test", nonce: "wrong", jwks: jwks, now: 1500))
+        XCTAssertThrowsError(try ChatGPTConnection.verifyIdentity(token, clientID: "another", nonce: "expected", jwks: jwks, now: 1500))
+        XCTAssertThrowsError(try ChatGPTConnection.verifyIdentity(token, clientID: "oaiapp_test", nonce: "expected", jwks: jwks, now: 2500))
+    }
+    func testStreamingRequiresTerminalCompletion() throws {
+        let delta = Data("data: {\"type\":\"response.output_text.delta\",\"delta\":\"vegan\"}\n\n".utf8)
+        XCTAssertThrowsError(try ChatGPTConnection.completedResponse(delta))
+        let completed = Data("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[]}}\n\n".utf8)
+        XCTAssertNoThrow(try ChatGPTConnection.completedResponse(completed))
+    }
+    func testNativeNetworkBridgeAndResponseLimit() async throws {
+        Network.testProtocolClasses = [FixtureProtocol.self]
+        defer { Network.testProtocolClasses = nil }
+        var settings = Settings(); settings.connection = "api"; settings.baseUrl = "https://fixture.invalid/v1"; settings.model = "fixture"
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(text: "Ingredients: water, mystery", category: .food, complete: true), settings: settings, token: "fixture-key")
+        XCTAssertTrue(result.usedAI); XCTAssertEqual(result.aiStatus, "text")
+        do {
+            _ = try await Network.get(URL(string: "https://fixture.invalid/oversized")!, limit: 4)
+            XCTFail("Oversized response was accepted")
+        } catch { XCTAssertTrue(error.localizedDescription.contains("size")) }
+    }
+    func testUPCEExpansionAndKeychainEndpointBinding() throws {
+        XCTAssertEqual(expandUPCE("04252614"), "042100005264")
+        let endpoint = "https://fixture-" + UUID().uuidString + ".invalid/v1"
+        defer { try? Keychain.save("", for: endpoint) }
+        try Keychain.save("fixture-token", for: endpoint)
+        XCTAssertEqual(try Keychain.read(endpoint), "fixture-token")
+        XCTAssertEqual(try Keychain.read(endpoint + "/other"), "")
+    }
+    func testHostedSessionAndReportValidation() throws {
+        let good = Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8)
+        XCTAssertEqual(try HostedAIStatus.decode(good).remaining, 3)
+        XCTAssertThrowsError(try HostedAIStatus.decode(Data(#"{"state":"connected","remaining":-1,"expiresAt":1,"enabled":true}"#.utf8)))
+        XCTAssertTrue(HostedAIConnection.validToken(try HostedAIConnection.randomID()))
+        XCTAssertFalse(HostedAIConnection.validToken("not-a-token"))
+        XCTAssertNoThrow(try ContentReport(kind: "ai", text: "Reviewed excerpt", reason: "Incorrect").validatedData())
+        XCTAssertThrowsError(try ContentReport(kind: "ai", text: "", reason: "Incorrect").validatedData())
+        XCTAssertThrowsError(try ContentReport(kind: "ai", text: String(repeating: "😀", count: 4001), reason: "Incorrect").validatedData())
+        XCTAssertThrowsError(try ContentReport(kind: "community", contentId: UUID().uuidString.lowercased(), text: "Must not include reply text", reason: "Incorrect").validatedData())
+        XCTAssertNoThrow(try ContentReport(kind: "community", contentId: UUID().uuidString.lowercased(), reason: "Incorrect").validatedData())
+    }
+    func testConnectionReadinessPreservesCustomAPIAndModelChoice() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        XCTAssertEqual(store.settings.connection, "hosted"); XCTAssertFalse(store.connectionReady(store.settings))
+        store.settings.connection = "api"; store.settings.baseUrl = "https://fixture.invalid/v1"; store.settings.model = "custom"
+        XCTAssertFalse(store.connectionReady(store.settings))
+        try Keychain.save("key", for: store.settings.baseUrl); XCTAssertTrue(store.connectionReady(store.settings))
+        store.settings.connection = "hosted"; XCTAssertEqual(store.settings.model, "custom"); XCTAssertEqual(store.settings.baseUrl, "https://fixture.invalid/v1")
+        store.settings.connection = "api"; store.settings.offline = true; XCTAssertFalse(store.connectionReady(store.settings))
+        XCTAssertEqual(ChatGPTConnection.preferredModel(current: "", available: ["other", "gpt-6-luna"]), "gpt-6-luna")
+        XCTAssertEqual(ChatGPTConnection.preferredModel(current: "other", available: ["other", "gpt-6-luna"]), "other")
+        XCTAssertFalse(try engine.acceptsImages("gpt-6-luna", metadata: #"{"supports_vision":false}"#))
+    }
+    func testAccountSwitchStopsOnlyChatGPTAndBlocksEnqueueAndRetry() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); store.settings.connection = "chatgpt"; store.settings.offline = true
+        let chat = CheckJob(input: CheckInput(text: "chat pending"), photos: [], settings: store.settings)
+        var apiSettings = Settings(); apiSettings.connection = "api"; apiSettings.offline = true
+        let api = CheckJob(input: CheckInput(text: "Ingredients: oats, honey"), photos: [], settings: apiSettings)
+        store.jobs = [chat, api]
+        await store.changeChatGPT {
+            XCTAssertTrue(store.switchingChatGPT)
+            XCTAssertEqual(store.jobs.first(where: { $0.id == chat.id })?.status, "cancelled")
+            XCTAssertEqual(store.jobs.first(where: { $0.id == api.id })?.status, "queued")
+            store.enqueue(input: CheckInput(text: "must not queue")); store.retry(chat.id)
+            XCTAssertEqual(store.jobs.count, 2)
+            XCTAssertEqual(store.jobs.first(where: { $0.id == chat.id })?.status, "cancelled")
+            throw AppError("Replacement sign-in failed")
+        }
+        XCTAssertFalse(store.switchingChatGPT)
+        for _ in 0..<100 { if !store.history.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(store.history.count, 1)
+    }
+    func testHiddenRepliesPersistAndRestore() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); let id = UUID().uuidString.lowercased(); store.hideReply(id)
+        let restored = try AppStore(root: root); XCTAssertTrue(restored.hiddenReplies.contains(id))
+        restored.restoreReplies(); XCTAssertTrue(try AppStore(root: root).hiddenReplies.isEmpty)
+    }
+    func testHostedRefreshAndOfflineDisconnect() async throws {
+        Network.testProtocolClasses = [FixtureProtocol.self]
+        let base = "https://fixture.invalid"
+        let token = String(repeating: "a", count: 64)
+        try Keychain.save(token, for: base + "/ios-access")
+        let connection = try HostedAIConnection(configuration: ServiceConfiguration(baseUrl: base, model: "fixture"))
+        XCTAssertFalse(connection.ready)
+        connection.refresh()
+        for _ in 0..<100 { if !connection.busy { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertTrue(connection.ready); XCTAssertEqual(connection.status?.remaining, 3)
+        try connection.disconnect(offline: true)
+        XCTAssertFalse(connection.ready); XCTAssertNil(connection.status)
+        XCTAssertEqual(try Keychain.read(base + "/ios-access"), "")
+    }
+    func testRemovingSavedAccountsPreservesUnrelatedSession() throws {
+        let issuer = "https://auth.openai.com"
+        let active = ChatGPTSession(clientID: "active", subject: "subject", email: "active@example.test", idToken: "id", accessToken: "token", refreshToken: "refresh", scopes: ["chatgpt.tokens.use.direct"], expiresAt: 1999999999)
+        try Keychain.save(active.jsonString(), for: issuer)
+        try Keychain.save([ChatGPTConnection.Account(id: "active", email: active.email), ChatGPTConnection.Account(id: "other", email: "other@example.test")].jsonString(), for: issuer + "/accounts")
+        try Keychain.save("other-subject", for: issuer + "/subject/other")
+        let connection = ChatGPTConnection(); connection.loadStatus()
+        try connection.removeAccount("other")
+        XCTAssertEqual(try ChatGPTConnection.load()?.clientID, "active")
+        XCTAssertEqual(connection.accounts.map(\.id), ["active"])
+        XCTAssertEqual(try Keychain.read(issuer + "/subject/other"), "")
+        try connection.removeAccount("active")
+        XCTAssertNil(try ChatGPTConnection.load()); XCTAssertFalse(connection.connected); XCTAssertTrue(connection.accounts.isEmpty)
+    }
+    func testManufacturerDraftIsLocalAndLocalized() throws {
+        struct Args: Encodable { var result: CheckResult; var locale: String }
+        let message: ManufacturerMessage? = try engine.call("message", Args(result: analyze("Ingredients: water, E471"), locale: "de"))
+        XCTAssertNotNil(message); XCTAssertTrue(message?.body.contains("E471") == true || message?.body.contains("e471") == true)
+    }
+}
+
+final class FixtureProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "fixture.invalid" }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let content = #"{"text":"Ingredients: water, mystery","complete":true,"category":"food"}"#
+        let json: [String: Any] = ["choices": [["finish_reason": "stop", "message": ["content": content]]]]
+        let data = request.url?.path == "/api/session" ? Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8) : try! JSONSerialization.data(withJSONObject: json)
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json", "Content-Length": String(data.count)])!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
