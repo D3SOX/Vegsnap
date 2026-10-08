@@ -18,6 +18,7 @@
     <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
     <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnapp%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
   </p>
+  <p><a href="https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej">Install from the Chrome Web Store</a></p>
 </div>
 
 Vegsnap supports food, cosmetics, household products, clothing and shoes. It uses public product databases, local ingredient and material rules, and optional AI. Results show the evidence and explain which details are missing.
@@ -81,7 +82,7 @@ Download the signed APK using the Android badge above. You can also use the Obta
 
 ## Install the browser extension
 
-The extension is currently under review for Firefox and Chromium-based browsers. Store installation links will be added once it is approved. In the meantime, you can install it manually using the packages below.
+Install Vegsnap from the **[Chrome Web Store](https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej)** in Chrome or a compatible Chromium-based browser. Firefox store approval is still pending; you can install it temporarily using the package below.
 
 Download the browser packages from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest).
 
@@ -91,6 +92,8 @@ Download the browser packages from the [latest release](https://github.com/D3SOX
 ## Install the ChatGPT companion
 
 ChatGPT sign-in requires a ChatGPT Plus or Pro plan. The extension also needs a desktop companion. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
+
+The commands below use the Chrome Web Store extension ID. If you installed the Chromium ZIP or CRX manually, replace `pkkfmbgdbdoccbdngnbfpjjhpldmphej` with `bljmddjdbglldnbdhdfdlbilieoheend`.
 
 Download the archive for your computer from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
 
@@ -112,7 +115,7 @@ For Chromium:
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
   --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
-  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 For Google Chrome:
@@ -120,7 +123,7 @@ For Google Chrome:
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
   --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
-  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
@@ -144,7 +147,7 @@ For Chromium:
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
-  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 For Google Chrome:
@@ -152,7 +155,7 @@ For Google Chrome:
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
-  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 The companion uses macOS Keychain. The release is not notarized. If macOS blocks it, review the downloaded executable in System Settings under Privacy & Security.
@@ -175,7 +178,7 @@ For Chromium:
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
   --binary "$vegsnapDirectory\vegsnap-companion.exe" `
-  --browser chromium --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 For Google Chrome:
@@ -183,14 +186,14 @@ For Google Chrome:
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
   --binary "$vegsnapDirectory\vegsnap-companion.exe" `
-  --browser chrome --extension-id bljmddjdbglldnbdhdfdlbilieoheend
+  --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Vegsnap\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
 
 ### Connect your browser
 
-Run the registration command for each browser you use. Release packages use the stable Chromium ID `bljmddjdbglldnbdhdfdlbilieoheend`; updates keep that ID. Firefox uses `vegsnap@vegsnap.app`.
+Run the registration command for each browser you use. The Chrome Web Store version uses `pkkfmbgdbdoccbdngnbfpjjhpldmphej`. Manually installed ZIP and CRX release packages use `bljmddjdbglldnbdhdfdlbilieoheend`. Both IDs stay the same across updates. Firefox uses `vegsnap@vegsnap.app`.
 
 After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
 
