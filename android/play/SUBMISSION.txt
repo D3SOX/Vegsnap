@@ -97,7 +97,8 @@ alcoholic drinks), online content and moderated community contributions.
 
 4. APP ACCESS / REVIEWER INSTRUCTIONS
 
-No Vegsnap account is needed. In Settings, turn optional AI off for local checks.
+No Vegsnap account is needed. For local-only checks, enable Offline mode in
+Settings. Local and database checks also work without a connected AI provider.
 In manual entry, choose Food and mark the supplied list complete. Test:
   Ingredients: oats, sugar, sunflower oil — vegan by composition.
   Ingredients: oats, milk powder — animal-derived ingredient.
