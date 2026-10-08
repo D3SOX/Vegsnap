@@ -33,6 +33,7 @@ let checkWait: Promise<void> | undefined;
 let grantConsent = false;
 let hostedVerified = false;
 let hostedEnabled = true;
+let hostedConnects = 0;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
@@ -48,6 +49,7 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
         case 'hosted': {
+          if (message.command === 'connect') hostedConnects++;
           const saved = session.hostedStatus as { state: string } | undefined;
           const status = { state: message.command === 'connect' ? 'pending' : message.command === 'disconnect' || !saved || saved.state === 'signedout' ? 'signedout' : hostedVerified ? 'connected' : 'pending', remaining: 3, enabled: hostedEnabled };
           session.hostedStatus = status;
@@ -226,10 +228,15 @@ try {
     assert.equal(permissionRequests, beforeHostedConsent + 1, 'Hosted consent retains the Firefox click gesture');
   });
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Complete browser verification')), 'Pending browser verification is shared across windows');
+  const continueVerification = [...hostedSection(roots[0]!)!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Continue verification');
+  assert(continueVerification, 'Pending sessions offer a way to reopen browser verification');
+  const beforeReconnect = hostedConnects;
+  await act(async () => { continueVerification.click(); });
+  await until(() => hostedConnects === beforeReconnect + 1 && hostedSection(roots[0]!)?.getAttribute('aria-busy') === 'false', 'Continue verification routes through connect instead of only refreshing status');
   hostedVerified = true;
   await act(async () => { window.dispatchEvent(new window.Event('focus')); });
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free checks remaining today: 3')), 'Returning from verification automatically shows the verified allowance');
-  assert.equal(permissionRequests, beforeHostedConsent + 1, 'Automatic refresh never requests new data-sharing permissions');
+  assert.equal(permissionRequests, beforeHostedConsent + 2, 'Only explicit connect gestures request data-sharing permissions');
   hostedEnabled = false;
   await act(async () => { window.dispatchEvent(new window.Event('focus')); });
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free AI is temporarily unavailable.')), 'Disabled service shows unavailable in all windows despite valid connected sessions');
