@@ -8,6 +8,9 @@ async function page(client: string, verified: boolean | Response) {
   const status = { textContent: '' };
   const action = { hidden: true };
   let callback: ((challenge: string) => Promise<void>) | undefined;
+  let expire: (() => void) | undefined;
+  let resets = 0;
+  let removed = 0;
   let scrubbed = '';
   const calls: { path: string; init?: RequestInit }[] = [];
   runInNewContext(script, {
@@ -19,12 +22,13 @@ async function page(client: string, verified: boolean | Response) {
       head: { append(element: { onload(): void }) { element.onload(); } },
     },
     window: { turnstile: {
-      render(_selector: string, options: { callback: typeof callback }) { callback = options.callback; return 'widget'; },
-      remove() {},
+      render(_selector: string, options: { callback: typeof callback; 'expired-callback': () => void }) { callback = options.callback; expire = options['expired-callback']; return 'widget'; },
+      reset(widget: string) { expect(widget).toBe('widget'); resets++; },
+      remove() { removed++; },
     } },
     async fetch(path: string, init?: RequestInit) {
       calls.push({ path, init });
-      return path === '/api/config' ? Response.json({ enabled: true, sessionCheckLimit: 3, siteKey: 'test' }) : verified instanceof Response ? verified : new Response('{}', { status: verified ? 200 : 400 });
+      return path === '/api/config' ? Response.json({ enabled: true, sessionCheckLimit: 3, siteKey: 'test' }) : verified instanceof Response ? verified.clone() : new Response('{}', { status: verified ? 200 : 400 });
     },
   });
   await new Promise(resolve => setImmediate(resolve));
@@ -32,7 +36,7 @@ async function page(client: string, verified: boolean | Response) {
   expect(scrubbed).toBe('/');
   expect(callback).toBeDefined();
   await callback!('test-challenge');
-  return { status, action, calls, token };
+  return { status, action, calls, token, retry: () => { verified = true; return callback!('fresh-challenge'); }, expire: () => expire!(), resets: () => resets, removed: () => removed };
 }
 test('verified Android connection offers a fixed app return without credentials', async () => {
   const result = await page('android', true);
@@ -46,6 +50,19 @@ test('failed verification cannot offer a successful app return', async () => {
   const result = await page('android', false);
   expect(result.action.hidden).toBe(true);
   expect(result.status.textContent).toContain('Verification failed');
+  expect(result.resets()).toBe(1);
+  await result.retry();
+  expect(result.action.hidden).toBe(false);
+  expect(result.removed()).toBe(1);
+  expect(JSON.parse(String(result.calls.at(-1)?.init?.body))).toEqual({ challenge: 'fresh-challenge' });
+});
+test('expired challenges reset the widget and can be verified without reloading', async () => {
+  const result = await page('android', false);
+  result.expire();
+  expect(result.resets()).toBe(2);
+  expect(result.status.textContent).toContain('Verification expired');
+  await result.retry();
+  expect(result.action.hidden).toBe(false);
 });
 test('non-JSON verification failure shows a useful fallback without exposing a parse error', async () => {
   const result = await page('android', new Response('<html>Proxy failure</html>', { status: 502 }));

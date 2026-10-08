@@ -498,4 +498,4 @@ internal fun reconcileOriginQuestions(questions: JSONArray, findings: JSONArray,
 /** Shared by ChatGPT plan and OpenAI-compatible requests, so photo checks retain known identity. */
 internal fun extractionInputContext(input: CheckInput): JSONObject = JSONObject().put("text", input.text).put("category", input.category)
     .put("locale", input.locale).put("complete", input.complete ?: JSONObject.NULL)
-    .apply { if (input.name.isNotBlank()) put("name", input.name); if (validGtin(input.barcode)) put("barcode", input.barcode) }
+    .apply { if (input.name.isNotBlank()) put("name", input.name.take(300)); if (validGtin(input.barcode)) put("barcode", input.barcode) }

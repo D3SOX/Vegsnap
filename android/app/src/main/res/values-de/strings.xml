@@ -29,7 +29,7 @@
     <string name="provider">KI-Verbindung</string>
     <string name="ai_settings">KI-Einstellungen</string>
     <string name="ai_status_not_needed">Die vorhandenen Belege haben die Prüfung beantwortet. KI wurde nicht verwendet.</string>
-    <string name="ai_status_disabled">KI ist ausgeschaltet. Nur lokale und Datenbankbelege wurden geprüft.</string>
+    <string name="ai_status_disabled">KI wurde nicht verwendet. Nur lokale und Datenbankbelege wurden geprüft.</string>
     <string name="ai_status_offline">Offline-Modus: Es wurde keine KI-Anfrage gesendet.</string>
     <string name="ai_status_unconfigured">KI wurde nicht verwendet. Wähle in den Einstellungen eine Verbindung und ein Modell.</string>
     <string name="ai_status_vision_disabled">Das ausgewählte Modell unterstützt keine Bilder. Es wurden keine Fotos an die KI gesendet.</string>
@@ -39,8 +39,7 @@
     <string name="ai_status_used">KI hat bei dieser Prüfung geholfen.</string>
     <string name="web_search_used">Websuche verwendet; verfügbare Quellen stehen unten.</string>
     <string name="web_search_unsupported">Dieser Anbieter unterstützt keine Websuche.</string>
-    <string name="provider_hint">Optional. Ausdrückliche Prüfungen dürfen ausgewählten Text und Fotos an deinen Anbieter senden. Datenbankprüfungen benötigen kein Konto.</string>
-    <string name="enable_ai">KI für ausdrückliche Prüfungen verwenden</string>
+    <string name="provider_hint">Wenn verbunden, hilft KI bei ausdrücklichen Prüfungen, die lokale und Datenbankbelege nicht beantworten können. Ausgewählter Text und Fotos können an deinen Anbieter gesendet werden. Der Offline-Modus verhindert Netzwerkanfragen.</string>
     <string name="base_url">API-Basis-URL</string>
     <string name="token">API-Schlüssel</string>
     <string name="model">Modellname</string>

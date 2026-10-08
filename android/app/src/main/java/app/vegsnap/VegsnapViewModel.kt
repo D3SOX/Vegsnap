@@ -279,7 +279,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     fun disconnect() = viewModelScope.launch {
         stopConnectionQueue("api", settings.value.baseUrl)
         updateApiToken(settings.value.baseUrl, "").join()
-        updateSettings { it.copy(aiEnabled = false) }.join()
+        updateSettings { it.copy(model = "") }.join()
     }
     internal fun connectHostedAI(openBrowser: (String) -> Unit) {
         if (settings.value.offline || mutableHostedAI.value.busy || settings.value.connection != "hosted") return
@@ -361,7 +361,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 try {
                     val models = chatGPT.models()
                     mutableChatGPT.update { it.copy(models = models) }
-                    updateSettings { it }.join()
+                    updateSettings { it.copy(chatgptModel = selectedChatGPTModel(it.chatgptModel, models)) }.join()
                 } catch (error: CancellationException) { throw error }
                 catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_models_error) } }
             } catch (error: CancellationException) { throw error }
@@ -387,7 +387,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             mutableChatGPT.update { it.copy(busy = true, message = null) }
             try { val models = chatGPT.models()
                 mutableChatGPT.update { it.copy(models = models) }
-                updateSettings { it }.join() }
+                updateSettings { it.copy(chatgptModel = selectedChatGPTModel(it.chatgptModel, models)) }.join() }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_models_error) } }
             finally { mutableChatGPT.update { it.copy(busy = false) } }
@@ -416,7 +416,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 if (accountId == null) chatGPT.disconnect() else chatGPT.removeAccount(accountId)
                 val models = if (clearActive) emptyList() else mutableChatGPT.value.models
                 mutableChatGPT.value = chatGPT.status().copy(models = models)
-                if (clearActive) updateSettings { it.copy(aiEnabled = false, chatgptModel = "") }.join()
+                if (clearActive) updateSettings { it.copy(chatgptModel = "") }.join()
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { mutableChatGPT.update { it.copy(message = R.string.chatgpt_error) } }
             finally { disconnectingChatGPT = false; mutableChatGPT.update { it.copy(busy = false) } }
@@ -425,12 +425,14 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
 
     fun check() = performCheck(photosOnly = false)
     fun checkPhotos() = performCheck(photosOnly = true)
+    private fun analysisSettings(): AppSettings = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model,
+        aiConnectionReady(settings.value, chatGPTState.value, hostedAIState.value, apiToken.value, hostedToken.value))
     private fun performCheck(photosOnly: Boolean) {
         if (disconnectingChatGPT || !settingsReady.isCompleted || state.value.busy || state.value.capturing) return
         if (settings.value.connection == "chatgpt" && chatGPTState.value.busy) return
         if (photosOnly && state.value.photos.isEmpty() || !photosOnly && state.value.text.isBlank() && state.value.name.isBlank() && state.value.barcode.isBlank() && state.value.photos.isEmpty()) return
         val snapshot = state.value.forCheck(photosOnly)
-        val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model)
+        val connection = analysisSettings()
         checkJob = viewModelScope.launch {
             update { it.copy(busy = true, message = null, result = null, focusedJob = null, checkStage = CheckStage.PREPARING,
                 notificationRequest = it.notificationRequest + 1) }
@@ -540,15 +542,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 settingsReady.await()
                 settingsWrites.withLock { }
                 val sendToAI = canSendBarcodeToAI(result)
-                val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model).let { if (sendToAI) it.copy(aiEnabled = true) else it }
+                val connection = analysisSettings()
                 if (sendToAI) {
                     if (connection.offline) return@launch
-                    val configured = when (connection.connection) {
-                        "chatgpt" -> chatGPTState.value.connected && connection.chatgptModel.isNotBlank()
-                        "hosted" -> hostedToken.value.matches(Regex("[a-f0-9]{64}")) && hostedAIState.value.state == "connected" && hostedAIState.value.enabled != false
-                        else -> validEndpoint(connection.baseUrl) && connection.model.isNotBlank()
-                    }
-                    if (!configured) {
+                    if (!connection.aiEnabled) {
                         update { it.copy(result = null) }
                         selectTab("settings")
                         return@launch

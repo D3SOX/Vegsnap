@@ -371,11 +371,10 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
     Text(stringResource(R.string.provider), style = MaterialTheme.typography.titleLarge)
     Text(stringResource(R.string.provider_hint))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(settings.connection == "hosted", { model.updateSettings { it.copy(connection = "hosted", aiEnabled = true) } }, label = { Text(stringResource(R.string.hosted_ai)) })
+        FilterChip(settings.connection == "hosted", { model.updateSettings { it.copy(connection = "hosted") } }, label = { Text(stringResource(R.string.hosted_ai)) })
         FilterChip(settings.connection == "chatgpt", { model.updateSettings { it.copy(connection = "chatgpt") } }, label = { Text("ChatGPT") })
         FilterChip(settings.connection == "api", { model.updateSettings { it.copy(connection = "api") } }, label = { Text(stringResource(R.string.api_connection)) })
     }
-    ToggleRow(stringResource(R.string.enable_ai), settings.aiEnabled && !settings.offline, { enabled -> model.updateSettings { it.copy(aiEnabled = enabled) } }, enabled = !settings.offline)
     if (settings.connection == "chatgpt") {
         val accountLabels = chatGPT.savedAccounts.mapIndexed { index, account ->
             if (account.email.isBlank()) stringResource(R.string.chatgpt_unknown_account, index + 1)
@@ -418,7 +417,7 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
                 TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) },
                     modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) { Text(stringResource(R.string.chatgpt_usage)) }
             }
-            if (!settings.offline && settings.aiEnabled && settings.chatgptModel.isBlank()) {
+            if (!settings.offline && settings.chatgptModel.isBlank()) {
                 Text(stringResource(R.string.model_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         } else {
@@ -430,7 +429,7 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
                 }
             }
             Text(stringResource(R.string.chatgpt_plan_requirement), style = MaterialTheme.typography.bodySmall)
-            if (!settings.offline && settings.aiEnabled && !chatGPT.busy) {
+            if (!settings.offline && !chatGPT.busy) {
                 Text(stringResource(R.string.chatgpt_setup_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -505,7 +504,7 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
         OutlinedTextField(settings.baseUrl, { url -> model.updateSettings { it.copy(baseUrl = url.trim()) } }, label = { Text(stringResource(R.string.base_url)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
             isError = invalidUrl, supportingText = if (invalidUrl) ({ Text(stringResource(R.string.endpoint_error)) }) else null)
         OutlinedTextField(token, { model.updateApiToken(settings.baseUrl, it) }, label = { Text(stringResource(R.string.token)) }, enabled = !settings.offline, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-        val missingModel = !settings.offline && settings.aiEnabled && settings.model.isBlank()
+        val missingModel = !settings.offline && settings.model.isBlank()
         OutlinedTextField(settings.model, { value -> model.updateSettings { it.copy(model = value.trim()) } }, label = { Text(stringResource(R.string.model)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
             isError = missingModel, supportingText = if (missingModel) ({ Text(stringResource(R.string.model_required)) }) else null)
         TextButton(onClick = { model.disconnect() }, enabled = !settings.offline) { Text(stringResource(R.string.disconnect)) }

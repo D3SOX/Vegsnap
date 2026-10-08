@@ -110,6 +110,7 @@ class ChatGPTAccountsUiTest {
                 }
             }
             compose.waitUntil(10_000) { model.settings.value.offline && model.chatGPTState.value.savedAccounts.size == 2 }
+            compose.onNodeWithText("Use AI for explicit checks").assertDoesNotExist()
             compose.onNodeWithText("ChatGPT").performScrollTo().performClick()
             compose.onNodeWithText("Saved accounts").performScrollTo().performClick()
             compose.onNodeWithText("alpha@example.test").assertIsDisplayed().assertIsNotEnabled()

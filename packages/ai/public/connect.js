@@ -26,10 +26,10 @@ async function connect() {
         status.textContent = 'Connected. Your free AI access is ready. Return to Vegsnap to start checking products.';
         document.querySelector('#return').hidden = !android;
         window.turnstile.remove(widget);
-      } catch (error) { status.textContent = error.message; }
+      } catch (error) { status.textContent = error.message; window.turnstile.reset(widget); }
     },
     'error-callback': () => { status.textContent = 'Verification could not load. Check your connection and start again in Vegsnap.'; },
-    'expired-callback': () => { status.textContent = 'Verification expired. Please verify again.'; },
+    'expired-callback': () => { status.textContent = 'Verification expired. Please verify again.'; window.turnstile.reset(widget); },
   }); };
   script.onerror = () => { status.textContent = 'Verification could not load. Check your connection and start again in Vegsnap.'; };
   document.head.append(script);

@@ -29,7 +29,7 @@
     <string name="provider">AI connection</string>
     <string name="ai_settings">AI settings</string>
     <string name="ai_status_not_needed">Available evidence answered this check. AI was not used.</string>
-    <string name="ai_status_disabled">AI is turned off. Only local and database evidence was checked.</string>
+    <string name="ai_status_disabled">AI was not used. Only local and database evidence was checked.</string>
     <string name="ai_status_offline">Offline mode: no AI request was sent.</string>
     <string name="ai_status_unconfigured">AI was not used. Choose a connection and model in Settings.</string>
     <string name="ai_status_vision_disabled">The selected model does not support images. Photos were not sent to AI.</string>
@@ -39,8 +39,7 @@
     <string name="ai_status_used">AI assisted this check.</string>
     <string name="web_search_used">Web search used; see available sources below.</string>
     <string name="web_search_unsupported">This provider does not support web search.</string>
-    <string name="provider_hint">Optional. Explicit checks may send selected text and photos to your provider. Database checks need no account.</string>
-    <string name="enable_ai">Use AI for explicit checks</string>
+    <string name="provider_hint">When connected, AI helps with explicit checks that local and database evidence cannot answer. Selected text and photos may be sent to your provider. Offline mode prevents network requests.</string>
     <string name="base_url">API base URL</string>
     <string name="token">API key</string>
     <string name="model">Model name</string>

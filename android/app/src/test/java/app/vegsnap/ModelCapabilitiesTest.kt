@@ -5,6 +5,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ModelCapabilitiesTest {
+    @Test fun chatGPTConnectPicksAnAvailableImageModelAndKeepsAnExistingSelection() {
+        val models = listOf(ChatGPTModel("text", "Text", false), ChatGPTModel("image", "Image", true))
+        assertEquals("image", selectedChatGPTModel("", models))
+        assertEquals("image", selectedChatGPTModel("unavailable", models))
+        assertEquals("text", selectedChatGPTModel("text", models))
+        assertEquals("text", selectedChatGPTModel("", models.take(1)))
+        assertEquals("", selectedChatGPTModel("stale", emptyList()))
+        val withLuna = models + ChatGPTModel("gpt-6-luna", "GPT-6 Luna", true)
+        assertEquals("gpt-6-luna", selectedChatGPTModel("", withLuna))
+        assertEquals("gpt-6-luna", selectedChatGPTModel("unavailable", withLuna))
+        assertEquals("image", selectedChatGPTModel("image", withLuna))
+    }
     @Test fun metadataOverridesFamilyAndUnknownModelsRemainEligibleForAnAttempt() {
         assertEquals(true, knownModelVisionSupport("gpt-5.6-luna"))
         assertEquals(false, knownModelVisionSupport("gpt-5.6-luna", JSONObject().put("supports_image_input", false)))

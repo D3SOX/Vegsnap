@@ -220,6 +220,17 @@ export default defineBackground(() => {
           case 'companion': {
             if (!['status', 'signIn', 'disconnect', 'models'].includes(String(message.command))) throw new Error('Invalid companion command.');
             const result = await connection(message.command as CompanionCommand);
+            if (message.command !== 'disconnect') await changeSettings(async () => {
+              const catalog = (await browser.storage.session.get('chatGPTModelCatalog')).chatGPTModelCatalog;
+              if (!Array.isArray(catalog)) return;
+              const models = catalog.filter((item): item is { id: string; supportsImages?: boolean } => isRecord(item) && typeof item.id === 'string');
+              const current = await settings();
+              const selected = current.connection === 'chatgpt' ? current.model : current.chatgptModel;
+              const model = models.find(item => item.id === selected)?.id ?? models.find(item => item.id === 'gpt-6-luna')?.id
+                ?? models.find(item => item.supportsImages !== false)?.id ?? models[0]?.id;
+              if (!model || model === selected) return;
+              await browser.storage.local.set({ settings: { ...current, chatgptModel: model, ...(current.connection === 'chatgpt' ? { model } : {}) } });
+            });
             return { ok: true, result };
           }
           default: throw new Error('Unknown request.');

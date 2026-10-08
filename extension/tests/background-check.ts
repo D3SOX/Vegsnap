@@ -380,9 +380,10 @@ assert.deepEqual(historyOperations.slice(beforeHistoryOperations), ['save:start'
 assert.equal(saved.length, 1, 'The save requested after delete remains visible');
 
 const signInGate = deferred();
+local.settings = { ...(local.settings as object), connection: 'chatgpt', model: '', chatgptModel: '' };
 nativeResponder = async request => {
   if (request.command === 'signIn') await signInGate.promise;
-  return request.command === 'models' ? { models: [{ id: 'vision', name: 'Vision', supportsImages: true }] } : { connected: request.command !== 'disconnect', email: 'fixture@example.invalid', access_token: 'never-persist-this-secret' };
+  return request.command === 'models' ? { models: [{ id: 'vision', name: 'Vision', supportsImages: true }, { id: 'gpt-6-luna', name: 'GPT-6 Luna', supportsImages: true }] } : { connected: request.command !== 'disconnect', email: 'fixture@example.invalid', access_token: 'never-persist-this-secret' };
 };
 const beforeSignIn = nativeRequests.length;
 const connectingA = listener!({ type: 'companion', command: 'signIn' }, trusted);
@@ -396,7 +397,11 @@ await Promise.all([connectingA, statusBetweenWindows, connectingB]);
 assert.deepEqual(nativeRequests.slice(beforeSignIn).map(request => request.command), ['signIn', 'models'], 'Sign-in loads a single shared catalog');
 assert.deepEqual(session.chatGPTConnection, { state: 'connected', task: '', email: 'fixture@example.invalid' });
 assert(!JSON.stringify(session).includes('never-persist-this-secret'));
-assert.deepEqual(session.chatGPTModelCatalog, [{ id: 'vision', name: 'Vision', supportsImages: true }]);
+assert.deepEqual(session.chatGPTModelCatalog, [{ id: 'vision', name: 'Vision', supportsImages: true }, { id: 'gpt-6-luna', name: 'GPT-6 Luna', supportsImages: true }]);
+assert.equal((local.settings as { model: string }).model, 'gpt-6-luna', 'ChatGPT defaults to GPT-6 Luna when the account offers it');
+await listener!({ type: 'set-chatgpt-model', model: 'vision' }, trusted);
+await listener!({ type: 'companion', command: 'models' }, trusted);
+assert.equal((local.settings as { model: string }).model, 'vision', 'Refreshing models preserves an explicit selection');
 const beforeStatus = nativeRequests.length;
 await Promise.all([listener!({ type: 'companion', command: 'status' }, trusted), listener!({ type: 'companion', command: 'status' }, trusted)]);
 assert.equal(nativeRequests.length, beforeStatus, 'New windows reuse a recent completed connection snapshot');

@@ -15,6 +15,17 @@ class HostedAIFlowTest {
     private val token = "a".repeat(64)
     private fun repository(origin: String) = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())),
         "test instructions", hostedBaseUrl = origin)
+    @Test fun hostedPhotoBoundsTheUserProvidedNameAtTheWorkerLimit() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(extraction))
+            val origin = server.url("/").toString().trimEnd('/')
+            val name = "Product ".repeat(50)
+            repository(origin).check(CheckInput(name = name), listOf(PreparedPhoto(byteArrayOf(1))),
+                AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
+            assertEquals(name.take(300), JSONObject(server.takeRequest().body.readUtf8()).getString("name"))
+        }
+        assertFalse(extractionInputContext(CheckInput(name = " ")).has("name"))
+    }
     @Test fun hostedPhotoUsesProductOnlyEndpointAndDoesNotResearchAgainOnDevice() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(extraction))
@@ -71,12 +82,12 @@ class HostedAIFlowTest {
             val api = AppSettings(connection = "api", baseUrl = "https://own-api.example/v1", model = "own-model")
             val hosted = api.copy(connection = "hosted")
             val result = repository(origin).check(CheckInput(category = "food"), listOf(PreparedPhoto(byteArrayOf(1))),
-                hosted.forAnalysis(origin, "gpt-6-luna"), token)
+                hosted.forAnalysis(origin, "gpt-6-luna", connected = true), token)
             assertEquals("images", result.getString("aiStatus"))
             assertEquals("/api/check", server.takeRequest().path)
             assertEquals(api.baseUrl, hosted.baseUrl)
             assertEquals(api.model, hosted.model)
-            assertEquals(api, hosted.copy(connection = "api").forAnalysis(origin, "gpt-6-luna"))
+            assertEquals(api, hosted.copy(connection = "api").forAnalysis(origin, "gpt-6-luna", connected = true))
         }
     }
     @Test fun quotaFailureKeepsLocalEvidenceAndSafeError() = runBlocking {
