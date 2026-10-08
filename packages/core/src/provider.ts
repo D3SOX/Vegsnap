@@ -206,6 +206,10 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         try {
           const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
             instructions: `${EXTRACTION_PROMPT}\n${promptData.researchPrompt}`,
+            text: { format: { type: 'json_schema', name: 'product_research', strict: false, schema: {
+              type: 'object', properties: { name: { type: 'string', enum: [extracted.name] }, brand: { type: 'string', enum: [extracted.brand] } },
+              required: ['text', 'complete', 'category', 'name', 'brand'],
+            } } },
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
               category: extracted.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, input) }) }] }],
           }));

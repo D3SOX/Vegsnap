@@ -1,12 +1,13 @@
 import { browser } from 'wxt/browser';
-import { acceptsImages, checkProduct, createOpenAIProvider, type CheckInput, type CheckResult } from '@vegsnap/core';
+import { acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
+import { hostedCommand, hostedToken } from '../src/hosted';
 import { history } from '../src/history';
 import { offlineLibrary } from '../src/offline';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
-import { PRESETS, STORES, endpointOrigin, parseSettings, storeMarket } from '../src/settings';
+import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
 import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type CheckReply, type Pending, type Reply } from '../src/protocol';
 
 export default defineBackground(() => {
@@ -101,8 +102,7 @@ export default defineBackground(() => {
             const model = message.model;
             await changeSettings(async () => {
               const current = await settings();
-              await browser.storage.local.set({ settings: { ...current, connection: 'chatgpt', model } });
-              if (current.connection !== 'chatgpt') await browser.storage.session.remove('credential');
+              await browser.storage.local.set({ settings: { ...changeConnectionSettings(current, 'chatgpt'), model } });
             });
             return { ok: true, result: null };
           }
@@ -111,14 +111,15 @@ export default defineBackground(() => {
             const patch = message.patch;
             const allowed = ['connection', 'baseUrl', 'model', 'saveHistory'];
             if (Object.keys(patch).some(key => !allowed.includes(key))) throw new Error('Invalid setting.');
-            if (patch.connection !== undefined && (typeof patch.connection !== 'string' || !['chatgpt', 'database', ...Object.keys(PRESETS)].includes(patch.connection)) ||
+            if (patch.connection !== undefined && (typeof patch.connection !== 'string' || !['chatgpt', 'database', 'hosted', ...Object.keys(PRESETS)].includes(patch.connection)) ||
               patch.baseUrl !== undefined && (typeof patch.baseUrl !== 'string' || patch.baseUrl.length > 2000) ||
               patch.model !== undefined && (typeof patch.model !== 'string' || patch.model.length > 200) ||
               ['saveHistory'].some(key => patch[key] !== undefined && typeof patch[key] !== 'boolean')) throw new Error('Invalid setting value.');
             await changeSettings(async () => {
               const current = await settings();
-              const next = parseSettings({ ...current, ...patch });
-              if (current.baseUrl !== next.baseUrl || current.connection !== next.connection) await browser.storage.session.remove('credential');
+              const switched = typeof patch.connection === 'string' ? changeConnectionSettings(current, patch.connection as Connection) : current;
+              const next = parseSettings({ ...switched, ...patch });
+              if ((current.api?.baseUrl ?? current.baseUrl) !== (next.api?.baseUrl ?? next.baseUrl)) await browser.storage.session.remove('credential');
               await browser.storage.local.set({ settings: next });
             });
             return { ok: true, result: null };
@@ -129,7 +130,7 @@ export default defineBackground(() => {
             endpointOrigin(endpoint);
             await changeSettings(async () => {
               const current = await settings();
-              if (current.baseUrl !== endpoint || ['chatgpt', 'database'].includes(current.connection)) throw new Error('The endpoint changed. Enter the key for the current endpoint.');
+              if (current.baseUrl !== endpoint || ['chatgpt', 'database', 'hosted'].includes(current.connection)) throw new Error('The endpoint changed. Enter the key for the current endpoint.');
               if (token) await browser.storage.session.set({ credential: { endpoint, token } });
               else await browser.storage.session.remove('credential');
             });
@@ -170,6 +171,10 @@ export default defineBackground(() => {
               const metadata = Array.isArray(catalog) ? catalog.find(item => isRecord(item) && item.id === config.model) : undefined;
               provider = companionProvider(config.model, acceptsImages(config.model, metadata));
             }
+            else if (config.connection === 'hosted') {
+              const token = await hostedToken();
+              if (token) provider = createHostedAIProvider(token, aiFetch);
+            }
             else if (!['chatgpt', 'database'].includes(config.connection) && config.model) {
               const credential: unknown = (await browser.storage.session.get('credential')).credential;
               const token = isRecord(credential) && credential.endpoint === config.baseUrl && typeof credential.token === 'string' ? credential.token : undefined;
@@ -181,7 +186,7 @@ export default defineBackground(() => {
               const extract = provider.extract.bind(provider);
               provider.extract = async (...args) => {
                 const data = config.connection === 'chatgpt' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : AI_DATA;
-                const hostAllowed = config.connection === 'chatgpt' || await browser.permissions.contains({ origins: [endpointOrigin(config.baseUrl)] });
+                const hostAllowed = config.connection === 'chatgpt' || await browser.permissions.contains({ origins: [endpointOrigin(config.connection === 'hosted' ? HOSTED_AI.baseUrl : config.baseUrl)] });
                 if (!hostAllowed || !(await hasDataConsent(data))) {
                   onlineConsent = 'ai';
                   throw new Error('Online AI access was not allowed; the local evidence was kept.');
@@ -203,6 +208,12 @@ export default defineBackground(() => {
             return { ok: true, result: { ...localResult, ...(onlineConsent ? { onlineConsent } : {}) } };
           }
           case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
+          case 'hosted': {
+            if (!['connect', 'status', 'disconnect'].includes(String(message.command))) throw new Error('Invalid hosted command.');
+            const result = await hostedCommand(message.command as 'connect' | 'status' | 'disconnect');
+            await stateChanged();
+            return { ok: true, result };
+          }
           case 'companion': {
             if (!['status', 'signIn', 'disconnect', 'models'].includes(String(message.command))) throw new Error('Invalid companion command.');
             const result = await connection(message.command as CompanionCommand);

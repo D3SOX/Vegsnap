@@ -41,6 +41,17 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     private val historyPhotos = ApplicationHistoryPhotos.get(application)
     private val preferences = SettingsStore(application)
     private val credentials = CredentialStore(application)
+    private val hostedCredentials = CredentialStore(application, "hosted")
+    private val hostedConfig = JSONObject(application.assets.open("hosted-ai.json").bufferedReader().use { it.readText() })
+    internal val hostedAI = HostedAIConnection(hostedConfig.getString("baseUrl"), hostedConfig.getString("model"))
+    private val mutableHostedAI = MutableStateFlow(HostedAIStatus())
+    internal val hostedAIState = mutableHostedAI.asStateFlow()
+    private var hostedJob: Job? = null
+    private val hostedInstallationId by lazy {
+        val store = application.getSharedPreferences("hosted-installation", android.content.Context.MODE_PRIVATE)
+        store.getString("id", null) ?: ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+            .joinToString("") { "%02x".format(it) }.also { check(store.edit().putString("id", it).commit()) }
+    }
     private val chatGPT = ChatGPTConnection(application)
     private var authJob: Job? = null
     private val mutableChatGPT = MutableStateFlow(ChatGPTStatus())
@@ -56,10 +67,12 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     private val barcodeCoordinator = BarcodeScanCoordinator()
     private val barcodeRepository by lazy { CheckRepository(application) }
     private var disconnectingChatGPT = false
-    private val mutableSettings = MutableStateFlow(AppSettings())
+    private val mutableSettings = MutableStateFlow(preferences.defaults)
     val settings = mutableSettings.asStateFlow()
     private val mutableApiToken = MutableStateFlow("")
     val apiToken = mutableApiToken.asStateFlow()
+    private val mutableHostedToken = MutableStateFlow("")
+    internal val hostedToken = mutableHostedToken.asStateFlow()
     private val settingsReady = CompletableDeferred<Unit>()
     private val settingsWrites = Mutex()
     private var pendingSettingsWrites = 0
@@ -101,6 +114,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             mutableSettings.value = withDetectedVision(loaded)
             update { it.copy(category = loaded.defaultCategory) }
             mutableApiToken.value = withContext(Dispatchers.IO) { credentials.read(loaded.baseUrl) }
+            mutableHostedToken.value = withContext(Dispatchers.IO) { hostedCredentials.read(hostedAI.baseUrl) }
             if (!hasSharedInput) mutableTab.value = if (loaded.startTab == "last") loaded.lastTab else loaded.startTab
             if (queuedJobs.value.any { it.status == AnalysisStatus.QUEUED || it.status == AnalysisStatus.PAUSED && !loaded.offline }) startQueue()
         } catch (error: CancellationException) { throw error }
@@ -196,6 +210,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             barcodeJob?.cancel(); barcodeCoordinator.configure(false, true)
             ApplicationAnalysisQueue.networkPaused = true
             authJob?.cancel()
+            hostedJob?.cancel()
             pauseNetworkQueue()
             ocrLanguages.cancelDownload()
             ocrJob?.cancel()
@@ -203,6 +218,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             offlineDownloadJob?.cancel()
         }
         val endpointChanged = value.baseUrl != previous.baseUrl
+        if (value.connection != previous.connection) hostedJob?.cancel()
         if (endpointChanged) mutableApiToken.value = ""
         pendingSettingsWrites++
         settingsEditVersion++
@@ -222,18 +238,22 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     }
     fun updateApiToken(endpoint: String, token: String) = viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
         settingsReady.await()
-        if (endpoint != settings.value.baseUrl) return@launch
+        if (settings.value.connection != "api" || endpoint != settings.value.baseUrl) return@launch
         mutableApiToken.value = token
         pendingSettingsWrites++
         settingsEditVersion++
         try {
             settingsWrites.withLock {
                 // An old field callback must never save its token against a newly selected provider.
-                if (endpoint == settings.value.baseUrl) withContext(Dispatchers.IO) { credentials.save(endpoint, token) }
+                if (settings.value.connection == "api" && endpoint == settings.value.baseUrl) withContext(Dispatchers.IO) { credentials.save(endpoint, token) }
             }
         } catch (error: CancellationException) { throw error }
         catch (error: Exception) { update { it.copy(message = R.string.settings_error) } }
         finally { finishSettingsWrite() }
+    }
+    private suspend fun updateHostedToken(token: String) {
+        withContext(Dispatchers.IO) { hostedCredentials.save(hostedAI.baseUrl, token) }
+        mutableHostedToken.value = token
     }
     private fun withDetectedVision(value: AppSettings): AppSettings =
         value.copy(vision = modelVisionSupport(value, mutableChatGPT.value.models) ?: true)
@@ -259,6 +279,63 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         stopConnectionQueue("api", settings.value.baseUrl)
         updateApiToken(settings.value.baseUrl, "").join()
         updateSettings { it.copy(aiEnabled = false) }.join()
+    }
+    internal fun connectHostedAI(openBrowser: (String) -> Unit) {
+        if (settings.value.offline || mutableHostedAI.value.busy || settings.value.connection != "hosted") return
+        hostedJob = viewModelScope.launch {
+            mutableHostedAI.value = HostedAIStatus(busy = true)
+            try {
+                val token = hostedAI.connect(hostedInstallationId, hostedToken.value)
+                if (settings.value.connection != "hosted" || settings.value.offline) return@launch
+                updateHostedToken(token)
+                val status = hostedAI.status(token)
+                mutableHostedAI.value = status
+                if (status.state == "pending") openBrowser(hostedAI.browserUrl(token))
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutableHostedAI.value = HostedAIStatus(message = R.string.hosted_ai_error) }
+            finally { mutableHostedAI.update { it.copy(busy = false) } }
+        }
+    }
+    internal fun resumeHostedAI() = viewModelScope.launch {
+        settingsReady.await()
+        hostedJob?.join()
+        if (hostedToken.value.isNotBlank()) refreshHostedAI()
+    }
+    internal fun returnFromHostedAI() {
+        hasSharedInput = true
+        selectTab("settings")
+    }
+    internal fun refreshHostedAI() {
+        if (settings.value.offline || mutableHostedAI.value.busy || settings.value.connection != "hosted") return
+        hostedJob = viewModelScope.launch {
+            val token = hostedToken.value
+            if (token.isBlank()) { mutableHostedAI.value = HostedAIStatus(); return@launch }
+            mutableHostedAI.update { it.copy(busy = true, message = null) }
+            try {
+                val status = hostedAI.status(token)
+                if (settings.value.connection == "hosted" && token == hostedToken.value) mutableHostedAI.value = status
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) { mutableHostedAI.update { it.copy(message = R.string.hosted_ai_error) } }
+            finally { mutableHostedAI.update { it.copy(busy = false) } }
+        }
+    }
+    internal fun disconnectHostedAI() {
+        val previous = hostedJob
+        previous?.cancel()
+        mutableHostedAI.update { it.copy(busy = true) }
+        hostedJob = viewModelScope.launch {
+            previous?.join()
+            mutableHostedAI.update { it.copy(busy = true) }
+            try {
+                val token = hostedToken.value
+                stopConnectionQueue("hosted", hostedAI.baseUrl)
+                updateHostedToken("")
+                mutableHostedAI.value = HostedAIStatus(busy = true)
+                if (!settings.value.offline && token.isNotBlank()) {
+                    try { hostedAI.disconnect(token) } catch (error: CancellationException) { throw error } catch (_: Exception) { /* Remote session expires. */ }
+                }
+            } finally { mutableHostedAI.update { it.copy(busy = false) } }
+        }
     }
     fun returnFromChatGPT() {
         // Preserve the explicit route if preferences are still loading on a cold start.
@@ -331,7 +408,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         if (disconnectingChatGPT || !settingsReady.isCompleted || state.value.busy || state.value.capturing) return
         if (photosOnly && state.value.photos.isEmpty() || !photosOnly && state.value.text.isBlank() && state.value.name.isBlank() && state.value.barcode.isBlank() && state.value.photos.isEmpty()) return
         val snapshot = state.value.forCheck(photosOnly)
-        val connection = settings.value
+        val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model)
         checkJob = viewModelScope.launch {
             update { it.copy(busy = true, message = null, result = null, focusedJob = null, checkStage = CheckStage.PREPARING,
                 notificationRequest = it.notificationRequest + 1) }
@@ -425,7 +502,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 settingsReady.await()
                 settingsWrites.withLock { }
                 val sendToAI = canSendBarcodeToAI(result)
-                val connection = settings.value.let { if (sendToAI) it.copy(aiEnabled = true) else it }
+                val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model).let { if (sendToAI) it.copy(aiEnabled = true) else it }
                 if (sendToAI) {
                     if (connection.offline) return@launch
                     val configured = if (connection.connection == "chatgpt") chatGPTState.value.connected && connection.chatgptModel.isNotBlank()

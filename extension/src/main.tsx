@@ -1,16 +1,17 @@
-import { OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
+import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
 import { imageSupport, localizeResult } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { messages } from './i18n';
-import { PRESETS, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
+import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
 import { extractProducts } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { historyExport, type HistoryResult } from './history';
 import './style.css';
+import type { HostedStatus } from './hosted';
 import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
@@ -55,7 +56,11 @@ export function App() {
   const activeCheckId = useRef<string>();
   const [ready, setReady] = useState(false);
   const [showStartupLoading, setShowStartupLoading] = useState(false);
+  const activeModel = config.connection === 'hosted' ? HOSTED_AI.model : config.model;
   const [token, setToken] = useState('');
+  const [hosted, setHosted] = useState<HostedStatus>({ state: 'signedout' });
+  const [hostedBusy, setHostedBusy] = useState(false);
+  const [hostedError, setHostedError] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [search, setSearch] = useState('');
   const [models, setModels] = useState<{ id: string; name: string; supportsImages?: boolean }[]>([]);
@@ -69,6 +74,7 @@ export function App() {
   const connectionOperation = useRef(0);
   const settingsWrites = useRef<Promise<void>>(Promise.resolve());
   const credentialRevision = useRef(0);
+  const hostedOperation = useRef(false);
   const configRef = useRef(config);
   const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
   const resultHeading = useRef<HTMLHeadingElement>(null);
@@ -81,7 +87,7 @@ export function App() {
       let pending: Promise<void>;
       do { pending = settingsWrites.current; await pending.catch(() => {}); } while (pending !== settingsWrites.current);
       const state = await request<State>({ type: 'state' });
-      const shared = await browser.storage.session.get(['chatGPTConnection', 'chatGPTModelCatalog']);
+      const shared = await browser.storage.session.get(['chatGPTConnection', 'chatGPTModelCatalog', 'hostedStatus']);
       return { state, shared, pending };
     }, ({ state, shared, pending }) => {
       if (pending !== settingsWrites.current) { void sync.refresh(); return; }
@@ -89,6 +95,8 @@ export function App() {
         credentialRevision.current++; setToken('');
       }
       configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks);
+      const hostedStatus = shared.hostedStatus;
+      setHosted(isRecord(hostedStatus) && ['pending', 'connected'].includes(String(hostedStatus.state)) ? hostedStatus as unknown as HostedStatus : { state: 'signedout' });
       const connection = shared.chatGPTConnection;
       if (isRecord(connection) && ['checking', 'signedout', 'connected', 'unavailable'].includes(String(connection.state))) {
         setAccount({ state: connection.state as 'checking' | 'signedout' | 'connected' | 'unavailable', ...(typeof connection.email === 'string' ? { email: connection.email } : {}) });
@@ -104,15 +112,21 @@ export function App() {
       return undefined;
     };
     const storageChanged = (changes: Record<string, unknown>, area: string) => {
-      if ((area === 'local' && 'settings' in changes) || (area === 'session' && ['credential', 'chatGPTConnection', 'chatGPTModelCatalog'].some(key => key in changes))) void sync.refresh();
+      if ((area === 'local' && 'settings' in changes) || (area === 'session' && ['credential', 'chatGPTConnection', 'chatGPTModelCatalog', 'hostedStatus', 'hostedCredential'].some(key => key in changes))) void sync.refresh();
     };
-    const focus = () => { void sync.refresh(); };
+    const focus = () => {
+      void sync.refresh();
+      if (configRef.current.connection === 'hosted') void connectHosted('status');
+    };
+    const visible = () => { if (document.visibilityState === 'visible') focus(); };
     browser.runtime.onMessage.addListener(changed);
     browser.storage.onChanged.addListener(storageChanged);
     window.addEventListener('focus', focus);
+    document.addEventListener('visibilitychange', visible);
     sharedRefresh.current = sync.refresh;
-    return () => { sync.dispose(); browser.runtime.onMessage.removeListener(changed); browser.storage.onChanged.removeListener(storageChanged); window.removeEventListener('focus', focus); };
+    return () => { sync.dispose(); browser.runtime.onMessage.removeListener(changed); browser.storage.onChanged.removeListener(storageChanged); window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', visible); };
   }, []);
+  useEffect(() => { if (ready && config.connection === 'hosted') void connectHosted('status'); }, [ready, config.connection]);
   useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state]);
   useEffect(() => {
     const hide = () => setEmailRevealed(false);
@@ -144,7 +158,7 @@ export function App() {
     const api = kind === 'ai' && !['chatgpt', 'database'].includes(current.connection);
     // Request immediately from this click, before any asynchronous work.
     const consent = requestDataConsent(kind === 'database' ? CONTENT_DATA : current.connection === 'chatgpt' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : AI_DATA,
-      api ? { origins: [endpointOrigin(current.baseUrl)] } : {});
+      api ? { origins: [endpointOrigin(current.connection === 'hosted' ? HOSTED_AI.baseUrl : current.baseUrl)] } : {});
     void act(async () => {
       if (!(await consent)) { setNotice(t.dataConsentDenied); return; }
       await settingsWrites.current;
@@ -210,9 +224,8 @@ export function App() {
     persist({ type: 'update-settings', patch: { [key]: value } });
   }
   function changeConnection(connection: Connection) {
-    const patch = { connection, model: '', ...(connection in PRESETS ? { baseUrl: PRESETS[connection as keyof typeof PRESETS] } : {}) };
-    localConfig({ ...configRef.current, ...patch }); credentialRevision.current++; setToken(''); setHasKey(false);
-    persist({ type: 'update-settings', patch });
+    localConfig(changeConnectionSettings(configRef.current, connection)); credentialRevision.current++; setToken(''); setHasKey(false);
+    persist({ type: 'update-settings', patch: { connection } });
   }
   function changeToken(value: string) {
     const revision = ++credentialRevision.current;
@@ -227,6 +240,18 @@ export function App() {
     try { await persist({ type: 'set-language', language }); }
     catch (cause) { localConfig({ ...configRef.current, language: previous }); setError(cause instanceof Error ? cause.message : 'Unable to save language.'); }
     finally { setLanguageSaving(false); }
+  }
+  async function connectHosted(command: 'connect' | 'status' | 'disconnect') {
+    if (hostedOperation.current) return;
+    hostedOperation.current = true;
+    const consent = command === 'connect' ? requestDataConsent(AI_DATA, { origins: [endpointOrigin(HOSTED_AI.baseUrl)] }) : Promise.resolve(true);
+    setHostedBusy(true); setHostedError('');
+    try {
+      if (!(await consent)) throw new Error(t.dataConsentDenied);
+      setHosted(await request<HostedStatus>({ type: 'hosted', command }));
+      await refresh();
+    } catch (cause) { setHostedError(cause instanceof Error ? cause.message : t.hostedUnavailable); }
+    finally { hostedOperation.current = false; setHostedBusy(false); }
   }
   async function connect(command: 'status' | 'signIn' | 'disconnect' | 'models') {
     const operation = ++connectionOperation.current;
@@ -319,7 +344,7 @@ export function App() {
           <label class="upload">+ {t.photo}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={images.length >= 3 || busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { const image = await sanitizeImage(file); setImages(previous => [...previous, image].slice(0, 3)); }); event.currentTarget.value = ''; }}/></label>
           <p class="hint">{t.photoHint}</p>
           <button class="primary wide" type="submit" disabled={!ready || busy || (!text.trim() && images.length === 0 && !inspectedIdentity?.name && !inspectedIdentity?.barcode)}>{t.check} <span aria-hidden="true">→</span></button>
-          {config.connection !== 'database' && config.model && <p class="hint" role="status">{imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
+          {config.connection !== 'database' && activeModel && <p class="hint" role="status">{imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
           <p class="hint">{t.providerHint}</p>
         </form>
       </section> : tab === 'history' ? <section>
@@ -330,7 +355,7 @@ export function App() {
         <section aria-labelledby="store-heading"><h2 id="store-heading">{t.storeHeading}</h2><p class="hint">{t.storeHint}</p>{STORES.map(store => <div class="store" key={store.id}><div><strong>{store.name}</strong><small>{config.stores.includes(store.id) ? t.storeEnabled : t.storeOff}</small></div><div class="actions">{config.stores.includes(store.id) && storeAccess[store.id] === false && <button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store, true))}>{t.enableAllSites}</button>}<button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store))}>{config.stores.includes(store.id) ? t.disable : t.enable}</button></div></div>)}</section>
         <form onSubmit={event => event.preventDefault()}>
           <label>{t.language}<select disabled={!ready || languageSaving || busy} value={config.language} onChange={event => void changeLanguage(event.currentTarget.value as 'de' | 'en')}><option value="de">Deutsch</option><option value="en">English</option></select></label>
-          <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : 'Custom'}</option>)}</select></label>
+          <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="hosted">{t.hosted}</option><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : 'Custom'}</option>)}</select></label>
           {config.connection === 'chatgpt' ? <section class="connection" aria-label={t.chatgpt} aria-busy={Boolean(connectionTask)}>
             <div class="connection-heading"><strong>{account.state === 'connected' ? t.connected : account.state === 'checking' ? t.checkingConnection : account.state === 'signedout' ? t.notConnected : t.connectionUnavailable}</strong>{account.state === 'connected' && <span class="connection-badge">ChatGPT</span>}</div>
             {account.state === 'connected' && account.email && <button type="button" class="account-email" aria-label={emailRevealed ? `${t.hideEmail}: ${account.email}` : t.showEmail} aria-pressed={emailRevealed} onClick={() => setEmailRevealed(value => !value)}><span aria-hidden="true" class={emailRevealed ? '' : 'email-obscured'}>{emailRevealed ? account.email : '••••••••@••••••••'}</span><span>{emailRevealed ? t.hideEmail : t.showEmail}</span></button>}
@@ -342,9 +367,15 @@ export function App() {
               {modelsLoaded && models.length > 0 && <p class="hint" role="status">{models.some(model => model.id === config.model) ? t.readyToCheck : t.chooseModelHint}</p>}
               <div class="actions"><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('models')}>{t.refreshModels}</button><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('disconnect')}>{t.disconnect}</button></div>
             </> : <><p class="hint">{t.companionHint}</p><button type="button" class="primary" disabled={!ready || Boolean(connectionTask)} onClick={() => void connect('signIn')}>{t.signIn}</button></>}
+          </section> : config.connection === 'hosted' ? <section class="connection" aria-label={t.hosted} aria-busy={hostedBusy}>
+            <p class="hint">{t.hostedHint}</p>
+            <p role="status">{hosted.state === 'pending' ? t.hostedPending : hosted.state === 'connected' ? `${t.hostedAllowance}: ${hosted.remaining ?? 0}` : t.notConnected}</p>
+            {hostedError && <p class="alert error" role="alert">{hostedError}</p>}
+            <div class="actions"><button type="button" disabled={hostedBusy || !ready} onClick={() => void connectHosted(hosted.state === 'signedout' ? 'connect' : 'status')}>{hosted.state === 'signedout' ? t.hostedConnect : t.hostedRefresh}</button>
+            {hosted.state !== 'signedout' && <button type="button" disabled={hostedBusy} onClick={() => void connectHosted('disconnect')}>{t.disconnect}</button>}</div>
           </section> : config.connection !== 'database' ? <><label>{t.endpoint}<input type="url" required value={config.baseUrl} onInput={event => update('baseUrl', event.currentTarget.value)}/></label><label>{t.token}<input type="password" autoComplete="off" value={token} onInput={event => changeToken(event.currentTarget.value)}/></label><p class="hint">{t.tokenHint} {hasKey ? t.hasKey : t.emptyKey}</p>{hasKey && <button type="button" onClick={() => changeToken('')}>{t.disconnect}</button>}</> : null}
-          {!['database', 'chatgpt'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder="Model ID" onInput={event => update('model', event.currentTarget.value)}/></label>}
-          {config.connection !== 'database' && config.model && <p class="hint" role="status">{imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(config.model, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
+          {!['database', 'chatgpt', 'hosted'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder="Model ID" onInput={event => update('model', event.currentTarget.value)}/></label>}
+          {config.connection !== 'database' && activeModel && <p class="hint" role="status">{imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
           <p class="hint">{t.providerHint}</p>
           <section aria-labelledby="offline-heading"><h2 id="offline-heading">{t.offlineHeading}</h2><p class="hint">{t.offlineHint}</p>
             {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}

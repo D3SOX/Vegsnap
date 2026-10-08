@@ -38,18 +38,23 @@ data class AppSettings(
     val startTab: String = "scan", val lastTab: String = "scan", val offline: Boolean = false,
     val connection: String = "chatgpt", val chatgptModel: String = "", val defaultCategory: String = "other", val parallelChecks: Int = 3,
 )
-internal fun appSettingsFromPreferences(p: Preferences): AppSettings = AppSettings(
-    p[booleanPreferencesKey("ai")] ?: true, p[stringPreferencesKey("url")] ?: "https://api.openai.com/v1",
-    p[stringPreferencesKey("model")] ?: "", p[booleanPreferencesKey("vision")] ?: true,
+// Saved provider fields belong to the user's API; resolve hosted settings only for a queued check.
+internal fun AppSettings.forAnalysis(hostedBaseUrl: String, hostedModel: String): AppSettings =
+    if (connection == "hosted") copy(baseUrl = hostedBaseUrl, model = hostedModel, vision = true) else this
+
+internal fun appSettingsFromPreferences(p: Preferences, defaults: AppSettings = AppSettings()): AppSettings = AppSettings(
+    p[booleanPreferencesKey("ai")] ?: true, p[stringPreferencesKey("url")] ?: defaults.baseUrl,
+    p[stringPreferencesKey("model")] ?: defaults.model, p[booleanPreferencesKey("vision")] ?: true,
     p[stringPreferencesKey("start")] ?: "scan", p[stringPreferencesKey("last")] ?: "scan",
     p[booleanPreferencesKey("offline")] ?: false,
-    p[stringPreferencesKey("connection")] ?: "chatgpt", p[stringPreferencesKey("chatgptModel")] ?: "",
+    p[stringPreferencesKey("connection")] ?: defaults.connection, p[stringPreferencesKey("chatgptModel")] ?: "",
     p[stringPreferencesKey("defaultCategory")]?.takeIf { it in setOf("other", "food", "drink", "cosmetics", "household", "clothing", "shoes") } ?: "other",
     (p[androidx.datastore.preferences.core.intPreferencesKey("parallelChecks")] ?: 3).coerceIn(1, 10),
 )
 private val Context.settingsDataStore by preferencesDataStore("settings")
 class SettingsStore(private val context: Context) {
-    val flow = context.settingsDataStore.data.map(::appSettingsFromPreferences)
+    internal val defaults = AppSettings(connection = "hosted")
+    val flow = context.settingsDataStore.data.map { appSettingsFromPreferences(it, defaults) }
     suspend fun save(settings: AppSettings) { context.settingsDataStore.edit {
         it[booleanPreferencesKey("ai")] = settings.aiEnabled
         it[stringPreferencesKey("url")] = settings.baseUrl

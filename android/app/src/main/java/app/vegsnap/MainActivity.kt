@@ -71,11 +71,16 @@ class MainActivity : ComponentActivity() {
         setContent { VegsnapApp(model) }
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); receive(intent) }
+    override fun onResume() { super.onResume(); model.resumeHostedAI() }
     @Suppress("DEPRECATION")
     private fun receive(intent: Intent) {
         if (intent.action == AnalysisQueueService.ACTION_HISTORY) { model.openQueueHistory(); return }
         if (intent.action == Intent.ACTION_VIEW && isChatGPTAppReturn(intent.dataString)) {
             model.returnFromChatGPT()
+            return
+        }
+        if (intent.action == Intent.ACTION_VIEW && isHostedAIAppReturn(intent.dataString)) {
+            model.returnFromHostedAI()
             return
         }
         if (intent.action != Intent.ACTION_SEND) return
@@ -119,7 +124,7 @@ fun VegsnapApp(model: VegsnapViewModel) {
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(context.getString(it)); model.update { s -> s.copy(message = null) } } }
     MaterialTheme(colorScheme = scheme) {
-        if (showTour) OnboardingScreen {
+        if (showTour) OnboardingScreen(settings, model) {
             tourPreferences.edit().putBoolean("completed", true).apply()
             showTour = false
         } else {
@@ -261,119 +266,13 @@ private fun PrivateAccountEmail(email: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTour: () -> Unit) {
-    val token by model.apiToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val chatGPT by model.chatGPTState.collectAsStateWithLifecycle()
-    var modelMenu by remember { mutableStateOf(false) }
-    var accountMenu by remember { mutableStateOf(false) }
-    var menu by remember { mutableStateOf(false) }
     var startMenu by remember { mutableStateOf(false) }
-    val presets = linkedMapOf("OpenAI" to "https://api.openai.com/v1", "OpenRouter" to "https://openrouter.ai/api/v1",
-        "Gemini" to "https://generativelanguage.googleapis.com/v1beta/openai", "Ollama" to "http://127.0.0.1:11434/v1")
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ToggleRow(stringResource(R.string.offline), settings.offline, { enabled -> model.updateSettings { it.copy(offline = enabled) } })
         OfflineDatabaseSettings(model)
         HorizontalDivider()
-        Text(stringResource(R.string.provider), style = MaterialTheme.typography.titleLarge)
-        Text(stringResource(R.string.provider_hint))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(settings.connection == "chatgpt", { model.updateSettings { it.copy(connection = "chatgpt") } }, label = { Text("ChatGPT") }, enabled = !settings.offline)
-            FilterChip(settings.connection == "api", { model.updateSettings { it.copy(connection = "api") } }, label = { Text(stringResource(R.string.api_connection)) }, enabled = !settings.offline)
-        }
-        ToggleRow(stringResource(R.string.enable_ai), settings.aiEnabled && !settings.offline, { enabled -> model.updateSettings { it.copy(aiEnabled = enabled) } }, enabled = !settings.offline)
-        if (settings.connection == "chatgpt") {
-            Text(stringResource(R.string.chatgpt), style = MaterialTheme.typography.bodySmall)
-            if (chatGPT.connected) {
-                Text(stringResource(R.string.chatgpt_connected))
-                if (chatGPT.email.isNotBlank()) PrivateAccountEmail(chatGPT.email)
-                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box {
-                        OutlinedButton(onClick = { modelMenu = true }, modifier = Modifier.heightIn(min = 48.dp),
-                            enabled = !settings.offline && !chatGPT.busy && chatGPT.models.isNotEmpty()) {
-                            Text(chatGPT.models.firstOrNull { it.id == settings.chatgptModel }?.name
-                                ?: settings.chatgptModel.ifBlank { stringResource(R.string.select_model) },
-                                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
-                        }
-                        DropdownMenu(modelMenu, { modelMenu = false }) { chatGPT.models.forEach { entry ->
-                            DropdownMenuItem(text = { Text(entry.name) }, enabled = !settings.offline,
-                                onClick = { model.updateSettings { it.copy(chatgptModel = entry.id) }; modelMenu = false })
-                        } }
-                    }
-                    OutlinedButton(onClick = { model.loadChatGPTModels() }, modifier = Modifier.heightIn(min = 48.dp),
-                        enabled = !chatGPT.busy && !settings.offline) {
-                        Text(stringResource(if (chatGPT.models.isEmpty()) R.string.load_models else R.string.refresh_models))
-                    }
-                    TextButton(onClick = { model.disconnectChatGPT() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) {
-                        Text(stringResource(R.string.chatgpt_disconnect))
-                    }
-                    TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) },
-                        modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) { Text(stringResource(R.string.chatgpt_usage)) }
-                }
-                if (!settings.offline && settings.aiEnabled && settings.chatgptModel.isBlank()) {
-                    Text(stringResource(R.string.model_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-            } else {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                        modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                        Text(if (chatGPT.selectedAccount == null) stringResource(R.string.chatgpt_continue)
-                            else stringResource(R.string.chatgpt_reconnect_account, chatGPT.savedAccounts.indexOf(chatGPT.selectedAccount) + 1))
-                    }
-                    if (chatGPT.savedAccounts.isNotEmpty()) {
-                        OutlinedButton(onClick = { model.connectChatGPT(newAccount = true) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
-                            modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                            Text(stringResource(R.string.chatgpt_another_account))
-                        }
-                    }
-                    if (chatGPT.savedAccounts.size > 1) Box {
-                        TextButton(onClick = { accountMenu = true }, modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
-                            Text(stringResource(R.string.chatgpt_saved_accounts))
-                        }
-                        DropdownMenu(accountMenu, { accountMenu = false }) { chatGPT.savedAccounts.forEachIndexed { index, clientId ->
-                            DropdownMenuItem(text = { Text(stringResource(R.string.chatgpt_reconnect_account, index + 1)) },
-                                enabled = !chatGPT.busy && !settings.offline, onClick = {
-                                    accountMenu = false
-                                    model.connectChatGPT(accountId = clientId) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                                })
-                        } }
-                    }
-                }
-                Text(stringResource(R.string.chatgpt_plan_requirement), style = MaterialTheme.typography.bodySmall)
-                if (!settings.offline && settings.aiEnabled && !chatGPT.busy) {
-                    Text(stringResource(R.string.chatgpt_setup_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            if (chatGPT.busy) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                TextButton(onClick = { model.cancelChatGPT() }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
-            }
-            chatGPT.message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
-        } else {
-        Box {
-            OutlinedButton(onClick = { menu = true }, enabled = !settings.offline) { Text(presets.entries.firstOrNull { it.value == settings.baseUrl }?.key ?: "Custom") }
-            DropdownMenu(menu, { menu = false }) { presets.forEach { (title, url) ->
-                DropdownMenuItem(text = { Text(title) }, enabled = !settings.offline, onClick = { model.updateSettings { it.copy(baseUrl = url, model = "") }; menu = false })
-            } }
-        }
-        val invalidUrl = !settings.offline && !validEndpoint(settings.baseUrl)
-        OutlinedTextField(settings.baseUrl, { url -> model.updateSettings { it.copy(baseUrl = url.trim()) } }, label = { Text(stringResource(R.string.base_url)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            isError = invalidUrl, supportingText = if (invalidUrl) ({ Text(stringResource(R.string.endpoint_error)) }) else null)
-        OutlinedTextField(token, { model.updateApiToken(settings.baseUrl, it) }, label = { Text(stringResource(R.string.token)) }, enabled = !settings.offline, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
-        val missingModel = !settings.offline && settings.aiEnabled && settings.model.isBlank()
-        OutlinedTextField(settings.model, { value -> model.updateSettings { it.copy(model = value.trim()) } }, label = { Text(stringResource(R.string.model)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            isError = missingModel, supportingText = if (missingModel) ({ Text(stringResource(R.string.model_required)) }) else null)
-        TextButton(onClick = { model.disconnect() }, enabled = !settings.offline) { Text(stringResource(R.string.disconnect)) }
-        }
-        if ((if (settings.connection == "chatgpt") settings.chatgptModel else settings.model).isNotBlank()) {
-            Text(stringResource(when (modelVisionSupport(settings, chatGPT.models)) {
-                true -> R.string.vision
-                false -> R.string.vision_unsupported
-                null -> R.string.vision_unknown
-            }), style = MaterialTheme.typography.bodySmall)
-        }
-        Text(stringResource(R.string.private_model), style = MaterialTheme.typography.bodySmall)
+        AIConnectionSettings(settings, model)
         Text(stringResource(R.string.parallel_checks, settings.parallelChecks), style = MaterialTheme.typography.titleMedium)
         var parallelValue by remember(settings.parallelChecks) { mutableFloatStateOf(settings.parallelChecks.toFloat()) }
         Slider(value = parallelValue, onValueChange = { parallelValue = it }, valueRange = 1f..10f, steps = 8,
@@ -445,6 +344,139 @@ private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTou
         SourceLicenseLinks()
         Spacer(Modifier.height(16.dp))
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: VegsnapViewModel) {
+    val token by model.apiToken.collectAsStateWithLifecycle()
+    val hostedToken by model.hostedToken.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val chatGPT by model.chatGPTState.collectAsStateWithLifecycle()
+    val hostedAI by model.hostedAIState.collectAsStateWithLifecycle()
+    LaunchedEffect(settings.connection, settings.offline, hostedToken) {
+        if (settings.connection == "hosted" && hostedToken.isNotBlank()) model.refreshHostedAI()
+    }
+    var modelMenu by remember { mutableStateOf(false) }
+    var accountMenu by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+    val presets = linkedMapOf("OpenAI" to "https://api.openai.com/v1", "OpenRouter" to "https://openrouter.ai/api/v1",
+        "Gemini" to "https://generativelanguage.googleapis.com/v1beta/openai", "Ollama" to "http://127.0.0.1:11434/v1")
+    Text(stringResource(R.string.provider), style = MaterialTheme.typography.titleLarge)
+    Text(stringResource(R.string.provider_hint))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(settings.connection == "hosted", { model.updateSettings { it.copy(connection = "hosted", aiEnabled = true) } }, label = { Text(stringResource(R.string.hosted_ai)) }, enabled = !settings.offline)
+        FilterChip(settings.connection == "chatgpt", { model.updateSettings { it.copy(connection = "chatgpt") } }, label = { Text("ChatGPT") }, enabled = !settings.offline)
+        FilterChip(settings.connection == "api", { model.updateSettings { it.copy(connection = "api") } }, label = { Text(stringResource(R.string.api_connection)) }, enabled = !settings.offline)
+    }
+    ToggleRow(stringResource(R.string.enable_ai), settings.aiEnabled && !settings.offline, { enabled -> model.updateSettings { it.copy(aiEnabled = enabled) } }, enabled = !settings.offline)
+    if (settings.connection == "chatgpt") {
+        Text(stringResource(R.string.chatgpt), style = MaterialTheme.typography.bodySmall)
+        if (chatGPT.connected) {
+            Text(stringResource(R.string.chatgpt_connected))
+            if (chatGPT.email.isNotBlank()) PrivateAccountEmail(chatGPT.email)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box {
+                    OutlinedButton(onClick = { modelMenu = true }, modifier = Modifier.heightIn(min = 48.dp),
+                        enabled = !settings.offline && !chatGPT.busy && chatGPT.models.isNotEmpty()) {
+                        Text(chatGPT.models.firstOrNull { it.id == settings.chatgptModel }?.name
+                            ?: settings.chatgptModel.ifBlank { stringResource(R.string.select_model) },
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(modelMenu, { modelMenu = false }) { chatGPT.models.forEach { entry ->
+                        DropdownMenuItem(text = { Text(entry.name) }, enabled = !settings.offline,
+                            onClick = { model.updateSettings { it.copy(chatgptModel = entry.id) }; modelMenu = false })
+                    } }
+                }
+                OutlinedButton(onClick = { model.loadChatGPTModels() }, modifier = Modifier.heightIn(min = 48.dp),
+                    enabled = !chatGPT.busy && !settings.offline) {
+                    Text(stringResource(if (chatGPT.models.isEmpty()) R.string.load_models else R.string.refresh_models))
+                }
+                TextButton(onClick = { model.disconnectChatGPT() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) {
+                    Text(stringResource(R.string.chatgpt_disconnect))
+                }
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) },
+                    modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) { Text(stringResource(R.string.chatgpt_usage)) }
+            }
+            if (!settings.offline && settings.aiEnabled && settings.chatgptModel.isBlank()) {
+                Text(stringResource(R.string.model_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+        } else {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { model.connectChatGPT { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                    modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                    Text(if (chatGPT.selectedAccount == null) stringResource(R.string.chatgpt_continue)
+                        else stringResource(R.string.chatgpt_reconnect_account, chatGPT.savedAccounts.indexOf(chatGPT.selectedAccount) + 1))
+                }
+                if (chatGPT.savedAccounts.isNotEmpty()) {
+                    OutlinedButton(onClick = { model.connectChatGPT(newAccount = true) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } },
+                        modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                        Text(stringResource(R.string.chatgpt_another_account))
+                    }
+                }
+                if (chatGPT.savedAccounts.size > 1) Box {
+                    TextButton(onClick = { accountMenu = true }, modifier = Modifier.heightIn(min = 48.dp), enabled = !chatGPT.busy && !settings.offline) {
+                        Text(stringResource(R.string.chatgpt_saved_accounts))
+                    }
+                    DropdownMenu(accountMenu, { accountMenu = false }) { chatGPT.savedAccounts.forEachIndexed { index, clientId ->
+                        DropdownMenuItem(text = { Text(stringResource(R.string.chatgpt_reconnect_account, index + 1)) },
+                            enabled = !chatGPT.busy && !settings.offline, onClick = {
+                                accountMenu = false
+                                model.connectChatGPT(accountId = clientId) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                            })
+                    } }
+                }
+            }
+            Text(stringResource(R.string.chatgpt_plan_requirement), style = MaterialTheme.typography.bodySmall)
+            if (!settings.offline && settings.aiEnabled && !chatGPT.busy) {
+                Text(stringResource(R.string.chatgpt_setup_required), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (chatGPT.busy) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            TextButton(onClick = { model.cancelChatGPT() }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.cancel)) }
+        }
+        chatGPT.message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+    } else if (settings.connection == "hosted") {
+        Text(stringResource(R.string.hosted_ai_hint), style = MaterialTheme.typography.bodySmall)
+        Text(if (hostedAI.state == "connected") stringResource(R.string.hosted_ai_remaining, hostedAI.remaining ?: 0)
+            else stringResource(if (hostedAI.state == "pending") R.string.hosted_ai_pending else R.string.hosted_ai_refresh_hint))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (hostedAI.state != "connected") Button(onClick = { model.connectHostedAI { url -> androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url)) } },
+                modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline && !hostedAI.busy) { Text(stringResource(R.string.hosted_ai_connect)) }
+            if (hostedToken.isNotBlank()) {
+                OutlinedButton(onClick = { model.refreshHostedAI() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline && !hostedAI.busy) { Text(stringResource(R.string.hosted_ai_refresh)) }
+                TextButton(onClick = { model.disconnectHostedAI() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !hostedAI.busy) { Text(stringResource(R.string.chatgpt_disconnect)) }
+            }
+        }
+        if (hostedAI.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        hostedAI.message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+    } else {
+        Box {
+            OutlinedButton(onClick = { menu = true }, enabled = !settings.offline) { Text(presets.entries.firstOrNull { it.value == settings.baseUrl }?.key ?: "Custom") }
+            DropdownMenu(menu, { menu = false }) { presets.forEach { (title, url) ->
+                DropdownMenuItem(text = { Text(title) }, enabled = !settings.offline, onClick = { model.updateSettings { it.copy(baseUrl = url, model = "") }; menu = false })
+            } }
+        }
+        val invalidUrl = !settings.offline && !validEndpoint(settings.baseUrl)
+        OutlinedTextField(settings.baseUrl, { url -> model.updateSettings { it.copy(baseUrl = url.trim()) } }, label = { Text(stringResource(R.string.base_url)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            isError = invalidUrl, supportingText = if (invalidUrl) ({ Text(stringResource(R.string.endpoint_error)) }) else null)
+        OutlinedTextField(token, { model.updateApiToken(settings.baseUrl, it) }, label = { Text(stringResource(R.string.token)) }, enabled = !settings.offline, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+        val missingModel = !settings.offline && settings.aiEnabled && settings.model.isBlank()
+        OutlinedTextField(settings.model, { value -> model.updateSettings { it.copy(model = value.trim()) } }, label = { Text(stringResource(R.string.model)) }, enabled = !settings.offline, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            isError = missingModel, supportingText = if (missingModel) ({ Text(stringResource(R.string.model_required)) }) else null)
+        TextButton(onClick = { model.disconnect() }, enabled = !settings.offline) { Text(stringResource(R.string.disconnect)) }
+    }
+    if (settings.connection == "hosted" || (if (settings.connection == "chatgpt") settings.chatgptModel else settings.model).isNotBlank()) {
+        Text(stringResource(when (modelVisionSupport(settings, chatGPT.models)) {
+            true -> R.string.vision
+            false -> R.string.vision_unsupported
+            null -> R.string.vision_unknown
+        }), style = MaterialTheme.typography.bodySmall)
+    }
+    if (settings.connection == "api") Text(stringResource(R.string.private_model), style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable

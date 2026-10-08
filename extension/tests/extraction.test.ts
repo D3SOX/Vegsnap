@@ -84,7 +84,7 @@ describe('privacy boundaries', () => {
     const settings = parseSettings({ connection: 'openai', model: 'gpt-6-astra', vision: false });
     expect(settings).not.toHaveProperty('vision');
     expect(settings.model).toBe('gpt-6-astra');
-    expect(parseSettings(undefined).connection).toBe('chatgpt');
+    expect(parseSettings(undefined).connection).toBe('hosted');
   });
   test('settings never persist injected credentials and default to no background sites', () => {
     const settings = parseSettings({ token: 'secret', stores: ['dm', 'all'], language: 'en', connection: 'unknown' });

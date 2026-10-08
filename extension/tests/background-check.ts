@@ -2,6 +2,7 @@
 import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
 import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
+import hostedConfig from '../../data/hosted-ai.json';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
 import { defaultSettings, STORES } from '../src/settings';
@@ -27,6 +28,7 @@ mock.module('../src/offline', () => ({ offlineLibrary: () => ({ index: async () 
 const checkInputs: CheckInput[] = [];
 const saved: unknown[] = [];
 const providerConfigs: ProviderConfig[] = [];
+const hostedProviderTokens: string[] = [];
 const progressMessages: unknown[] = [];
 const historyOperations: string[] = [];
 let historySaveGate: Promise<void> | undefined;
@@ -70,7 +72,7 @@ function matchesOrigin(url: string, pattern: string) {
   const domain = pattern.replace('https://', '').replace('/*', '');
   return domain.startsWith('*.') ? host === domain.slice(2) || host.endsWith(`.${domain.slice(2)}`) : host === domain;
 }
-function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string) { delete values[key]; } }; }
+function storage(values: Record<string, unknown>) { return { async get(key: string) { return { [key]: values[key] }; }, async set(data: Record<string, unknown>) { Object.assign(values, data); }, async remove(key: string | string[]) { for (const item of Array.isArray(key) ? key : [key]) delete values[item]; } }; }
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => browserLanguage },
   runtime: { id: 'vegsnap', connectNative: nativePort, async sendMessage(message: unknown) { progressMessages.push(message); }, getURL: (path: string) => `${extensionScheme}//vegsnap${path}`, onInstalled: { addListener(fn: () => void) { installedListener = fn; } }, onStartup: { addListener(fn: () => void) { startupListener = fn; } }, onMessage: { addListener(fn: typeof listener) { listener = fn; } } },
@@ -97,6 +99,8 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
   return operation === 'list' ? saved : undefined;
 } }));
 mock.module('@vegsnap/core', () => ({
+  HOSTED_AI: hostedConfig,
+  createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => ({ text: 'oats', complete: true, category: 'food' }) }; },
   acceptsImages,
   checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return realCheckProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
   createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => { providerExtractions++; return { text: 'test', complete: false, category: 'other' }; } }; },
@@ -186,6 +190,17 @@ assert.equal((await listener!({ type: 'set-store', store: 'amazon', enabled: tru
 assert.equal((local.settings as { model: string }).model, 'new-model', 'Store permission completion must preserve field edits made while permission was pending');
 assert.equal((local.settings as { baseUrl: string }).baseUrl, 'https://api.openai.com/v1');
 assert(JSON.stringify(session).includes('preserved-key'), 'Store toggle must not clear the current endpoint-bound token');
+
+assert.equal((await listener!({ type: 'update-settings', patch: { baseUrl: 'https://private-api.example/v1', model: 'private-model' } }, trusted)).ok, true);
+assert.equal((await listener!({ type: 'set-api-token', endpoint: 'https://private-api.example/v1', token: 'private-fixture' }, trusted)).ok, true);
+assert.equal((await listener!({ type: 'update-settings', patch: { connection: 'hosted' } }, trusted)).ok, true);
+assert.equal((session.credential as { token: string }).token, 'private-fixture', 'Hosted selection cannot erase the separate API key');
+assert.equal((await listener!({ type: 'update-settings', patch: { connection: 'openai' } }, trusted)).ok, true);
+assert.equal((local.settings as { baseUrl: string }).baseUrl, 'https://private-api.example/v1');
+assert.equal((local.settings as { model: string }).model, 'private-model');
+assert.equal((session.credential as { token: string }).token, 'private-fixture');
+assert.equal((await listener!({ type: 'update-settings', patch: { baseUrl: 'https://api.openai.com/v1', model: 'new-model' } }, trusted)).ok, true);
+console.log('Hosted connection switching preserves custom API settings and endpoint-bound credentials');
 
 assert.equal((await listener!({ type: 'set-store', store: 'amazon', enabled: false }, page)).ok, false);
 assert.equal((await listener!({ type: 'set-store', store: 'unknown', enabled: true }, trusted)).ok, false);
@@ -527,3 +542,69 @@ deniedOrigins.delete('https://api.openai.com/*');
 await explicit({ text: 'Ingredients: unspecified flavouring', complete: true });
 assert.equal(providerExtractions, beforeExtractions + 1, 'Granting data and endpoint access allows the requested provider check');
 console.log('Real checks: conclusive text and offline barcodes survive declined sharing; online consent is offered only at needed network boundaries');
+
+// Hosted sessions are shared by extension windows but never by product pages.
+useRealEvaluator = false;
+local.settings = { ...defaultSettings, connection: 'hosted', baseUrl: 'https://untrusted.example', model: 'ignored-client-model' };
+const hostedRequests: Request[] = [];
+const originalFetch = globalThis.fetch;
+let heldHostedConnect: Promise<void> | undefined;
+let hostedVerified = false;
+globalThis.fetch = Object.assign(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+  const request = new Request(input, init);
+  hostedRequests.push(request);
+  assert.equal(new URL(request.url).origin, new URL(hostedConfig.baseUrl).origin);
+  if (request.method === 'POST') { await heldHostedConnect; return Response.json({}, { status: 201 }); }
+  if (request.method === 'DELETE') return Response.json({ disconnected: true });
+  return Response.json({ state: hostedVerified ? 'connected' : 'pending', remaining: 3, expiresAt: Date.now() + 86400000, enabled: true });
+}, { preconnect: originalFetch.preconnect });
+try {
+  assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxPage)).ok, false);
+  dataAllowed = false;
+  assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxTrusted)).ok, false);
+  dataAllowed = true;
+  deniedOrigins.add(`${hostedConfig.baseUrl}/*`);
+  assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxTrusted)).ok, false);
+  deniedOrigins.delete(`${hostedConfig.baseUrl}/*`);
+  assert.equal(hostedRequests.length, 0, 'Hosted setup respects both consent and host permissions');
+  assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxTrusted)).ok, true);
+  const credential = session.hostedCredential as { endpoint: string; token: string };
+  assert.match(credential.token, /^[a-f0-9]{64}$/);
+  assert.equal(credential.endpoint, hostedConfig.baseUrl);
+  assert.equal(hostedRequests[0]!.headers.get('Authorization'), `Bearer ${credential.token}`);
+  const verificationTab = new URL(openedTabs.at(-1)!);
+  assert.equal(verificationTab.search, '');
+  assert.equal(verificationTab.hash, `#token=${credential.token}`);
+  const installationId = local.hostedInstallationId;
+  assert.match(String(installationId), /^[a-f0-9]{64}$/);
+  assert.deepEqual(await hostedRequests[0]!.clone().json(), { installationId });
+  assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxTrusted)).ok, true);
+  assert.equal((session.hostedCredential as { token: string }).token, credential.token, 'Connect resumes the pending session instead of minting a fresh allowance');
+  assert(!JSON.stringify(local).includes(credential.token), 'Hosted secrets stay out of persistent browser storage');
+  hostedVerified = true;
+  assert.equal((await listener!({ type: 'hosted', command: 'status' }, firefoxTrusted)).ok, true);
+  assert.deepEqual(session.hostedStatus, { state: 'connected', remaining: 3, expiresAt: (session.hostedStatus as { expiresAt: number }).expiresAt, enabled: true });
+  await listener!({ type: 'check', input: { name: 'Unknown product' } }, firefoxTrusted);
+  assert.equal(hostedProviderTokens.at(-1), credential.token);
+  assert.equal((await listener!({ type: 'hosted', command: 'disconnect' }, firefoxTrusted)).ok, true);
+  assert.equal(hostedRequests.at(-1)!.method, 'DELETE');
+  assert.equal(session.hostedCredential, undefined);
+  assert.equal(session.hostedStatus, undefined);
+  assert.equal(local.hostedInstallationId, installationId, 'Disconnect preserves the anonymous allowance identifier');
+  await listener!({ type: 'check', input: { name: 'Unknown product' } }, firefoxTrusted);
+  assert.equal(calls.at(-1)!.provider, undefined, 'Disconnect immediately removes AI access');
+  session.hostedCredential = { endpoint: 'https://untrusted.example', token: 'a'.repeat(64) };
+  const beforeInvalidEndpoint = hostedRequests.length;
+  assert.equal((await listener!({ type: 'hosted', command: 'status' }, firefoxTrusted)).ok, true);
+  assert.equal(hostedRequests.length, beforeInvalidEndpoint, 'A token for a different endpoint is unusable');
+  delete session.hostedCredential;
+  hostedVerified = false;
+  const gate = deferred(); heldHostedConnect = gate.promise;
+  const connecting = listener!({ type: 'hosted', command: 'connect' }, firefoxTrusted);
+  await tick();
+  const disconnecting = listener!({ type: 'hosted', command: 'disconnect' }, firefoxTrusted);
+  gate.resolve();
+  assert((await connecting).ok && (await disconnecting).ok);
+  assert.equal(session.hostedCredential, undefined, 'An overlapping disconnect cannot resurrect a pending session');
+} finally { globalThis.fetch = originalFetch; }
+console.log('Hosted AI: fixed endpoint, temporary credentials, browser verification, consent, revocation and concurrent windows verified');

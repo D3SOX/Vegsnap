@@ -23,4 +23,5 @@ internal fun knownModelVisionSupport(model: String, metadata: JSONObject? = null
 }
 internal fun modelVisionSupport(settings: AppSettings, models: List<ChatGPTModel>): Boolean? =
     if (settings.connection == "chatgpt") models.firstOrNull { it.id == settings.chatgptModel }?.supportsVision ?: knownModelVisionSupport(settings.chatgptModel)
+    else if (settings.connection == "hosted") true
     else knownModelVisionSupport(settings.model)

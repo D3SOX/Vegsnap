@@ -1,0 +1,12 @@
+<resources>
+    <string name="hosted_ai">Vegsnap KI</string>
+    <string name="hosted_ai_hint">Begrenzte kostenlose Prüfungen ohne Abo oder API-Schlüssel. Ausgewählter Produkttext und Fotos gehen über Cloudflare an OpenAI. Der Zugang läuft nach 24 Stunden ab; Kontingente werden um Mitternacht UTC zurückgesetzt.</string>
+    <string name="hosted_ai_connect">Kostenlose KI verbinden</string>
+    <string name="hosted_ai_pending">Im Browser bestätigen und zu Vegsnap zurückkehren. Die Verbindung wird automatisch aktualisiert.</string>
+    <string name="hosted_ai_refresh_hint">Verbinden, um dein kostenloses Kontingent zu erhalten.</string>
+    <string name="hosted_ai_refresh">Verbindung aktualisieren</string>
+    <string name="hosted_ai_remaining">Heute verbleibende kostenlose Prüfungen: %1$d</string>
+    <string name="hosted_ai_error">Die kostenlose KI ist nicht verfügbar, abgelaufen oder das Kontingent ist aufgebraucht. Versuche später erneut, dich zu verbinden. Datenbankprüfungen, ChatGPT und dein eigener API-Schlüssel bleiben verfügbar.</string>
+    <string name="tour_ai">Wähle deine KI-Verbindung</string>
+    <string name="tour_ai_body">Verbinde dich hier, um Produktfotos zu analysieren und fehlende Angaben zu recherchieren. Du kannst die Auswahl später in den Einstellungen ändern. Datenbankprüfungen funktionieren ohne KI.</string>
+</resources>

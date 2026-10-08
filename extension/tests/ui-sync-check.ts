@@ -4,7 +4,7 @@ import { strict as assert } from 'node:assert';
 import { Window } from 'happy-dom';
 import { h, render } from 'preact';
 import { act } from 'preact/test-utils';
-import { defaultSettings } from '../src/settings';
+import { defaultSettings, type Settings } from '../src/settings';
 import type { HistoryResult } from '../src/history';
 import type { CheckReply, Request } from '../src/protocol';
 import type { OfflinePackInfo } from '@vegsnap/core';
@@ -16,7 +16,7 @@ type MessageListener = (message: unknown, sender: { id?: string }) => unknown;
 type StorageListener = (changes: Record<string, unknown>, area: string) => unknown;
 const messageListeners = new Set<MessageListener>();
 const storageListeners = new Set<StorageListener>();
-let settings = { ...defaultSettings, model: 'fixture-vision' };
+let settings: Settings = { ...defaultSettings, connection: 'chatgpt', model: 'fixture-vision' };
 let history: HistoryResult[] = [];
 let offlinePacks: OfflinePackInfo[] = [
   { region: 'Germany / EU', generatedAt: '2026-10-05T10:00:00Z', count: 1234, bundled: true },
@@ -31,6 +31,7 @@ let permissionRequests = 0, checkRequests = 0;
 let startupWait: Promise<void> | undefined;
 let checkWait: Promise<void> | undefined;
 let grantConsent = false;
+let hostedVerified = false;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
@@ -45,6 +46,13 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
+        case 'hosted': {
+          const saved = session.hostedStatus as { state: string } | undefined;
+          const status = { state: message.command === 'connect' ? 'pending' : message.command === 'disconnect' || !saved || saved.state === 'signedout' ? 'signedout' : hostedVerified ? 'connected' : 'pending', remaining: 3 };
+          session.hostedStatus = status;
+          storageChanged(['hostedStatus'], 'session');
+          return { ok: true, result: status };
+        }
         case 'companion':
           if (message.command === 'disconnect') nativeConnected = false;
           if (message.command === 'signIn') nativeConnected = true;
@@ -203,6 +211,32 @@ try {
   await act(async () => { onlineButton()!.click(); });
   await until(() => checkRequests === beforeConsentCheck + 1 && !onlineButton(), 'Granting access reruns the same input and clears the consent action');
   console.log('Actual check UI: local-first results, gesture-bound permission prompts, denial preservation and granted retry verified');
+  await tab(roots[0]!, 2); await tab(roots[1]!, 2);
+  const connections = roots[0]!.querySelectorAll<HTMLSelectElement>('select');
+  const connectionSelect = [...connections].find(select => [...select.options].some(option => option.value === 'hosted')); assert(connectionSelect);
+  await act(async () => { connectionSelect.value = 'hosted'; connectionSelect.dispatchEvent(new Event('change', { bubbles: true })); });
+  const hostedSection = (root: HTMLElement) => root.querySelector('.connection[aria-label="Vegsnap AI — limited free checks"]');
+  await until(() => roots.every(root => !!hostedSection(root)), 'Hosted provider selection updates both Settings screens');
+  await until(() => roots.every(root => hostedSection(root)?.getAttribute('aria-busy') === 'false'), 'Initial session refresh finishes');
+  assert(roots.every(root => !root.querySelector('input[type="password"]') && !root.querySelector('input[type="url"]')), 'Hosted access requires no user endpoint or API key');
+  const beforeHostedConsent = permissionRequests;
+  await act(async () => {
+    hostedSection(roots[0]!)!.querySelector<HTMLButtonElement>('button')!.click();
+    assert.equal(permissionRequests, beforeHostedConsent + 1, 'Hosted consent retains the Firefox click gesture');
+  });
+  await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Complete browser verification')), 'Pending browser verification is shared across windows');
+  hostedVerified = true;
+  await act(async () => { window.dispatchEvent(new window.Event('focus')); });
+  await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free checks remaining today: 3')), 'Returning from verification automatically shows the verified allowance');
+  assert.equal(permissionRequests, beforeHostedConsent + 1, 'Automatic refresh never requests new data-sharing permissions');
+  session.hostedStatus = { state: 'pending' };
+  await act(async () => { render(null, roots[1]!); render(h(App, {}), roots[1]!); });
+  await tab(roots[1]!, 2);
+  await until(() => hostedSection(roots[1]!)?.textContent?.includes('Free checks remaining today: 3') === true, 'Reopening the extension refreshes a saved pending session');
+  const disconnectHosted = [...hostedSection(roots[0]!)!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Disconnect'); assert(disconnectHosted);
+  await act(async () => { disconnectHosted.click(); });
+  await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Connect to free AI')), 'Disconnect returns every window to the connection action');
+  console.log('Actual hosted UI: gesture-bound consent, automatic return/startup refresh and cross-window disconnect verified');
 } finally {
   await act(async () => { roots.forEach(root => render(null, root)); });
   assert.equal(messageListeners.size, 0, 'Unmount removes runtime listeners');

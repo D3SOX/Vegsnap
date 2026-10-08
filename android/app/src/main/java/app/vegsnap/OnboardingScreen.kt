@@ -38,11 +38,12 @@ private val tourPages = listOf(
         R.string.tour_conflicting to R.string.tour_conflicting_body, R.string.tour_unknown to R.string.tour_unknown_body,
         R.string.tour_company to R.string.tour_company_body)),
     TourPage(R.string.tour_control, R.string.tour_control_body, Icons.Outlined.Tune, listOf(
-        R.string.tour_local to R.string.tour_local_body, R.string.tour_queue to R.string.tour_queue_body))
+        R.string.tour_local to R.string.tour_local_body, R.string.tour_queue to R.string.tour_queue_body)),
+    TourPage(R.string.tour_ai, R.string.tour_ai_body, Icons.Outlined.AutoAwesome, emptyList())
 )
 
 @Composable
-internal fun OnboardingScreen(onFinish: () -> Unit) {
+internal fun OnboardingScreen(settings: AppSettings, model: VegsnapViewModel, onFinish: () -> Unit) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     BackHandler { if (page > 0) page-- else onFinish() }
     Surface(Modifier.fillMaxSize()) {
@@ -67,6 +68,7 @@ internal fun OnboardingScreen(onFinish: () -> Unit) {
                     }
                     Text(stringResource(content.title), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
                     Text(stringResource(content.description), style = MaterialTheme.typography.bodyLarge)
+                    if (index == tourPages.lastIndex) AIConnectionSettings(settings, model)
                     content.cards.forEach { (title, body) ->
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

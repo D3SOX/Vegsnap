@@ -1,3 +1,5 @@
+import HOSTED_AI from '../../data/hosted-ai.json';
+
 // Explicit marketplace allowlist; never grant arbitrary *.amazon.* domains.
 export const AMAZON_MARKETS: Readonly<Record<string, string>> = {
   'amazon.com': 'US', 'amazon.ca': 'CA', 'amazon.com.mx': 'MX', 'amazon.com.br': 'BR',
@@ -26,7 +28,7 @@ export const PRESETS = {
   ollama: 'http://localhost:11434/v1',
   custom: '',
 } as const;
-export type Connection = 'chatgpt' | 'database' | keyof typeof PRESETS;
+export type Connection = 'chatgpt' | 'database' | 'hosted' | keyof typeof PRESETS;
 export interface Settings {
   language: 'en' | 'de';
   connection: Connection;
@@ -34,8 +36,9 @@ export interface Settings {
   model: string;
   stores: string[];
   saveHistory: boolean;
+  api?: { connection: keyof typeof PRESETS; baseUrl: string; model: string };
 }
-export const defaultSettings: Settings = { language: 'en', connection: 'chatgpt', baseUrl: PRESETS.openai, model: '', stores: [], saveHistory: true };
+export const defaultSettings: Settings = { language: 'en', connection: 'hosted', baseUrl: HOSTED_AI.baseUrl, model: HOSTED_AI.model, stores: [], saveHistory: true };
 export function endpointOrigin(endpoint: string): string {
   const url = new URL(endpoint);
   if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) throw new Error('Use HTTPS, or HTTP on localhost, without credentials or query parameters.');
@@ -46,9 +49,27 @@ export function endpointOrigin(endpoint: string): string {
 export function preferredLanguage(locale: string): Settings['language'] {
   return /^de(?:[-_]|$)/i.test(locale) ? 'de' : 'en';
 }
+export function changeConnectionSettings(current: Settings, connection: Connection): Settings {
+  const api = current.connection in PRESETS
+    ? { connection: current.connection as keyof typeof PRESETS, baseUrl: current.baseUrl, model: current.model } : current.api;
+  if (connection in PRESETS) {
+    const selected = api?.connection === connection ? api : { connection: connection as keyof typeof PRESETS, baseUrl: PRESETS[connection as keyof typeof PRESETS], model: '' };
+    return { ...current, ...selected, api: selected };
+  }
+  return { ...current, connection, api, ...(connection === 'chatgpt' ? { model: '' } : {}) };
+}
 export function parseSettings(value: unknown, locale = 'en'): Settings {
   if (!value || typeof value !== 'object') return { ...defaultSettings, language: preferredLanguage(locale) };
   const v = value as Record<string, unknown>;
-  const connection = typeof v.connection === 'string' && ['chatgpt', 'database', ...Object.keys(PRESETS)].includes(v.connection) ? v.connection as Connection : defaultSettings.connection;
-  return { language: v.language === 'en' || v.language === 'de' ? v.language : preferredLanguage(locale), connection, baseUrl: typeof v.baseUrl === 'string' ? v.baseUrl : PRESETS.openai, model: typeof v.model === 'string' ? v.model.slice(0, 200) : '', stores: Array.isArray(v.stores) ? v.stores.filter((s): s is string => typeof s === 'string' && STORES.some(store => store.id === s)) : [], saveHistory: v.saveHistory !== false };
+  const connection = typeof v.connection === 'string' && ['chatgpt', 'database', 'hosted', ...Object.keys(PRESETS)].includes(v.connection) ? v.connection as Connection : defaultSettings.connection;
+  const settings: Settings = { language: v.language === 'en' || v.language === 'de' ? v.language : preferredLanguage(locale), connection, baseUrl: typeof v.baseUrl === 'string' ? v.baseUrl : connection === 'hosted' ? HOSTED_AI.baseUrl : PRESETS.openai, model: typeof v.model === 'string' ? v.model.slice(0, 200) : connection === 'hosted' ? HOSTED_AI.model : '', stores: Array.isArray(v.stores) ? v.stores.filter((s): s is string => typeof s === 'string' && STORES.some(store => store.id === s)) : [], saveHistory: v.saveHistory !== false };
+  const api = v.api;
+  if (connection in PRESETS) settings.api = { connection: connection as keyof typeof PRESETS, baseUrl: settings.baseUrl, model: settings.model };
+  else if (api && typeof api === 'object' && !Array.isArray(api)) {
+    const saved = api as Record<string, unknown>;
+    if (typeof saved.connection === 'string' && Object.hasOwn(PRESETS, saved.connection) && typeof saved.baseUrl === 'string' && typeof saved.model === 'string') {
+      settings.api = { connection: saved.connection as keyof typeof PRESETS, baseUrl: saved.baseUrl.slice(0, 2000), model: saved.model.slice(0, 200) };
+    }
+  }
+  return settings;
 }

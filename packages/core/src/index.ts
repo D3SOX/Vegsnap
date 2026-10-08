@@ -2,6 +2,7 @@ export * from './types';
 export { analyzeText, parseSourceIngredients, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
 export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';
+export { HOSTED_AI, createHostedAIProvider } from './hosted-ai';
 export { checkProduct } from './check';
 export { OfflineProductIndex, validateOfflineSnapshot, parseOfflineSnapshot, OFFLINE_MAX_BYTES } from './offline';
 export type { OfflineSnapshot, OfflinePackInfo } from './offline';
