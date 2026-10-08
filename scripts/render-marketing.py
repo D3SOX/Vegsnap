@@ -4,6 +4,7 @@ from pathlib import Path
 from html import escape
 import argparse
 import base64
+from xml.etree import ElementTree
 import cairosvg
 from PIL import Image
 
@@ -136,11 +137,19 @@ def render_header(dark=False):
 
 
 def render_badges():
+    # Reuse the official logo geometry with the same outline as the other badges.
+    obtainium = ElementTree.parse(ROOT / "website" / "icons" / "obtainium.svg").getroot()
+    obtainium_layer = obtainium.find("{http://www.w3.org/2000/svg}g")
+    obtainium_path = obtainium_layer.find("{http://www.w3.org/2000/svg}path")
     icons = {
         "website": '<circle cx="30" cy="30" r="13"/><ellipse cx="30" cy="30" rx="6" ry="13"/><path d="M17 30h26M20 23h20M20 37h20"/>',
         "android": '<path d="M18 25h24v17H18zM18 25a12 10 0 0 1 24 0M22 14l-3-5m19 5 3-5M14 27v12m32-12v12M23 42v7m14-7v7"/><path d="M24 20h1m10 0h1"/>',
         "play": '<path d="m19 15 27 17-27 17zM19 15l18 23M19 49l18-23"/>',
-        "obtainium": '<path d="M18 27a13 13 0 0 1 22-7l4 4M44 16v8h-8M42 35a13 13 0 0 1-22 7l-4-4M16 46v-8h8"/>',
+        "obtainium": (
+            '<!-- Obtainium contributors, GPL-3.0; see website/icons/obtainium-LICENSE.txt. -->'
+            f'<svg x="13" y="15" width="34" height="34" viewBox="{obtainium.attrib["viewBox"]}" stroke-width="3">'
+            f'<path transform="{obtainium_layer.attrib["transform"]}" d="{obtainium_path.attrib["d"]}"/></svg>'
+        ),
         "extension": '<rect x="15" y="17" width="30" height="27" rx="4"/><path d="M15 25h30M21 21h1m4 0h1M25 31l-5 5 5 5m10-10 5 5-5 5"/>',
     }
     for key, label, action in [("website", "Vegsnap", "Visit the website"), ("android", "ANDROID APK", "Download releases"), ("play", "GOOGLE PLAY", "Join the closed test"), ("extension", "BROWSER EXTENSION", "Install from releases"), ("obtainium", "OBTAINIUM", "Add to Obtainium")]:
