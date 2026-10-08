@@ -346,9 +346,14 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     internal fun setActivityResumed(resumed: Boolean) { activityResumed.value = resumed }
     fun connectChatGPT(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -> Unit) {
         if (disconnectingChatGPT || settings.value.offline || chatGPTState.value.busy) return
+        val switchingAccount = newAccount || accountId != null && accountId != chatGPTState.value.selectedAccount
+        mutableChatGPT.update { it.copy(busy = true, message = null) }
         authJob = viewModelScope.launch {
-            mutableChatGPT.update { it.copy(busy = true, message = null) }
             try {
+                if (switchingAccount) {
+                    checkJob?.cancelAndJoin()
+                    stopConnectionQueue("chatgpt")
+                }
                 mutableChatGPT.value = chatGPT.signIn(newAccount, accountId, { activityResumed.first { it } }) { url ->
                     activityResumed.value = false
                     openBrowser(url)
@@ -422,6 +427,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     fun checkPhotos() = performCheck(photosOnly = true)
     private fun performCheck(photosOnly: Boolean) {
         if (disconnectingChatGPT || !settingsReady.isCompleted || state.value.busy || state.value.capturing) return
+        if (settings.value.connection == "chatgpt" && chatGPTState.value.busy) return
         if (photosOnly && state.value.photos.isEmpty() || !photosOnly && state.value.text.isBlank() && state.value.name.isBlank() && state.value.barcode.isBlank() && state.value.photos.isEmpty()) return
         val snapshot = state.value.forCheck(photosOnly)
         val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model)
@@ -476,9 +482,21 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         }
     }
     fun dismissProgress() { update { it.copy(focusedJob = null) } }
-    internal fun retryJob(id: String) = viewModelScope.launch(Dispatchers.IO) {
-        try { queueStore.retry(id); withContext(Dispatchers.Main) { focusJob(id); startQueue() } }
-        catch (error: Exception) { update { it.copy(message = R.string.queue_save_error) } }
+    internal fun retryJob(id: String): Job {
+        val accountId = chatGPTState.value.selectedAccount
+        return viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val retried = queueStore.withHistoryMutation {
+                    val job = queueStore.get(id) ?: return@withHistoryMutation false
+                    if (job.settings.connection == "chatgpt" &&
+                        (disconnectingChatGPT || chatGPTState.value.busy || accountId != chatGPTState.value.selectedAccount)) return@withHistoryMutation false
+                    queueStore.retry(id)
+                    true
+                }
+                if (retried) withContext(Dispatchers.Main) { focusJob(id); startQueue() }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) { update { it.copy(message = R.string.queue_save_error) } }
+        }
     }
     internal fun cancelJob(id: String) = viewModelScope.launch(Dispatchers.IO) {
         try { if (queueStore.stop(id, AnalysisStatus.CANCELLED)) ApplicationAnalysisQueue.cancelRunning?.invoke(id) }
@@ -491,9 +509,11 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         } catch (error: Exception) { update { it.copy(message = R.string.queue_save_error) } }
     }
     private suspend fun stopConnectionQueue(connection: String, endpoint: String? = null) = withContext(Dispatchers.IO) {
-        queuedJobs.value.filter { it.settings.connection == connection && (endpoint == null || it.settings.baseUrl == endpoint) }.forEach { job ->
-            if (queueStore.stop(job.id, AnalysisStatus.CANCELLED)) ApplicationAnalysisQueue.cancelRunning?.invoke(job.id)?.join()
+        val stopped = queueStore.withHistoryMutation {
+            queuedJobs.value.filter { it.settings.connection == connection && (endpoint == null || it.settings.baseUrl == endpoint) }
+                .filter { queueStore.stop(it.id, AnalysisStatus.CANCELLED) }
         }
+        stopped.mapNotNull { ApplicationAnalysisQueue.cancelRunning?.invoke(it.id) }.joinAll()
     }
     private fun pauseNetworkQueue() = viewModelScope.launch(Dispatchers.IO) {
         queuedJobs.value.filter { !it.settings.offline && it.status in listOf(AnalysisStatus.QUEUED, AnalysisStatus.RUNNING) }.forEach { job ->
@@ -513,6 +533,8 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     suspend fun savedPhotos(id: String): List<Uri> = withContext(Dispatchers.IO) { historyPhotos.files(id).map(Uri::fromFile) }
     fun retryHistory(result: JSONObject) {
         if (state.value.busy || state.value.capturing || disconnectingChatGPT) return
+        if (settings.value.connection == "chatgpt" && chatGPTState.value.busy) return
+        val accountId = chatGPTState.value.selectedAccount
         viewModelScope.launch {
             try {
                 settingsReady.await()
@@ -535,7 +557,9 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val id = result.getString("id")
                 val job = withContext(Dispatchers.IO) {
                     queueStore.withHistoryMutation {
-                        if (database.history().find(id) == null) null
+                        if (connection.connection == "chatgpt" &&
+                            (disconnectingChatGPT || chatGPTState.value.busy || accountId != chatGPTState.value.selectedAccount)) null
+                        else if (database.history().find(id) == null) null
                         else {
                             val input = historyPhotos.input(id) ?: recheckInput(result)
                             queueStore.enqueueHistory(id, input, connection, historyPhotos.files(id).map { it.readBytes() })

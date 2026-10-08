@@ -17,7 +17,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -26,6 +26,60 @@ import java.io.File
 
 class ChatGPTAccountsUiTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun accountSwitchStopsChatGPTWorkBeforeOpeningTheBrowserAndBlocksRetries() {
+        val application = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as Application
+        assumeTrue(application.packageName.endsWith(".screenshots"))
+        val preferences = application.getSharedPreferences("chatgpt-host", Application.MODE_PRIVATE)
+        preferences.edit().remove("registration").commit()
+        ChatGPTRegistrations({ preferences.getString("registration", null) }) {
+            check(preferences.edit().putString("registration", it).commit())
+        }.verified("oaiapp_first", "first-user", "alpha@example.test")
+        runBlocking { SettingsStore(application).save(AppSettings(connection = "chatgpt", chatgptModel = "fixture-model")) }
+        val viewModels = ViewModelStore()
+        lateinit var model: VegsnapViewModel
+        compose.runOnUiThread { model = VegsnapViewModel(application); viewModels.put("accounts", model) }
+        compose.waitUntil(10_000) { !model.settings.value.offline && model.chatGPTState.value.savedAccounts.size == 1 }
+        val queue = ApplicationAnalysisQueue.get(application)
+        val running = queue.enqueue(CheckInput(text = "running"), AppSettings(connection = "chatgpt"), emptyList())
+        queue.next(offline = false, parallelChecks = 1)
+        val waiting = queue.enqueue(CheckInput(text = "waiting"), AppSettings(connection = "chatgpt"), emptyList())
+        val other = queue.enqueue(CheckInput(text = "local"), AppSettings(connection = "api", offline = true), emptyList())
+        val workerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val releaseWorker = CompletableDeferred<Unit>()
+        val worker = workerScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try { awaitCancellation() }
+            finally { withContext(NonCancellable) { releaseWorker.await() } }
+        }
+        val previousCancellation = ApplicationAnalysisQueue.cancelRunning
+        ApplicationAnalysisQueue.cancelRunning = { id -> if (id == running.id) worker.also { it.cancel() } else null }
+        val browserOpened = CompletableDeferred<Unit>()
+        try {
+            compose.runOnUiThread { model.connectChatGPT(newAccount = true) { browserOpened.complete(Unit) } }
+            compose.waitUntil(10_000) { browserOpened.isCompleted || queue.get(running.id)?.status == AnalysisStatus.CANCELLED }
+            assertEquals(AnalysisStatus.CANCELLED, queue.get(running.id)?.status)
+            assertFalse("Sign-in must wait for the old running request to finish cancelling", browserOpened.isCompleted)
+            releaseWorker.complete(Unit)
+            compose.waitUntil(10_000) { browserOpened.isCompleted }
+            assertEquals(AnalysisStatus.CANCELLED, queue.get(waiting.id)?.status)
+            assertEquals(AnalysisStatus.QUEUED, queue.get(other.id)?.status)
+            lateinit var retry: Job
+            compose.runOnUiThread {
+                retry = model.retryJob(waiting.id)
+                model.update { it.copy(text = "check during sign-in") }
+                model.check()
+            }
+            runBlocking { retry.join() }
+            assertEquals(AnalysisStatus.CANCELLED, queue.get(waiting.id)?.status)
+            assertEquals(3, queue.jobs.value.size)
+        } finally {
+            releaseWorker.complete(Unit)
+            compose.runOnUiThread { model.cancelChatGPT(); viewModels.clear() }
+            workerScope.cancel()
+            ApplicationAnalysisQueue.cancelRunning = previousCancellation
+            queue.jobs.value.forEach { queue.stop(it.id, AnalysisStatus.CANCELLED); queue.remove(it.id) }
+        }
+    }
 
     @Test fun offlineAccountManagementShowsEmailsAndRemovesOnlyTheChosenAccount() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
