@@ -9,7 +9,7 @@ import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal data class HostedAIStatus(val state: String = "signedout", val remaining: Int? = null, val busy: Boolean = false, val message: Int? = null)
+internal data class HostedAIStatus(val state: String = "signedout", val remaining: Int? = null, val busy: Boolean = false, val message: Int? = null, val enabled: Boolean? = null)
 internal fun isHostedAIAppReturn(uri: String?): Boolean = uri == "vegsnap://ai/complete"
 internal class HostedAIConnection(val baseUrl: String, val model: String, private val http: OkHttpClient = CheckRepository.defaultHttpClient()) {
     init { require(validEndpoint(baseUrl) && baseUrl.isNotBlank()) }
@@ -27,8 +27,8 @@ internal class HostedAIConnection(val baseUrl: String, val model: String, privat
             throw error
         }
         val state = result.getString("state")
-        require(state in setOf("pending", "connected") && result.get("remaining") is Number && result.get("expiresAt") is Number)
-        return HostedAIStatus(state, result.getInt("remaining"))
+        require(state in setOf("pending", "connected") && result.get("remaining") is Number && result.get("expiresAt") is Number && result.get("enabled") is Boolean)
+        return HostedAIStatus(state, result.getInt("remaining"), enabled = result.getBoolean("enabled"))
     }
     suspend fun disconnect(token: String) { request(token, "DELETE") }
     private suspend fun request(token: String, method: String, payload: JSONObject = JSONObject()): JSONObject = suspendCancellableCoroutine { continuation ->

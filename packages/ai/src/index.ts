@@ -100,11 +100,15 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (!record(value) || typeof value.challenge !== 'string' || value.challenge.length > 2048) throw new HttpError(400, 'Complete verification.');
     const pending = await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 0 AND expires_at > ?').bind(tokenHash, now()).first();
     if (!pending) throw new HttpError(401, 'This connection expired. Start again in Vegsnap.');
-    const verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(10_000),
-      body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge }),
-    });
-    const result: unknown = await verification.json();
+    let verification: Response;
+    let result: unknown;
+    try {
+      verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge }),
+      });
+      result = await verification.json();
+    } catch { throw new HttpError(502, 'Verification could not be checked. Please verify again.'); }
     if (!verification.ok || !record(result) || result.success !== true || result.hostname !== new URL(env.PUBLIC_ORIGIN).hostname || result.action !== 'connect-ai') throw new HttpError(403, 'Verification failed. Try again.');
     const verified = await env.DB.batch([
       env.DB.prepare('INSERT INTO daily_budget(day) VALUES (?) ON CONFLICT DO NOTHING').bind(today),

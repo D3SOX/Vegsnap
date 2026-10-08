@@ -97,4 +97,17 @@ class HostedAIFlowTest {
         listOf(null, "vegsnap://auth/complete", "https://ai/complete", "vegsnap://ai/complete?token=$token",
             "vegsnap://ai/other", "vegsnap://other/complete").forEach { assertFalse(isHostedAIAppReturn(it)) }
     }
+    @Test fun disabledServiceRetainsSessionAndReportsUnavailableUntilReenabled() = runBlocking {
+        MockWebServer().use { server ->
+            val connection = HostedAIConnection(server.url("/").toString().trimEnd('/'), "gpt-6-luna")
+            for (enabled in listOf(false, true)) {
+                server.enqueue(MockResponse().setBody("""{"state":"connected","remaining":3,"expiresAt":1791561600000,"enabled":$enabled}"""))
+                val status = connection.status(token)
+                assertEquals("connected", status.state)
+                assertEquals(enabled, status.enabled)
+                assertEquals(3, status.remaining)
+                assertEquals("Bearer $token", server.takeRequest().getHeader("Authorization"))
+            }
+        }
+    }
 }

@@ -441,11 +441,12 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
         chatGPT.message?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
     } else if (settings.connection == "hosted") {
         Text(stringResource(R.string.hosted_ai_hint), style = MaterialTheme.typography.bodySmall)
-        Text(if (hostedAI.state == "connected") stringResource(R.string.hosted_ai_remaining, hostedAI.remaining ?: 0)
+        Text(if (hostedAI.enabled == false) stringResource(R.string.hosted_ai_unavailable)
+            else if (hostedAI.state == "connected") stringResource(R.string.hosted_ai_remaining, hostedAI.remaining ?: 0)
             else stringResource(if (hostedAI.state == "pending") R.string.hosted_ai_pending else R.string.hosted_ai_refresh_hint))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (hostedAI.state != "connected") Button(onClick = { model.connectHostedAI { url -> androidx.browser.customtabs.CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url)) } },
-                modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline && !hostedAI.busy) { Text(stringResource(R.string.hosted_ai_connect)) }
+                modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline && !hostedAI.busy && hostedAI.enabled != false) { Text(stringResource(R.string.hosted_ai_connect)) }
             if (hostedToken.isNotBlank()) {
                 OutlinedButton(onClick = { model.refreshHostedAI() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline && !hostedAI.busy) { Text(stringResource(R.string.hosted_ai_refresh)) }
                 TextButton(onClick = { model.disconnectHostedAI() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !hostedAI.busy) { Text(stringResource(R.string.chatgpt_disconnect)) }

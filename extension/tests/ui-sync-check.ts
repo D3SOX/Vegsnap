@@ -32,6 +32,7 @@ let startupWait: Promise<void> | undefined;
 let checkWait: Promise<void> | undefined;
 let grantConsent = false;
 let hostedVerified = false;
+let hostedEnabled = true;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
@@ -48,7 +49,7 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
         case 'hosted': {
           const saved = session.hostedStatus as { state: string } | undefined;
-          const status = { state: message.command === 'connect' ? 'pending' : message.command === 'disconnect' || !saved || saved.state === 'signedout' ? 'signedout' : hostedVerified ? 'connected' : 'pending', remaining: 3 };
+          const status = { state: message.command === 'connect' ? 'pending' : message.command === 'disconnect' || !saved || saved.state === 'signedout' ? 'signedout' : hostedVerified ? 'connected' : 'pending', remaining: 3, enabled: hostedEnabled };
           session.hostedStatus = status;
           storageChanged(['hostedStatus'], 'session');
           return { ok: true, result: status };
@@ -229,6 +230,13 @@ try {
   await act(async () => { window.dispatchEvent(new window.Event('focus')); });
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free checks remaining today: 3')), 'Returning from verification automatically shows the verified allowance');
   assert.equal(permissionRequests, beforeHostedConsent + 1, 'Automatic refresh never requests new data-sharing permissions');
+  hostedEnabled = false;
+  await act(async () => { window.dispatchEvent(new window.Event('focus')); });
+  await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free AI is temporarily unavailable.')), 'Disabled service shows unavailable in all windows despite valid connected sessions');
+  assert(roots.every(root => !hostedSection(root)?.textContent?.includes('Free checks remaining today') && hostedSection(root)?.textContent?.includes('your own API key')), 'Unavailable service hides the allowance and guides users to another connection');
+  hostedEnabled = true;
+  await act(async () => { window.dispatchEvent(new window.Event('focus')); });
+  await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free checks remaining today: 3')), 'Re-enabled service restores access without reconnecting');
   session.hostedStatus = { state: 'pending' };
   await act(async () => { render(null, roots[1]!); render(h(App, {}), roots[1]!); });
   await tab(roots[1]!, 2);

@@ -3,7 +3,7 @@ import { runInNewContext } from 'node:vm';
 
 const script = await Bun.file(new URL('../public/connect.js', import.meta.url)).text();
 const html = await Bun.file(new URL('../public/index.html', import.meta.url)).text();
-async function page(client: string, verified: boolean) {
+async function page(client: string, verified: boolean | Response) {
   const token = 'a'.repeat(64);
   const status = { textContent: '' };
   const action = { hidden: true };
@@ -24,7 +24,7 @@ async function page(client: string, verified: boolean) {
     } },
     async fetch(path: string, init?: RequestInit) {
       calls.push({ path, init });
-      return path === '/api/config' ? Response.json({ enabled: true, sessionCheckLimit: 3, siteKey: 'test' }) : new Response('{}', { status: verified ? 200 : 400 });
+      return path === '/api/config' ? Response.json({ enabled: true, sessionCheckLimit: 3, siteKey: 'test' }) : verified instanceof Response ? verified : new Response('{}', { status: verified ? 200 : 400 });
     },
   });
   await new Promise(resolve => setImmediate(resolve));
@@ -46,6 +46,16 @@ test('failed verification cannot offer a successful app return', async () => {
   const result = await page('android', false);
   expect(result.action.hidden).toBe(true);
   expect(result.status.textContent).toContain('Verification failed');
+});
+test('non-JSON verification failure shows a useful fallback without exposing a parse error', async () => {
+  const result = await page('android', new Response('<html>Proxy failure</html>', { status: 502 }));
+  expect(result.action.hidden).toBe(true);
+  expect(result.status.textContent).toBe('Verification failed or expired. Start again in Vegsnap.');
+});
+test('verification failure preserves the service retry message', async () => {
+  const result = await page('android', Response.json({ error: { message: 'Verification could not be checked. Please verify again.' } }, { status: 502 }));
+  expect(result.action.hidden).toBe(true);
+  expect(result.status.textContent).toBe('Verification could not be checked. Please verify again.');
 });
 test('extension connections do not open an unrelated Android app', async () => {
   expect((await page('', true)).action.hidden).toBe(true);

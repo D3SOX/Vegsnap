@@ -20,7 +20,7 @@ async function connect() {
       try {
         const verified = await fetch('/api/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ challenge }) });
         if (!verified.ok) {
-          const problem = await verified.json();
+          const problem = await verified.json().catch(() => null);
           throw new Error(typeof problem?.error?.message === 'string' ? problem.error.message.slice(0, 300) : 'Verification failed or expired. Start again in Vegsnap.');
         }
         status.textContent = 'Connected. Your free AI access is ready. Return to Vegsnap to start checking products.';

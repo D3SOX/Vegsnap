@@ -505,8 +505,11 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val connection = settings.value.forAnalysis(hostedAI.baseUrl, hostedAI.model).let { if (sendToAI) it.copy(aiEnabled = true) else it }
                 if (sendToAI) {
                     if (connection.offline) return@launch
-                    val configured = if (connection.connection == "chatgpt") chatGPTState.value.connected && connection.chatgptModel.isNotBlank()
-                        else validEndpoint(connection.baseUrl) && connection.model.isNotBlank()
+                    val configured = when (connection.connection) {
+                        "chatgpt" -> chatGPTState.value.connected && connection.chatgptModel.isNotBlank()
+                        "hosted" -> hostedToken.value.matches(Regex("[a-f0-9]{64}")) && hostedAIState.value.state == "connected" && hostedAIState.value.enabled != false
+                        else -> validEndpoint(connection.baseUrl) && connection.model.isNotBlank()
+                    }
                     if (!configured) {
                         update { it.copy(result = null) }
                         selectTab("settings")

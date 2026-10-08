@@ -369,9 +369,9 @@ export function App() {
             </> : <><p class="hint">{t.companionHint}</p><button type="button" class="primary" disabled={!ready || Boolean(connectionTask)} onClick={() => void connect('signIn')}>{t.signIn}</button></>}
           </section> : config.connection === 'hosted' ? <section class="connection" aria-label={t.hosted} aria-busy={hostedBusy}>
             <p class="hint">{t.hostedHint}</p>
-            <p role="status">{hosted.state === 'pending' ? t.hostedPending : hosted.state === 'connected' ? `${t.hostedAllowance}: ${hosted.remaining ?? 0}` : t.notConnected}</p>
+            <p role="status">{hosted.enabled === false ? t.hostedUnavailable : hosted.state === 'pending' ? t.hostedPending : hosted.state === 'connected' ? `${t.hostedAllowance}: ${hosted.remaining ?? 0}` : t.notConnected}</p>
             {hostedError && <p class="alert error" role="alert">{hostedError}</p>}
-            <div class="actions"><button type="button" disabled={hostedBusy || !ready} onClick={() => void connectHosted(hosted.state === 'signedout' ? 'connect' : 'status')}>{hosted.state === 'signedout' ? t.hostedConnect : t.hostedRefresh}</button>
+            <div class="actions"><button type="button" disabled={hostedBusy || !ready || hosted.state === 'signedout' && hosted.enabled === false} onClick={() => void connectHosted(hosted.state === 'signedout' ? 'connect' : 'status')}>{hosted.state === 'signedout' ? t.hostedConnect : t.hostedRefresh}</button>
             {hosted.state !== 'signedout' && <button type="button" disabled={hostedBusy} onClick={() => void connectHosted('disconnect')}>{t.disconnect}</button>}</div>
           </section> : config.connection !== 'database' ? <><label>{t.endpoint}<input type="url" required value={config.baseUrl} onInput={event => update('baseUrl', event.currentTarget.value)}/></label><label>{t.token}<input type="password" autoComplete="off" value={token} onInput={event => changeToken(event.currentTarget.value)}/></label><p class="hint">{t.tokenHint} {hasKey ? t.hasKey : t.emptyKey}</p>{hasKey && <button type="button" onClick={() => changeToken('')}>{t.disconnect}</button>}</> : null}
           {!['database', 'chatgpt', 'hosted'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder="Model ID" onInput={event => update('model', event.currentTarget.value)}/></label>}

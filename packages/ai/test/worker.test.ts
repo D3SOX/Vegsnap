@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, expect, spyOn, test } from 'bun:test';
 import { Miniflare, Response as WorkerResponse, convertV4MiniflareOptions } from 'miniflare';
 import worker, { type Env } from '../src/index';
 import { resolve } from 'node:path';
@@ -22,6 +22,7 @@ beforeAll(async () => {
     outboundService: async request => {
       if (request.url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
         const body = await request.json() as { response: string };
+        if (body.response === 'non-json') return new WorkerResponse('<html>Proxy failure</html>', { status: 502 });
         return WorkerResponse.json({ success: body.response !== 'invalid', hostname: body.response === 'wrong-host' ? 'wrong.example' : 'ai.example', action: body.response === 'wrong-action' ? 'wrong-action' : 'connect-ai' });
       }
       expect(request.url).toBe('https://api.openai.com/v1/responses');
@@ -119,6 +120,33 @@ test('requires server-verified unexpired sessions and rejects wrong Turnstile ac
   await db.prepare('UPDATE sessions SET expires_at = 0').run();
   expect((await check(token)).status).toBe(401);
   expect(upstream).toHaveLength(0);
+});
+test('unreadable Turnstile responses preserve pending access and do not consume admission', async () => {
+  const token = await connect(false);
+  const response = await request('/api/verify', token, { challenge: 'non-json' });
+  expect(response.status).toBe(502);
+  expect(await response.json()).toEqual({ error: { message: 'Verification could not be checked. Please verify again.' } });
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ state: 'pending', remaining: 3 });
+  expect(await (await mf.getD1Database('DB')).prepare('SELECT COUNT(*) AS count FROM daily_budget').first('count')).toBe(0);
+  expect((await request('/api/verify', token, { challenge: 'valid' })).status).toBe(200);
+  expect(upstream).toHaveLength(0);
+});
+test('Turnstile network failures report a retryable verification error', async () => {
+  const token = await connect(false);
+  const env = await mf.getBindings() as unknown as Env;
+  const originalFetch = globalThis.fetch;
+  const mocked = spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    if (String(input) === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') throw new TypeError('Private network details');
+    return originalFetch(input, init);
+  });
+  try {
+    const response = await worker.fetch(new Request('https://ai.example/api/verify', { method: 'POST', headers: {
+      Authorization: `Bearer ${token}`, Origin: 'https://ai.example', 'Content-Type': 'application/json',
+    }, body: JSON.stringify({ challenge: 'valid' }) }), env);
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: { message: 'Verification could not be checked. Please verify again.' } });
+    expect(upstream).toHaveLength(0);
+  } finally { mocked.mockRestore(); }
 });
 test('uses a fixed model without tools for a readable photo, and stores only counters', async () => {
   const token = await connect();

@@ -2,6 +2,7 @@
     <string name="hosted_ai">Vegsnap AI</string>
     <string name="hosted_ai_hint">Limited free checks without a subscription or API key. Selected product text and photos pass through Cloudflare to OpenAI. Access expires after 24 hours; allowances reset at midnight UTC.</string>
     <string name="hosted_ai_connect">Connect to free AI</string>
+    <string name="hosted_ai_unavailable">Free AI is temporarily unavailable. Use database checks, ChatGPT, or your own API key.</string>
     <string name="hosted_ai_pending">Complete verification in your browser, then return to Vegsnap. Your connection updates automatically.</string>
     <string name="hosted_ai_refresh_hint">Connect to get your free allowance.</string>
     <string name="hosted_ai_refresh">Refresh connection</string>
