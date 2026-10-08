@@ -14,6 +14,7 @@
   <p>
     <a href="https://vegsnap.app"><img src="marketing/badges/website.svg" alt="Visit the Vegsnap website" width="200" height="58"></a>
     <a href="https://github.com/D3SOX/vegsnap/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
+    <a href="https://play.google.com/apps/testing/app.vegsnap"><img src="marketing/badges/play.svg" alt="Join the Google Play closed test" width="200" height="58"></a>
     <br>
     <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
     <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
@@ -79,6 +80,10 @@ Connecting a cloud provider can send selected text and photos to that provider w
 ## Install the Android app
 
 Download the signed APK using the Android badge above. You can also use the Obtainium badge to track updates.
+
+To join the Google Play closed test, first [join the Vegsnap testers group](https://groups.google.com/g/vegsnap-testers), then [opt in on Google Play](https://play.google.com/apps/testing/app.vegsnap) with the same Google account. Installation becomes available after Google approves the testing release. Please stay opted in for at least 14 days, try the app and send feedback to [gplay@d3sox.me](mailto:gplay@d3sox.me).
+
+Google Play and GitHub APKs use different signing keys. To switch between them, export your history, uninstall the current app and install the other version. Import your history and reconnect your AI provider. History exports do not include photos or credentials.
 
 ## Install the browser extension
 

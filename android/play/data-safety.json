@@ -1,11 +1,11 @@
 {
-  "status": "Draft for the owner to confirm in Play Console; provider retention and sharing classifications must be verified.",
+  "status": "Saved in Play Console on 2026-10-08; pending Google review. Recheck when data flows or providers change.",
   "ads": false,
   "analytics_or_telemetry": false,
   "sells_user_data": false,
   "allows_vegsnap_account_creation": false,
   "app_account_deletion_requirement": "No Vegsnap accounts are created. Users delete local history/photos and disconnect third-party credentials in Settings. Third-party account deletion is handled by its provider.",
-  "encryption_in_transit": "Remote services use HTTPS. A configured loopback local-model endpoint may use HTTP. Confirm the Console answer against Google's definition and all enabled providers.",
+  "encryption_in_transit": "Yes. Remote requests use HTTPS; network security configuration allows HTTP only for loopback local-model endpoints, which do not send data off the device.",
   "data": [
     {
       "play_type": "Photos and videos / Photos",
@@ -14,7 +14,9 @@
       "purpose": "App functionality",
       "when": "An explicit AI check sends selected prepared photos to Vegsnap AI on Cloudflare and OpenAI, or the cloud provider chosen by the user.",
       "retention": "Provider-dependent; do not claim ephemeral processing without confirming the provider's retention.",
-      "sharing": "Assess whether the selected provider qualifies as a service provider or the transfer qualifies as a user-initiated sharing exception. Collection still needs disclosure."
+      "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
+      "shared": false,
+      "ephemeral_processing": false
     },
     {
       "play_type": "Personal info / User IDs",
@@ -23,7 +25,9 @@
       "purpose": "App functionality / Account management",
       "when": "Optional ChatGPT authentication sends account identifiers and credentials to OpenAI.",
       "retention": "Provider-dependent; credentials are encrypted locally until disconnected.",
-      "sharing": "Confirm the authentication-provider relationship and applicable exceptions. Vegsnap maintainers do not receive these credentials."
+      "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
+      "shared": false,
+      "ephemeral_processing": false
     },
     {
       "play_type": "App activity / In-app search history",
@@ -32,7 +36,20 @@
       "purpose": "App functionality",
       "when": "Explicit online product searches send product/brand search terms to product services or a configured AI provider. Offline checking remains available.",
       "retention": "Service-dependent; check database-provider request logging and retention.",
-      "sharing": "Confirm service-provider or user-initiated exceptions rather than blanket 'no data shared'."
+      "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
+      "shared": false,
+      "ephemeral_processing": false
+    },
+    {
+      "play_type": "App activity / App interactions",
+      "collected": true,
+      "shared": false,
+      "optional": true,
+      "ephemeral_processing": false,
+      "purpose": "App functionality / Fraud prevention, security, and compliance",
+      "when": "Optional Vegsnap AI keeps session and installation check counts to enforce the free allowance. These are usage counters, not analytics or telemetry.",
+      "retention": "Previous-day usage counters are removed hourly. Infrastructure backups and security logs follow Cloudflare policies.",
+      "sharing": "Cloudflare hosts the maintainer service under the service-provider exception."
     },
     {
       "play_type": "App activity / Other user-generated content",
@@ -41,7 +58,9 @@
       "purpose": "App functionality / Fraud prevention, security, and compliance",
       "when": "Selected product input goes to optional Vegsnap AI on Cloudflare/OpenAI or another configured provider. Explicit community submissions send text/evidence. Content reports send only reviewed AI text or a reply reference plus the reason.",
       "retention": "AI provider-dependent. Pending community submissions expire after 30 days; rejected submissions after 7 days; approved contributions remain until withdrawn. Reports are private, deleted when handled, or expire after 30 days and are removed by the next hourly cleanup.",
-      "sharing": "Approved contributions can be publicly published with explicit consent. Reports are accessible only to the maintainer and hosted by Cloudflare. Confirm service-provider and user-initiated exceptions."
+      "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
+      "shared": false,
+      "ephemeral_processing": false
     },
     {
       "play_type": "Device or other IDs",
@@ -50,7 +69,9 @@
       "purpose": "App functionality / Fraud prevention, security, and compliance",
       "when": "Connecting optional Vegsnap AI sends an anonymous installation identifier and session token to the maintainer-operated Cloudflare service. Hashes and usage counters enforce the limited free allowance.",
       "retention": "Pending connections expire after ten minutes; verified sessions after 24 hours. Expired sessions and previous-day installation usage counters are removed hourly. Infrastructure backups and security logs follow Cloudflare policies.",
-      "sharing": "Cloudflare hosts the maintainer service. Confirm the service-provider exception; no installation identifier is forwarded to OpenAI."
+      "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
+      "shared": false,
+      "ephemeral_processing": false
     }
   ],
   "locally_processed_not_collected": [
@@ -70,5 +91,6 @@
   "sources": [
     "https://support.google.com/googleplay/android-developer/answer/10787469",
     "https://support.google.com/googleplay/android-developer/answer/10144311"
-  ]
+  ],
+  "deletion_request_url": "https://vegsnap.app/privacy.html#contact"
 }
