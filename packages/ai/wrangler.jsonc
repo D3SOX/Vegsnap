@@ -19,5 +19,8 @@
     "PENDING_CONNECT_LIMIT": "100"
   },
   "d1_databases": [{ "binding": "DB", "database_name": "vegsnap-ai", "database_id": "1bd35d5d-a8f9-4375-a4c2-f8634154d910", "migrations_dir": "migrations" }],
-  "ratelimits": [{ "name": "REQUEST_LIMIT", "namespace_id": "826402", "simple": { "limit": 5, "period": 60 } }]
+  "ratelimits": [
+    { "name": "REQUEST_LIMIT", "namespace_id": "826402", "simple": { "limit": 5, "period": 60 } },
+    { "name": "SESSION_REQUEST_LIMIT", "namespace_id": "826403", "simple": { "limit": 30, "period": 60 } }
+  ]
 }

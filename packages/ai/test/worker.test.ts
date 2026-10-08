@@ -17,7 +17,10 @@ beforeAll(async () => {
   mf = new Miniflare(convertV4MiniflareOptions({ script: await build.outputs[0]!.text(), modules: true, compatibilityDate: '2026-10-06',
     name: 'ai-test', d1Databases: ['DB'],
     assets: { directory: resolve(root, 'public'), binding: 'ASSETS', run_worker_first: true, routerConfig: { has_user_worker: true } },
-    ratelimits: { REQUEST_LIMIT: { namespace_id: '826402', simple: { limit: 5, period: 60 } } },
+    ratelimits: {
+      REQUEST_LIMIT: { namespace_id: '826402', simple: { limit: 5, period: 60 } },
+      SESSION_REQUEST_LIMIT: { namespace_id: '826403', simple: { limit: 30, period: 60 } },
+    },
     bindings: { PUBLIC_ORIGIN: 'https://ai.example', TURNSTILE_SITE_KEY: 'test-site', TURNSTILE_SECRET: 'test-only',
       OPENAI_API_KEY: 'test-only-openai', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20' },
     outboundService: async request => {
@@ -122,6 +125,24 @@ test('requires server-verified unexpired sessions and rejects wrong Turnstile ac
   const db = await mf.getD1Database('DB');
   await db.prepare('UPDATE sessions SET expires_at = 0').run();
   expect((await check(token)).status).toBe(401);
+  expect(upstream).toHaveLength(0);
+});
+test('session reads and deletions limit arbitrary bearer tokens before accessing D1', async () => {
+  const active = await connect();
+  for (const method of ['GET', 'DELETE']) {
+    const statuses = [];
+    for (let i = 0; i < 31; i++) {
+      const response = await fetch(new URL('/api/session', await mf.ready), { method, headers: {
+        Authorization: `Bearer ${i === 30 ? active : crypto.getRandomValues(new Uint8Array(32)).toHex()}`,
+        'CF-Connecting-IP': method === 'GET' ? '198.51.100.2' : '198.51.100.3', Connection: 'close',
+      } });
+      await response.arrayBuffer();
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 30)).toEqual(Array(30).fill(method === 'GET' ? 401 : 200));
+    expect(statuses[30]).toBe(429);
+  }
+  expect(await (await request('/api/session', active)).json()).toMatchObject({ state: 'connected', remaining: 3 });
   expect(upstream).toHaveLength(0);
 });
 test('unreadable Turnstile responses preserve pending access and do not consume admission', async () => {

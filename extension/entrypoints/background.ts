@@ -191,7 +191,10 @@ export default defineBackground(() => {
                   onlineConsent = 'ai';
                   throw new Error('Online AI access was not allowed; the local evidence was kept.');
                 }
-                return extract(...args);
+                try { return await extract(...args); }
+                finally {
+                  if (config.connection === 'hosted') await hostedCommand('status').catch(() => {});
+                }
               };
             }
             const fetcher: typeof fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {

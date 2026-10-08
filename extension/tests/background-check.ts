@@ -29,6 +29,8 @@ const checkInputs: CheckInput[] = [];
 const saved: unknown[] = [];
 const providerConfigs: ProviderConfig[] = [];
 const hostedProviderTokens: string[] = [];
+let hostedRemaining = 3;
+let hostedExtractionFails = false;
 const progressMessages: unknown[] = [];
 const historyOperations: string[] = [];
 let historySaveGate: Promise<void> | undefined;
@@ -100,7 +102,11 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
 } }));
 mock.module('@vegsnap/core', () => ({
   HOSTED_AI: hostedConfig,
-  createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => ({ text: 'oats', complete: true, category: 'food' }) }; },
+  createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => {
+    hostedRemaining = Math.max(0, hostedRemaining - 1);
+    if (hostedExtractionFails) throw new Error('Hosted attempt failed');
+    return { text: 'oats', complete: true, category: 'food' };
+  } }; },
   acceptsImages,
   checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return realCheckProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
   createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => { providerExtractions++; return { text: 'test', complete: false, category: 'other' }; } }; },
@@ -558,13 +564,17 @@ const hostedRequests: Request[] = [];
 const originalFetch = globalThis.fetch;
 let heldHostedConnect: Promise<void> | undefined;
 let hostedVerified = false;
+let hostedExpired = false;
+let hostedRefreshFails = false;
 globalThis.fetch = Object.assign(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
   const request = new Request(input, init);
   hostedRequests.push(request);
   assert.equal(new URL(request.url).origin, new URL(hostedConfig.baseUrl).origin);
   if (request.method === 'POST') { await heldHostedConnect; return Response.json({}, { status: 201 }); }
   if (request.method === 'DELETE') return Response.json({ disconnected: true });
-  return Response.json({ state: hostedVerified ? 'connected' : 'pending', remaining: 3, expiresAt: Date.now() + 86400000, enabled: true });
+  if (hostedRefreshFails) throw new Error('Temporary status failure');
+  if (hostedExpired) return new Response('{}', { status: 401 });
+  return Response.json({ state: hostedVerified ? 'connected' : 'pending', remaining: hostedRemaining, expiresAt: Date.now() + 86400000, enabled: true });
 }, { preconnect: originalFetch.preconnect });
 try {
   assert.equal((await listener!({ type: 'hosted', command: 'connect' }, firefoxPage)).ok, false);
@@ -594,6 +604,28 @@ try {
   assert.deepEqual(session.hostedStatus, { state: 'connected', remaining: 3, expiresAt: (session.hostedStatus as { expiresAt: number }).expiresAt, enabled: true });
   await listener!({ type: 'check', input: { name: 'Unknown product' } }, firefoxTrusted);
   assert.equal(hostedProviderTokens.at(-1), credential.token);
+  useRealEvaluator = true;
+  const hostedPhoto = { images: ['data:image/jpeg;base64,AA=='] };
+  const checked = await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
+  assert(checked.ok);
+  assert.equal((checked.result as { aiStatus: string }).aiStatus, 'images');
+  assert.equal((session.hostedStatus as { remaining: number }).remaining, 2, 'Successful hosted checks immediately refresh the cached allowance');
+  hostedExtractionFails = true;
+  const failed = await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
+  assert(failed.ok);
+  assert.equal((failed.result as { aiStatus: string }).aiStatus, 'failed');
+  assert.equal((session.hostedStatus as { remaining: number }).remaining, 1, 'Failed AI attempts also refresh consumed allowance');
+  hostedExpired = true;
+  await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
+  assert.equal(session.hostedCredential, undefined, 'An expired hosted attempt immediately removes stale cached access');
+  assert.equal(session.hostedStatus, undefined);
+  hostedExpired = false; hostedExtractionFails = false;
+  session.hostedCredential = credential;
+  hostedRefreshFails = true;
+  const statusFailed = await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
+  assert(statusFailed.ok);
+  assert.equal((statusFailed.result as { aiStatus: string }).aiStatus, 'images', 'A failed status refresh does not discard a successful product analysis');
+  hostedRefreshFails = false; useRealEvaluator = false;
   assert.equal((await listener!({ type: 'hosted', command: 'disconnect' }, firefoxTrusted)).ok, true);
   assert.equal(hostedRequests.at(-1)!.method, 'DELETE');
   assert.equal(session.hostedCredential, undefined);

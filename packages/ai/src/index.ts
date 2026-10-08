@@ -5,6 +5,7 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   REQUEST_LIMIT: RateLimit;
+  SESSION_REQUEST_LIMIT: RateLimit;
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET?: string;
@@ -63,6 +64,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     return env.ASSETS.fetch(request);
   }
   const tokenHash = await hashToken(request);
+  if (path === '/api/session' && ['GET', 'DELETE'].includes(request.method) &&
+      !(await env.SESSION_REQUEST_LIMIT.limit({ key: `${request.method}:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` })).success) throw new HttpError(429, 'Please wait before trying again.');
   if (path === '/api/session' && request.method === 'GET') {
     const session = await env.DB.prepare('SELECT verified, expires_at, day, checks, COALESCE((SELECT checks FROM installation_usage WHERE installation_hash = sessions.installation_hash AND day = ?), 0) AS installation_checks, COALESCE((SELECT checks FROM daily_budget WHERE day = ?), 0) AS global_checks FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(today, today, tokenHash, now()).first<{verified: number; expires_at: number; day: string; checks: number; installation_checks: number; global_checks: number}>();
     if (!session) throw new HttpError(401, 'Your free session expired. Connect again in settings.');
