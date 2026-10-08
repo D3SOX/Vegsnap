@@ -1,0 +1,3 @@
+# Local development only. Keep AI_ENABLED=false until you intend to fund requests.
+OPENAI_API_KEY=
+TURNSTILE_SECRET=

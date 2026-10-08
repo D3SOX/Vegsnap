@@ -29,7 +29,7 @@
     <string name="provider">KI-Verbindung</string>
     <string name="ai_settings">KI-Einstellungen</string>
     <string name="ai_status_not_needed">Die vorhandenen Belege haben die Prüfung beantwortet. KI wurde nicht verwendet.</string>
-    <string name="ai_status_disabled">KI ist ausgeschaltet. Nur lokale und Datenbankbelege wurden geprüft.</string>
+    <string name="ai_status_disabled">KI wurde nicht verwendet. Nur lokale und Datenbankbelege wurden geprüft.</string>
     <string name="ai_status_offline">Offline-Modus: Es wurde keine KI-Anfrage gesendet.</string>
     <string name="ai_status_unconfigured">KI wurde nicht verwendet. Wähle in den Einstellungen eine Verbindung und ein Modell.</string>
     <string name="ai_status_vision_disabled">Das ausgewählte Modell unterstützt keine Bilder. Es wurden keine Fotos an die KI gesendet.</string>
@@ -39,8 +39,7 @@
     <string name="ai_status_used">KI hat bei dieser Prüfung geholfen.</string>
     <string name="web_search_used">Websuche verwendet; verfügbare Quellen stehen unten.</string>
     <string name="web_search_unsupported">Dieser Anbieter unterstützt keine Websuche.</string>
-    <string name="provider_hint">Optional. Ausdrückliche Prüfungen dürfen ausgewählten Text und Fotos an deinen Anbieter senden. Datenbankprüfungen benötigen kein Konto.</string>
-    <string name="enable_ai">KI für ausdrückliche Prüfungen verwenden</string>
+    <string name="provider_hint">Wenn verbunden, hilft KI bei ausdrücklichen Prüfungen, die lokale und Datenbankbelege nicht beantworten können. Ausgewählter Text und Fotos können an deinen Anbieter gesendet werden. Der Offline-Modus verhindert Netzwerkanfragen.</string>
     <string name="base_url">API-Basis-URL</string>
     <string name="token">API-Schlüssel</string>
     <string name="model">Modellname</string>
@@ -92,8 +91,15 @@
     <string name="chatgpt_connected">Verbunden</string>
     <string name="chatgpt_continue">Mit ChatGPT fortfahren</string>
     <string name="chatgpt_another_account">Anderes Konto verwenden</string>
+    <string name="chatgpt_remove_account">%1$s entfernen</string>
+    <string name="chatgpt_remove_account_title">Gespeichertes Konto entfernen?</string>
+    <string name="chatgpt_remove_account_message">%1$s von diesem Gerät entfernen? Falls verbunden, wird die Verbindung getrennt. Zur erneuten Nutzung musst du dich wieder anmelden. Der Zugriff in den ChatGPT-Einstellungen wird dadurch nicht widerrufen.</string>
     <string name="chatgpt_saved_accounts">Gespeicherte Konten</string>
-    <string name="chatgpt_reconnect_account">Konto %1$d erneut verbinden</string>
+    <string name="chatgpt_switch_account">Konto wechseln</string>
+    <string name="chatgpt_unknown_account">Konto %1$d (E-Mail nicht verfügbar)</string>
+    <string name="chatgpt_account_with_email">%1$s · Konto %2$d</string>
+    <string name="chatgpt_reconnect">Erneut verbinden</string>
+    <string name="chatgpt_reconnect_account">%1$s erneut verbinden</string>
     <string name="chatgpt_plan_requirement">KI-Prüfungen über ChatGPT erfordern einen berechtigten Plus- oder Pro-Tarif. Kostenlose Konten können Datenbankprüfungen oder eine separate API-Verbindung nutzen.</string>
     <string name="chatgpt_error">Die ChatGPT-Anfrage konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="load_models">Modelle laden</string>
@@ -127,6 +133,7 @@
     <string name="chatgpt_signin_error">Die ChatGPT-Anmeldung konnte nicht gestartet werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="chatgpt_signin_timeout">Die Anmeldung wurde nach drei Minuten Wartezeit auf den Browser abgebrochen. Verbinde dich erneut.</string>
     <string name="chatgpt_signin_callback_error">Der Browser hat eine ungültige oder abgelehnte Anmeldung zurückgegeben. Verbinde dich erneut.</string>
+    <string name="chatgpt_signin_code_error">ChatGPT hat diesen Anmeldecode abgelehnt oder er ist abgelaufen. Starte eine neue Anmeldung; lade die Rückkehrseite im Browser nicht neu.</string>
     <string name="chatgpt_signin_exchange_error">Die Browser-Freigabe wurde empfangen, aber die Verbindung zu ChatGPT konnte nicht abgeschlossen werden. Prüfe dein Netzwerk und verbinde dich erneut.</string>
     <string name="chatgpt_signin_grant_error">ChatGPT hat keinen KI-Zugriff gewährt. Verwende ein berechtigtes Plus- oder Pro-Konto und erlaube die Tarifnutzung auf der Freigabeseite oder wähle eine API-Verbindung.</string>
     <string name="chatgpt_signin_identity_error">Das ChatGPT-Konto konnte nicht verifiziert werden. Prüfe dein Netzwerk und die Gerätezeit und versuche es erneut.</string>

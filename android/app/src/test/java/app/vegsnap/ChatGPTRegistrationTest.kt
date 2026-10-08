@@ -19,7 +19,7 @@ class ChatGPTRegistrationTest {
         assertEquals("oaiapp_original", registrations.forSignIn(null)?.clientId)
         assertEquals(original, metadata)
     }
-    @Test fun localSignOutRetainsRegistrationWithoutRetainingCredentialsOrEmail() {
+    @Test fun localSignOutRetainsVerifiedEmailForAccountIdentificationWithoutTokens() {
         var metadata: String? = null
         val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
         val session = JSONObject().put("client_id", "oaiapp_existing").put("subject", "verified-user")
@@ -30,7 +30,10 @@ class ChatGPTRegistrationTest {
         assertEquals(original, afterSignOut)
         assertEquals("oaiapp_existing", afterSignOut?.clientId)
         val persisted = requireNotNull(metadata)
-        assertFalse(persisted.contains("private"))
+        assertEquals("private@example.test", JSONObject(persisted).getJSONArray("registrations").getJSONObject(0).getString("email"))
+        assertFalse(persisted.contains("private-access"))
+        assertFalse(persisted.contains("private-refresh"))
+        assertFalse(persisted.contains("private-id"))
         assertFalse(persisted.contains("verified-user"))
         assertEquals(setOf("selected_client_id", "registrations"), JSONObject(persisted).keys().asSequence().toSet())
     }
@@ -105,16 +108,17 @@ class ChatGPTRegistrationTest {
         assertThrows(IllegalArgumentException::class.java) { registrations.verified(first.clientId, "second-user") }
         assertEquals(before, metadata)
     }
-    @Test fun connectedSessionMustBeDisconnectedBeforeAddingOrSwitchingAccounts() {
+    @Test fun switchingAccountsKeepsCurrentSessionUntilNewIdentityIsValidated() {
         var metadata: String? = null
         val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
         val session = JSONObject().put("client_id", "oaiapp_first").put("subject", "first-user")
         val first = registrations.selected(session)
-        val before = metadata
-        assertThrows(IllegalArgumentException::class.java) { registrations.forSignIn(session, newAccount = true) }
-        assertThrows(IllegalArgumentException::class.java) { registrations.forSignIn(session, clientId = "oaiapp_other") }
+        assertNull(registrations.forSignIn(session, newAccount = true))
+        registrations.rememberIssued("oaiapp_other", newAccount = true)
+        registrations.verified("oaiapp_other", "other-user")
+        assertEquals("oaiapp_other", registrations.forSignIn(session, clientId = "oaiapp_other")?.clientId)
         assertEquals(first, registrations.forSignIn(session))
-        assertEquals(before, metadata)
+        assertEquals(listOf("oaiapp_first", "oaiapp_other"), registrations.accounts().map { it.clientId })
     }
     @Test fun existingSingleAccountMetadataIsRetainedWhenAddingAnotherAccount() {
         var metadata: String? = ChatGPTRegistration("oaiapp_existing").json().toString()
@@ -122,6 +126,99 @@ class ChatGPTRegistrationTest {
         assertEquals("oaiapp_existing", registrations.forSignIn(null)?.clientId)
         registrations.rememberIssued("oaiapp_new", newAccount = true)
         assertEquals(listOf("oaiapp_existing", "oaiapp_new"), registrations.accounts().map { it.clientId })
+    }
+    @Test fun savedAccountEmailsStayBoundToVerifiedIdentitiesAcrossRestartAndSwitching() {
+        var metadata: String? = null
+        val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
+        val first = JSONObject().put("client_id", "oaiapp_first").put("subject", "first-user").put("email", "first@example.test")
+        registrations.selected(first)
+        registrations.rememberIssued("oaiapp_second", newAccount = true)
+        registrations.verified("oaiapp_second", "second-user", "second@example.test")
+        val reopened = ChatGPTRegistrations({ metadata }) { metadata = it }
+        assertEquals(listOf("first@example.test", "second@example.test"), reopened.accounts().map { it.email })
+        assertEquals("second@example.test", reopened.forSignIn(first, clientId = "oaiapp_second")?.email)
+        assertEquals("first@example.test", reopened.selected(first)?.email)
+        val before = metadata
+        assertThrows(IllegalArgumentException::class.java) { reopened.verified("oaiapp_first", "wrong-user", "wrong@example.test") }
+        assertEquals(before, metadata)
+        reopened.verified("oaiapp_first", "first-user")
+        assertEquals("first@example.test", reopened.selected(null)?.email)
+    }
+    @Test fun failedSwitchRetainsTheActiveAccountAndPendingRegistrationForRetry() {
+        var metadata: String? = null
+        val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
+        val first = JSONObject().put("client_id", "oaiapp_first").put("subject", "first-user").put("email", "first@example.test")
+        registrations.selected(first)
+        assertNull(registrations.forSignIn(first, newAccount = true))
+        registrations.rememberIssued("oaiapp_pending", newAccount = true)
+        // Model's finally/status reload restores the current session after exchange fails.
+        assertEquals("oaiapp_first", registrations.selected(first)?.clientId)
+        assertEquals("oaiapp_pending", registrations.forSignIn(first, clientId = "oaiapp_pending")?.clientId)
+        assertEquals("first@example.test", registrations.selected(first)?.email)
+    }
+    @Test fun removingSavedAccountKeepsOtherBindingsAndRemovingLastAllowsFreshSignIn() {
+        var metadata: String? = null
+        val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
+        registrations.verified("oaiapp_first", "first-user", "first@example.test")
+        registrations.rememberIssued("oaiapp_second", newAccount = true)
+        registrations.verified("oaiapp_second", "second-user", "second@example.test")
+        registrations.remove("oaiapp_first")
+        assertEquals(listOf("second@example.test"), registrations.accounts().map { it.email })
+        assertEquals("oaiapp_second", registrations.selected(null)?.clientId)
+        assertFalse(requireNotNull(metadata).contains("first@example.test"))
+        registrations.remove("oaiapp_second")
+        val reopened = ChatGPTRegistrations({ metadata }) { metadata = it }
+        assertTrue(reopened.accounts().isEmpty())
+        assertNull(reopened.forSignIn(null))
+        reopened.rememberIssued("oaiapp_fresh")
+        assertEquals("oaiapp_fresh", reopened.selected(null)?.clientId)
+    }
+    @Test fun removingSelectedAccountChoosesRemainingAccountAndUnknownRemovalDoesNothing() {
+        var metadata: String? = null
+        val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
+        registrations.verified("oaiapp_first", "first-user", "first@example.test")
+        registrations.rememberIssued("oaiapp_second", newAccount = true)
+        registrations.remove("oaiapp_second")
+        assertEquals("oaiapp_first", registrations.selected(null)?.clientId)
+        val before = metadata
+        registrations.remove("unknown")
+        assertEquals(before, metadata)
+    }
+    @Test fun activeRemovalClearsCredentialsBeforeMetadataAndInterruptedWritesRemainRecoverable() {
+        var metadata: String? = null
+        var failWrite = false
+        val registrations = ChatGPTRegistrations({ metadata }) { if (failWrite) error("Disk full") else metadata = it }
+        var active: JSONObject? = JSONObject().put("client_id", "oaiapp_first").put("subject", "first-user").put("email", "first@example.test")
+        registrations.selected(active)
+        registrations.rememberIssued("oaiapp_second", newAccount = true)
+        registrations.verified("oaiapp_second", "second-user", "second@example.test")
+        registrations.selected(active)
+        val original = metadata
+        assertThrows(IllegalStateException::class.java) {
+            registrations.remove("oaiapp_first", active) { error("Keystore unavailable") }
+        }
+        assertEquals(original, metadata)
+        assertEquals("oaiapp_first", registrations.selected(active)?.clientId)
+        failWrite = true
+        assertThrows(IllegalStateException::class.java) {
+            registrations.remove("oaiapp_first", active) { active = null }
+        }
+        assertNull(active)
+        assertEquals(original, metadata)
+        assertEquals("oaiapp_first", registrations.selected(null)?.clientId)
+        failWrite = false
+        registrations.remove("oaiapp_first", active) { fail("Already disconnected") }
+        assertEquals("oaiapp_second", registrations.selected(null)?.clientId)
+        assertEquals(listOf("second@example.test"), registrations.accounts().map { it.email })
+    }
+    @Test fun removingInactiveAccountNeverClearsCurrentCredentials() {
+        var metadata: String? = null
+        val registrations = ChatGPTRegistrations({ metadata }) { metadata = it }
+        val active = JSONObject().put("client_id", "oaiapp_first").put("subject", "first-user")
+        registrations.selected(active)
+        registrations.rememberIssued("oaiapp_second", newAccount = true)
+        registrations.remove("oaiapp_second", active) { fail("Must keep active credentials") }
+        assertEquals("oaiapp_first", registrations.selected(active)?.clientId)
     }
     @Test fun corruptMetadataAndUnknownAccountSelectionNeverBootstrapSilently() {
         var metadata: String? = "broken"

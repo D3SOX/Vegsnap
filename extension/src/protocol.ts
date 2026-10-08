@@ -25,6 +25,7 @@ export type Request =
   | { type: 'open-check'; barcode?: string; name?: string; brand?: string; sourceUrl?: string }
   | { type: 'pending'; id: string }
   | { type: 'delete'; id?: string }
+  | { type: 'hosted'; command: 'connect' | 'status' | 'disconnect' }
   | { type: 'companion'; command: 'status' | 'signIn' | 'disconnect' | 'models' };
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }
 export interface CheckReply extends HistoryResult { onlineConsent?: 'database' | 'ai'; }

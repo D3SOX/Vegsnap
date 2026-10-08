@@ -24,7 +24,7 @@ function validIngredientList(value: unknown): value is string[] {
 export function validateAIExtraction(value: unknown, options: { allowResearch?: boolean } = {}): AIExtraction {
   const keys = ['text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
   if (!object(value) || Object.keys(value).some(key => !keys.includes(key)) ||
-    typeof value.text !== 'string' || value.text.length > 20_000 || typeof value.complete !== 'boolean' ||
+    typeof value.text !== 'string' || value.text.length > 30_000 || typeof value.complete !== 'boolean' ||
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
     ['name', 'brand', 'barcode'].some(key => value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 300)) ||
     typeof value.barcode === 'string' && !/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(value.barcode)) {
@@ -176,7 +176,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
           throw new Error('Use a locally sanitized JPEG, PNG or WebP photo smaller than 3 MB.');
         }
       }
-      if ((input.text?.length ?? 0) > 20_000) throw new Error('Selected text exceeds 20,000 characters.');
+      if ((input.text?.length ?? 0) > 30_000) throw new Error('Selected text exceeds 30,000 characters.');
       const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
         { type: 'text', text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
         ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
@@ -206,6 +206,10 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         try {
           const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
             instructions: `${EXTRACTION_PROMPT}\n${promptData.researchPrompt}`,
+            text: { format: { type: 'json_schema', name: 'product_research', strict: false, schema: {
+              type: 'object', properties: { name: { type: 'string', enum: [extracted.name] }, brand: { type: 'string', enum: [extracted.brand] } },
+              required: ['text', 'complete', 'category', 'name', 'brand'],
+            } } },
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
               category: extracted.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, input) }) }] }],
           }));

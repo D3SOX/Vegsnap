@@ -1,6 +1,7 @@
 package app.vegsnap
 
 import android.content.Context
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -38,20 +39,35 @@ data class AppSettings(
     val startTab: String = "scan", val lastTab: String = "scan", val offline: Boolean = false,
     val connection: String = "chatgpt", val chatgptModel: String = "", val defaultCategory: String = "other", val parallelChecks: Int = 3,
 )
-internal fun appSettingsFromPreferences(p: Preferences): AppSettings = AppSettings(
-    p[booleanPreferencesKey("ai")] ?: true, p[stringPreferencesKey("url")] ?: "https://api.openai.com/v1",
-    p[stringPreferencesKey("model")] ?: "", p[booleanPreferencesKey("vision")] ?: true,
+// Resolve AI availability for each queued check; saved provider fields belong to the user's API.
+internal fun AppSettings.forAnalysis(hostedBaseUrl: String, hostedModel: String, connected: Boolean): AppSettings =
+    (if (connection == "hosted") copy(baseUrl = hostedBaseUrl, model = hostedModel, vision = true) else this)
+        .copy(aiEnabled = connected && !offline)
+
+internal fun aiConnectionReady(settings: AppSettings, chatGPT: ChatGPTStatus, hostedAI: HostedAIStatus,
+    apiToken: String, hostedToken: String): Boolean = when (settings.connection) {
+    "chatgpt" -> chatGPT.connected && settings.chatgptModel.isNotBlank()
+    "hosted" -> hostedAI.state == "connected" && hostedAI.enabled != false && hostedToken.matches(Regex("[a-f0-9]{64}"))
+    "api" -> validEndpoint(settings.baseUrl) && settings.model.isNotBlank() &&
+        (apiToken.isNotBlank() || settings.baseUrl.toHttpUrlOrNull()?.host in setOf("localhost", "127.0.0.1", "::1"))
+    else -> false
+}
+
+internal fun appSettingsFromPreferences(p: Preferences, defaults: AppSettings = AppSettings()): AppSettings = AppSettings(
+    true, p[stringPreferencesKey("url")] ?: defaults.baseUrl,
+    p[stringPreferencesKey("model")] ?: defaults.model, p[booleanPreferencesKey("vision")] ?: true,
     p[stringPreferencesKey("start")] ?: "scan", p[stringPreferencesKey("last")] ?: "scan",
     p[booleanPreferencesKey("offline")] ?: false,
-    p[stringPreferencesKey("connection")] ?: "chatgpt", p[stringPreferencesKey("chatgptModel")] ?: "",
+    p[stringPreferencesKey("connection")] ?: defaults.connection, p[stringPreferencesKey("chatgptModel")] ?: "",
     p[stringPreferencesKey("defaultCategory")]?.takeIf { it in setOf("other", "food", "drink", "cosmetics", "household", "clothing", "shoes") } ?: "other",
     (p[androidx.datastore.preferences.core.intPreferencesKey("parallelChecks")] ?: 3).coerceIn(1, 10),
 )
 private val Context.settingsDataStore by preferencesDataStore("settings")
 class SettingsStore(private val context: Context) {
-    val flow = context.settingsDataStore.data.map(::appSettingsFromPreferences)
+    internal val defaults = AppSettings(connection = "hosted")
+    val flow = context.settingsDataStore.data.map { appSettingsFromPreferences(it, defaults) }
     suspend fun save(settings: AppSettings) { context.settingsDataStore.edit {
-        it[booleanPreferencesKey("ai")] = settings.aiEnabled
+        it.remove(booleanPreferencesKey("ai"))
         it[stringPreferencesKey("url")] = settings.baseUrl
         it[stringPreferencesKey("model")] = settings.model
         it[booleanPreferencesKey("vision")] = settings.vision

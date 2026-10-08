@@ -119,7 +119,7 @@ class AnalysisQueueService : Service() {
             val runner = AnalysisQueueRunner(store, analyze = { job, progress ->
                 languages.initialize()
                 val photos = store.files(job.id).map { PreparedPhoto(it.readBytes()) }
-                val token = CredentialStore(application).read(job.settings.baseUrl)
+                val token = CredentialStore(application, if (job.settings.connection == "hosted") "hosted" else "api").read(job.settings.baseUrl)
                 withTimeout(5 * 60_000L) {
                     repository.check(job.input, photos, job.settings, token, progress) { prepared ->
                         prepared.map { ensureActive(); processor.recognizePhoto(it) }

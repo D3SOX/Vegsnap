@@ -26,13 +26,15 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
     private val researchPrompt: String = extractionPrompt,
     private val productRequests: OpenFactsProductRequests = OpenFactsProductRequests(),
     private val offlineDatabase: OfflineDatabase? = null,
-    private val companyConcerns: CompanyConcernResolver = CompanyConcernResolver()) {
+    private val companyConcerns: CompanyConcernResolver = CompanyConcernResolver(),
+    private val hostedBaseUrl: String = "") {
     constructor(context: Context, chatGPT: ChatGPTConnection? = null) : this(
         Evaluator(JSONObject(context.assets.open("rules.json").bufferedReader().use { it.readText() })),
         JSONObject(context.assets.open("ai-extraction-prompt.json").bufferedReader().use { it.readText() }).getString("prompt"),
         chatGPT = chatGPT, productRequests = openFactsProducts, offlineDatabase = ApplicationOfflineDatabase.get(context),
         researchPrompt = JSONObject(context.assets.open("ai-extraction-prompt.json").bufferedReader().use { it.readText() }).getString("researchPrompt"),
         companyConcerns = CompanyConcernResolver(JSONObject(context.assets.open("company-concerns.json").bufferedReader().use { it.readText() })),
+        hostedBaseUrl = JSONObject(context.assets.open("hosted-ai.json").bufferedReader().use { it.readText() }).getString("baseUrl"),
     )
     companion object {
         fun defaultHttpClient() = OkHttpClient.Builder().dispatcher(Dispatcher().apply { maxRequestsPerHost = 10 }).followRedirects(false).followSslRedirects(false)
@@ -91,6 +93,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 !settings.aiEnabled -> "disabled"
                 photos.isNotEmpty() && !settings.vision && combinedText.isBlank() -> "vision_disabled"
                 settings.connection == "chatgpt" && (settings.chatgptModel.isBlank() || chatGPT == null) -> "unconfigured"
+                settings.connection == "hosted" && (hostedBaseUrl.isBlank() || settings.baseUrl != hostedBaseUrl || !token.matches(Regex("[a-f0-9]{64}"))) -> "unconfigured"
                 settings.connection != "chatgpt" && (!validEndpoint(settings.baseUrl) || settings.model.isBlank()) -> "unconfigured"
                 else -> "pending"
             }
@@ -293,7 +296,17 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             .put("category", researchIdentity.getString("category")).put("locale", input.locale).put("unresolvedIngredients", publicResearchQuestions(input, researchIdentity)).toString()
         else extractionInputContext(input).toString()
         var research: JSONObject? = null
-        val text = if (settings.connection == "chatgpt") {
+        val text = if (settings.connection == "hosted") {
+            require(settings.baseUrl == hostedBaseUrl && !requireResearch)
+            val payload = JSONObject(context)
+            if (payload.isNull("complete")) payload.remove("complete")
+            if (settings.vision) payload.put("images", JSONArray(photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) }))
+            val response = requireNotNull(request(Request.Builder().url("$hostedBaseUrl/api/check")
+                .header("Authorization", "Bearer $token").post(payload.toString().toRequestBody("application/json".toMediaType())).build()))
+            research = response.optJSONObject("research")
+            response.remove("research")
+            response.toString()
+        } else if (settings.connection == "chatgpt") {
             val response = requireNotNull(chatGPT) { "ChatGPT connection unavailable" }.extract(settings.chatgptModel, prompt, context,
                 if (settings.vision) photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) } else emptyList(), requireResearch, onResearchStarted = { onProgress(CheckStage.SEARCHING_WEB) })
             research = response.research
@@ -344,7 +357,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         require(extracted.get("text") is String && extracted.get("complete") is Boolean)
         require(extracted.optString("category") in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other"))
         for (field in listOf("name", "brand", "barcode")) require(!extracted.has(field) || extracted.get(field) is String)
-        require(extracted.getString("text").length <= 20_000)
+        require(extracted.getString("text").length <= 30_000)
         validateAIEvidence(extracted)
         validateWebClaims(extracted)
         validateWebCompositions(extracted)
@@ -363,8 +376,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         return extracted
     }
     private suspend fun request(request: Request, allowNotFound: Boolean = false): JSONObject? = suspendCancellableCoroutine { continuation ->
+        val hostedRequest = request.url.encodedPath == "/api/check"
         val providerRequest = request.url.encodedPath.endsWith("/responses") || request.url.encodedPath.endsWith("/chat/completions")
-        val client = if (providerRequest) http.newBuilder().callTimeout(120, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).build() else http
+        val client = if (hostedRequest) http.newBuilder().callTimeout(135, TimeUnit.SECONDS).readTimeout(135, TimeUnit.SECONDS).build()
+            else if (providerRequest) http.newBuilder().callTimeout(120, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).build() else http
         val call = client.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
@@ -483,4 +498,4 @@ internal fun reconcileOriginQuestions(questions: JSONArray, findings: JSONArray,
 /** Shared by ChatGPT plan and OpenAI-compatible requests, so photo checks retain known identity. */
 internal fun extractionInputContext(input: CheckInput): JSONObject = JSONObject().put("text", input.text).put("category", input.category)
     .put("locale", input.locale).put("complete", input.complete ?: JSONObject.NULL)
-    .apply { if (input.name.isNotBlank()) put("name", input.name); if (validGtin(input.barcode)) put("barcode", input.barcode) }
+    .apply { if (input.name.isNotBlank()) put("name", input.name.take(300)); if (validGtin(input.barcode)) put("barcode", input.barcode) }
