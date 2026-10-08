@@ -211,13 +211,30 @@ test('global allowance is atomic across different sessions', async () => {
   expect(replies.filter(reply => reply.status === 200)).toHaveLength(4);
   expect(replies.filter(reply => reply.status === 429)).toHaveLength(2);
   expect(upstream).toHaveLength(4);
+  for (const token of tokens) expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 0 });
+});
+test('reported allowance reflects the tighter personal or global daily budget', async () => {
+  const first = await connect();
+  const second = await connect();
+  const unused = await connect();
+  for (let i = 0; i < 2; i++) expect((await check(first)).status).toBe(200);
+  expect(await (await request('/api/session', first)).json()).toMatchObject({ remaining: 1 });
+  expect(await (await request('/api/session', unused)).json()).toMatchObject({ remaining: 2 });
+  expect((await check(second)).status).toBe(200);
+  expect(await (await request('/api/session', unused)).json()).toMatchObject({ remaining: 1 });
+  expect((await check(second)).status).toBe(200);
+  expect(await (await request('/api/session', unused)).json()).toMatchObject({ remaining: 0 });
+  const db = await mf.getD1Database('DB');
+  await db.prepare("UPDATE daily_budget SET day = '2000-01-01'").run();
+  expect(await (await request('/api/session', unused)).json()).toMatchObject({ remaining: 3 });
+  expect(await (await request('/api/session', first)).json()).toMatchObject({ remaining: 1 });
 });
 test('a fresh installation identity gets its own allowance but cannot reset the global budget', async () => {
   const first = await connect();
   for (let i = 0; i < 3; i++) expect((await check(first)).status).toBe(200);
   expect(await (await request('/api/session', first)).json()).toMatchObject({ remaining: 0 });
   const reset = await connect();
-  expect(await (await request('/api/session', reset)).json()).toMatchObject({ remaining: 3 });
+  expect(await (await request('/api/session', reset)).json()).toMatchObject({ remaining: 1 });
   expect((await check(reset)).status).toBe(200);
   expect((await check(reset)).status).toBe(429);
   expect(upstream).toHaveLength(4);

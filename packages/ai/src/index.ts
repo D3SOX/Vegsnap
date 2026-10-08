@@ -64,10 +64,11 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
   const tokenHash = await hashToken(request);
   if (path === '/api/session' && request.method === 'GET') {
-    const session = await env.DB.prepare('SELECT verified, expires_at, day, checks, COALESCE((SELECT checks FROM installation_usage WHERE installation_hash = sessions.installation_hash AND day = ?), 0) AS installation_checks FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(today, tokenHash, now()).first<{verified: number; expires_at: number; day: string; checks: number; installation_checks: number}>();
+    const session = await env.DB.prepare('SELECT verified, expires_at, day, checks, COALESCE((SELECT checks FROM installation_usage WHERE installation_hash = sessions.installation_hash AND day = ?), 0) AS installation_checks, COALESCE((SELECT checks FROM daily_budget WHERE day = ?), 0) AS global_checks FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(today, today, tokenHash, now()).first<{verified: number; expires_at: number; day: string; checks: number; installation_checks: number; global_checks: number}>();
     if (!session) throw new HttpError(401, 'Your free session expired. Connect again in settings.');
     return json({ state: session.verified ? 'connected' : 'pending', expiresAt: session.expires_at * 1000,
-      remaining: Math.max(0, limit(env.SESSION_CHECK_LIMIT) - Math.max(session.day === today ? session.checks : 0, session.installation_checks)), enabled: enabled(env) });
+      remaining: Math.max(0, Math.min(limit(env.SESSION_CHECK_LIMIT) - Math.max(session.day === today ? session.checks : 0, session.installation_checks),
+        limit(env.DAILY_CHECK_LIMIT) - session.global_checks)), enabled: enabled(env) });
   }
   if (path === '/api/session' && request.method === 'DELETE') {
     await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
