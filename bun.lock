@@ -12,7 +12,7 @@
     },
     "extension": {
       "name": "@vegsnap/extension",
-      "version": "0.2.10",
+      "version": "0.2.11",
       "dependencies": {
         "@vegsnap/core": "workspace:*",
         "preact": "^10.27.0",
@@ -27,7 +27,7 @@
     },
     "packages/community": {
       "name": "@vegsnap/community",
-      "version": "0.2.10",
+      "version": "0.2.11",
       "dependencies": {
         "@vegsnap/core": "workspace:*",
       },
@@ -41,7 +41,7 @@
     },
     "packages/core": {
       "name": "@vegsnap/core",
-      "version": "0.2.10",
+      "version": "0.2.11",
       "devDependencies": {
         "@types/bun": "^1.3.0",
         "typescript": "^5.9.3",
