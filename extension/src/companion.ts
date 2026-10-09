@@ -20,6 +20,11 @@ async function sendCompanion(command: string, payload?: unknown, signal?: AbortS
   if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) throw new Error('Enable the desktop companion in settings first.');
   await requireDataConsent(command === 'check' ? [...ACCOUNT_DATA, ...CONTENT_DATA] : ACCOUNT_DATA);
   signal?.throwIfAborted();
+  // Chromium may leave an existing worker without this API after an optional grant.
+  if (typeof browser.runtime.connectNative !== 'function') {
+    browser.runtime.reload();
+    throw new Error('The desktop companion was enabled. Please reopen Vegsnap and connect ChatGPT again.');
+  }
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
     const port = browser.runtime.connectNative('org.vegsnap.companion');
