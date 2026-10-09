@@ -12,6 +12,7 @@ final class ShareViewController: UIViewController {
         host.didMove(toParent: self)
     }
     @MainActor private func save() async throws {
+        try Task.checkCancellation()
         guard let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.vegsnap.ios") else { throw NSError(domain: "Vegsnap", code: 1, userInfo: [NSLocalizedDescriptionKey: NSLocalizedString("The shared container is unavailable.", comment: "")]) }
         let id = UUID().uuidString
         let staging = directory.appendingPathComponent(id + ".pending", isDirectory: true)
@@ -22,6 +23,7 @@ final class ShareViewController: UIViewController {
         var text: [String] = []; var photos: [String] = []
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
         for provider in items.flatMap({ $0.attachments ?? [] }).prefix(6) {
+            try Task.checkCancellation()
             if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                 guard photos.count < 3 else { continue }
                 let url: URL = try await withCheckedThrowingContinuation { continuation in
@@ -35,6 +37,7 @@ final class ShareViewController: UIViewController {
                         } catch { continuation.resume(throwing: error) }
                     }
                 }
+                try Task.checkCancellation()
                 photos.append(url.lastPathComponent)
             } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) || provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
                 let type = provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) ? UTType.url.identifier : UTType.plainText.identifier
@@ -44,17 +47,21 @@ final class ShareViewController: UIViewController {
                         else { continuation.resume(returning: (item as? URL)?.absoluteString ?? item as? String ?? "") }
                     }
                 }
+                try Task.checkCancellation()
                 text.append(String(value.prefix(30_000)))
             }
         }
         let data = try InboxPayload.encode(text: text.joined(separator: "\n"), photos: photos)
         try data.write(to: staging.appendingPathComponent("input.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        try Task.checkCancellation()
         try FileManager.default.moveItem(at: staging, to: directory.appendingPathComponent(id, isDirectory: true))
     }
 }
 struct ShareView: View {
     var save: () async throws -> Void; var close: () -> Void
     @State private var busy = false; @State private var saved = false; @State private var error: String?
+    @State private var saveTask: Task<Void, Never>?
+    private func cancelAndClose() { saveTask?.cancel(); close() }
     var body: some View {
         NavigationStack { VStack(spacing: 24) {
             Image(systemName: saved ? "checkmark.circle" : "leaf.circle").font(.system(size: 60)).foregroundStyle(.green)
@@ -63,8 +70,16 @@ struct ShareView: View {
             if let error { Text(error).foregroundStyle(.red) }
             if busy { ProgressView() }
             Button(LocalizedStringKey(saved ? "Done" : "Save product")) {
-                if saved { close() } else { Task { busy = true; defer { busy = false }; do { try await save(); saved = true } catch { self.error = error.localizedDescription } } }
+                if saved { close() } else {
+                    busy = true
+                    saveTask = Task {
+                        defer { busy = false; saveTask = nil }
+                        do { try await save(); try Task.checkCancellation(); saved = true }
+                        catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+                    }
+                }
             }.buttonStyle(.borderedProminent).disabled(busy)
-        }.padding(30).navigationTitle("Vegsnap").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: close) } } }
+        }.padding(30).navigationTitle("Vegsnap").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: cancelAndClose) } } }
+        .onDisappear { saveTask?.cancel() }
     }
 }
