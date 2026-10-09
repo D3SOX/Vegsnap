@@ -14,6 +14,7 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   const context = createContext({
     nativeUUID: () => crypto.randomUUID(), nativeByteCount: (value: string) => Buffer.byteLength(value),
     nativeURL: (value: string, base: string) => { try { const u = new URL(value, base || undefined); return JSON.stringify(Object.fromEntries(['href', 'origin', 'protocol', 'hostname', 'pathname', 'username', 'password', 'search', 'hash'].map(key => [key, u[key as keyof URL]]))); } catch { return 'null'; } },
+    nativeLanguage: (value: string) => ({ Swedish: 'sv', svenska: 'sv', swe: 'sv', sv: 'sv', German: 'de', Deutsch: 'de', de: 'de' }[value] ?? 'en'),
     nativeTimer: () => {}, nativeCancelFetch: () => {}, nativeProgress: () => {},
     nativeFetch: (_id: string, url: string, raw: string, callback: (status: number, text: string, error: string) => void) => {
       const options = JSON.parse(raw); calls.push({ url, options });
@@ -129,4 +130,50 @@ test('offline hosted checks make no request', async () => {
   const app = harness();
   await app.check({ input: { text: 'mystery', category: 'food', locale: 'en' }, offline: true, aiEnabled: true, hostedToken: 'a'.repeat(64) });
   expect(app.calls).toHaveLength(0);
+});
+
+for (const chatGPT of [false, true]) test(`catalogue recovery uses public transport and retains UTF-8 composition (ChatGPT: ${chatGPT})`, async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'sv', country: 'Sverige', quantity: '200 g', variant: 'chili' } };
+  const product = { name: 'Hummus chili', brand: 'Coop', weight_pretty: '200g', slug: 'produkt/hummus-chili-200g-coop', ingredients: 'Ingredienser: kikärtor, honey, salt' };
+  let aiCalls = 0;
+  const app = harness((url, body) => {
+    if (url === 'https://api.matspar.se/slug') return { status: 200, body: JSON.parse(body!).slug === '/kategori'
+      ? { type: 'category', payload: { products: [product] } } : { type: 'product', payload: product } };
+    if (url.endsWith('/responses')) return ++aiCalls === 1
+      ? { status: 200, body: { status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(extraction) }] }] } }
+      : { status: 503, body: {} };
+    return { status: 404, body: {} };
+  });
+  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='], locale: 'en' }, provider: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', supportsVision: true }, chatGPT, aiEnabled: true });
+  expect(result.outcome).toBe('not_vegan');
+  expect(result.evidence.some(e => e.url === 'https://www.matspar.se/produkt/hummus-chili-200g-coop' && e.excerpt === product.ingredients)).toBe(true);
+  const requests = app.calls.filter(call => call.url === 'https://api.matspar.se/slug');
+  expect(requests).toHaveLength(2);
+  expect(requests.every(call => call.options.chatGPT === false && !JSON.parse(call.options.body!).stream)).toBe(true);
+  expect(app.calls.filter(call => call.url.endsWith('/responses')).every(call => call.options.chatGPT === chatGPT)).toBe(true);
+  expect(result.evidence.filter(e => e.id === 'ai-extraction').some(e => e.excerpt === product.ingredients)).toBe(false);
+});
+
+test('packaging matches preserve complete database composition, source and app language', async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Coop Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', country: 'Sweden', variant: 'med chili' }, ingredientAssessments: [{ term: 'kikärtor', status: 'plant', explanation: 'Chickpeas are plants.' }] };
+  const product = { code: '4006381333931', product_name: 'Other base name', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags: ['en:sweden'], ingredients_text_sv: 'kikärtor, honey, salt' };
+  const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
+    : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='], locale: 'de' }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  expect(result.outcome).toBe('not_vegan');
+  expect(result.identity.match).toBe('unconfirmed');
+  expect(result.identity.barcode).toBeUndefined();
+  expect(result.evidence.some(e => e.kind === 'database' && e.excerpt === product.ingredients_text_sv && e.url?.endsWith('/product/4006381333931'))).toBe(true);
+  expect(result.findings.some(f => f.term === 'honey' && f.status === 'animal')).toBe(true);
+  expect(new URL(app.calls.find(call => call.url.includes('/cgi/search.pl'))!.url).searchParams.get('lc')).toBe('sv');
+});
+
+for (const mismatch of ['brand', 'quantity', 'variant', 'market', 'ambiguous', 'pagination', 'empty'] as const) test(`packaging recovery rejects ${mismatch}`, async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g', country: 'Sweden' } };
+  const product = { code: '4006381333931', product_name_sv: mismatch === 'variant' ? 'Hummus ginger' : 'Hummus chili', brands: mismatch === 'brand' ? 'Other' : 'Coop', quantity: mismatch === 'quantity' ? '140g' : '200g', countries_tags: [mismatch === 'market' ? 'en:germany' : 'en:sweden'], ingredients_text_sv: mismatch === 'empty' ? '' : 'honey' };
+  const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: mismatch === 'pagination' ? 21 : 1, products: mismatch === 'ambiguous' ? [product, product] : [product] } }
+    : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  expect(result.outcome).toBe('uncertain');
+  expect(result.evidence.some(e => e.kind === 'database')).toBe(false);
 });

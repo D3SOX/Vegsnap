@@ -3,6 +3,15 @@ import JavaScriptCore
 
 /// Confined to the main actor: JavaScriptCore objects never cross queues.
 @MainActor final class CoreEngine {
+    static func packagingLanguage(_ value: String) -> String {
+        let normalized = value.folding(options: [.caseInsensitive, .widthInsensitive], locale: Locale(identifier: "en")).trimmingCharacters(in: .whitespacesAndNewlines)
+        return Locale.LanguageCode.isoLanguageCodes.first { code in
+            let identifier = code.identifier
+            return [identifier, code.identifier(.alpha3), Locale(identifier: "en").localizedString(forLanguageCode: identifier),
+                    Locale(identifier: identifier).localizedString(forLanguageCode: identifier)]
+                .compactMap { $0 }.contains { $0.lowercased() == normalized }
+        }?.identifier ?? "en"
+    }
     private let context: JSContext
     private var requests: [String: Task<Void, Never>] = [:]
     private var pending: [String: CheckedContinuation<CheckResult, Error>] = [:]
@@ -60,6 +69,8 @@ import JavaScriptCore
             } catch { continuation.resume(throwing: error) }
         }
         let progress: @convention(block) (String, String) -> Void = { [weak self] id, stage in self?.progress?(id, stage) }
+        let language: @convention(block) (String) -> String = { Self.packagingLanguage($0) }
+        context.setObject(language, forKeyedSubscript: "nativeLanguage" as NSString)
         context.setObject(uuid, forKeyedSubscript: "nativeUUID" as NSString)
         context.setObject(byteCount, forKeyedSubscript: "nativeByteCount" as NSString)
         context.setObject(url, forKeyedSubscript: "nativeURL" as NSString)

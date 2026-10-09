@@ -5,6 +5,11 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testPackagingLanguageUsesObservedNamesAndCodes() {
+        for language in ["sv", "swe", "Swedish", "svenska"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "sv") }
+        for language in ["de", "deu", "German", "Deutsch"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "de") }
+        XCTAssertEqual(CoreEngine.packagingLanguage("unknown"), "en")
+    }
     var engine: CoreEngine!
     override func setUp() async throws { Keychain.testService = "app.vegsnap.ios.tests." + UUID().uuidString; engine = try CoreEngine() }
     override func tearDown() async throws {
@@ -568,6 +573,16 @@ import Security
         let completed = Data("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[]}}\n\n".utf8)
         XCTAssertNoThrow(try ChatGPTConnection.completedResponse(completed))
     }
+    func testNativeCatalogueRecoveryRetainsFetchedComposition() async throws {
+        Network.testProtocolClasses = [CatalogueProtocol.self]
+        CatalogueProtocol.aiCalls = 0; CatalogueProtocol.catalogueCalls = 0
+        var settings = Settings(); settings.connection = "api"; settings.baseUrl = "https://api.openai.com/v1"; settings.model = "gpt-4o"; settings.vision = true
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(category: .food, images: ["data:image/jpeg;base64,AA=="]), settings: settings, token: "fixture-key")
+        XCTAssertEqual(result.outcome.rawValue, "not_vegan")
+        XCTAssertEqual(CatalogueProtocol.catalogueCalls, 2)
+        XCTAssertTrue(result.evidence.contains { $0.url == "https://www.matspar.se/produkt/hummus-chili-200g-coop" && $0.excerpt == "Ingredienser: kikärtor, honey, salt" })
+        XCTAssertFalse(result.evidence.contains { $0.id == "ai-extraction" })
+    }
     func testNativeNetworkBridgeAndResponseLimit() async throws {
         Network.testProtocolClasses = [FixtureProtocol.self]
         defer { Network.testProtocolClasses = nil }
@@ -753,6 +768,30 @@ private final class DeferredRefreshProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
         }
         Self.started?.fulfill()
+    }
+    override func stopLoading() {}
+}
+
+private final class CatalogueProtocol: URLProtocol, @unchecked Sendable {
+    static var aiCalls = 0
+    static var catalogueCalls = 0
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        var status = 200
+        let json: [String: Any]
+        if request.url?.host == "api.matspar.se" {
+            Self.catalogueCalls += 1
+            let product = ["name": "Hummus chili", "brand": "Coop", "weight_pretty": "200g", "slug": "produkt/hummus-chili-200g-coop", "ingredients": "Ingredienser: kikärtor, honey, salt"]
+            json = Self.catalogueCalls == 1 ? ["type": "category", "payload": ["products": [product]]] : ["type": "product", "payload": product]
+        } else if request.url?.host == "api.openai.com" && Self.aiCalls == 0 {
+            Self.aiCalls += 1
+            let content = #"{"text":"","complete":false,"category":"food","name":"Hummus med chili","brand":"Coop","packaging":{"language":"sv","country":"Sverige","quantity":"200 g","variant":"chili"}}"#
+            json = ["status": "completed", "output": [["type": "message", "role": "assistant", "content": [["type": "output_text", "text": content]]]]]
+        } else { status = 503; json = [:] }
+        let data = try! JSONSerialization.data(withJSONObject: json)
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
 }

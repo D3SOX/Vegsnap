@@ -1,5 +1,6 @@
 import * as core from '../../packages/core/src/index';
 import { mergeResults } from '../../packages/core/src/merge-results';
+import { identifiedProduct } from './identified-product';
 import bundled from '../../data/offline/bundle.json';
 
 // Native UI/network/storage live in Swift. Only the audited decision engine is shared.
@@ -44,16 +45,28 @@ export function check(id: string, json: string) {
   const controller = new AbortController(); operations.set(id, controller);
   void (async () => {
     try {
-      const provider: core.ProviderAdapter | undefined = args.hostedToken ? core.createHostedAIProvider(args.hostedToken) : args.provider ? {
+      let extraction: core.AIExtraction | undefined;
+      const adapter: core.ProviderAdapter | undefined = args.hostedToken ? core.createHostedAIProvider(args.hostedToken) : args.provider ? {
         supportsWebSearch: args.provider.baseUrl.replace(/\/$/, '') === 'https://api.openai.com/v1',
-        extract: (input, signal) => core.createOpenAIProvider(args.provider, args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined).extract(input, signal),
+        extract: (input, signal) => core.createOpenAIProvider(args.provider, args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined, globalThis.fetch).extract(input, signal),
       } : undefined;
+      const provider: core.ProviderAdapter | undefined = adapter && { ...adapter, extract: async (input, signal) => {
+        extraction = core.validateAIExtraction(await adapter.extract(input, signal), { allowResearch: true });
+        return extraction;
+      } };
       const options: core.CheckOptions = { mode: 'explicit', offline: args.offline, provider, offlineProducts: index, signal: controller.signal, onProgress: stage => { if (operations.get(id) === controller) host.nativeProgress(id, stage); } };
       let result = await core.checkProduct(args.input, options);
       // Barcode-only checks can research the exact database identity. Keep database
       // composition in its original evidence, never reclassify it as supplied text.
       if (result.outcome === 'uncertain' && provider && !args.offline && !args.input.text?.trim() && !args.input.images?.length && !args.input.name?.trim() && result.identity.name) {
         result = await core.checkProduct({ ...args.input, name: result.identity.name.slice(0, 300), brand: result.identity.brand?.slice(0, 300) }, options);
+      }
+      if (extraction && !args.offline && result.outcome === 'uncertain' && result.aiStatus !== 'failed') {
+        try {
+          const database = await identifiedProduct(extraction, args.input, controller.signal);
+          if (database) result = core.attachCompanyConcerns({ ...mergeResults(result, database),
+            manufacturerContact: result.manufacturerContact, companyAssessment: result.companyAssessment }, args.input.locale, result.identity.brand);
+        } catch (error) { if (controller.signal.aborted) throw error; }
       }
       if (!args.aiEnabled && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
       if (operations.get(id) === controller) host.nativeComplete(id, JSON.stringify(core.localizeResult(result, args.input.locale)), '');

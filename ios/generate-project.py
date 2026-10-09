@@ -39,7 +39,7 @@ for name, folder, product, kind in [('Vegsnap','Vegsnap','Vegsnap.app','applicat
     products.append(product_ref)
     configs=[]
     for config in ['Debug','Release']:
-        settings=dict(PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_BUNDLE_IDENTIFIER='app.vegsnap.ios'+('' if name=='Vegsnap' else '.'+name),SWIFT_VERSION='5.0',TARGETED_DEVICE_FAMILY='1,2',IPHONEOS_DEPLOYMENT_TARGET='18.0',CODE_SIGN_STYLE='Automatic',CURRENT_PROJECT_VERSION='1',MARKETING_VERSION='0.2.12',GENERATE_INFOPLIST_FILE='YES',SWIFT_EMIT_LOC_STRINGS='NO')
+        settings=dict(PRODUCT_NAME='$(TARGET_NAME)',PRODUCT_BUNDLE_IDENTIFIER='app.vegsnap.ios'+('' if name=='Vegsnap' else '.'+name),SWIFT_VERSION='5.0',TARGETED_DEVICE_FAMILY='1,2',IPHONEOS_DEPLOYMENT_TARGET='18.0',CODE_SIGN_STYLE='Automatic',CURRENT_PROJECT_VERSION='1',MARKETING_VERSION=json.loads((root.parent/'package.json').read_text())['version'],GENERATE_INFOPLIST_FILE='YES',SWIFT_EMIT_LOC_STRINGS='NO')
         if config=='Debug': settings.update(SWIFT_ACTIVE_COMPILATION_CONDITIONS='DEBUG',SWIFT_OPTIMIZATION_LEVEL='-Onone',ENABLE_TESTABILITY='YES',ONLY_ACTIVE_ARCH='YES')
         else: settings.update(SWIFT_COMPILATION_MODE='wholemodule',SWIFT_OPTIMIZATION_LEVEL='-O')
         if name=='Vegsnap': settings.update(INFOPLIST_FILE='Vegsnap/Info.plist',GENERATE_INFOPLIST_FILE='NO',CODE_SIGN_ENTITLEMENTS='Vegsnap/Vegsnap.entitlements',ASSETCATALOG_COMPILER_APPICON_NAME='AppIcon',ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME='AccentColor',LD_RUNPATH_SEARCH_PATHS='$(inherited) @executable_path/Frameworks')

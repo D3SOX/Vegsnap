@@ -1,4 +1,5 @@
 import { normalizeBarcode } from './barcode';
+import { readBoundedText } from './http';
 import { compositionTerms, parseSourceIngredients, safeSourceUrl } from './analyze';
 import type { AIExtraction, CheckInput } from './types';
 
@@ -38,35 +39,16 @@ function swedishIdentity(extraction: AIExtraction, input: CheckInput): { name: s
 }
 async function boundedJson(response: Response): Promise<unknown> {
   if (!response.ok || response.redirected) return undefined;
-  const length = Number(response.headers.get('content-length'));
-  if (Number.isFinite(length) && length > maxResponseBytes) return undefined;
-  const reader = response.body?.getReader();
-  if (!reader) return undefined;
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > maxResponseBytes) { await reader.cancel(); return undefined; }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-  try { return JSON.parse(new TextDecoder().decode(bytes)) as unknown; } catch { return undefined; }
+  try { return JSON.parse(await readBoundedText(response, maxResponseBytes)) as unknown; } catch { return undefined; }
 }
 async function page(fetcher: typeof fetch, slug: string, query: { q?: string }, type: string, signal?: AbortSignal): Promise<JsonObject | undefined> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
-  const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
-  try {
-    const response = await fetcher(endpoint, { method: 'POST', credentials: 'omit', redirect: 'error', signal: requestSignal,
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, query }) });
-    const body = await boundedJson(response);
-    if (!object(body) || body.type !== type || !object(body.payload)) return undefined;
-    return body.payload;
-  } finally { clearTimeout(timeout); }
+  const timeout = AbortSignal.timeout(10_000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const response = await fetcher(endpoint, { method: 'POST', credentials: 'omit', redirect: 'error', signal: requestSignal,
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, query }) });
+  const body = await boundedJson(response);
+  if (!object(body) || body.type !== type || !object(body.payload)) return undefined;
+  return body.payload;
 }
 
 function coversComposition(sourceText: string, value: unknown): string[] | undefined {
