@@ -199,6 +199,26 @@ test('manual country recovery requires matching tags while automatic recovery ca
     if (autoMarket && !countries_tags?.length) expect(result.warnings.join(' ')).toContain('does not confirm the product country');
   }
 });
+test('recovery checks country text when canonical tags are empty', async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g' } };
+  const records = [
+    { countries_tags: [], countries: 'Germany', accepted: false },
+    { countries_tags: [], countries: 'Sweden', accepted: true },
+    { countries_tags: ['', ' ', 42], countries: 'Germany', accepted: false },
+    { countries_tags: ['', ' ', 42], countries: 'Sweden', accepted: true },
+    { countries_tags: ['en:sweden'], countries: 'Germany', accepted: true },
+  ];
+  for (const autoMarket of [false, true]) for (const { accepted, ...countries } of records) {
+    const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', ...countries, ingredients_text_sv: 'honey' };
+    const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
+      : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+    const result = await app.check({ input: { market: 'SE', autoMarket, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+    expect(result.identity).toMatchObject({ market: 'SE', marketSource: autoMarket ? 'fallback' : 'manual' });
+    expect(result.evidence.some(item => item.kind === 'database')).toBe(accepted);
+    expect(result.outcome).toBe(accepted ? 'not_vegan' : 'uncertain');
+    expect(result.warnings.join(' ')).not.toContain('does not confirm the product country');
+  }
+});
 test('packaging matches preserve complete database composition, source and app language', async () => {
   const extraction = { text: '', complete: false, category: 'food', name: 'Coop Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', country: 'Sweden', variant: 'med chili' }, ingredientAssessments: [{ term: 'kikärtor', status: 'plant', explanation: 'Chickpeas are plants.' }] };
   const product = { code: '4006381333931', product_name: 'Other base name', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags: ['en:sweden'], ingredients_text_sv: 'kikärtor, honey, salt' };

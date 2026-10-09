@@ -11,7 +11,8 @@ function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 function countries(product: Record<string, unknown>): string[] {
-  return Array.isArray(product.countries_tags) ? product.countries_tags.filter((value): value is string => typeof value === 'string' && Boolean(value.trim())) : text(product.countries).split(/[,;|]/).filter(Boolean);
+  const tags = Array.isArray(product.countries_tags) ? product.countries_tags.filter((value): value is string => typeof value === 'string' && Boolean(value.trim())) : [];
+  return tags.length ? tags : text(product.countries).split(/[,;|]/).map(value => value.trim()).filter(Boolean);
 }
 
 /** Require a unique packaging match; a name match never establishes an exact barcode or complete label. */
