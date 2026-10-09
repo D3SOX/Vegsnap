@@ -26,7 +26,7 @@ Vegsnap supports food, cosmetics, household products, clothing and shoes. It use
 
 You do not need a Vegsnap account. History stays on your device. The app has no ads or telemetry.
 
-The optional [community manufacturer-reply service](packages/community/README.md) accepts redacted responses for review and publishes approved contributions on Cloudflare. It is configured separately; opening a product result does not upload its history or alter its verdict.
+You can look up reviewed manufacturer replies in the Android app or open the community service from the extension. To contribute a reply, open the submission form and redact personal details before sending it. The [community service](packages/community/README.md) publishes approved contributions on Cloudflare. Replies stay separate from the product verdict. Opening a result does not upload your history.
 
 This is an early release. Device, store and provider compatibility tests are ongoing.
 
@@ -35,8 +35,9 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 - On Android, take or import photos, share a product, or enter text. The app has local history and offline text recognition with downloadable language models.
 - In Chromium and Firefox, check selected text or right-click a product image. Enable store integrations if you want database checks while browsing. Background checks never use AI.
-- Connect ChatGPT with a Plus or Pro plan, an OpenAI-compatible API, or a compatible local model for AI checks. The extension needs the optional desktop companion for ChatGPT sign-in. API-key connections work without it.
+- Use Vegsnap AI for limited free checks without a subscription or API key. You can also connect ChatGPT with a Plus or Pro plan, an OpenAI-compatible API, or a compatible local model. Only ChatGPT sign-in in the extension needs the desktop companion.
 - Look up barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts. Regional packs provide a selection of these records offline.
+- When AI finds a manufacturer contact, draft a question in English, German or Swedish. Copy it or open an email draft to ask about missing product details.
 - Review company concerns alongside the product result. A reviewed list records documented animal testing, opposition to animal-welfare protections and other animal exploitation. Each entry has a source, a review date and a status. Parent-company links need their own ownership source. Selling animal products alone does not qualify.
 
 Connected AI can also assess a company using searched sources. Its assessment stays separate from reviewed records and can be inconclusive. Neither changes the product's vegan result. A missing record or no concerns found is not an ethical endorsement.
@@ -67,13 +68,17 @@ Open an image to see the original screenshot.
 
 ## AI and evidence
 
-ChatGPT sign-in on Android and in the browser extension requires a **[ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart)**. Free ChatGPT accounts are not supported for this connection. Public database checks and local rules work without a ChatGPT plan.
+For free AI checks, choose **Vegsnap AI** in Settings, select **Connect to free AI** and complete verification in your browser. Return to Vegsnap to see your remaining allowance. This connection needs no ChatGPT subscription, personal API key or desktop companion. Access expires after 24 hours and allowances reset at midnight UTC. A shared service limit can make free checks unavailable, and a failed AI request can count as a check.
 
-AI can identify a product, read its label and assess unfamiliar ingredients. ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
+Vegsnap AI sends selected product text, prepared photos and product details through a maintainer-operated Cloudflare service to OpenAI. It does not send your saved history or personal provider credentials. See the [privacy policy](https://vegsnap.app/privacy.html) for storage and retention details.
+
+ChatGPT sign-in on Android and in the browser extension requires a [ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart). Free ChatGPT accounts are not supported for this connection. Android connects directly; the extension needs the desktop companion. On Android, you can save and switch between ChatGPT accounts in Settings. Public database checks and local rules work without any AI connection.
+
+AI can identify a product, read its label and assess unfamiliar ingredients. Vegsnap AI, ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
 
 Vegsnap accepts a web claim only if its URL came from the search tool and its product and brand match the check. AI-read labels and claims remain marked unverified. Community database labels do not establish verified certification.
 
-Incomplete composition, ambiguous ingredient origins or conflicting sources can produce an uncertain result. Store badges require an exact barcode in the page's structured product data. Use a right-click check when a listing does not supply one.
+Incomplete composition, ambiguous ingredient origins or conflicting sources can produce an uncertain result. Automatic store database checks need an exact barcode from the listing. Use a right-click check when a listing does not supply one.
 
 Connecting a cloud provider can send selected text and photos to that provider when you start a check. The provider's retention policy, usage limits and charges apply. Database checks and local rules need no AI account.
 
@@ -87,7 +92,7 @@ Google Play and GitHub APKs use different signing keys. To switch between them, 
 
 ## Install the browser extension
 
-Install Vegsnap from the **[Chrome Web Store](https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej)** in Chrome or a compatible Chromium-based browser. Firefox store approval is still pending; you can install it temporarily using the package below.
+Install Vegsnap from the [Chrome Web Store](https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej) in Chrome or a compatible Chromium-based browser. Firefox store approval is still pending; you can install it temporarily using the package below. The Firefox extension requires Firefox 140 or later.
 
 Download the browser packages from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest).
 
@@ -96,7 +101,7 @@ Download the browser packages from the [latest release](https://github.com/D3SOX
 
 ## Install the ChatGPT companion
 
-ChatGPT sign-in requires a ChatGPT Plus or Pro plan. The extension also needs a desktop companion. API-key connections do not need it. The companion saves credentials in your operating system's credential store.
+The desktop companion connects the browser extension to your ChatGPT Plus or Pro plan. Vegsnap AI, API-key connections and Android ChatGPT sign-in work without it. The companion saves credentials in your operating system's credential store.
 
 The commands below use the Chrome Web Store extension ID. If you installed the Chromium ZIP or CRX manually, replace `pkkfmbgdbdoccbdngnbfpjjhpldmphej` with `bljmddjdbglldnbdhdfdlbilieoheend`.
 
