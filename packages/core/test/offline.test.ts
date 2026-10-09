@@ -40,6 +40,20 @@ test('snapshot matching respects GTIN equivalence, market and newest product mod
   expect(index.lookup(code, { market: 'SE' })?.warnings?.some(message => message.startsWith('Different market:'))).toBe(true);
   expect(() => index.lookup('4006381333932')).toThrow('GTIN');
 });
+test('manual offline countries exclude tagged mismatches and prefer matching composition over freshness', async () => {
+  const german = snapshot(); german.products[0]!.ingredients = 'milk';
+  const swedish = snapshot(); swedish.products[0]!.countries_tags = ['en:sweden']; swedish.products[0]!.ingredients = 'water'; swedish.products[0]!.last_modified_t--;
+  const index = new OfflineProductIndex([german, swedish]);
+  expect(index.lookup(code, { market: 'JP', autoMarket: false })).toBeNull();
+  for (const autoMarket of [false, true]) {
+    const result = await checkProduct({ barcode: code, market: 'SE', autoMarket }, { mode: 'background', offline: true, offlineProducts: index });
+    expect(result.identity).toMatchObject({ market: 'SE', marketSource: autoMarket ? 'fallback' : 'manual' });
+    expect(result.outcome).toBe('uncertain');
+    expect(result.evidence.find(item => item.kind === 'database')?.excerpt).toBe('water');
+  }
+  const untagged = snapshot(); untagged.products[0]!.countries_tags = [];
+  expect(new OfflineProductIndex([untagged]).lookup(code, { market: 'JP', autoMarket: false })?.input.text).toBe('milk');
+});
 test('offline country clues and composition come only from category-eligible barcode records', async () => {
   const pack = snapshot();
   pack.sources.push(

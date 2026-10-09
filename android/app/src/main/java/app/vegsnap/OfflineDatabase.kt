@@ -99,10 +99,11 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
         lock.withLock {
             // Conflicting snapshots of the same GTIN use the fallback. The chosen
             // composition retains its own country tags for the final warning.
-            val countryTags = orderedPacks().flatMap { pack -> pack.products.filter { it.getString("source") in allowed && it.getString("code").padStart(14, '0') == input.barcode.padStart(14, '0') }.flatMap { it.getJSONArray("countries_tags").stringValues() } }
+            val candidates = orderedPacks().flatMap { pack -> pack.products.filter { it.getString("source") in allowed && it.getString("code").padStart(14, '0') == input.barcode.padStart(14, '0') }.map { pack to it } }
+            val countryTags = candidates.flatMap { it.second.getJSONArray("countries_tags").stringValues() }
             val market = selectProductCountry(input, markets = countryTags).first
-            for (pack in orderedPacks()) {
-                val product = pack.products.firstOrNull { it.getString("source") in allowed && it.getString("code").padStart(14, '0') == input.barcode.padStart(14, '0') } ?: continue
+            fun matchesMarket(product: JSONObject) = product.getJSONArray("countries_tags").stringValues().any { productCountryCode(it) == market }
+            for ((pack, product) in candidates.filter { input.autoMarket != false || it.second.getJSONArray("countries_tags").length() == 0 || matchesMarket(it.second) }.sortedByDescending { matchesMarket(it.second) }) {
                 val id = product.getString("source")
                 val source = offlineSources.getValue(id)
                 val text = localized(product, "ingredients", input.locale)

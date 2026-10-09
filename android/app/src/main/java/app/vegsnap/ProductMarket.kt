@@ -37,6 +37,9 @@ private val countryAliases by lazy {
 }
 internal fun productCountryCode(value: String): String? = value.trim().uppercase(Locale.ROOT).takeIf(::validProductMarket)
     ?: countryAliases[value.trim().lowercase(Locale.ROOT).removePrefix("en:").replace(Regex("[\\s-]"), "")]
+internal fun productCountryName(value: String, locale: Locale): String = productCountryCode(value)?.let {
+    Locale.Builder().setRegion(it).build().getDisplayCountry(locale)
+} ?: value
 internal fun selectProductCountry(input: CheckInput, packagingCountry: String? = null, markets: List<String> = emptyList()): Pair<String, String> {
     if (input.autoMarket != true) return input.market to "manual"
     val packaging = packagingCountry?.let(::productCountryCode)
@@ -56,12 +59,12 @@ internal fun databaseCountryWarning(market: String, markets: List<String>, local
 internal fun ProductMarketButton(market: String, enabled: Boolean = true, modifier: Modifier = Modifier,
     source: String? = null, onSave: suspend (String) -> Boolean) {
     var editing by remember { mutableStateOf(false) }
-    var value by remember(market) { mutableStateOf(market) }
+    var value by remember(market) { mutableStateOf(productCountryCode(market) ?: market) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0]
-    val country = Locale.Builder().setRegion(market).build().getDisplayCountry(locale)
-    OutlinedButton(onClick = { value = market; editing = true }, enabled = enabled, modifier = modifier) {
+    val country = productCountryName(market, locale)
+    OutlinedButton(onClick = { value = productCountryCode(market) ?: market; editing = true }, enabled = enabled, modifier = modifier) {
         Column {
             Text(stringResource(R.string.product_country) + ": " + country + " (" + market + ")")
             source?.let { Text(stringResource(when (it) { "packaging" -> R.string.country_from_packaging; "database" -> R.string.country_from_database; "manual" -> R.string.country_manual; else -> R.string.country_fallback }), style = MaterialTheme.typography.labelSmall) }
