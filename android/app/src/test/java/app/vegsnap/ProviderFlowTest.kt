@@ -292,7 +292,10 @@ class ProviderFlowTest {
                 assertEquals(if (accepted) "not_vegan" else "uncertain", result.getString("outcome"))
                 val evidence = result.getJSONArray("evidence")
                 assertEquals(accepted, (0 until evidence.length()).any { evidence.getJSONObject(it).optString("kind") == "database" })
-                if (automatic && country.isBlank()) assertTrue(result.getJSONArray("warnings").toString().contains("does not confirm the product country"))
+                val countryWarnings = result.getJSONArray("warnings").stringValues().filter { it.contains("product country") || it.contains("other markets") }
+                assertEquals(if (automatic && country.isBlank()) 1 else 0, countryWarnings.size)
+                if (automatic && country.isBlank()) assertTrue(countryWarnings.single().contains("does not confirm the product country"))
+                for (index in 0 until evidence.length()) assertFalse(evidence.getJSONObject(index).has("compositionMarkets"))
             }
         }
     }

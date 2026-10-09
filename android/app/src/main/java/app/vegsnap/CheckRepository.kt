@@ -155,10 +155,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                     catch (error: Exception) { warnings.put(if (input.locale == "de") "Datenbank nicht erreichbar; KI-Belege bleiben erhalten." else "Database unavailable; AI evidence has been kept.") }
                 }
                 extraction.database?.let { database ->
-                    compositionMarkets.add(emptyList())
+                    compositionMarkets += database.second.optJSONArray("compositionMarkets").stringValues()
                     val sourceId = database.second.getString("id")
                     // Keep the community's entire local split; partial AI assessments only enrich it.
-                    val community = databaseResult(database, "")
+                    val community = databaseResult(database, "", warnCountry = false)
                     applyAIEvidence(community, database.first, extracted, false, false, "$sourceId-assessment")
                     val combined = mergeResults(result, community)
                     if (result.has("webSearchStatus")) combined.put("webSearchStatus", result.get("webSearchStatus"))

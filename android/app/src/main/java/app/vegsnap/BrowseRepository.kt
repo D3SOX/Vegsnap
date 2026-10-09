@@ -29,7 +29,9 @@ internal enum class BrowseSource(val title: String, val root: String, val licens
 internal data class BrowseRecord(val id: String, val source: BrowseSource, val name: String,
     val barcode: String = "", val brand: String = "", val composition: String = "", val markets: String = "",
     val description: String = "", val quantity: String = "", val labels: String = "", val updated: String = "", val url: String, val snapshotDate: String = "",
-    val countryTags: List<String> = emptyList())
+    val countryTags: List<String> = emptyList()) {
+    val countries: List<String> get() = countryTags.ifEmpty { markets.split(Regex("[,;|]")).map { it.trim() }.filter { it.isNotBlank() } }
+}
 internal data class BrowsePage(val records: List<BrowseRecord>, val next: Int?, val snapshotInfo: List<OfflinePackInfo>? = null)
 internal enum class BrowseFailure { OFFLINE, RATE_LIMITED, TEMPORARILY_UNAVAILABLE, TIMEOUT, CONNECTION, UNAVAILABLE }
 internal class BrowseException(val reason: BrowseFailure) : IOException(reason.name)
