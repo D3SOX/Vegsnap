@@ -122,9 +122,9 @@ import CryptoKit
             if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return false }
             var input = supplied ?? draft; input.locale = locale
-            guard ProductCountry.isValid(input.market) else { throw AppError(L("Enter a two-letter country code.")) }
             if input.autoMarket == nil && settings.automaticCountry { input.autoMarket = true }
             if supplied != nil && input.autoMarket != false { input.market = settings.defaultCountry }
+            guard ProductCountry.isValid(input.market) else { throw AppError(L("Enter a two-letter country code.")) }
             let photos = suppliedPhotos ?? draftPhotos
             guard input.hasContent || !photos.isEmpty else { return false }
             guard input.text.utf16.count <= 30_000, input.name.utf16.count <= 300, input.brand.utf16.count <= 300 else { throw AppError(L("Text exceeds the input limit.")) }

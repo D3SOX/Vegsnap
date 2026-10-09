@@ -331,13 +331,43 @@ import Security
         for invalid in ["Sweden", "EU", "UN", "EZ", "AC", "XK"] {
             XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: invalid))
             XCTAssertEqual(store.history[0].result.identity.market, "SE")
-            XCTAssertFalse(store.enqueue(input: CheckInput(text: "water", market: invalid)))
+            XCTAssertFalse(store.enqueue(input: CheckInput(text: "water", market: invalid, autoMarket: false)))
             XCTAssertTrue(store.jobs.isEmpty)
         }
         FileStore.rejectWrite = { $0.lastPathComponent == "history.json" }
         XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "DE"))
         XCTAssertEqual(store.history[0].result.identity.market, "SE")
         XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
+    }
+    func testImportedHistoryRetriesReplaceNonISOCountriesWithTheConfiguredFallback() async throws {
+        for market in ["en:sweden", "SWE"] {
+            for automatic in [false, true] {
+                let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                defer { try? FileManager.default.removeItem(at: root) }
+                let store = try AppStore(root: root)
+                store.settings.offline = true
+                store.settings.defaultCountry = "FI"
+                store.settings.automaticCountry = automatic
+                var imported = try analyze("Ingredients: oats")
+                imported.identity.market = market
+                imported.identity.marketSource = nil
+                try store.importHistory(HistoryDocument(results: [imported]).jsonData())
+                let saved = try XCTUnwrap(store.history.first)
+                XCTAssertNil(saved.input)
+                let input = saved.result.retryInput
+                XCTAssertEqual(input.market, market)
+                XCTAssertNil(input.autoMarket)
+                XCTAssertTrue(store.enqueue(input: input, photos: saved.photos))
+                let queued = try XCTUnwrap(store.jobs.first)
+                XCTAssertEqual(queued.input.market, "FI")
+                XCTAssertEqual(queued.input.autoMarket, automatic ? true : nil)
+                for _ in 0..<100 { if store.jobs.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+                XCTAssertTrue(store.jobs.isEmpty)
+                let result = try XCTUnwrap(store.history.first { $0.id == queued.id }?.result)
+                XCTAssertEqual(result.identity.market, "FI")
+                XCTAssertEqual(result.identity.marketSource, "fallback")
+            }
+        }
     }
     func testStoppingNetworkWorkDoesNotRestartHostedRefresh() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
