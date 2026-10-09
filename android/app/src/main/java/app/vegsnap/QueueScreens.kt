@@ -40,7 +40,7 @@ internal fun QueueJobContent(job: AnalysisJob, model: VegsnapViewModel, offline:
     if (showIdentity) Text(job.title.ifBlank { if (job.photoCount > 0) pluralStringResource(R.plurals.queue_photos, job.photoCount, job.photoCount) else stringResource(R.string.check) }, style = MaterialTheme.typography.titleMedium, maxLines = 2)
     Text(stringResource(job.statusLabel()), color = MaterialTheme.colorScheme.primary)
     if (job.status == AnalysisStatus.FAILED) job.failureReason?.let { reason ->
-        Text(if (LocalConfiguration.current.locales[0]?.language == "de") reason.german else reason.english,
+        Text(reason.message(LocalConfiguration.current.locales[0]?.language ?: "en", hosted = job.settings.connection == "hosted"),
             color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         if (reason == AIErrorCode.QUOTA && job.settings.connection == "chatgpt") {
             val context = LocalContext.current

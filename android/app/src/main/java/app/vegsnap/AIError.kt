@@ -21,18 +21,26 @@ internal enum class AIErrorCode(val code: String, val english: String, val germa
     SERVICE("service", "The AI provider is temporarily unavailable. Try again later.", "Der KI-Anbieter ist vorübergehend nicht verfügbar. Versuche es später erneut."),
     UNKNOWN("unknown", "The AI check failed. Your existing evidence was kept. Try again.", "Die KI-Prüfung ist fehlgeschlagen. Bisherige Belege bleiben erhalten. Versuche es erneut.");
 
-    fun json(locale: String) = JSONObject().put("code", code).put("message", if (locale == "de") german else english)
+    fun message(locale: String, hosted: Boolean = false): String = when {
+        hosted && this == QUOTA -> if (locale == "de") "Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt."
+            else "The free Vegsnap AI allowance is used up. It resets at midnight UTC."
+        hosted && this == RATE_LIMIT -> if (locale == "de") "Zu viele Anfragen an Vegsnap KI. Warte eine Minute und versuche es erneut."
+            else "Too many requests to Vegsnap AI. Wait a minute, then try again."
+        else -> if (locale == "de") german else english
+    }
+    fun json(locale: String, hosted: Boolean = false): JSONObject =
+        JSONObject().put("code", code).put("message", message(locale, hosted)).apply { if (hosted) put("hosted", true) }
 }
 
 internal class AIProviderFailure(val reason: AIErrorCode) : IOException(reason.code)
 
-internal fun aiFailure(error: Exception, locale: String): JSONObject = when (error) {
+internal fun aiFailure(error: Exception, locale: String, hosted: Boolean = false): JSONObject = when (error) {
     is AIProviderFailure -> error.reason
     is InterruptedIOException -> AIErrorCode.TIMEOUT
     is JSONException, is IllegalArgumentException -> AIErrorCode.INVALID_RESPONSE
     is IOException -> AIErrorCode.NETWORK
     else -> AIErrorCode.UNKNOWN
-}.json(locale)
+}.json(locale, hosted)
 
 /** Read a bounded error envelope, retain no body, and only recognize known provider error codes. */
 internal fun providerHttpFailure(status: Int, stream: InputStream?): AIProviderFailure {

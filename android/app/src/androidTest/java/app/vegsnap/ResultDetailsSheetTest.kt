@@ -74,7 +74,7 @@ class ResultDetailsSheetTest {
                 .put("description", "A second synthetic documented company concern."))
         } })
 
-    private fun show(value: JSONObject, language: String = "en", fontScale: Float = 1f, dark: Boolean = false) {
+    private fun show(value: JSONObject, language: String = "en", fontScale: Float = 1f, dark: Boolean = false, failedRetry: AnalysisJob? = null) {
         if (InstrumentationRegistry.getArguments().getString("orientation") == "landscape") {
             compose.activityRule.scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(5_000) { compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
@@ -102,7 +102,7 @@ class ResultDetailsSheetTest {
                         }) {
                             CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration,
                                 LocalResources provides localized.resources, LocalDensity provides Density(density, fontScale)) {
-                                ResultSheet(displayedResult.value, {}, { rechecks++ }, {}, model)
+                                ResultSheet(displayedResult.value, {}, { rechecks++ }, {}, model, failedRetry)
                             }
                         }
                     }
@@ -142,6 +142,23 @@ class ResultDetailsSheetTest {
         val difference = heading(section).fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y -
             compose.onNodeWithTag("result-details-scroll").fetchSemanticsNode().layoutInfo.coordinates.positionInRoot().y
         assertTrue("$section heading was not anchored: $difference px", difference in -1f..32f)
+    }
+
+    @Test fun failedHostedHistoryRetryShowsGermanAllowanceReset() {
+        val retry = AnalysisJob("hosted-retry", 0L, CheckInput("water"), AppSettings(connection = "hosted"),
+            0, status = AnalysisStatus.FAILED, historyId = "synthetic-result-tabs", failureReason = AIErrorCode.QUOTA)
+        show(result(concerns = false), language = "de", failedRetry = retry)
+        compose.onNodeWithText("Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt.")
+            .assertIsDisplayed()
+        compose.onNodeWithText(AIErrorCode.QUOTA.german).assertDoesNotExist()
+    }
+
+    @Test fun failedHostedHistoryRetryShowsEnglishThrottleWait() {
+        val retry = AnalysisJob("hosted-retry", 0L, CheckInput("water"), AppSettings(connection = "hosted"),
+            0, status = AnalysisStatus.FAILED, historyId = "synthetic-result-tabs", failureReason = AIErrorCode.RATE_LIMIT)
+        show(result(concerns = false), failedRetry = retry)
+        compose.onNodeWithText("Too many requests to Vegsnap AI. Wait a minute, then try again.").assertIsDisplayed()
+        compose.onNodeWithText(AIErrorCode.RATE_LIMIT.english).assertDoesNotExist()
     }
 
     @Test fun inconclusiveBuiltinBarcodeOffersAiFromTheSharedResultSheet() {

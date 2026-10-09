@@ -32,7 +32,7 @@ internal class ResultTextTranslations(document: JSONObject, rules: JSONObject) {
             item.put("explanation", text(item.getString("explanation"), language))
         }
         val errorCode = result.optJSONObject("aiError")?.optString("code")
-        AIErrorCode.entries.firstOrNull { it.code == errorCode }?.let { result.put("aiError", it.json(language)) }
+        AIErrorCode.entries.firstOrNull { it.code == errorCode }?.let { result.put("aiError", it.json(language, hosted = result.optJSONObject("aiError")?.opt("hosted") == true)) }
         // Product names, original evidence, cross-contact text and free-form AI explanations stay verbatim.
         return result
     }

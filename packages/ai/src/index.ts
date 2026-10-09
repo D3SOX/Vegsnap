@@ -6,6 +6,7 @@ export interface Env {
   ASSETS: Fetcher;
   REQUEST_LIMIT: RateLimit;
   SESSION_REQUEST_LIMIT: RateLimit;
+  IP_REQUEST_LIMIT: RateLimit;
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET?: string;
@@ -17,7 +18,8 @@ export interface Env {
   PENDING_CONNECT_LIMIT: string;
 }
 class HttpError extends Error {
-  constructor(readonly status: number, message: string) { super(message); }
+  constructor(readonly status: number, message: string,
+    readonly code: 'rate_limit_exceeded' | 'usage_limit_reached' | undefined = status === 429 ? 'rate_limit_exceeded' : undefined) { super(message); }
 }
 const day = () => new Date().toISOString().slice(0, 10);
 const now = () => Math.floor(Date.now() / 1000);
@@ -72,9 +74,11 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (!['GET', 'HEAD'].includes(request.method) || !['/', '/connect.js', '/style.css'].includes(path)) throw new HttpError(404, 'Not found.');
     return env.ASSETS.fetch(request);
   }
+  // A broad IP guard protects unauthenticated routes without sharing the strict user limit.
+  if (!(await env.IP_REQUEST_LIMIT.limit({ key: `${request.method}:${path}:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` })).success) throw new HttpError(429, 'Please wait a minute before trying again.');
   const tokenHash = await hashToken(request);
   if (path === '/api/session' && ['GET', 'DELETE'].includes(request.method) &&
-      !(await env.SESSION_REQUEST_LIMIT.limit({ key: `${request.method}:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` })).success) throw new HttpError(429, 'Please wait before trying again.');
+      !(await env.SESSION_REQUEST_LIMIT.limit({ key: `${request.method}:${tokenHash}` })).success) throw new HttpError(429, 'Please wait a minute before trying again.');
   if (path === '/api/session' && request.method === 'GET') {
     const session = await env.DB.prepare('SELECT verified, expires_at, day, checks, COALESCE((SELECT checks FROM installation_usage WHERE installation_hash = sessions.installation_hash AND day = ?), 0) AS installation_checks, COALESCE((SELECT checks FROM daily_budget WHERE day = ?), 0) AS global_checks FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(today, today, tokenHash, now()).first<{verified: number; expires_at: number; day: string; checks: number; installation_checks: number; global_checks: number}>();
     if (!session) throw new HttpError(401, 'Your free session expired. Connect again in settings.');
@@ -88,7 +92,6 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
   if (request.method !== 'POST' || !['/api/connect', '/api/verify', '/api/check'].includes(path)) throw new HttpError(404, 'Not found.');
   if (!enabled(env)) throw new HttpError(503, 'Vegsnap AI is not available yet. Use ChatGPT, your own API key, or database checks.');
-  if (!(await env.REQUEST_LIMIT.limit({ key: `${path}:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` })).success) throw new HttpError(429, 'Please wait before trying again.');
   if (path === '/api/connect') {
     const value = await body(request, 4096);
     if (!record(value) || Object.keys(value).some(key => key !== 'installationId') || typeof value.installationId !== 'string' || !/^[a-f0-9]{64}$/.test(value.installationId)) throw new HttpError(400, 'Start the connection in Vegsnap.');
@@ -130,11 +133,14 @@ async function route(request: Request, env: Env): Promise<Response> {
     ]);
     if (!verified[2]?.meta.changes) {
       const waiting = await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 0 AND expires_at > ?').bind(tokenHash, now()).first();
-      throw new HttpError(waiting ? 429 : 401, waiting ? 'The free connection allowance is full. Try again tomorrow.' : 'This connection expired or was already verified.');
+      throw new HttpError(waiting ? 429 : 401, waiting ? 'The free connection allowance is full. It resets at midnight UTC.' : 'This connection expired or was already verified.', waiting ? 'usage_limit_reached' : undefined);
     }
     return json({ connected: true });
   }
-  if (!await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 1 AND expires_at > ?').bind(tokenHash, now()).first()) throw new HttpError(401, 'Connect to Vegsnap AI in settings.');
+  const session = await env.DB.prepare('SELECT installation_hash FROM sessions WHERE token_hash = ? AND verified = 1 AND expires_at > ?').bind(tokenHash, now()).first<{ installation_hash: string }>();
+  if (!session) throw new HttpError(401, 'Connect to Vegsnap AI in settings.');
+  // Use only the installation recorded by the server after browser verification.
+  if (!(await env.REQUEST_LIMIT.limit({ key: session.installation_hash })).success) throw new HttpError(429, 'Too many requests from this installation. Please wait a minute before trying again.');
   const { input, countryContext } = product(await body(request, 12_100_000));
   const results = await env.DB.batch([
     env.DB.prepare('INSERT INTO installation_usage(installation_hash, day) SELECT installation_hash, ? FROM sessions WHERE token_hash = ? ON CONFLICT DO NOTHING').bind(today, tokenHash),
@@ -148,7 +154,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   ]);
   if (!results[3]?.meta.changes) {
     const session = await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 1 AND expires_at > ?').bind(tokenHash, now()).first();
-    throw new HttpError(session ? 429 : 401, session ? 'The free allowance is used up. Try again tomorrow.' : 'Connect to Vegsnap AI in settings.');
+    throw new HttpError(session ? 429 : 401, session ? 'The free allowance is used up. It resets at midnight UTC.' : 'Connect to Vegsnap AI in settings.', session ? 'usage_limit_reached' : undefined);
   }
   // The core adapter owns prompts, validation, and search provenance. Clients supply only product data.
   // No tools in the first pass; at most three search tool calls in the research pass.
@@ -177,7 +183,15 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     let response: Response;
     try { response = await route(request, env); }
-    catch (error) { response = json({ error: { message: error instanceof HttpError ? error.message : 'Service unavailable.' } }, error instanceof HttpError ? error.status : 503); }
+    catch (error) {
+      response = json({ error: { message: error instanceof HttpError ? error.message : 'Service unavailable.',
+        ...(error instanceof HttpError && error.code ? { code: error.code } : {}) } }, error instanceof HttpError ? error.status : 503);
+      if (error instanceof HttpError && error.status === 429) {
+        const retryAfter = error.code === 'usage_limit_reached'
+          ? Math.ceil((86_400_000 - Date.now() % 86_400_000) / 1000) : 60;
+        response.headers.set('Retry-After', String(retryAfter));
+      }
+    }
     const headers = new Headers(response.headers);
     headers.set('Cache-Control', 'no-store');
     headers.set('Referrer-Policy', 'no-referrer');
@@ -188,7 +202,6 @@ export default {
       headers.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
       headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
     }
-    if (response.status === 429) headers.set('Retry-After', '60');
     return new Response(response.body, { status: response.status, headers });
   },
   async scheduled(_event: ScheduledController, env: Env) {

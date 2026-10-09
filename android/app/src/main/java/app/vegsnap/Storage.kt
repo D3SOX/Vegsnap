@@ -144,7 +144,7 @@ object HistoryTransfer {
         }
         if (clean.optString("aiStatus") == "failed") {
             val code = result.optJSONObject("aiError")?.optString("code")
-            AIErrorCode.entries.firstOrNull { it.code == code }?.let { clean.put("aiError", it.json(locale)) }
+            AIErrorCode.entries.firstOrNull { it.code == code }?.let { clean.put("aiError", it.json(locale, hosted = result.optJSONObject("aiError")?.opt("hosted") == true)) }
         }
         return clean
     }
