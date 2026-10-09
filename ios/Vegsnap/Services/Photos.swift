@@ -13,8 +13,14 @@ enum PhotoProcessor {
             UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: image.width, height: image.height))
             UIImage(cgImage: image).draw(in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
         }
-        guard let output = clean.jpegData(compressionQuality: 0.82), output.count < 3_000_000 else { throw AppError(L("Choose a smaller photo.")) }
-        return output
+        return try boundedJPEG(clean)
+    }
+    private static func boundedJPEG(_ image: UIImage) throws -> Data {
+        // Leave room for the data URL prefix within the provider's 4,000,000-character cap.
+        for quality in [0.82, 0.7, 0.55, 0.4] {
+            if let output = image.jpegData(compressionQuality: quality), output.count <= 2_999_970 { return output }
+        }
+        throw AppError(L("Choose a smaller photo."))
     }
     static func recognize(_ data: Data, languages: [String]) async throws -> (text: String, barcode: String?) {
         try await Task.detached(priority: .userInitiated) {
@@ -34,8 +40,7 @@ enum PhotoProcessor {
             context.cgContext.translateBy(x: image.size.height, y: 0); context.cgContext.rotate(by: .pi / 2)
             image.draw(at: .zero)
         }
-        guard let output = rotated.jpegData(compressionQuality: 0.85) else { throw AppError(L("This photo could not be opened.")) }
-        return output
+        return try boundedJPEG(rotated)
     }
 }
 

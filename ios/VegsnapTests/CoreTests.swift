@@ -179,6 +179,33 @@ import Security
         let result = try await engine.check(id: UUID().uuidString, input: CheckInput(text: "Ingredients: water, mystery", category: .food, complete: true), settings: settings, token: "fixture-key")
         XCTAssertTrue(result.usedAI); XCTAssertEqual(result.aiStatus, "text")
     }
+    func testSharedTextFitsUTF16AndEncodedInboxLimits() throws {
+        for text in [String(repeating: "😀", count: 30_000), String(repeating: "\u{0001}", count: 30_000), String(repeating: "界", count: 30_000)] {
+            let data = try InboxPayload.encode(text: text, photos: ["photo.image"])
+            let payload = try JSONDecoder().decode(InboxPayload.self, from: data)
+            XCTAssertLessThanOrEqual(data.count, InboxPayload.byteLimit)
+            XCTAssertLessThanOrEqual(payload.text.utf16.count, InboxPayload.textLimit)
+            XCTAssertFalse(payload.text.isEmpty)
+            XCTAssertTrue(text.hasPrefix(payload.text))
+            XCTAssertEqual(payload.photos, ["photo.image"])
+        }
+    }
+    func testDetailedPhotoRotationStaysWithinProviderLimit() throws {
+        let width = 1800; let height = 1600
+        var seed: UInt32 = 42
+        let pixels = (0..<(width * height * 4)).map { index -> UInt8 in
+            if index % 4 == 3 { return 255 }
+            seed = 1664525 &* seed &+ 1013904223
+            return UInt8(truncatingIfNeeded: seed >> 24)
+        }
+        let provider = try XCTUnwrap(CGDataProvider(data: Data(pixels) as CFData))
+        let cgImage = try XCTUnwrap(CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
+        let input = try PhotoProcessor.sanitize(XCTUnwrap(UIImage(cgImage: cgImage).pngData()))
+        let rotated = try PhotoProcessor.rotate(input)
+        XCTAssertLessThanOrEqual(("data:image/jpeg;base64," + rotated.base64EncodedString()).count, 4_000_000)
+        let image = try XCTUnwrap(UIImage(data: rotated))
+        XCTAssertEqual(image.size.width, CGFloat(height)); XCTAssertEqual(image.size.height, CGFloat(width))
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")

@@ -36,7 +36,9 @@ import UIKit
         app.buttons["History"].firstMatch.tap(); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10))
     }
     func testDraftPersistsAndBarcodeValidation() {
-        launch(); app.textFields["barcode"].tap(); app.textFields["barcode"].typeText("12345678")
+        launch()
+        let barcode = app.textFields["barcode"]
+        reveal(barcode, forTap: true); barcode.tap(); barcode.typeText("12345678")
         if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
         app.swipeUp(); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 10)); app.alerts.buttons["OK"].tap()
@@ -56,6 +58,7 @@ import UIKit
             if scrollingDown { app.swipeDown() } else { app.swipeUp() }
         }
         XCTAssertTrue(element.exists)
+        if forTap { XCTAssertTrue(element.isHittable) }
     }
     func chooseConnection(_ name: String) {
         let picker = app.buttons["connectionPicker"]

@@ -46,8 +46,7 @@ final class ShareViewController: UIViewController {
                 text.append(String(value.prefix(30_000)))
             }
         }
-        struct Inbox: Encodable { var text: String; var photos: [String] }
-        let data = try JSONEncoder().encode(Inbox(text: String(text.joined(separator: "\n").prefix(30_000)), photos: photos))
+        let data = try InboxPayload.encode(text: text.joined(separator: "\n"), photos: photos)
         try data.write(to: staging.appendingPathComponent("input.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         try FileManager.default.moveItem(at: staging, to: directory.appendingPathComponent(id, isDirectory: true))
     }

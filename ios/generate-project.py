@@ -15,6 +15,7 @@ def buildfile(path, **extra): return add('build:'+path, 'PBXBuildFile', fileRef=
 products = []; children = []; targets = []
 for name, folder, product, kind in [('Vegsnap','Vegsnap','Vegsnap.app','application'),('VegsnapShare','ShareExtension','VegsnapShare.appex','app-extension'),('VegsnapTests','VegsnapTests','VegsnapTests.xctest','bundle.unit-test'),('VegsnapUITests','VegsnapUITests','VegsnapUITests.xctest','bundle.ui-testing')]:
     files = sorted(p.relative_to(root).as_posix() for p in (root/folder).rglob('*.swift'))
+    if name in ('Vegsnap', 'VegsnapShare'): files += sorted(p.relative_to(root).as_posix() for p in (root/'Shared').glob('*.swift'))
     sources = add(name+':sources','PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(p) for p in files],runOnlyForDeploymentPostprocessing=0)
     children += [ref(p) for p in files]
     resource_paths = ['Vegsnap/Resources/Generated','Vegsnap/Resources/Assets.xcassets','Vegsnap/Resources/PrivacyInfo.xcprivacy'] if name == 'Vegsnap' else []

@@ -8,10 +8,9 @@ extension AppStore {
         for entry in entries where UUID(uuidString: entry.lastPathComponent) != nil {
             var importedPhotos: [String] = []
             do {
-                struct Inbox: Decodable { var text: String; var photos: [String] }
-                let data = try readLimitedFile(entry.appendingPathComponent("input.json"), limit: 100_000)
-                let input = try JSONDecoder().decode(Inbox.self, from: data)
-                guard input.text.utf16.count <= 30_000, input.photos.count <= 3,
+                let data = try readLimitedFile(entry.appendingPathComponent("input.json"), limit: InboxPayload.byteLimit)
+                let input = try JSONDecoder().decode(InboxPayload.self, from: data)
+                guard input.text.utf16.count <= InboxPayload.textLimit, input.photos.count <= 3,
                       input.photos.allSatisfy({ $0 == URL(fileURLWithPath: $0).lastPathComponent && !$0.contains("..") }) else { throw AppError(L("Invalid shared content.")) }
                 for photo in input.photos {
                     let data = try readLimitedFile(entry.appendingPathComponent(photo), limit: 30_000_000)
