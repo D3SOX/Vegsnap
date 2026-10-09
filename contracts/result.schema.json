@@ -163,6 +163,15 @@
         "market": {
           "type": "string"
         },
+        "marketSource": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "fallback",
+            "packaging",
+            "database"
+          ]
+        },
         "match": {
           "type": "string",
           "enum": [

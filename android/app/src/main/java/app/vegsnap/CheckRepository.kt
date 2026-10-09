@@ -252,6 +252,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             val returned = product.optString("code")
             if (!validGtin(returned) || returned.padStart(14, '0') != barcode.padStart(14, '0')) throw IOException("Product identity mismatch")
             val markets = product.optJSONArray("countries_tags") ?: JSONArray()
+            if (input.autoMarket == false && markets.length() > 0 && markets.stringValues().none { productCountryCode(it) == input.market }) continue
             val market = selectProductCountry(input, markets = markets.stringValues()).first
             val text = product.optString(if (input.locale == "de") "ingredients_text_de" else "ingredients_text").ifBlank { product.optString("ingredients_text") }
             val name = product.optString(if (input.locale == "de") "product_name_de" else "product_name").ifBlank { product.optString("product_name") }

@@ -326,15 +326,14 @@ class ProviderFlowTest {
             assertEquals(2, result.getJSONArray("evidence").length())
         }
     }
-    @Test fun otherMarketExactBarcodePreservesConflictingCompositionWithWarning() = runBlocking {
+    @Test fun otherMarketExactBarcodeCannotChangeAManualCountriesVerdict() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product("milk", "en:united-states"))
-            val result = databaseRepository(server).check(CheckInput("Ingredients: water, salt", "food", barcode = "4006381333931", autoMarket = false), emptyList(), AppSettings(connection = "api"), "")
-            assertEquals("conflicting", result.getString("outcome"))
-            assertEquals(2, result.getJSONArray("evidence").length())
-            assertEquals("exact_barcode", result.getJSONObject("identity").getString("match"))
-            assertTrue(result.getJSONArray("warnings").toString().contains("other markets"))
-            assertTrue(result.getJSONArray("findings").toString().contains("milk"))
+            val result = databaseRepository(server).check(CheckInput("Ingredients: water, salt", "food", complete = true, barcode = "4006381333931", autoMarket = false), emptyList(), AppSettings(connection = "api"), "")
+            assertEquals("vegan", result.getString("outcome"))
+            assertEquals(1, result.getJSONArray("evidence").length())
+            assertEquals("manual", result.getJSONObject("identity").getString("marketSource"))
+            assertFalse(result.getJSONArray("findings").toString().contains("milk"))
             assertFalse(result.getBoolean("usedAI"))
         }
     }
