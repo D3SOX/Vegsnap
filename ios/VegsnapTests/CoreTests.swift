@@ -306,6 +306,15 @@ import Security
         let recognized = try await PhotoProcessor.recognize(clean, languages: ["en-US"])
         XCTAssertTrue(recognized.text.lowercased().contains("honey"))
     }
+    func testOCRRejectsUnreadablePhotoBeforeRecognition() async throws {
+        do {
+            _ = try await PhotoProcessor.recognize(Data("corrupted photo".utf8), languages: ["en-US"])
+            XCTFail("Unreadable photo reached recognition")
+        } catch {
+            XCTAssertTrue(error is AppError)
+            XCTAssertEqual(error.localizedDescription, L("This photo could not be opened."))
+        }
+    }
     func testOCRFailurePreservesEarlierEvidence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -317,7 +326,7 @@ import Security
             if !store.history.isEmpty || store.jobs.contains(where: { $0.status == "failed" }) { break }
             try await Task.sleep(for: .milliseconds(20))
         }
-        let result = try XCTUnwrap(store.history.first?.result)
+        let result = try XCTUnwrap(store.history.first?.result, "Queue state: \(store.jobs.map { ($0.status, $0.error) })")
         XCTAssertEqual(result.outcome, .uncertain)
         XCTAssertTrue(result.evidence.contains { $0.kind == "user_text" && $0.excerpt.contains("mystery") })
         XCTAssertTrue(result.warnings.contains(L("Local text recognition also failed; earlier evidence has been kept.")))
