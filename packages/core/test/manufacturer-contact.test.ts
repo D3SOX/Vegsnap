@@ -9,6 +9,15 @@ const input = { name: contact.productName, brand: contact.brand, images: ['data:
 const check = (value = extraction) => checkProduct(input, { mode: 'explicit', provider: { supportsWebSearch: true, extract: async () => value } });
 
 describe('manufacturer contact', () => {
+  test('does not duplicate saved origin questions for more than fifteen ingredients', () => {
+    const terms = 'äppelsyra, natriumcitrat, naturlig arom, aspartam, acesulfam k, e414, e444, e445, kaliumsorbat, antocyanin, safflorextrakt, niacin, pantotensyra, vitamin b6, biotin, zink, raps';
+    const result = { ...analyzeText({ text: terms, complete: true }), questions: [`Confirm the origin of: ${terms}.`] };
+    const prefixes = { en: 'Confirm the origin of:', de: 'Die Herkunft dieser Zutaten klären:', sv: 'Bekräfta ursprunget för:' };
+    for (const locale of ['en', 'de', 'sv'] as const) {
+      const body = manufacturerMessage(result, locale)!.body;
+      expect(body.split('\n').filter(line => line.startsWith('- '))).toEqual([`- ${prefixes[locale]} ${terms}.`]);
+    }
+  });
   test('lists unresolved ingredients once in each language, including without saved questions', () => {
     const result = analyzeText({ text: 'vitamin D, glycerol', complete: true });
     const originQuestions = ['Confirm the origin of:', 'Die Herkunft dieser Zutaten klären:', 'Bekräfta ursprunget för:'];

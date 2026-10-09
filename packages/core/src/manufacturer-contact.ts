@@ -60,7 +60,7 @@ export function manufacturerMessage(result: CheckResult, locale: ManufacturerMes
   const product = `${name || copy.thisProduct}${brand ? ` ${copy.by} ${brand}` : ''}`;
   const subject = plain(`${copy.subject}: ${name || copy.thisProduct}`, 200);
   const terms = [...new Set(result.findings.filter(finding => finding.status === 'ambiguous' || finding.status === 'unknown')
-    .map(finding => plain(finding.displayLocale === locale ? finding.displayTerm ?? finding.term : finding.term, 100)).filter(Boolean))].slice(0, 15);
+    .map(finding => plain(finding.displayLocale === locale ? finding.displayTerm ?? finding.term : finding.term, 100)).filter(Boolean))];
   const originPrefixes = Object.values(messages.templates).map(template => template.originQuestion);
   const termKeys = new Set(terms.map(identityKey));
   const questions = [...new Set(result.questions.map(question => {

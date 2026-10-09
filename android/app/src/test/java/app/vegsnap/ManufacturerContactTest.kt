@@ -12,6 +12,15 @@ import org.junit.Test
 class ManufacturerContactTest {
     private val messages by lazy { JSONObject(File(requireNotNull(System.getProperty("vegsnap.repo")), "data/manufacturer-messages.json").readText()) }
     private fun manufacturerDraft(result: JSONObject, locale: String) = app.vegsnap.manufacturerDraft(result, locale, messages)
+    @Test fun moreThanFifteenIngredientsHaveOneLocalizedOriginQuestion() {
+        val terms = "äppelsyra, natriumcitrat, naturlig arom, aspartam, acesulfam k, e414, e444, e445, kaliumsorbat, antocyanin, safflorextrakt, niacin, pantotensyra, vitamin b6, biotin, zink, raps"
+        val saved = result().put("findings", JSONArray(terms.split(", ").map { JSONObject().put("term", it).put("status", "unknown") }))
+            .put("questions", JSONArray().put("Confirm the origin of: $terms."))
+        val prefixes = mapOf("en" to "Confirm the origin of:", "de" to "Die Herkunft dieser Zutaten klären:", "sv" to "Bekräfta ursprunget för:")
+        for ((locale, prefix) in prefixes) {
+            assertEquals(listOf("- $prefix $terms."), manufacturerDraft(saved, locale).body.lines().filter { it.startsWith("- ") })
+        }
+    }
     @Test fun unresolvedIngredientsAppearOnceWithOrWithoutSavedQuestionsInEveryLanguage() {
         val prefixes = mapOf("en" to "Confirm the origin of:", "de" to "Die Herkunft dieser Zutaten klären:", "sv" to "Bekräfta ursprunget för:")
         val saved = result().put("findings", JSONArray().put(JSONObject().put("term", "vitamin d").put("status", "ambiguous"))

@@ -55,7 +55,7 @@ internal fun manufacturerDraft(result: JSONObject, locale: String, messages: JSO
     val findings = result.optJSONArray("findings")
     val terms = if (findings == null) emptyList() else (0 until findings.length()).mapNotNull { index ->
         findings.optJSONObject(index)?.takeIf { it.optString("status") in setOf("ambiguous", "unknown") }?.let { clean(if (it.optString("displayLocale") == locale) it.optString("displayTerm").ifBlank { it.optString("term") } else it.optString("term"), 100) }
-    }.filter { it.isNotBlank() }.distinct().take(15)
+    }.filter { it.isNotBlank() }.distinct()
     val translations = messages.getJSONArray("questions")
     val templates = messages.getJSONObject("templates")
     val originPrefixes = listOf("en", "de", "sv").map { templates.getJSONObject(it).getString("originQuestion") }
