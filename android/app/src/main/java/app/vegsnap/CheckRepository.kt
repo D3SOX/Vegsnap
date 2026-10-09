@@ -292,6 +292,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         val first = extractOnce(input, photos, settings, token, onProgress = onProgress)
         val identity = JSONObject().put("name", first.optString("name")).put("brand", first.optString("brand"))
             .put("category", first.getString("category")).put("locale", input.locale).apply {
+                if (input.autoMarket == false) put("market", input.market)
                 first.optJSONObject("packaging")?.let { put("packaging", it) }
                 (input.barcode.takeIf(::validGtin) ?: first.optString("barcode").takeIf(::validGtin))?.let { put("barcode", it) }
             }

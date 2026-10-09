@@ -267,6 +267,32 @@ class ProviderFlowTest {
     private fun product(text: String, market: String = "en:germany") = MockResponse().setBody(JSONObject().put("product",
         JSONObject().put("code", "4006381333931").put("ingredients_text", text).put("product_name", "Test product")
             .put("countries_tags", JSONArray().put(market))).toString())
+    @Test fun manualCountryConstrainsNameRecoveryAndItsEffectOnTheVerdict() = runBlocking {
+        for (country in listOf("en:germany", "en:sweden", "")) MockWebServer().use { server ->
+            MockWebServer().use { browseServer ->
+                server.enqueue(response("""{"text":"","complete":false,"category":"food","name":"Hummus","brand":"Maker","packaging":{"language":"English","quantity":"200g"}}"""))
+                val candidate = JSONObject().put("code", "4006381333931").put("product_name", "Hummus").put("brands", "Maker")
+                    .put("quantity", "200g").put("ingredients_text", "milk").put("countries_tags", JSONArray().apply { if (country.isNotBlank()) put(country) })
+                browseServer.enqueue(MockResponse().setBody(JSONObject().put("count", 1).put("products", JSONArray().put(candidate)).toString()))
+                val lookup = IdentifiedProductLookup(BrowseRepository(endpoint = { browseServer.url("/") }))
+                var lookups = 0
+                val repo = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), "Photo prompt",
+                    identifiedDatabaseLookup = { identity ->
+                        lookups++
+                        assertEquals("SE", identity.getString("market"))
+                        lookup.lookup(identity)?.let { identifiedDatabaseRecord(it, identity) }
+                    })
+                val result = repo.check(CheckInput(category = "food", market = "SE", autoMarket = false), listOf(PreparedPhoto(byteArrayOf(1))),
+                    AppSettings(connection = "api", baseUrl = server.url("/v1").toString(), model = "test"), "")
+                assertEquals(1, lookups)
+                assertEquals("SE", result.getJSONObject("identity").getString("market"))
+                assertEquals("manual", result.getJSONObject("identity").getString("marketSource"))
+                assertEquals(if (country == "en:sweden") "not_vegan" else "uncertain", result.getString("outcome"))
+                val evidence = result.getJSONArray("evidence")
+                assertEquals(country == "en:sweden", (0 until evidence.length()).any { evidence.getJSONObject(it).optString("kind") == "database" })
+            }
+        }
+    }
     @Test fun finalCountryWarningsCompareTheOriginalDatabaseCompositionWithPackagingFallback() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product("unspecified flavouring", "en:sweden"))

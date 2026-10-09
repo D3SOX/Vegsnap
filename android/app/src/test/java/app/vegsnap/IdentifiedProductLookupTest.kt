@@ -119,4 +119,16 @@ class IdentifiedProductLookupTest {
             assertNull(IdentifiedProductLookup(repository(server)).lookup(identity().apply { getJSONObject("packaging").put("country", "Sweden") }))
         }
     }
+    @Test fun manualCountryRequiresMatchingRecordMetadataWithoutAPackagingCountry() = runBlocking {
+        for ((country, tag) in mapOf("SE" to "en:sweden", "CZ" to "en:czech-republic", "TR" to "en:turkey")) {
+            MockWebServer().use { server ->
+                server.enqueue(response(product().put("countries_tags", JSONArray().put(tag))))
+                assertNotNull(IdentifiedProductLookup(repository(server)).lookup(identity().put("market", country)))
+            }
+            for (markets in listOf(JSONArray().put("en:germany"), JSONArray())) MockWebServer().use { server ->
+                server.enqueue(response(product().put("countries_tags", markets)))
+                assertNull(IdentifiedProductLookup(repository(server)).lookup(identity().put("market", country)))
+            }
+        }
+    }
 }

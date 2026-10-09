@@ -45,7 +45,7 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
                 nameWords(stripBrandPrefix(record.name, brand), ignored) == identityWords &&
                 identityNormalize(record.quantity).replace(Regex("\\s+"), "") == quantity.replace(Regex("\\s+"), "") &&
                 variantWords.all { it in nameWords(record.name, ignored) } &&
-                marketMatches(packaging.optString("country"), record.markets)
+                marketMatches(packaging.optString("country").ifBlank { identity.optString("market") }, record.markets)
         }
         candidateRecords.singleOrNull()
     }
@@ -66,17 +66,8 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
     private fun marketMatches(country: String, markets: String): Boolean {
         if (country.isBlank()) return true
         if (markets.isBlank()) return false
-        val expected = canonicalCountry(country) ?: return false
-        return markets.split(Regex("[,;|]")).any { canonicalCountry(it) == expected }
-    }
-
-    private fun canonicalCountry(country: String): String? = when (identityNormalize(country).replace(Regex("[^\\p{L}\\p{N}]+"), "")) {
-        "de", "germany", "deutschland" -> "de"
-        "se", "sweden", "sverige" -> "se"
-        "fi", "finland", "suomi" -> "fi"
-        "uk", "gb", "unitedkingdom" -> "uk"
-        "us", "usa", "unitedstates" -> "us"
-        else -> null
+        val expected = productCountryCode(country) ?: return false
+        return markets.split(Regex("[,;|]")).any { productCountryCode(it) == expected }
     }
 }
 
