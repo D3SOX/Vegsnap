@@ -8,6 +8,10 @@ let client = 0;
 let failUpstream = false;
 let needsResearch = false;
 let extractionText: string | undefined;
+let catalogueMode = false;
+const catalogueRequests: { url: string; authorization: string | null; body: unknown }[] = [];
+const coopText = 'INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster.';
+const coopTerms = ['Kikärtor', 'vatten', 'rapsolja', 'SESAMPASTA', 'röd paprika', 'salt', 'E 330', 'chili', 'paprikapulver', 'vitlökspulver', 'E 202'];
 const upstream: Record<string, unknown>[] = [];
 const extraction = { text: 'Ingredients: oats', ingredients: ['oats'], complete: true, category: 'food', name: 'Oats', brand: 'Maker' };
 beforeAll(async () => {
@@ -29,12 +33,18 @@ beforeAll(async () => {
         if (body.response === 'non-json') return new WorkerResponse('<html>Proxy failure</html>', { status: 502 });
         return WorkerResponse.json({ success: body.response !== 'invalid', hostname: body.response === 'wrong-host' ? 'wrong.example' : 'ai.example', action: body.response === 'wrong-action' ? 'wrong-action' : 'connect-ai' });
       }
+      if (request.url === 'https://api.matspar.se/slug') {
+        const body = await request.json() as { slug: string };
+        catalogueRequests.push({ url: request.url, authorization: request.headers.get('Authorization'), body });
+        const product = { name: 'Hummus chili', brand: 'Coop', weight_pretty: '200g', slug: 'produkt/hummus-chili-200g-coop', ingredients: coopText };
+        return WorkerResponse.json(body.slug === '/kategori' ? { type: 'category', payload: { products: [product] } } : { type: 'product', payload: product });
+      }
       expect(request.url).toBe('https://api.openai.com/v1/responses');
       expect(request.headers.get('Authorization')).toBe('Bearer test-only-openai');
       const payload = await request.json() as Record<string, unknown>;
       upstream.push(payload);
       if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
-      const result = needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker' } : { ...extraction, text: extractionText ?? extraction.text };
+      const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker' } : { ...extraction, text: extractionText ?? extraction.text };
       return WorkerResponse.json({ status: 'completed', output: [
         ...(payload.tool_choice === 'required' ? [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: 'https://maker.example/tissues', title: 'Tissues' }] } }] : []),
         { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(result) }] },
@@ -48,7 +58,7 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  upstream.length = 0; failUpstream = false; needsResearch = false; extractionText = undefined;
+  upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined;
   const db = await mf.getD1Database('DB');
   await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
 });
@@ -187,6 +197,21 @@ test('uses a fixed model without tools for a readable photo, and stores only cou
   expect(stored).not.toContain('image/jpeg');
   expect(await (await request('/api/session', token)).json()).toMatchObject({ state: 'connected', remaining: 2 });
   expect(response.headers.get('Cache-Control')).toBe('no-store');
+});
+test('a Swedish front photo retains catalogue ingredients without forwarding AI credentials or photos', async () => {
+  catalogueMode = true;
+  const response = await check(await connect());
+  expect(response.status).toBe(200);
+  const result = await response.json() as { text: string; complete: boolean; name: string; webCompositions: { url: string; text: string; ingredients?: string[]; sourceType: string }[]; research: { sources: { url: string }[] } };
+  expect(result).toMatchObject({ text: '', complete: false, name: 'Hummus med chili' });
+  expect(result.webCompositions[0]).toMatchObject({ url: 'https://www.matspar.se/produkt/hummus-chili-200g-coop', text: coopText, sourceType: 'retailer' });
+  expect(result.webCompositions[0]?.ingredients).toHaveLength(11);
+  expect(result.research.sources.some(source => source.url === result.webCompositions[0]?.url)).toBe(true);
+  expect(upstream).toHaveLength(2);
+  expect(catalogueRequests).toHaveLength(2);
+  expect(catalogueRequests.every(request => request.authorization === null)).toBe(true);
+  expect(JSON.stringify(catalogueRequests)).not.toContain('image/jpeg');
+  expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
 });
 test('research has a bounded three-call budget and cannot rename the observed product', async () => {
   needsResearch = true;

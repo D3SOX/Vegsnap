@@ -106,6 +106,8 @@ export interface AIExtraction {
   name?: string;
   brand?: string;
   barcode?: string;
+  /** Public label clues observed during extraction; not inferred from app locale or model memory. */
+  packaging?: { language?: string; country?: string; variant?: string; quantity?: string };
   ingredientAssessments?: { term: string; translatedTerm?: string; status: Finding['status']; explanation: string }[];
   labelObservations?: { kind: 'vegan_certification' | 'vegan_claim'; name: string; text: string }[];
   webClaims?: { url: string; quote: string; claim: 'vegan' | 'not_vegan'; sourceType: 'manufacturer' | 'certification'; productName: string; brand: string }[];
