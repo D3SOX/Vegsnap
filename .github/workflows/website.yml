@@ -36,7 +36,7 @@ jobs:
           import hashlib
           from pathlib import Path
           root = Path('website')
-          for source in ('style.css', 'setup.js', 'language.js'):
+          for source in ('style.css', 'setup.js', 'language.js', 'email.js'):
               asset = root / source
               filename = asset.stem + '.' + hashlib.sha256(asset.read_bytes()).hexdigest()[:12] + asset.suffix
               asset.rename(root / filename)

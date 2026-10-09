@@ -81,7 +81,7 @@ Connecting a cloud provider can send selected text and photos to that provider w
 
 Download the signed APK using the Android badge above. You can also use the Obtainium badge to track updates.
 
-To join the Google Play closed test, first [join the Vegsnap testers group](https://groups.google.com/g/vegsnap-testers), then [opt in on Google Play](https://play.google.com/apps/testing/app.vegsnap) with the same Google account. Installation becomes available after Google approves the testing release. Please stay opted in for at least 14 days, try the app and send feedback to [gplay@d3sox.me](mailto:gplay@d3sox.me).
+To join the Google Play closed test, first [join the Vegsnap testers group](https://groups.google.com/g/vegsnap-testers), then [opt in on Google Play](https://play.google.com/apps/testing/app.vegsnap) with the same Google account. Installation becomes available after Google approves the testing release. Please stay opted in for at least 14 days, try the app and send feedback using the [contact on the website](https://vegsnap.app/#play-test).
 
 Google Play and GitHub APKs use different signing keys. To switch between them, export your history, uninstall the current app and install the other version. Import your history and reconnect your AI provider. History exports do not include photos or credentials.
 
