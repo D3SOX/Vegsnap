@@ -108,7 +108,7 @@ struct SettingsView: View {
                 Button(L("Restore hidden replies")) { store.restoreReplies() }.disabled(store.hiddenReplies.isEmpty)
             }
             Section(L("About Vegsnap")) {
-                Link(L("Privacy policy"), destination: URL(string: "https://vegsnap.app/privacy.html")!)
+                Link(L("Privacy policy"), destination: URL(string: "https://vegsnap.app/privacy.html#ios")!)
                 Link(L("Website"), destination: URL(string: "https://vegsnap.app")!)
                 Link(L("Source code and issues"), destination: URL(string: "https://github.com/D3SOX/vegsnap")!)
                 Text("AGPL-3.0-only").foregroundStyle(.secondary)
