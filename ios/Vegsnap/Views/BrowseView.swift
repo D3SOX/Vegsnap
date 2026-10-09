@@ -76,12 +76,10 @@ struct BrowseDetail: View {
                 Text(source == .wikidata ? "CC0" : source == .barnivore ? L("Barnivore terms") : "ODbL-1.0 · DBCL-1.0").font(.footnote).foregroundStyle(.secondary)
                 if !record.snapshotDate.isEmpty { Text(L("Offline snapshot") + ": " + String(record.snapshotDate.prefix(10))) }
             }
-            if !record.barcode.isEmpty {
-                Section { Button(L("Check this product")) {
-                    store.enqueue(input: CheckInput(barcode: record.barcode, name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: [])
-                    store.selectedTab = "check"
-                } }
-            }
+            Section { Button(L("Check this product")) {
+                store.enqueue(input: CheckInput(barcode: record.barcode, name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: [])
+                store.selectedTab = "check"
+            } }
         }.navigationTitle(L("Product record")).navigationBarTitleDisplayMode(.inline)
     }
 }
