@@ -25,9 +25,25 @@ class BarcodePayloadTest {
             JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText()).getString("prompt"), http = http,
             productRequests = OpenFactsProductRequests(now = { clock }, wait = { clock += it }))
     }
-    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product") = MockResponse().setHeader("Content-Type", "application/json")
+    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product", market: String = "en:sweden") = MockResponse().setHeader("Content-Type", "application/json")
         .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", name)
-            .put("countries_tags", JSONArray().put("en:sweden")).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
+            .put("countries_tags", JSONArray().put(market)).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
+
+    @Test fun canonicalCountryTagsSupportAutomaticAndManualBarcodeLookup() = runBlocking {
+        for ((country, tag) in mapOf("CZ" to "en:czech-republic", "TR" to "en:turkey")) {
+            MockWebServer().use { server ->
+                val repo = repository(server)
+                server.enqueue(product(market = tag))
+                for (automatic in listOf(true, false)) {
+                    val result = requireNotNull(repo.lookupBarcode(CheckInput(category = "food", barcode = barcode, market = if (automatic) "DE" else country, autoMarket = automatic)))
+                    assertEquals(country, result.getJSONObject("identity").getString("market"))
+                    assertEquals(if (automatic) "database" else "manual", result.getJSONObject("identity").getString("marketSource"))
+                    assertFalse(result.getJSONArray("warnings").toString().contains("other markets"))
+                }
+                assertEquals(1, server.requestCount)
+            }
+        }
+    }
 
     @Test fun exactBarcodeCountryIsDetectedWithoutAi() = runBlocking {
         MockWebServer().use { server ->

@@ -208,7 +208,10 @@ export default defineBackground(() => {
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
             if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
+            const inheritedFallback = message.input.autoMarket === undefined && !trustedStore && !config.autoCountry;
+            if (inheritedFallback) result.identity.marketSource = 'fallback';
             const { images, ...savedInput } = input;
+            if (inheritedFallback) delete savedInput.autoMarket;
             const localResult = { ...result, input: savedInput, ...(images?.length ? { photos: images } : {}) };
             if (config.saveHistory) await changeHistory(() => history('save', localResult));
             return { ok: true, result: { ...localResult, ...(onlineConsent ? { onlineConsent } : {}) } };

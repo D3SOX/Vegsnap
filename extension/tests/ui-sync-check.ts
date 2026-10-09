@@ -173,9 +173,10 @@ try {
   await act(async () => { emailButton(roots[0]!)!.click(); window.dispatchEvent(new window.Event('blur')); });
   assert(!roots[0]!.innerHTML.includes(email), 'Window blur hides a revealed email');
 
-  const historyPreference = roots[0]!.querySelector<HTMLInputElement>('input[type="checkbox"]'); assert(historyPreference?.checked);
+  const historyToggle = (root: HTMLElement) => [...root.querySelectorAll('label')].find(label => label.textContent?.includes('Save check history'))?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+  const historyPreference = historyToggle(roots[0]!); assert(historyPreference?.checked);
   await act(async () => { historyPreference.click(); });
-  await until(() => roots.every(root => root.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked === false), 'Saved preferences propagate to the other open window');
+  await until(() => roots.every(root => historyToggle(root)?.checked === false), 'Saved preferences propagate to the other open window');
   await act(async () => { emailButton(roots[0]!)!.click(); });
   session.chatGPTConnection = { state: 'connected', email: 'another-fake@example.invalid', task: 'models' };
   session.chatGPTModelCatalog = [{ id: 'another-model', name: 'Shared replacement model' }];
@@ -297,6 +298,29 @@ try {
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Adding a barcode produces a new result');
   assert.equal(checkedInputs.at(-1)?.barcode, '4006381333931', 'Editing a barcode-less result preserves the newly supplied barcode for lookup');
   console.log('Actual editing UI: saved and fresh results, original input/photos, identity, focus, cancel and failed-check retry verified');
+
+  await tab(roots[0]!, 0);
+  const scanCountry = () => roots[0]!.querySelector<HTMLInputElement>('form input[maxLength="2"]')!;
+  assert.equal(scanCountry().value, settings.fallbackCountry, 'A fresh scan after a manual result uses the fallback');
+  await act(async () => {
+    scanCountry().value = 'ZZ'; scanCountry().dispatchEvent(new Event('input', { bubbles: true }));
+    const textarea = roots[0]!.querySelector('textarea')!;
+    textarea.value = 'Ingredients: water'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  const beforeInvalidCountry = checkRequests;
+  await submitEdit();
+  assert.equal(checkRequests, beforeInvalidCountry, 'An unknown country is rejected before sending a check');
+  assert(roots[0]!.querySelector('[role="alert"]')?.textContent?.includes('valid country code'));
+  await act(async () => { scanCountry().value = 'SE'; scanCountry().dispatchEvent(new Event('input', { bubbles: true })); });
+  await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'The manually selected scan completes');
+  assert.equal(checkedInputs.at(-1)?.autoMarket, false);
+  await act(async () => { [...roots[0]!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes('Back'))!.click(); });
+  assert.equal(scanCountry().value, settings.fallbackCountry, 'Back starts a fresh scan with the fallback country');
+  await act(async () => { const textarea = roots[0]!.querySelector('textarea')!; textarea.value = 'Ingredients: salt'; textarea.dispatchEvent(new Event('input', { bubbles: true })); });
+  await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'A different product completes');
+  assert.equal(checkedInputs.at(-1)?.autoMarket, true, 'Automatic detection resumes for the next product');
 
   extensionScheme = 'moz-extension:';
   settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();

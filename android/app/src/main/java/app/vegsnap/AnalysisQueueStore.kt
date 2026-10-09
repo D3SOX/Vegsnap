@@ -109,6 +109,14 @@ internal class AnalysisQueueStore(private val root: File) {
         if (get(id)?.status == AnalysisStatus.RUNNING) return false
         deleteFiles(id); return true
     }
+    /** A terminal retry cannot publish, but its durable input must not survive a correction. */
+    @Synchronized fun clearInactiveHistoryRetries(historyId: String): Boolean {
+        initialize()
+        val retries = mutableJobs.value.filter { it.historyId == historyId }
+        if (retries.any { it.status !in setOf(AnalysisStatus.FAILED, AnalysisStatus.INTERRUPTED, AnalysisStatus.CANCELLED) }) return false
+        retries.forEach { deleteFiles(it.id) }
+        return true
+    }
     @Synchronized fun finish(id: String, attempt: Int) {
         val job = get(id) ?: return
         check(job.status == AnalysisStatus.RUNNING && job.attempt == attempt && job.result != null)

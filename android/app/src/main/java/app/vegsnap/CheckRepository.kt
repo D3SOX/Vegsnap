@@ -54,6 +54,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             ?: Regex("(?<![0-9])[0-9]{8,14}(?![0-9])").findAll(combinedText.take(30_000)).map { it.value }.firstOrNull(::validGtin).orEmpty()
         val input = original.copy(text = combinedText.take(30_000), complete = if (truncated) false else original.complete, barcode = barcode, autoMarket = original.autoMarket ?: settings.autoCountry)
         val observedMarkets = mutableListOf<String>()
+        val compositionMarkets = mutableListOf<List<String>>()
         var packagingCountry: String? = null
         // OCR is noisy page text, not a user-supplied ingredients list. Only a recognizable
         // composition heading makes photo text eligible for the local ingredient evaluator.
@@ -83,7 +84,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val database = lookup(barcode, input, settings.offline)
                 if (database != null) {
                     observedMarkets += database.second.optJSONArray("productMarkets").stringValues()
-                    result = mergeResults(result, databaseResult(database, barcode))
+                    compositionMarkets += (database.second.optJSONArray("compositionMarkets") ?: database.second.optJSONArray("productMarkets")).stringValues()
+                    result = mergeResults(result, databaseResult(database, barcode, warnCountry = false))
                     // Give AI the community record without promoting it to user-supplied evidence.
                     val useDatabaseText = photos.isEmpty() && input.text.isBlank()
                     extractionInput = input.copy(market = database.first.market, name = input.name.ifBlank { database.first.name }.take(300),
@@ -146,12 +148,14 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                         val database = lookup(recognizedBarcode, aiInput)
                         if (database != null) {
                             observedMarkets += database.second.optJSONArray("productMarkets").stringValues()
-                            result = mergeResults(result, databaseResult(database, recognizedBarcode))
+                            compositionMarkets += (database.second.optJSONArray("compositionMarkets") ?: database.second.optJSONArray("productMarkets")).stringValues()
+                            result = mergeResults(result, databaseResult(database, recognizedBarcode, warnCountry = false))
                         }
                     } catch (error: kotlinx.coroutines.CancellationException) { throw error }
                     catch (error: Exception) { warnings.put(if (input.locale == "de") "Datenbank nicht erreichbar; KI-Belege bleiben erhalten." else "Database unavailable; AI evidence has been kept.") }
                 }
                 extraction.database?.let { database ->
+                    compositionMarkets.add(emptyList())
                     val sourceId = database.second.getString("id")
                     // Keep the community's entire local split; partial AI assessments only enrich it.
                     val community = databaseResult(database, "")
@@ -195,28 +199,34 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             applyCompanyAssessment(result, it)
         }
         val (market, source) = selectProductCountry(input, packagingCountry, observedMarkets)
-        result.getJSONObject("identity").put("market", market).put("marketSource", source)
+        result.getJSONObject("identity").put("market", market).put("marketSource", if (original.autoMarket == null && !settings.autoCountry) "fallback" else source)
+        compositionMarkets.mapNotNull { databaseCountryWarning(market, it, original.locale) }.distinct().forEach(allWarnings::put)
         companyConcerns.attach(result.put("aiStatus", aiStatus), original.locale)
     }
     /** Passive camera lookups send only the GTIN; this entry point cannot invoke AI. */
-    suspend fun lookupBarcode(input: CheckInput, offline: Boolean = false): JSONObject? = withContext(Dispatchers.IO) {
+    suspend fun lookupBarcode(input: CheckInput, offline: Boolean = false, autoCountry: Boolean = false): JSONObject? = withContext(Dispatchers.IO) {
         require(validGtin(input.barcode))
-        lookup(input.barcode, input, offline)?.let { databaseResult(it, input.barcode) }
+        lookup(input.barcode, input.copy(autoMarket = input.autoMarket ?: autoCountry), offline)?.let {
+            databaseResult(it, input.barcode).apply {
+                if (input.autoMarket == null && !autoCountry) getJSONObject("identity").put("marketSource", "fallback")
+            }
+        }
     }
 
-    private fun databaseResult(database: Pair<CheckInput, JSONObject>, barcode: String): JSONObject {
+    private fun databaseResult(database: Pair<CheckInput, JSONObject>, barcode: String, warnCountry: Boolean = true): JSONObject {
         val result = evaluator.evaluate(database.first)
         val (market, source) = selectProductCountry(database.first, markets = database.second.optJSONArray("productMarkets").stringValues())
         result.getJSONObject("identity").put("market", market).put("marketSource", source)
         database.second.remove("productMarkets")
+        val compositionMarkets = database.second.optJSONArray("compositionMarkets").stringValues()
+        database.second.remove("compositionMarkets")
         result.put("evidence", JSONArray().put(database.second))
         val findings = result.getJSONArray("findings")
         for (index in 0 until findings.length()) findings.getJSONObject(index).put("evidenceId", database.second.getString("id"))
         result.getJSONObject("identity").put("barcode", barcode).put("match", if (barcode.isBlank()) "unconfirmed" else "exact_barcode")
         database.second.optString("databaseBrand").takeIf { it.isNotBlank() }?.let { result.getJSONObject("identity").put("brand", it) }
         database.second.remove("databaseBrand")
-        if (database.second.optBoolean("differentMarket")) result.getJSONArray("warnings").put(if (database.first.locale == "de") "Dieser Datensatz nennt andere Märkte. Vergleiche die Rezeptur mit deiner Packung." else "This record lists other markets. Compare its composition with your package.")
-        database.second.remove("differentMarket")
+        if (warnCountry) databaseCountryWarning(market, compositionMarkets, database.first.locale)?.let { result.getJSONArray("warnings").put(it) }
         if (database.second.has("offlineSnapshotDate")) {
             val date = database.second.getString("offlineSnapshotDate").take(10)
             database.second.remove("offlineSnapshotDate")
@@ -243,13 +253,12 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             if (!validGtin(returned) || returned.padStart(14, '0') != barcode.padStart(14, '0')) throw IOException("Product identity mismatch")
             val markets = product.optJSONArray("countries_tags") ?: JSONArray()
             val market = selectProductCountry(input, markets = markets.stringValues()).first
-            val differentMarket = markets.length() > 0 && (0 until markets.length()).none { productCountryCode(markets.optString(it)) == market }
             val text = product.optString(if (input.locale == "de") "ingredients_text_de" else "ingredients_text").ifBlank { product.optString("ingredients_text") }
             val name = product.optString(if (input.locale == "de") "product_name_de" else "product_name").ifBlank { product.optString("product_name") }
             val category = if (input.category == "other") when (domain) { "openfoodfacts.org" -> "food"; "openbeautyfacts.org" -> "cosmetics"; else -> "other" } else input.category
             val evidence = JSONObject().put("id", "$domain:$barcode").put("kind", "database").put("title", domain)
                 .put("databaseBrand", product.optString("brands")).put("productMarkets", markets)
-                .put("differentMarket", differentMarket).put("url", "https://world.$domain/product/$barcode").put("excerpt", text).put("retrievedAt", java.time.Instant.now().toString()).put("license", "ODbL-1.0")
+                .put("compositionMarkets", markets).put("url", "https://world.$domain/product/$barcode").put("excerpt", text).put("retrievedAt", java.time.Instant.now().toString()).put("license", "ODbL-1.0")
             if (product.optLong("last_modified_t") > 0) evidence.put("sourceDate", java.time.Instant.ofEpochSecond(product.getLong("last_modified_t")).toString())
             // Community ingredient fields may be partial. Explicit completeness is deliberately not inferred.
             return input.copy(market = market, text = text, name = name, barcode = barcode, complete = false, category = category) to evidence
@@ -287,7 +296,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 (input.barcode.takeIf(::validGtin) ?: first.optString("barcode").takeIf(::validGtin))?.let { put("barcode", it) }
             }
         val missingComposition = first.getString("text").isBlank() && first.optJSONArray("webCompositions").let { it == null || it.length() == 0 }
-        val database = if (researchAssessment(input, first, photos.isNotEmpty() && settings.vision).getString("outcome") == "uncertain") {
+        val packagingMarket = first.optJSONObject("packaging")?.optString("country")?.let(::productCountryCode)
+        val countryConflict = input.autoMarket == false && packagingMarket != null && packagingMarket != input.market
+        val database = if (!countryConflict && researchAssessment(input, first, photos.isNotEmpty() && settings.vision).getString("outcome") == "uncertain") {
             try { identifiedDatabaseLookup?.invoke(identity) }
             catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (_: Exception) { null }

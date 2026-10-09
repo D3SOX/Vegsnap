@@ -5,6 +5,12 @@ import org.junit.Test
 
 class ProductMarketTest {
     private val automatic = CheckInput(market = "DE", autoMarket = true)
+    @Test fun `canonical Open Facts tags match ISO countries despite system name differences`() {
+        for ((country, tag) in mapOf("CZ" to "czech-republic", "TR" to "turkey", "HK" to "hong-kong", "BA" to "bosnia-and-herzegovina", "RE" to "reunion", "CI" to "cote-d-ivoire", "AX" to "aland-islands", "CD" to "democratic-republic-of-the-congo")) {
+            assertEquals(country, productCountryCode("en:$tag"))
+            assertEquals(country to "database", selectProductCountry(automatic, markets = listOf("en:$tag")))
+        }
+    }
     @Test fun `explicit packaging and one database country can select a country`() {
         assertEquals("SE" to "packaging", selectProductCountry(automatic, "Sweden"))
         assertEquals("SE" to "database", selectProductCountry(automatic, markets = listOf("en:sweden", "SE")))

@@ -145,6 +145,8 @@ export interface CheckOptions {
   now?: () => Date;
 }
 export interface DatabaseProduct {
+  /** Countries of the chosen composition when detection combines multiple snapshots. */
+  evidenceMarkets?: string[];
   markets?: string[];
   warnings?: string[];
   input: CheckInput;

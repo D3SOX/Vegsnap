@@ -8,6 +8,27 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnalysisQueueTest {
+    @Test fun `country correction removes inactive history retries but cannot remove publishable work`() = withStore { _, store ->
+        for (status in listOf(AnalysisStatus.FAILED, AnalysisStatus.INTERRUPTED, AnalysisStatus.CANCELLED)) {
+            val job = store.enqueueHistory("history", CheckInput(market = "DE"), AppSettings(), emptyList())
+            assertFalse(store.clearInactiveHistoryRetries("history"))
+            val active = requireNotNull(store.next(false, 1))
+            assertFalse(store.clearInactiveHistoryRetries("history"))
+            when (status) {
+                AnalysisStatus.FAILED -> store.failed(active.id, active.attempt)
+                else -> assertTrue(store.stop(active.id, status))
+            }
+            assertTrue(store.clearInactiveHistoryRetries("history"))
+            assertNull(store.get(job.id))
+            val corrected = store.enqueueHistory("history", CheckInput(market = "SE", autoMarket = false), AppSettings(), emptyList())
+            assertEquals("SE", corrected.input.market)
+            assertTrue(store.remove(corrected.id))
+        }
+        val paused = store.enqueueHistory("history", CheckInput(), AppSettings(), emptyList())
+        store.next(true, 1)
+        assertEquals(AnalysisStatus.PAUSED, store.get(paused.id)?.status)
+        assertFalse(store.clearInactiveHistoryRetries("history"))
+    }
     private fun withStore(test: suspend CoroutineScope.(File, AnalysisQueueStore) -> Unit) = runBlocking {
         val root = Files.createTempDirectory("vegsnap-queue").toFile()
         try { test(root, AnalysisQueueStore(File(root, "queue"))) }

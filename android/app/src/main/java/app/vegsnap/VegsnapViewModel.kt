@@ -153,10 +153,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         update { it.copy(cameraBarcode = observation.barcode, barcodeLookingUp = observation.lookup) }
         if (!observation.lookup) return
         val input = CheckInput(category = state.value.category, barcode = observation.barcode,
-            locale = appLocale(), market = state.value.market, autoMarket = state.value.autoMarket ?: settings.value.autoCountry)
+            locale = appLocale(), market = state.value.market, autoMarket = state.value.autoMarket)
         barcodeJob = viewModelScope.launch {
             try {
-                val result = withTimeout(60_000) { barcodeRepository.lookupBarcode(input, offline = settings.value.offline) }
+                val result = withTimeout(60_000) { barcodeRepository.lookupBarcode(input, offline = settings.value.offline, autoCountry = settings.value.autoCountry) }
                 if (result == null || !barcodeCoordinator.accepts(observation) || state.value.capturing || state.value.photos.isNotEmpty()) return@launch
                 val json = result.toString()
                 val savedInput = input.copy(name = result.getJSONObject("identity").optString("name"), category = result.getString("category"))
@@ -212,7 +212,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         mutableSettings.value = value
         if (value.fallbackCountry != previous.fallbackCountry || value.autoCountry != previous.autoCountry) {
             barcodeJob?.cancel(); barcodeCoordinator.clear()
-            update { if (it.autoMarket == null) it.copy(market = value.fallbackCountry, cameraBarcode = "", barcodeLookingUp = false) else it }
+            update { it.copy(market = if (it.autoMarket == null) value.fallbackCountry else it.market, cameraBarcode = "", barcodeLookingUp = false) }
         }
         if (value.defaultCategory != previous.defaultCategory) update {
             if (it.text.isBlank() && it.name.isBlank() && it.barcode.isBlank() && it.photos.isEmpty()) it.copy(category = value.defaultCategory) else it
@@ -452,7 +452,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val photos = withContext(Dispatchers.IO) { snapshot.photos.map { ensureActive(); processor.prepare(it) } }
                 val input = CheckInput(snapshot.text, snapshot.category, snapshot.complete.takeIf { it },
                     name = snapshot.name, barcode = snapshot.barcode,
-                    locale = appLocale(), truncated = snapshot.textTruncated, market = snapshot.market, autoMarket = snapshot.autoMarket ?: settings.value.autoCountry)
+                    locale = appLocale(), truncated = snapshot.textTruncated, market = snapshot.market, autoMarket = snapshot.autoMarket)
                 ensureActive()
                 withContext(NonCancellable) {
                     val job = withContext(Dispatchers.IO) { queueStore.enqueue(input, connection, photos.map { it.jpeg }) }
@@ -570,7 +570,6 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                         else if (database.history().find(id) == null) null
                         else {
                             val input = restoreCheckInput(result, historyPhotos.input(id), settings.value.fallbackCountry)
-                                .let { it.copy(autoMarket = it.autoMarket ?: settings.value.autoCountry) }
                             queueStore.enqueueHistory(id, input, connection, historyPhotos.files(id).map { it.readBytes() })
                         }
                     }
@@ -606,7 +605,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val entry = withContext(Dispatchers.IO) {
                 queueStore.withHistoryMutation {
-                    check(queuedJobs.value.none { it.historyId == id })
+                    check(queueStore.clearInactiveHistoryRetries(id))
                     val saved = database.history().find(id) ?: return@withHistoryMutation null
                     val result = JSONObject(saved.json)
                     result.getJSONObject("identity").put("market", market).put("marketSource", "manual")

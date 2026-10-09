@@ -772,3 +772,14 @@ assert.deepEqual(saved.at(-1),correction.result,'Corrected country is written to
 assert.equal(correctionFixture.identity.market,'DE','Original analysis object is not mutated');
 assert.equal((await listener!({type:'set-result-market',id:'missing-result',market:'SE'},firefoxTrusted)).ok,false);
 assert.equal((await listener!({type:'set-result-market',id:correctionFixture.id,market:'DE,SE'},firefoxTrusted)).ok,false);
+local.settings = { ...defaultSettings, connection: 'database', autoCountry: false, fallbackCountry: 'FI' };
+const fallbackCheck = await listener!({ type: 'check', input: { name: 'Unknown product' } }, firefoxTrusted);
+assert(fallbackCheck.ok);
+const fallbackResult = fallbackCheck.result as { identity: { marketSource: string }; input: CheckInput };
+assert.equal(fallbackResult.identity.marketSource, 'fallback', 'Disabled detection does not create a manual override');
+assert.equal(fallbackResult.input.market, 'FI');
+assert.equal(fallbackResult.input.autoMarket, undefined, 'An inherited fallback stays inherited in saved input');
+const manualCountryCheck = await listener!({ type: 'check', input: { name: 'Unknown product', market: 'SE', autoMarket: false } }, firefoxTrusted);
+assert(manualCountryCheck.ok);
+assert.equal(checkInputs.at(-1)?.autoMarket, false);
+assert.equal((manualCountryCheck.result as { input: CheckInput }).input.autoMarket, false, 'An explicit country remains a manual override');

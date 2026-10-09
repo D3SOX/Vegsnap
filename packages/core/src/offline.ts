@@ -97,6 +97,7 @@ export class OfflineProductIndex {
     const name = (input.locale === 'de' ? product.name_de : product.name_en) || product.name || product.name_de || product.name_en || '';
     return {
       markets: countryTags,
+      evidenceMarkets: product.countries_tags,
       input: { barcode: code, name, brand: product.brands, text, complete: false, locale: input.locale, market,
         category: input.category && input.category !== 'other' ? input.category : db.category, sourceUrl: `${db.origin}/product/${product.code}` },
       evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${input.locale === 'de' ? 'Offline-Auszug' : 'offline snapshot'} (${snapshot.region})`,

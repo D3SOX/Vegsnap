@@ -1,8 +1,20 @@
 import { expect, test } from 'bun:test';
 import { checkProduct, selectProductCountry } from '../src';
 import { OfflineProductIndex, type OfflineSnapshot } from '../src/offline';
+import { lookupProduct } from '../src/database';
 
 const automatic = { market: 'DE', autoMarket: true };
+test('Open Facts canonical tags select the country and match manual online and offline lookups', async () => {
+  for (const [market, tag] of [['CZ', 'czech-republic'], ['TR', 'turkey'], ['HK', 'hong-kong'], ['BA', 'bosnia-and-herzegovina'], ['RE', 'reunion'], ['CI', 'cote-d-ivoire'], ['AX', 'aland-islands'], ['CD', 'democratic-republic-of-the-congo']] as const) {
+    const countries_tags = [`en:${tag}`];
+    expect(selectProductCountry(automatic, undefined, countries_tags)).toEqual({ market, marketSource: 'database' });
+    const product = { code: '4006381333931', product_name: 'Example', ingredients_text: 'water', countries_tags };
+    const fetcher = Object.assign(async () => Response.json({ status: 'success', product }), { preconnect: fetch.preconnect });
+    expect((await lookupProduct(product.code, { market, autoMarket: false, fetch: fetcher }))?.input.market).toBe(market);
+    const offline = new OfflineProductIndex([{ schemaVersion: 1, generatedAt: '2026-10-05T00:00:00Z', region: market, sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T00:00:00Z' }], products: [{ source: 'off', code: product.code, name: 'Example', brands: '', ingredients: 'water', countries_tags, last_modified_t: 1 }] }]);
+    expect(offline.lookup(product.code, { market })?.warnings?.some(warning => warning.startsWith('Different market:'))).toBe(false);
+  }
+});
 test('explicit country clues select a country and conflicting or ambiguous clues use the fallback', () => {
   expect(selectProductCountry(automatic, 'SE')).toEqual({ market: 'SE', marketSource: 'packaging' });
   expect(selectProductCountry(automatic, undefined, ['en:sweden', 'SE'])).toEqual({ market: 'SE', marketSource: 'database' });
@@ -39,6 +51,21 @@ test('ambiguous database countries are retained so conflicting packaging uses th
   const result = await checkProduct({ ...automatic, barcode: '4006381333931', images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', fetch: fetcher, provider: { extract: async () => ({ text: '', category: 'food', complete: false, packaging: { country: 'FI' } }) } });
   expect(result.identity.market).toBe('DE');
   expect(result.identity.marketSource).toBe('fallback');
+  expect(result.warnings.join(' ')).toContain('other markets than DE');
+});
+test('a manual country retains untagged barcode evidence with an explicit country warning', async () => {
+  const fetcher = Object.assign(async () => Response.json({ status: 'success', product: { code: '4006381333931', product_name: 'Example', ingredients_text: 'water' } }), { preconnect: fetch.preconnect });
+  const result = await checkProduct({ barcode: '4006381333931', market: 'SE', autoMarket: false }, { mode: 'background', fetch: fetcher });
+  expect(result.identity).toMatchObject({ market: 'SE', match: 'exact_barcode' });
+  expect(result.evidence.some(item => item.kind === 'database')).toBe(true);
+  expect(result.warnings.join(' ')).toContain('does not confirm the product country');
+});
+test('final warnings use the chosen offline composition while conflicting snapshots remain ambiguous', async () => {
+  const pack = (country: string, modified: number): OfflineSnapshot => ({ schemaVersion: 1, generatedAt: '2026-10-05T00:00:00Z', region: country, sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T00:00:00Z' }], products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: '', ingredients: 'unspecified flavouring', countries_tags: [country], last_modified_t: modified }] });
+  const index = new OfflineProductIndex([pack('en:germany', 2), pack('en:sweden', 1)]);
+  const result = await checkProduct({ ...automatic, barcode: '4006381333931', images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', offlineProducts: index, provider: { extract: async () => ({ text: '', category: 'food', complete: false, packaging: { country: 'SE' } }) } });
+  expect(result.identity).toMatchObject({ market: 'SE', marketSource: 'packaging' });
+  expect(result.warnings.join(' ')).toContain('other markets than SE');
 });
 test('manual countries outside the previous short list still reject another market', async () => {
   const fetcher = Object.assign(async () => Response.json({ status: 'success', product: { code: '4006381333931', countries_tags: ['en:germany'] } }), { preconnect: fetch.preconnect });

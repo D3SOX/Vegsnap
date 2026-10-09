@@ -167,7 +167,7 @@ for (const chatGPT of [false, true]) test(`catalogue recovery uses public transp
       : { status: 503, body: {} };
     return { status: 404, body: {} };
   });
-  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='], locale: 'en' }, provider: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', supportsVision: true }, chatGPT, aiEnabled: true });
+  const result = await app.check({ input: { autoMarket: true, images: ['data:image/jpeg;base64,AA=='], locale: 'en' }, provider: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', supportsVision: true }, chatGPT, aiEnabled: true });
   expect(result.outcome).toBe('not_vegan');
   expect(result.evidence.some(e => e.url === 'https://www.matspar.se/produkt/hummus-chili-200g-coop' && e.excerpt === product.ingredients)).toBe(true);
   const requests = app.calls.filter(call => call.url === 'https://api.matspar.se/slug');
@@ -177,12 +177,29 @@ for (const chatGPT of [false, true]) test(`catalogue recovery uses public transp
   expect(result.evidence.filter(e => e.id === 'ai-extraction').some(e => e.excerpt === product.ingredients)).toBe(false);
 });
 
+test('manual country corrections cannot attach composition from a conflicting packaging country', async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g', country: 'Germany' } };
+  const app = harness(() => ({ status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } }));
+  const result = await app.check({ input: { market: 'SE', autoMarket: false, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  expect(result.identity).toMatchObject({ market: 'SE', marketSource: 'manual' });
+  expect(result.evidence.some(item => item.kind === 'database')).toBe(false);
+  expect(app.calls.some(call => call.url.includes('/cgi/search.pl'))).toBe(false);
+});
+test('manual countries constrain recovery even when the packaging has no country clue', async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g' } };
+  const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags: ['en:sweden'], ingredients_text_sv: 'honey' };
+  const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
+    : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+  const result = await app.check({ input: { market: 'DE', autoMarket: false, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  expect(result.identity).toMatchObject({ market: 'DE', marketSource: 'manual' });
+  expect(result.evidence.some(item => item.kind === 'database')).toBe(false);
+});
 test('packaging matches preserve complete database composition, source and app language', async () => {
   const extraction = { text: '', complete: false, category: 'food', name: 'Coop Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', country: 'Sweden', variant: 'med chili' }, ingredientAssessments: [{ term: 'kikärtor', status: 'plant', explanation: 'Chickpeas are plants.' }] };
   const product = { code: '4006381333931', product_name: 'Other base name', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags: ['en:sweden'], ingredients_text_sv: 'kikärtor, honey, salt' };
   const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
     : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
-  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='], locale: 'de' }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  const result = await app.check({ input: { autoMarket: true, images: ['data:image/jpeg;base64,AA=='], locale: 'de' }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
   expect(result.outcome).toBe('not_vegan');
   expect(result.identity.match).toBe('unconfirmed');
   expect(result.identity.barcode).toBeUndefined();
@@ -196,7 +213,7 @@ for (const mismatch of ['brand', 'quantity', 'variant', 'market', 'ambiguous', '
   const product = { code: '4006381333931', product_name_sv: mismatch === 'variant' ? 'Hummus ginger' : 'Hummus chili', brands: mismatch === 'brand' ? 'Other' : 'Coop', quantity: mismatch === 'quantity' ? '140g' : '200g', countries_tags: [mismatch === 'market' ? 'en:germany' : 'en:sweden'], ingredients_text_sv: mismatch === 'empty' ? '' : 'honey' };
   const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: mismatch === 'pagination' ? 21 : 1, products: mismatch === 'ambiguous' ? [product, product] : [product] } }
     : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
-  const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+  const result = await app.check({ input: { autoMarket: true, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
   expect(result.outcome).toBe('uncertain');
   expect(result.evidence.some(e => e.kind === 'database')).toBe(false);
 });
@@ -206,7 +223,7 @@ test('concurrent packaging lookups wait for slots and cancelled waiters reserve 
   const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', ingredients_text_sv: 'honey' };
   const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
     : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
-  const args = { input: { images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true };
+  const args = { input: { autoMarket: true, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true };
   const searches = () => app.calls.filter(call => call.url.includes('/cgi/search.pl')).length;
   expect((await app.check(args)).outcome).toBe('not_vegan');
   const cancelledID = crypto.randomUUID();

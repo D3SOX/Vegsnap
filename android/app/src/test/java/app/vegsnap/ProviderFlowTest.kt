@@ -13,6 +13,17 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 class ProviderFlowTest {
+    @Test fun disabledDetectionUsesFallbackAndRechecksUseTheNewFallback() = runBlocking {
+        val input = CheckInput(text = "Ingredients: water", market = "DE")
+        val result = repository.check(input, emptyList(), AppSettings(aiEnabled = false, autoCountry = false), "")
+        assertEquals("fallback", result.getJSONObject("identity").getString("marketSource"))
+        val restored = restoreCheckInput(result, input, "SE")
+        assertEquals("SE", restored.market)
+        assertNull(restored.autoMarket)
+        val manual = repository.check(input.copy(autoMarket = false), emptyList(), AppSettings(aiEnabled = false, autoCountry = false), "")
+        assertEquals("manual", manual.getJSONObject("identity").getString("marketSource"))
+        assertEquals("DE", restoreCheckInput(manual, input.copy(autoMarket = false), "SE").market)
+    }
     private val root = File(requireNotNull(System.getProperty("vegsnap.repo")))
     private val repository = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText()).getString("prompt"))
     private fun response(text: String, finish: String = "stop") = MockResponse().setHeader("Content-Type", "application/json")
@@ -256,6 +267,19 @@ class ProviderFlowTest {
     private fun product(text: String, market: String = "en:germany") = MockResponse().setBody(JSONObject().put("product",
         JSONObject().put("code", "4006381333931").put("ingredients_text", text).put("product_name", "Test product")
             .put("countries_tags", JSONArray().put(market))).toString())
+    @Test fun finalCountryWarningsCompareTheOriginalDatabaseCompositionWithPackagingFallback() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(product("unspecified flavouring", "en:sweden"))
+            server.enqueue(response("""{"text":"unspecified flavouring","complete":false,"category":"food","packaging":{"country":"FI"}}"""))
+            val result = databaseRepository(server).check(CheckInput(category = "food", barcode = "4006381333931", market = "DE", autoMarket = true), emptyList(),
+                AppSettings(connection = "api", aiEnabled = true, baseUrl = server.url("/v1").toString(), model = "test"), "")
+            assertEquals(result.toString(), "DE", result.getJSONObject("identity").getString("market"))
+            assertEquals("fallback", result.getJSONObject("identity").getString("marketSource"))
+            assertTrue(result.getJSONArray("warnings").toString().contains("other markets than DE"))
+            val evidence = result.getJSONArray("evidence")
+            assertTrue((0 until evidence.length()).any { evidence.getJSONObject(it).optString("excerpt") == "unspecified flavouring" })
+        }
+    }
     @Test fun uncertainDatabaseCannotEraseKnownMilkInOriginal() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product("water, salt"))

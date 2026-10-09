@@ -7,7 +7,7 @@ import { mergeResults, withoutCompositionFindings } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
 import { applyCompanyAssessment } from './company-assessment';
-import { selectProductCountry } from './market';
+import { databaseCountryWarning, selectProductCountry } from './market';
 import type { CheckInput, CheckOptions, CheckResult, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
@@ -16,7 +16,8 @@ function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () =>
   result.findings = result.findings.map(finding => ({ ...finding, evidenceId: product.evidence.id }));
   result.identity.match = 'exact_barcode';
   result.warnings.push(input.locale === 'de' ? 'Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen.' : 'Community-maintained record; check market, recipe and freshness.');
-  result.warnings.push(...product.warnings ?? []);
+  // Country warnings are evaluated after packaging and database clues are combined.
+  result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:)/.test(warning)));
   // Database label tags are community assertions, not independently verified registry claims.
   if (product.labels.length) result.warnings.push(`Database labels (unverified): ${product.labels.join(', ')}`);
   return result;
@@ -28,9 +29,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   options.onProgress?.('evaluating');
   let result = analyzeText(input, options.now);
   const markets: string[] = [];
+  const evidenceMarkets: string[][] = [];
   let packagingCountry: string | undefined;
   const finish = () => {
     result.identity = {...result.identity,...selectProductCountry(input,packagingCountry,markets)};
+    for (const countries of evidenceMarkets) {
+      const warning = databaseCountryWarning(result.identity.market, countries, input.locale);
+      if (warning && !result.warnings.includes(warning)) result.warnings.push(warning);
+    }
     return attachCompanyConcerns(result, input.locale, result.identity.brand ?? input.brand);
   };
   const checked = new Set<string>();
@@ -42,14 +48,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { markets.push(...local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return; }
+      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return; }
       if (options.offline) {
         result.warnings.push(input.locale === 'de' ? 'Kein passender Eintrag im teilweisen Offline-Datenbestand.' : 'No exact record in the partial offline database.');
         return;
       }
       const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
         category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
-      if (product) { markets.push(...product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
+      if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
       else result.warnings.push(input.locale === 'de' ? 'Kein passender Datenbankeintrag gefunden.' : 'No exact product record was found.');
     } catch (error) {
       if (options.signal?.aborted) throw error;

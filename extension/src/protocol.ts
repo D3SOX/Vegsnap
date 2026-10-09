@@ -1,4 +1,5 @@
 import type { CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
+import { countryCode } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
 import type { AccountOptions, CompanionCommand } from './companion-state';
@@ -54,7 +55,7 @@ export function isCheckInput(v: unknown): v is CheckInput {
   if (v.autoMarket !== undefined && typeof v.autoMarket !== 'boolean') return false;
   const strings = ['text', 'barcode', 'name', 'brand', 'market', 'sourceUrl'];
   if (!strings.every(key => v[key] === undefined || (typeof v[key] === 'string' && v[key].length <= 30_000))) return false;
-  if (v.market !== undefined && (typeof v.market !== 'string' || !/^[A-Z]{2}$/.test(v.market))) return false;
+  if (v.market !== undefined && (typeof v.market !== 'string' || !/^[A-Z]{2}$/.test(v.market) || !countryCode(v.market))) return false;
   if (v.category !== undefined && !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(String(v.category))) return false;
   if (v.locale !== undefined && !['en', 'de'].includes(String(v.locale))) return false;
   if (v.complete !== undefined && typeof v.complete !== 'boolean') return false;

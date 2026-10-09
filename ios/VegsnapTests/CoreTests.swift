@@ -5,6 +5,28 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testSettingsPreserveCustomDraftCountryAndUpdateOnlyAnInheritedFallback() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = try FileStore(root: root)
+        try files.save(AppStore.Draft(id: UUID().uuidString, input: CheckInput(text: "water", market: "SE"), photos: []), "draft.json")
+        let store = try AppStore(root: root)
+        store.settings.appearance = "dark"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "SE")
+        store.settings.fallbackCountry = "FI"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "SE")
+        store.clearDraft()
+        XCTAssertEqual(store.draft.market, "FI")
+        store.settings.fallbackCountry = "NO"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "NO")
+        store.draft.autoMarket = false
+        store.settings.fallbackCountry = "DE"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "NO")
+    }
     func testOldSettingsAndInputsDecodeWithoutDetectionFields() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()

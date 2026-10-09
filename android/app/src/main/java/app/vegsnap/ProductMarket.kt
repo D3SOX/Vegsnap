@@ -15,9 +15,25 @@ internal fun org.json.JSONArray?.stringValues(): List<String> = this?.let { valu
 internal fun validProductMarket(value: String): Boolean = value in Locale.getISOCountries()
 internal fun productMarketTag(value: String): String = "en:" + Locale.Builder().setRegion(value).build()
     .getDisplayCountry(Locale.ENGLISH).lowercase(Locale.ROOT).replace(' ', '-')
+// Canonical Open Facts tags differing from system names. Keep in sync with core/market.ts.
+// https://github.com/openfoodfacts/openfoodfacts-server/blob/main/taxonomies/countries.txt
 private val countryAliases by lazy {
     Locale.getISOCountries().associateBy { productMarketTag(it).removePrefix("en:").replace("-", "") } +
-        mapOf("deutschland" to "DE", "sverige" to "SE", "suomi" to "FI", "uk" to "GB", "usa" to "US")
+        mapOf(
+            "antarctic" to "AQ", "antiguaandbarbuda" to "AG", "bosniaandherzegovina" to "BA",
+            "cocoskeelingislands" to "CC", "curacao" to "CW", "czechrepublic" to "CZ",
+            "cotedivoire" to "CI", "democraticrepublicofthecongo" to "CD", "federatedstatesofmicronesia" to "FM",
+            "frenchsouthernandantarcticlands" to "TF", "heardislandandmcdonaldislands" to "HM", "hongkong" to "HK",
+            "macau" to "MO", "myanmar" to "MM", "pitcairn" to "PN",
+            "republicofthecongo" to "CG", "reunion" to "RE", "sainthelena" to "SH",
+            "saintkittsandnevis" to "KN", "saintlucia" to "LC", "saintmartin" to "MF",
+            "saintpierreandmiquelon" to "PM", "saintvincentandthegrenadines" to "VC", "saintbarthelemy" to "BL",
+            "saotomeandprincipe" to "ST", "southgeorgiaandthesouthsandwichislands" to "GS", "stateofpalestine" to "PS",
+            "svalbardandjanmayen" to "SJ", "swaziland" to "SZ", "thebahamas" to "BS",
+            "trinidadandtobago" to "TT", "turkey" to "TR", "turksandcaicosislands" to "TC",
+            "unitedstatesminoroutlyingislands" to "UM", "virginislandsoftheunitedstates" to "VI", "wallisandfutuna" to "WF",
+            "alandislands" to "AX",
+        ) + mapOf("deutschland" to "DE", "sverige" to "SE", "suomi" to "FI", "uk" to "GB", "usa" to "US")
 }
 internal fun productCountryCode(value: String): String? = value.trim().uppercase(Locale.ROOT).takeIf(::validProductMarket)
     ?: countryAliases[value.trim().lowercase(Locale.ROOT).removePrefix("en:").replace(Regex("[\\s-]"), "")]
@@ -29,6 +45,11 @@ internal fun selectProductCountry(input: CheckInput, packagingCountry: String? =
     if (packaging != null) return packaging to "packaging"
     val unique = codes.distinct().singleOrNull()
     return if (unique != null) unique to "database" else input.market to "fallback"
+}
+internal fun databaseCountryWarning(market: String, markets: List<String>, locale: String): String? = when {
+    markets.isEmpty() -> if (locale == "de") "Dieser Datensatz bestätigt das Produktland nicht. Vergleiche die Rezeptur mit deiner Packung." else "This record does not confirm the product country. Compare its composition with your package."
+    markets.none { productCountryCode(it) == market } -> if (locale == "de") "Dieser Datensatz nennt andere Märkte als $market. Vergleiche die Rezeptur mit deiner Packung." else "This record lists other markets than $market. Compare its composition with your package."
+    else -> null
 }
 
 @Composable

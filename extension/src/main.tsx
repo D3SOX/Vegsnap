@@ -1,6 +1,6 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
+import { countryCode, imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
@@ -163,15 +163,15 @@ export function App() {
   async function check(input: CheckInput) {
     await act(async () => {
       await settingsWrites.current;
-      const checked = await runCheck(input); setResult(checked); setEditingResult(undefined); setImages([]); setImageUrl(undefined); await refresh(); });
+      const checked = await runCheck(input); newScan(); setResult(checked); await refresh(); });
   }
   function editResult() {
     if (!storedResult) return;
     const input = editableInput(storedResult);
     const barcodeInText = input.barcode !== undefined && input.text?.split(/\s+/).some(value => validGtin(value) === input.barcode);
     setEditingResult(storedResult); setResult(undefined); setTab('scan');
-    marketOverride.current = input.autoMarket !== true;
-    setMarket(input.autoMarket !== true ? input.market ?? configRef.current.fallbackCountry : configRef.current.fallbackCountry);
+    marketOverride.current = input.autoMarket !== true && storedResult.identity.marketSource !== 'fallback';
+    setMarket(marketOverride.current ? input.market ?? configRef.current.fallbackCountry : configRef.current.fallbackCountry);
     setText(input.text ?? ''); setCategory(input.category ?? 'other'); setComplete(input.complete === true); setImages(input.images ?? []);
     setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode && !barcodeInText ? { barcode: input.barcode } : {}), sourceUrl: input.sourceUrl });
     setImageUrl(undefined); setError(''); setNotice('');
@@ -181,6 +181,11 @@ export function App() {
     marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
     setText(''); setCategory('other'); setComplete(false); setImages([]); setInspectedIdentity(undefined);
     setError(''); setNotice('');
+  }
+  function newScan() {
+    marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
+    setResult(undefined); setEditingResult(undefined); setInspectedIdentity(undefined);
+    setText(''); setCategory('other'); setComplete(false); setImages([]); setImageUrl(undefined);
   }
   function allowOnlineCheck() {
     if (!onlineCheck) return;
@@ -349,13 +354,13 @@ export function App() {
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
       {busy && (ready || showStartupLoading) && <div class="check-progress"><p role="status" class="working"><span class="spinner" aria-hidden="true"/>{!ready ? t.loadingApp : checkProgress?.stage === 'database' ? t.progressDatabase : checkProgress?.stage === 'ai' ? t.progressAI : checkProgress ? t.progressEvaluating : t.checking}</p>{checkProgress && <><progress aria-label={t.checking}/><span class="hint">{elapsedSeconds}s</span></>}</div>}
       {result ? <section class="result">
-        <button class="text-button" onClick={() => setResult(undefined)}>← {t.back}</button>
+        <button class="text-button" onClick={newScan}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
         <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
@@ -373,8 +378,6 @@ export function App() {
             ? await request<HistoryResult>({type:'set-result-market',id:original.id,market:country})
             : {...original,identity:{...original.identity,market:country,marketSource:'manual' as const}};
           setOnlineCheck(undefined);
-          marketOverride.current = true;
-          setMarket(country);
           setResult(current=>current?.id === original.id ? corrected : current);
           await refresh();
         })}/>
@@ -385,7 +388,7 @@ export function App() {
       </section> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
-        <form onSubmit={event => { event.preventDefault(); const input = scanInput({ text, category, complete, images, market, autoMarket: config.autoCountry && !marketOverride.current }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
+        <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(config.language === 'de' ? 'Einen gültigen Ländercode eingeben.' : 'Enter a valid country code.'); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
           <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
           <label>{config.language === 'de' ? 'Produktland' : 'Product country'}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{config.language === 'de' ? 'Land, für das das Produkt verkauft wird, z. B. SE für Schweden.' : 'Country this product is sold for, e.g. SE for Sweden.'}</small></label>
