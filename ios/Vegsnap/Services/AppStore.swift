@@ -85,15 +85,15 @@ import CryptoKit
         } catch { report(error) }
     }
     var draftSubmitted: Bool { jobs.contains { $0.id == draftID } || history.contains { $0.id == draftID } }
-    func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) {
+    @discardableResult func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) -> Bool {
         do {
-            guard supplied != nil || !draftSubmitted else { return }
+            guard supplied != nil || !draftSubmitted else { return false }
             // Persist the identity before accepting this draft into the queue.
             if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
-            guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return }
+            guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return false }
             var input = supplied ?? draft; input.locale = locale
             let photos = suppliedPhotos ?? draftPhotos
-            guard input.hasContent || !photos.isEmpty else { return }
+            guard input.hasContent || !photos.isEmpty else { return false }
             guard input.text.utf16.count <= 30_000, input.name.utf16.count <= 300, input.brand.utf16.count <= 300 else { throw AppError(L("Text exceeds the input limit.")) }
             if !input.barcode.isEmpty {
                 let code: String? = try engine.call("barcode", input.barcode)
@@ -106,7 +106,8 @@ import CryptoKit
             try files.save(nextJobs, "queue.json"); jobs = nextJobs
             if supplied == nil { clearDraft() }
             schedule()
-        } catch { report(error) }
+            return true
+        } catch { report(error); return false }
     }
     func schedule() {
         for job in jobs where job.status == "queued" && tasks.count < settings.parallelChecks && !(switchingChatGPT && job.settings.connection == "chatgpt") {

@@ -66,6 +66,9 @@ struct BrowseView: View {
 }
 struct BrowseDetail: View {
     var store: AppStore; var record: BrowseRecord; var source: BrowseSource
+    private var unsupportedBarcode: Bool {
+        !record.barcode.isEmpty && (try? store.engine.call("barcode", record.barcode, as: String?.self)) == nil
+    }
     var body: some View {
         List {
             Section { Text(record.name).font(.title2.bold()); if !record.brand.isEmpty { Text(record.brand) }; if !record.description.isEmpty { Text(record.description) } }
@@ -79,10 +82,13 @@ struct BrowseDetail: View {
             Section { Button(L("Check this product")) {
                 do {
                     let barcode: String? = try store.engine.call("barcode", record.barcode)
-                    store.enqueue(input: CheckInput(barcode: barcode ?? "", name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: [])
-                    store.selectedTab = "check"
+                    if store.enqueue(input: CheckInput(barcode: barcode ?? "", name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: []) {
+                        store.selectedTab = "check"
+                    }
                 } catch { store.report(error) }
-            } }
+            } } footer: {
+                if unsupportedBarcode { Text(L("This source code is not a supported barcode. The check will use the product name without a barcode lookup.")) }
+            }
         }.navigationTitle(L("Product record")).navigationBarTitleDisplayMode(.inline)
     }
 }

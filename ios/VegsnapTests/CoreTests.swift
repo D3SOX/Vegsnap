@@ -184,6 +184,24 @@ import Security
         do { _ = try await task.value; XCTFail("Cancelled OCR returned a result") }
         catch { XCTAssertTrue(error is CancellationError) }
     }
+    func testEnqueueReportsAcceptanceOnlyAfterSaving() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); store.settings.offline = true
+        let input = CheckInput(name: "Example drink", category: .drink)
+        store.settings.connection = "chatgpt"; store.switchingChatGPT = true
+        XCTAssertFalse(store.enqueue(input: input))
+        store.switchingChatGPT = false; store.settings.connection = "hosted"; store.disconnectingHosted = true
+        XCTAssertFalse(store.enqueue(input: input))
+        store.disconnectingHosted = false
+        FileStore.rejectWrite = { $0.lastPathComponent == "queue.json" }
+        XCTAssertFalse(store.enqueue(input: input)); XCTAssertTrue(store.jobs.isEmpty)
+        FileStore.rejectWrite = nil
+        XCTAssertTrue(store.enqueue(input: input))
+        XCTAssertEqual(store.jobs.count, 1)
+        for _ in 0..<100 { if store.jobs.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(store.history.count, 1)
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
