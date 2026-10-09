@@ -72,7 +72,7 @@ For free AI checks, choose **Vegsnap AI** in Settings, select **Connect to free 
 
 Vegsnap AI sends selected product text, prepared photos and product details through a maintainer-operated Cloudflare service to OpenAI. It does not send your saved history or personal provider credentials. See the [privacy policy](https://vegsnap.app/privacy.html) for storage and retention details.
 
-ChatGPT sign-in on Android and in the browser extension requires a [ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart). Free ChatGPT accounts are not supported for this connection. Android connects directly; the extension needs the desktop companion. On Android, you can save and switch between ChatGPT accounts in Settings. Public database checks and local rules work without any AI connection.
+ChatGPT sign-in on Android and in the browser extension requires a [ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart). Free ChatGPT accounts are not supported for this connection. Android connects directly; the extension needs the desktop companion. Both support saving, switching and removing ChatGPT accounts in Settings, and prefer `gpt-6-luna` when available unless you select another model. Update the desktop companion to use account management in the extension. Switching reconnects the selected account through browser sign-in; disconnecting keeps saved accounts for later. Public database checks and local rules work without any AI connection.
 
 AI can identify a product, read its label and assess unfamiliar ingredients. Vegsnap AI, ChatGPT and the official OpenAI API can also search for manufacturer and certification sources. Other compatible endpoints currently do not support web search.
 

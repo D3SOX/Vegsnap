@@ -8,8 +8,9 @@ use std::io;
 fn dispatch(request: protocol::Request) -> Value {
     let result = oauth::with_session_lock(|| match request.command.as_str() {
         "status" => oauth::status(),
-        "signIn" => oauth::sign_in(),
+        "signIn" => oauth::sign_in(request.payload),
         "disconnect" => oauth::disconnect(),
+        "removeAccount" => oauth::remove_account(request.payload),
         "models" => oauth::models(),
         "check" => oauth::check(request.payload),
         _ => Err("Unknown companion command.".into()),

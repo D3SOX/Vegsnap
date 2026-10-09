@@ -1,6 +1,7 @@
 import type { CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
+import type { AccountOptions, CompanionCommand } from './companion-state';
 import { validGtin } from './extraction';
 export function scanInput(input: { text: string; category: CheckInput['category']; complete: boolean; images: string[] }): CheckInput {
   return { ...input, barcode: input.text.split(/\s+/).map(validGtin).find(Boolean), complete: input.complete ? true : undefined };
@@ -26,7 +27,7 @@ export type Request =
   | { type: 'pending'; id: string }
   | { type: 'delete'; id?: string }
   | { type: 'hosted'; command: 'connect' | 'status' | 'disconnect' }
-  | { type: 'companion'; command: 'status' | 'signIn' | 'disconnect' | 'models' };
+  | ({ type: 'companion'; command: CompanionCommand } & AccountOptions);
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }
 export interface CheckReply extends HistoryResult { onlineConsent?: 'database' | 'ai'; }
 export interface Pending { text?: string; imageUrl?: string; barcode?: string; name?: string; brand?: string; sourceUrl?: string; market?: string; createdAt: number; }

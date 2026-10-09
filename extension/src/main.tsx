@@ -7,9 +7,9 @@ import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
-import { extractProducts } from './extraction';
+import { extractProducts, validGtin } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
-import { historyExport, type HistoryResult } from './history';
+import { editableInput, historyExport, type HistoryResult } from './history';
 import './style.css';
 import type { HostedStatus } from './hosted';
 import { synchronizedRefresh } from './synchronization';
@@ -17,6 +17,7 @@ import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, hasDataConsent, requestDataConsent } from './data-consent';
+import { accountDetails, type AccountOptions, type CompanionCommand, type CompanionSnapshot } from './companion-state';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -40,13 +41,14 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
+  const [editingResult, setEditingResult] = useState<HistoryResult>();
   const [community, setCommunity] = useState<{ key: string; replies: CommunityReply[] }>();
   const communityKey = storedResult ? `${storedResult.id}:${JSON.stringify(storedResult.identity)}` : '';
   const result = storedResult && community?.key === communityKey ? { ...storedResult, ...applyCommunityReplies(storedResult, community.replies, config.language) } : storedResult;
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
   const [offlinePacks, setOfflinePacks] = useState<OfflinePackInfo[]>([]);
-  const [inspectedIdentity, setInspectedIdentity] = useState<Pick<CheckInput, 'name' | 'barcode'>>();
+  const [inspectedIdentity, setInspectedIdentity] = useState<Pick<CheckInput, 'name' | 'brand' | 'barcode' | 'market' | 'sourceUrl'>>();
   const [category, setCategory] = useState<Category>('other');
   const [complete, setComplete] = useState(false);
   const [images, setImages] = useState<string[]>([]);
@@ -68,8 +70,8 @@ export function App() {
   const [search, setSearch] = useState('');
   const [models, setModels] = useState<{ id: string; name: string; supportsImages?: boolean }[]>([]);
   const [emailRevealed, setEmailRevealed] = useState(false);
-  const [account, setAccount] = useState<{ state: 'checking' | 'signedout' | 'connected' | 'unavailable'; email?: string }>({ state: 'checking' });
-  const [connectionTask, setConnectionTask] = useState<'' | 'status' | 'signIn' | 'models' | 'disconnect' | 'model'>('');
+  const [account, setAccount] = useState<Omit<CompanionSnapshot, 'task' | 'error'>>({ state: 'checking' });
+  const [connectionTask, setConnectionTask] = useState<'' | CompanionCommand | 'model'>('');
   const [connectionError, setConnectionError] = useState('');
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [languageSaving, setLanguageSaving] = useState(false);
@@ -81,6 +83,7 @@ export function App() {
   const configRef = useRef(config);
   const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
   const resultHeading = useRef<HTMLHeadingElement>(null);
+  const detailsField = useRef<HTMLTextAreaElement>(null);
   const t = messages[config.language];
   const isPopup = location.pathname.includes('popup');
   function refresh() { return sharedRefresh.current(); }
@@ -102,8 +105,8 @@ export function App() {
       setHosted(isRecord(hostedStatus) && ['pending', 'connected'].includes(String(hostedStatus.state)) ? hostedStatus as unknown as HostedStatus : { state: 'signedout' });
       const connection = shared.chatGPTConnection;
       if (isRecord(connection) && ['checking', 'signedout', 'connected', 'unavailable'].includes(String(connection.state))) {
-        setAccount({ state: connection.state as 'checking' | 'signedout' | 'connected' | 'unavailable', ...(typeof connection.email === 'string' ? { email: connection.email } : {}) });
-        setConnectionTask(['status', 'signIn', 'models', 'disconnect'].includes(String(connection.task)) ? connection.task as 'status' | 'signIn' | 'models' | 'disconnect' : '');
+        setAccount({ state: connection.state as CompanionSnapshot['state'], ...accountDetails(connection), ...(typeof connection.email === 'string' ? { email: connection.email } : {}) });
+        setConnectionTask(['status', 'signIn', 'models', 'disconnect', 'removeAccount'].includes(String(connection.task)) ? connection.task as CompanionCommand : '');
         setConnectionError(typeof connection.error === 'string' ? connection.error : '');
       }
       const catalog = shared.chatGPTModelCatalog;
@@ -130,7 +133,7 @@ export function App() {
     return () => { sync.dispose(); browser.runtime.onMessage.removeListener(changed); browser.storage.onChanged.removeListener(storageChanged); window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', visible); };
   }, []);
   useEffect(() => { if (ready && config.connection === 'hosted') void connectHosted('status'); }, [ready, config.connection]);
-  useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state]);
+  useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state, account.selectedAccount]);
   useEffect(() => {
     const hide = () => setEmailRevealed(false);
     window.addEventListener('blur', hide); document.addEventListener('visibilitychange', hide);
@@ -152,7 +155,21 @@ export function App() {
   async function check(input: CheckInput) {
     await act(async () => {
       await settingsWrites.current;
-      const checked = await runCheck(input); setResult(checked); setImages([]); setImageUrl(undefined); await refresh(); });
+      const checked = await runCheck(input); setResult(checked); setEditingResult(undefined); setImages([]); setImageUrl(undefined); await refresh(); });
+  }
+  function editResult() {
+    if (!storedResult) return;
+    const input = editableInput(storedResult);
+    const barcodeInText = input.barcode !== undefined && input.text?.split(/\s+/).some(value => validGtin(value) === input.barcode);
+    setEditingResult(storedResult); setResult(undefined); setTab('scan');
+    setText(input.text ?? ''); setCategory(input.category ?? 'other'); setComplete(input.complete === true); setImages(input.images ?? []);
+    setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode && !barcodeInText ? { barcode: input.barcode } : {}), market: input.market, sourceUrl: input.sourceUrl });
+    setImageUrl(undefined); setError(''); setNotice('');
+  }
+  function cancelEdit() {
+    setResult(editingResult); setEditingResult(undefined);
+    setText(''); setCategory('other'); setComplete(false); setImages([]); setInspectedIdentity(undefined);
+    setError(''); setNotice('');
   }
   function allowOnlineCheck() {
     if (!onlineCheck) return;
@@ -213,6 +230,7 @@ export function App() {
   }, [ready, config.stores]);
   useEffect(() => { document.documentElement.lang = config.language; }, [config.language]);
   useEffect(() => { if (result) resultHeading.current?.focus(); }, [result]);
+  useEffect(() => { if (editingResult) detailsField.current?.focus(); }, [editingResult]);
   function localConfig(next: Settings) { configRef.current = next; setConfig(next); }
   function persist(message: Request, onSuccess?: () => void) {
     setError('');
@@ -256,21 +274,24 @@ export function App() {
     } catch (cause) { setHostedError(cause instanceof Error ? cause.message : t.hostedUnavailable); }
     finally { hostedOperation.current = false; setHostedBusy(false); }
   }
-  async function connect(command: 'status' | 'signIn' | 'disconnect' | 'models') {
+  async function connect(command: CompanionCommand, options: AccountOptions = {}) {
     const operation = ++connectionOperation.current;
     const current = () => operation === connectionOperation.current;
     setConnectionTask(command); setConnectionError('');
     try {
-      if (command === 'signIn' && !(await requestDataConsent(ACCOUNT_DATA, { permissions: ['nativeMessaging'] }))) throw new Error(t.companionPermission);
-      if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) {
-        if (current()) { setAccount({ state: 'signedout' }); setModels([]); setModelsLoaded(false); }
+      if (command === 'signIn' && !(await requestDataConsent(ACCOUNT_DATA, { permissions: ['nativeMessaging'] }))) {
+        if (current()) setConnectionError(t.companionPermission);
         return;
       }
-      await request({ type: 'companion', command });
+      if (!(await browser.permissions.contains({ permissions: ['nativeMessaging'] }))) {
+        if (current()) { setAccount(previous => ({ ...previous, state: 'signedout' })); setModels([]); setModelsLoaded(false); }
+        return;
+      }
+      await request({ type: 'companion', command, ...options });
     } catch (cause) {
       if (current()) {
         setConnectionError(cause instanceof Error ? cause.message : t.invalidCompanion);
-        if (command === 'status' || command === 'signIn') setAccount(previous => previous.state === 'connected' ? previous : { state: 'unavailable' });
+        if (command === 'status' || command === 'signIn') setAccount(previous => previous.state === 'connected' ? previous : { ...previous, state: 'unavailable' });
       }
     } finally { if (current()) setConnectionTask(''); }
   }
@@ -315,7 +336,7 @@ export function App() {
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
@@ -323,6 +344,7 @@ export function App() {
       {result ? <section class="result">
         <button class="text-button" onClick={() => setResult(undefined)}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
+        <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
         {onlineCheck?.id === result.id && <div class="alert"><p>{t.onlineConsentHint}</p><button type="button" disabled={busy} onClick={allowOnlineCheck}>{t.allowOnlineChecks}</button></div>}
@@ -337,18 +359,20 @@ export function App() {
           onReplies={replies=>setCommunity({key:communityKey,replies})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
       </section> : tab === 'scan' ? <section>
-        <h1>{t.scan}</h1>
-        <form onSubmit={event => { event.preventDefault(); void check({ ...scanInput({ text, category, complete, images }), ...inspectedIdentity }); }}>
+        <h1>{editingResult ? t.editDetails : t.scan}</h1>
+        {editingResult && <p class="hint">{t.editDetailsHint}</p>}
+        <form onSubmit={event => { event.preventDefault(); const input = scanInput({ text, category, complete, images }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
-          <label>{t.text}<textarea value={text} onInput={event => { setText(event.currentTarget.value); setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
-          {isPopup && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
+          <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
+          {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
           <label class="checkbox"><input type="checkbox" checked={complete} onChange={event => setComplete(event.currentTarget.checked)}/><span>{t.complete}<small>{t.completeHint}</small></span></label>
           {imageUrl && <div class="alert"><p>{t.imageHint}</p><button type="button" onClick={() => void act(remoteImage)} disabled={busy}>{t.loadImage}</button></div>}
           <div class="photos">{images.map((image, index) => <figure><img src={image} alt={`${t.photo} ${index + 1}`}/><button type="button" onClick={() => setImages(images.filter((_, i) => i !== index))}>{t.remove}</button></figure>)}</div>
           <label class="upload">+ {t.photo}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={images.length >= 3 || busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { const image = await sanitizeImage(file); setImages(previous => [...previous, image].slice(0, 3)); }); event.currentTarget.value = ''; }}/></label>
           <p class="hint">{t.photoHint}</p>
-          <button class="primary wide" type="submit" disabled={!ready || busy || (!text.trim() && images.length === 0 && !inspectedIdentity?.name && !inspectedIdentity?.barcode)}>{t.check} <span aria-hidden="true">→</span></button>
+          <button class="primary wide" type="submit" disabled={!ready || busy || (!text.trim() && images.length === 0 && !inspectedIdentity?.name && !inspectedIdentity?.barcode)}>{editingResult ? t.checkAgain : t.check} <span aria-hidden="true">→</span></button>
+          {editingResult && <button type="button" disabled={busy} onClick={cancelEdit}>{t.cancel}</button>}
           {config.connection !== 'database' && activeModel && <p class="hint" role="status">{imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
           <p class="hint">{t.providerHint}</p>
         </form>
@@ -364,7 +388,7 @@ export function App() {
           {config.connection === 'chatgpt' ? <section class="connection" aria-label={t.chatgpt} aria-busy={Boolean(connectionTask)}>
             <div class="connection-heading"><strong>{account.state === 'connected' ? t.connected : account.state === 'checking' ? t.checkingConnection : account.state === 'signedout' ? t.notConnected : t.connectionUnavailable}</strong>{account.state === 'connected' && <span class="connection-badge">ChatGPT</span>}</div>
             {account.state === 'connected' && account.email && <button type="button" class="account-email" aria-label={emailRevealed ? `${t.hideEmail}: ${account.email}` : t.showEmail} aria-pressed={emailRevealed} onClick={() => setEmailRevealed(value => !value)}><span aria-hidden="true" class={emailRevealed ? '' : 'email-obscured'}>{emailRevealed ? account.email : '••••••••@••••••••'}</span><span>{emailRevealed ? t.hideEmail : t.showEmail}</span></button>}
-            {connectionTask && <p class="working" role="status"><span class="spinner"/>{connectionTask === 'signIn' ? t.signingIn : connectionTask === 'models' ? t.loadingModels : connectionTask === 'disconnect' ? t.disconnecting : connectionTask === 'model' ? t.savingModel : t.checkingConnection}</p>}
+            {connectionTask && <p class="working" role="status"><span class="spinner" aria-hidden="true"/>{connectionTask === 'signIn' ? t.signingIn : connectionTask === 'models' ? t.loadingModels : connectionTask === 'disconnect' ? t.disconnecting : connectionTask === 'removeAccount' ? t.removingAccount : connectionTask === 'model' ? t.savingModel : t.checkingConnection}</p>}
             {connectionError && <div class="alert error" role="alert"><p>{connectionError}</p><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect(account.state === 'connected' ? 'models' : 'status')}>{t.retry}</button></div>}
             {account.state === 'connected' ? <>
               {modelsLoaded && models.length === 0 && <p role="status">{t.noModels}</p>}
@@ -372,6 +396,19 @@ export function App() {
               {modelsLoaded && models.length > 0 && <p class="hint" role="status">{models.some(model => model.id === config.model) ? t.readyToCheck : t.chooseModelHint}</p>}
               <div class="actions"><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('models')}>{t.refreshModels}</button><button type="button" disabled={Boolean(connectionTask)} onClick={() => void connect('disconnect')}>{t.disconnect}</button></div>
             </> : <><p class="hint">{t.companionHint}</p><button type="button" class="primary" disabled={!ready || Boolean(connectionTask)} onClick={() => void connect('signIn')}>{t.signIn}</button></>}
+            {account.savedAccounts !== undefined && account.savedAccounts.length > 0 && <>
+              <details class="saved-accounts"><summary>{account.state === 'connected' ? t.switchAccount : t.savedAccounts} · {account.savedAccounts.length}</summary>
+                <button type="button" class="text-button" aria-pressed={emailRevealed} onClick={() => setEmailRevealed(value => !value)}>{emailRevealed ? t.hideEmails : t.showEmails}</button>
+                {account.savedAccounts.map((saved, index) => {
+                  const label = emailRevealed && saved.email ? `${saved.email} · ${t.savedAccount} ${index + 1}` : `${t.savedAccount} ${index + 1}`;
+                  const connected = account.state === 'connected' && account.selectedAccount === saved.id;
+                  return <div class="saved-account" key={saved.id}><button class="account-select" type="button" disabled={Boolean(connectionTask) || connected} onClick={() => void connect('signIn', { accountId: saved.id })}><strong>{label}</strong><small>{connected ? t.connected : t.reconnectAccount}</small></button>
+                    <button type="button" class="history-delete" disabled={Boolean(connectionTask)} title={t.removeAccount} aria-label={`${t.removeAccount}: ${label}`} onClick={() => { if (confirm(t.confirmRemoveAccount.replace('{account}', label))) void connect('removeAccount', { accountId: saved.id }); }}><Trash/></button></div>;
+                })}
+              </details>
+              <button type="button" disabled={!ready || Boolean(connectionTask)} onClick={() => void connect('signIn', { newAccount: true })}>{t.anotherAccount}</button>
+            </>}
+            {account.state === 'connected' && account.savedAccounts === undefined && <p class="hint">{t.updateCompanionAccounts}</p>}
           </section> : config.connection === 'hosted' ? <section class="connection" aria-label={t.hosted} aria-busy={hostedBusy}>
             <p class="hint">{t.hostedHint}</p>
             <p role="status">{hosted.enabled === false ? t.hostedUnavailable : hosted.state === 'pending' ? t.hostedPending : hosted.state === 'connected' ? `${t.hostedAllowance}: ${hosted.remaining ?? 0}` : t.notConnected}</p>
