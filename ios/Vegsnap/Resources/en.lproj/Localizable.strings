@@ -293,3 +293,5 @@
 "Local text recognition also failed; earlier evidence has been kept." = "Local text recognition also failed; earlier evidence has been kept.";
 
 "This draft is already queued. Clear it to start another check." = "This draft is already queued. Clear it to start another check.";
+
+"History is too large to export (maximum 1,000 results and 5 MB). No file was created." = "History is too large to export (maximum 1,000 results and 5 MB). No file was created.";

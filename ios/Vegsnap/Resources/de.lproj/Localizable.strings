@@ -293,3 +293,5 @@
 "Local text recognition also failed; earlier evidence has been kept." = "Auch die lokale Texterkennung ist fehlgeschlagen; bisherige Belege bleiben erhalten.";
 
 "This draft is already queued. Clear it to start another check." = "Dieser Entwurf wurde bereits eingereiht. Leere ihn, um eine weitere Prüfung zu starten.";
+
+"History is too large to export (maximum 1,000 results and 5 MB). No file was created." = "Der Verlauf ist zu groß für den Export (maximal 1.000 Ergebnisse und 5 MB). Es wurde keine Datei erstellt.";

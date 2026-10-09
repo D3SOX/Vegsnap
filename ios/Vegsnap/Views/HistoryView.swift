@@ -50,7 +50,7 @@ struct HistoryView: View {
         }
         .confirmationDialog(L("Delete all history?"), isPresented: $clear, titleVisibility: .visible) { Button(L("Delete all history"), role: .destructive) { store.delete(Set(store.history.map(\.id))) } } message: { Text(L("This removes saved results and their photos from this device.")) }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-            do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; try store.importHistory(readLimitedFile(url, limit: 5_000_000)) } catch { store.report(error) }
+            do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; try store.importHistory(readLimitedFile(url, limit: HistoryTransfer.byteLimit)) } catch { store.report(error) }
         }
         .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "vegsnap-history") { if case .failure(let error) = $0 { store.report(error) } }
     }

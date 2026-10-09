@@ -63,10 +63,12 @@ enum Keychain {
     }
 }
 enum HistoryTransfer {
+    static let byteLimit = 5_000_000
+    static let resultLimit = 1000
     static func parse(_ data: Data) throws -> [CheckResult] {
-        guard data.count <= 5_000_000 else { throw AppError(L("History files must be smaller than 5 MB.")) }
+        guard data.count <= byteLimit else { throw AppError(L("History files must be smaller than 5 MB.")) }
         let document = try JSONDecoder().decode(HistoryDocument.self, from: data)
-        guard document.schemaVersion == 1, document.results.count <= 1000 else { throw AppError(L("Unsupported history file.")) }
+        guard document.schemaVersion == 1, document.results.count <= resultLimit else { throw AppError(L("Unsupported history file.")) }
         return try document.results.map { result in
             guard result.schemaVersion == 1, (1...100).contains(result.id.count), result.title.count <= 500, result.summary.count <= 30_000,
                   ["certified", "manufacturer", "research", "composition", "packaging", "insufficient"].contains(result.basis),

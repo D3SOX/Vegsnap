@@ -69,6 +69,49 @@ import Security
         XCTAssertThrowsError(try HistoryTransfer.parse(document.jsonData()))
         XCTAssertThrowsError(try HistoryTransfer.parse(Data(repeating: 32, count: 5_000_001)))
     }
+    func testExportRejectsUnrestorableHistoryWithoutChangingIt() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let result = try analyze("Ingredients: oats, honey")
+        store.history = (0..<HistoryTransfer.resultLimit).map { index in
+            var copy = result; copy.id = "export-\(index)"
+            return SavedCheck(id: copy.id, result: copy, input: nil, photos: [])
+        }
+        XCTAssertEqual(try HistoryTransfer.parse(store.exportHistory()).count, HistoryTransfer.resultLimit)
+        store.history.append(SavedCheck(id: "extra", result: result, input: nil, photos: []))
+        XCTAssertThrowsError(try store.exportHistory())
+        XCTAssertEqual(store.history.count, HistoryTransfer.resultLimit + 1)
+        var large = result; large.summary = String(repeating: "x", count: 30_000)
+        store.history = (0..<200).map { index in
+            var copy = large; copy.id = "large-\(index)"
+            return SavedCheck(id: copy.id, result: copy, input: nil, photos: [])
+        }
+        XCTAssertGreaterThan(try HistoryDocument(results: store.history.map(\.result)).jsonData().count, HistoryTransfer.byteLimit)
+        XCTAssertThrowsError(try store.exportHistory())
+        XCTAssertEqual(store.history.count, 200)
+    }
+    func testConsumedShareIsQuarantinedWhenDeletionFails() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let inbox = root.appendingPathComponent("inbox")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
+        let entry = inbox.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: entry, withIntermediateDirectories: true)
+        try InboxPayload.encode(text: "first share", photos: []).write(to: entry.appendingPathComponent("input.json"))
+        store.consumeInbox(fileManager: RejectInboxRemoval())
+        XCTAssertEqual(store.draft.text, "first share")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: entry.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: entry.appendingPathExtension("consumed").path))
+        let restored = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
+        restored.clearDraft()
+        XCTAssertFalse(restored.draft.hasContent)
+        let next = inbox.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: next, withIntermediateDirectories: true)
+        try InboxPayload.encode(text: "second share", photos: []).write(to: next.appendingPathComponent("input.json"))
+        restored.consumeInbox()
+        XCTAssertEqual(restored.draft.text, "second share")
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -509,4 +552,8 @@ final class FixtureProtocol: URLProtocol, @unchecked Sendable {
         client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+}
+
+private final class RejectInboxRemoval: FileManager, @unchecked Sendable {
+    override func removeItem(at URL: URL) throws { throw CocoaError(.fileWriteNoPermission) }
 }

@@ -1,10 +1,10 @@
 import Foundation
 
 extension AppStore {
-    func consumeInbox() {
+    func consumeInbox(fileManager: FileManager = .default) {
         // Never disturb a draft the user is still reviewing.
         guard !draft.hasContent, draftPhotos.isEmpty, let directory = inboxDirectory,
-              let entries = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+              let entries = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
         for entry in entries where UUID(uuidString: entry.lastPathComponent) != nil {
             var importedPhotos: [String] = []
             do {
@@ -23,13 +23,19 @@ extension AppStore {
                 let nextID = UUID().uuidString
                 try files.save(Draft(id: nextID, input: nextDraft, photos: importedPhotos), "draft.json")
                 draftID = nextID; draft = nextDraft; draftPhotos = importedPhotos; selectedTab = "check"
-                do { try FileManager.default.removeItem(at: entry) } catch { report(error) }
+                do { try fileManager.removeItem(at: entry) }
+                catch {
+                    report(error)
+                    // A retained, consumed share must never become a new draft again.
+                    do { try fileManager.moveItem(at: entry, to: entry.appendingPathExtension("consumed")) }
+                    catch { report(error) }
+                }
                 return
             } catch {
                 for photo in importedPhotos { try? files.remove(photo) }
                 report(error)
                 // Retain the failed input for recovery, but exclude it from future imports.
-                do { try FileManager.default.moveItem(at: entry, to: entry.appendingPathExtension("failed")) }
+                do { try fileManager.moveItem(at: entry, to: entry.appendingPathExtension("failed")) }
                 catch { report(error) }
             }
         }

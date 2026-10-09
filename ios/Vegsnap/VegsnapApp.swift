@@ -51,7 +51,7 @@ struct RootView: View {
             if url.absoluteString == "vegsnap-ios://ai/complete", !store.settings.offline { store.hosted.refresh() }
             if url.isFileURL {
                 let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
-                do { try store.importHistory(readLimitedFile(url, limit: 5_000_000)); store.selectedTab = "history" } catch { store.report(error) }
+                do { try store.importHistory(readLimitedFile(url, limit: HistoryTransfer.byteLimit)); store.selectedTab = "history" } catch { store.report(error) }
             }
         }
         .task { store.consumeInbox(); if !store.settings.offline { store.hosted.refresh() } }

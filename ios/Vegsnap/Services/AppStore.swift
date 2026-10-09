@@ -221,7 +221,13 @@ import CryptoKit
         next.sort { $0.result.checkedAt > $1.result.checkedAt }
         try files.save(next, "history.json"); history = next
     }
-    func exportHistory() throws -> Data { try HistoryDocument(results: history.map(\.result)).jsonData() }
+    func exportHistory() throws -> Data {
+        let tooLarge = AppError(L("History is too large to export (maximum 1,000 results and 5 MB). No file was created."))
+        guard history.count <= HistoryTransfer.resultLimit else { throw tooLarge }
+        let data = try HistoryDocument(results: history.map(\.result)).jsonData()
+        guard data.count <= HistoryTransfer.byteLimit else { throw tooLarge }
+        return data
+    }
     func enterBackground() {
         guard !tasks.isEmpty, backgroundID == .invalid else { return }
         backgroundID = UIApplication.shared.beginBackgroundTask(withName: "Finish product checks") { [weak self] in
