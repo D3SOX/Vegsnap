@@ -198,8 +198,11 @@ import CryptoKit
             return
         }
         guard tasks[id] == nil, !switchingChatGPT, !disconnectingHosted, let index = jobs.firstIndex(where: { $0.id == id }) else { return }
-        jobs[index].settings = settings; jobs[index].accountID = settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil
-        setStatus(id, "queued"); schedule()
+        var nextJobs = jobs
+        nextJobs[index].settings = settings; nextJobs[index].accountID = settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil
+        nextJobs[index].status = "queued"; nextJobs[index].error = nil
+        do { try files.save(nextJobs, "queue.json"); jobs = nextJobs; schedule() }
+        catch { report(error) }
     }
     func removeJob(_ id: String) {
         cancel(id)

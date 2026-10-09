@@ -389,6 +389,32 @@ import Security
         let image = try XCTUnwrap(UIImage(data: rotated))
         XCTAssertEqual(image.size.width, CGFloat(height)); XCTAssertEqual(image.size.height, CGFloat(width))
     }
+    func testRetryWriteFailureDoesNotScheduleOrChangeJob() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        var job = CheckJob(input: CheckInput(text: "Ingredients: honey"), photos: [])
+        job.status = "failed"; job.error = "Original failure"; job.accountID = "original-account"
+        store.jobs = [job]; try store.files.save([job], "queue.json")
+        store.settings.offline = true
+        FileStore.rejectWrite = { $0.lastPathComponent == "queue.json" }
+        var progressEvents = 0; store.engine.progress = { _, _ in progressEvents += 1 }
+        store.retry(job.id)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(progressEvents, 0)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        XCTAssertEqual(try encoder.encode(store.jobs), try encoder.encode([job]))
+        let persisted: [CheckJob] = try XCTUnwrap(store.files.read("queue.json"))
+        XCTAssertEqual(try encoder.encode(persisted), try encoder.encode([job]))
+        XCTAssertTrue(store.history.isEmpty)
+        FileStore.rejectWrite = nil
+        store.retry(job.id)
+        XCTAssertEqual(store.jobs[0].status, "evaluating")
+        XCTAssertTrue(store.jobs[0].settings.offline); XCTAssertNil(store.jobs[0].accountID); XCTAssertNil(store.jobs[0].error)
+        for _ in 0..<100 { if store.jobs.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertTrue(store.jobs.isEmpty); XCTAssertEqual(store.history.count, 1)
+        XCTAssertEqual(store.history.first?.id, job.id)
+    }
     func testCompletionWriteFailuresKeepRecoverableState() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
