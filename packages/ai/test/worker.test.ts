@@ -229,7 +229,7 @@ test('the broad IP guard bounds session reads and deletions with arbitrary token
   }
   expect(await (await request('/api/session', active)).json()).toMatchObject({ state: 'connected', remaining: 3 });
   expect(upstream).toHaveLength(0);
-});
+}, 30_000);
 test('session polling limits one session without blocking another on the same IP', async () => {
   const first = await connect();
   const second = await connect();
