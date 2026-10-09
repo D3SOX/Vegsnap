@@ -163,3 +163,31 @@ All brand icons are trademarks of their respective owners. The use of these
 trademarks does not indicate endorsement of the trademark holder by Font
 Awesome, nor vice versa. **Please do not use brand logos for any purpose except
 to represent the company, product, or service to which they refer.**
+
+--------------------------------------------------------------------------------
+
+# Helium icon
+
+helium.svg is adapted from Helium's official product logo for monochrome display:
+https://github.com/imputnet/helium/blob/main/resources/branding/product_logo.svg
+
+Helium is licensed under GPL-3.0. See helium-LICENSE.txt for the full license.
+The Helium logo is a trademark of its respective owner.
+
+--------------------------------------------------------------------------------
+
+# Vivaldi, Zen and LibreWolf icons
+
+vivaldi.svg, zen.svg and librewolf.svg are provided by Simple Icons:
+https://github.com/simple-icons/simple-icons
+See simple-icons-LICENSE.txt for the project's CC0 license and brand disclaimers.
+
+Vivaldi source: https://vivaldi.com/press/
+Credit: Vivaldi Technologies. Logo licensed under CC BY 4.0.
+https://creativecommons.org/licenses/by/4.0/
+
+Zen source:
+https://github.com/zen-browser/branding/blob/4b99730c9d3c8fe3ec71d31a07e74cfd488fc27f/Official/Word%20Marks/SVG/zen_logo_icon_color.svg
+LibreWolf source: https://librewolf.net/
+
+All browser logos are trademarks of their respective owners.

@@ -27,6 +27,7 @@ function selectedOs(hints: BrowserHints) {
     document: {
       querySelectorAll: (selector: string) => selector === '.companion-setup details[data-os]' ? sections : [],
       querySelector: (selector: string) => selector === '.image-viewer' ? viewer
+        : selector === '[data-browser-select]' ? null
         : { classList: { add: (name: string) => downloads.get(selector.match(/data-download-os="(\w+)"/)![1]!)!.add(name) } },
     },
     matchMedia: () => ({ matches: false, addEventListener() {} }),
@@ -42,6 +43,40 @@ test('selects macOS when Firefox on Linux spoofs a Safari macOS user agent', () 
   expect(selectedOs({ userAgent: macUserAgent, platform: 'Linux x86_64' })).toEqual({
     install: ['macos'], register: ['macos'], downloads: ['macos'],
   });
+});
+
+test('browser selection filters commands across operating systems and respects restored selections', () => {
+  const browsers = ['firefox', 'chromium', 'chrome', 'brave', 'helium', 'vivaldi', 'edge', 'zen', 'librewolf'];
+  const commands = ['linux', 'macos', 'windows'].flatMap(os =>
+    browsers.map(browser => ({ os, dataset: { browser }, hidden: false })));
+  const choice = { hidden: true };
+  let change = () => {};
+  const select = {
+    value: 'brave',
+    closest: () => choice,
+    addEventListener: (event: string, listener: () => void) => {
+      expect(event).toBe('change');
+      change = listener;
+    },
+  };
+  const viewer = { open: false, querySelector: () => ({ addEventListener() {} }), addEventListener() {} };
+  runInNewContext(setup, {
+    navigator: { userAgent: '', platform: '', maxTouchPoints: 0 },
+    document: {
+      querySelector: (selector: string) => selector === '.image-viewer' ? viewer
+        : selector === '[data-browser-select]' ? select : null,
+      querySelectorAll: (selector: string) => selector === '.browser-registration [data-browser]' ? commands : [],
+    },
+    matchMedia: () => ({ matches: false, addEventListener() {} }),
+  });
+  expect(choice.hidden).toBe(false);
+  expect(commands.filter(command => !command.hidden).map(command => command.dataset.browser)).toEqual(['brave', 'brave', 'brave']);
+  for (const browser of ['', ...browsers]) {
+    select.value = browser;
+    change();
+    expect(commands.filter(command => !command.hidden).map(command => command.dataset.browser))
+      .toEqual(browser ? [browser, browser, browser] : []);
+  }
 });
 
 describe('desktop OS hints', () => {

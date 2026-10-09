@@ -34,6 +34,20 @@ if (os) {
   download?.classList.add('primary');
 }
 
+// All commands remain available when JavaScript is disabled.
+const browserSelect = document.querySelector('[data-browser-select]');
+if (browserSelect) {
+  const commands = document.querySelectorAll('.browser-registration [data-browser]');
+  function updateBrowserCommands() {
+    for (const command of commands) {
+      command.hidden = command.dataset.browser !== browserSelect.value;
+    }
+  }
+  browserSelect.closest('.browser-choice').hidden = false;
+  browserSelect.addEventListener('change', updateBrowserCommands);
+  updateBrowserCommands();
+}
+
 // Match full-size screenshot links to the images selected by <picture>.
 const screenshotTheme = matchMedia('(prefers-color-scheme: dark)');
 const screenshotLinks = [...document.querySelectorAll('a[data-dark-href]')]

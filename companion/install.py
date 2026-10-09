@@ -8,6 +8,8 @@ import re
 import sys
 from typing import Optional
 
+FIREFOX_BROWSERS = ("firefox", "zen", "librewolf")
+
 
 def manifest(binary: Path, browser: str, extension_id: str) -> dict:
     if not binary.is_absolute() or not binary.is_file():
@@ -20,7 +22,7 @@ def manifest(binary: Path, browser: str, extension_id: str) -> dict:
         "path": str(binary),
         "type": "stdio",
     }
-    if browser == "firefox":
+    if browser in FIREFOX_BROWSERS:
         if not extension_id or any(c.isspace() for c in extension_id):
             raise ValueError("Provide the Firefox add-on ID")
         result["allowed_extensions"] = [extension_id]
@@ -39,14 +41,18 @@ def destination(browser: str) -> Path:
         return Path(local) / "Vegsnap/NativeMessagingHosts" / browser
     home = Path.home()
     if sys.platform == "linux":
-        if browser == "firefox":
+        if browser in ("firefox", "zen"):
             return home / ".mozilla/native-messaging-hosts"
+        if browser == "librewolf":
+            return home / ".librewolf/native-messaging-hosts"
         config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
         directory = {
             "chromium": "chromium",
             "chrome": "google-chrome",
             "brave": "BraveSoftware/Brave-Browser",
             "helium": "net.imput.helium",
+            "vivaldi": "vivaldi",
+            "edge": "microsoft-edge",
         }[browser]
         return config / directory / "NativeMessagingHosts"
     if sys.platform == "darwin":
@@ -58,6 +64,10 @@ def destination(browser: str) -> Path:
             "chrome": "Google/Chrome",
             "brave": "Google/Chrome",
             "helium": "net.imput.helium",
+            "vivaldi": "Vivaldi",
+            "edge": "Microsoft Edge",
+            "zen": "Mozilla",
+            "librewolf": "LibreWolf",
         }[browser]
         return support / directory / "NativeMessagingHosts"
     raise ValueError(f"Unsupported operating system: {sys.platform}")
@@ -66,13 +76,17 @@ def destination(browser: str) -> Path:
 def register_windows(browser: str, path: Path) -> None:
     import winreg
 
-    # Brave and Helium retain Chromium's Chrome registry fallback on Windows.
+    # Brave, Helium and Vivaldi retain Chromium's Chrome registry fallback.
     key = {
         "firefox": r"Software\Mozilla\NativeMessagingHosts",
         "chrome": r"Software\Google\Chrome\NativeMessagingHosts",
         "chromium": r"Software\Chromium\NativeMessagingHosts",
         "brave": r"Software\Google\Chrome\NativeMessagingHosts",
         "helium": r"Software\Google\Chrome\NativeMessagingHosts",
+        "vivaldi": r"Software\Google\Chrome\NativeMessagingHosts",
+        "edge": r"Software\Microsoft\Edge\NativeMessagingHosts",
+        "zen": r"Software\Mozilla\NativeMessagingHosts",
+        "librewolf": r"Software\Mozilla\NativeMessagingHosts",
     }[browser] + r"\org.vegsnap.companion"
     with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_SET_VALUE) as registry:
         winreg.SetValueEx(registry, "", 0, winreg.REG_SZ, str(path))
@@ -91,7 +105,7 @@ def install(binary: Path, browser: str, extension_id: str, output: Optional[Path
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--browser", choices=["firefox", "chromium", "chrome", "brave", "helium"], required=True)
+    parser.add_argument("--browser", choices=["firefox", "chromium", "chrome", "brave", "helium", "vivaldi", "edge", "zen", "librewolf"], required=True)
     parser.add_argument("--extension-id", required=True)
     parser.add_argument("--output", type=Path, help="Write the manifest here instead of registering it")
     args = parser.parse_args()

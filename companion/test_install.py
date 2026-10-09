@@ -33,11 +33,16 @@ class InstallerTest(unittest.TestCase):
             "chromium": r"Software\Chromium\NativeMessagingHosts\org.vegsnap.companion",
             "brave": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
             "helium": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
+            "vivaldi": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
+            "edge": r"Software\Microsoft\Edge\NativeMessagingHosts\org.vegsnap.companion",
+            "zen": r"Software\Mozilla\NativeMessagingHosts\org.vegsnap.companion",
+            "librewolf": r"Software\Mozilla\NativeMessagingHosts\org.vegsnap.companion",
         }
         paths = []
         with patch.object(sys, "platform", "win32"), patch.object(Path, "home", side_effect=RuntimeError("Home is not required on Windows")), patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}), patch.dict(sys.modules, {"winreg": self.registry}):
             for browser, key in expected.items():
-                extension_id = "vegsnap@vegsnap.app" if browser == "firefox" else "a" * 32
+                firefox_family = browser in ("firefox", "zen", "librewolf")
+                extension_id = "vegsnap@vegsnap.app" if firefox_family else "a" * 32
                 path = installer.install(self.binary, browser, extension_id)
                 paths.append(path)
                 self.assertEqual(path.parent, self.root / "Vegsnap/NativeMessagingHosts" / browser)
@@ -46,10 +51,13 @@ class InstallerTest(unittest.TestCase):
                 self.registry.SetValueEx.assert_called_with(handle, "", 0, 1, str(path))
                 data = json.loads(path.read_text())
                 self.assertEqual(data["path"], str(self.binary))
-                self.assertEqual("allowed_extensions" in data, browser == "firefox")
-                if browser != "firefox":
+                self.assertEqual("allowed_extensions" in data, firefox_family)
+                if firefox_family:
+                    self.assertEqual(data["allowed_extensions"], [extension_id])
+                    self.assertNotIn("allowed_origins", data)
+                else:
                     self.assertEqual(data["allowed_origins"], [f"chrome-extension://{extension_id}/"])
-        self.assertEqual(len(set(paths)), 5)
+        self.assertEqual(len(set(paths)), 9)
         self.assertEqual(json.loads(paths[0].read_text())["allowed_extensions"], ["vegsnap@vegsnap.app"])
 
     def test_output_only_writes_requested_manifest_without_registration(self):
@@ -82,6 +90,10 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(installer.destination("chromium"), self.root / "config/chromium/NativeMessagingHosts")
             self.assertEqual(installer.destination("brave"), self.root / "config/BraveSoftware/Brave-Browser/NativeMessagingHosts")
             self.assertEqual(installer.destination("helium"), self.root / "config/net.imput.helium/NativeMessagingHosts")
+            self.assertEqual(installer.destination("vivaldi"), self.root / "config/vivaldi/NativeMessagingHosts")
+            self.assertEqual(installer.destination("edge"), self.root / "config/microsoft-edge/NativeMessagingHosts")
+            self.assertEqual(installer.destination("zen"), self.root / ".mozilla/native-messaging-hosts")
+            self.assertEqual(installer.destination("librewolf"), self.root / ".librewolf/native-messaging-hosts")
 
     def test_linux_defaults_to_home_config(self):
         with patch.object(sys, "platform", "linux"), patch.object(Path, "home", return_value=self.root), patch.dict(os.environ, {}, clear=True):
@@ -96,18 +108,29 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(installer.destination("chromium"), support / "Chromium/NativeMessagingHosts")
             self.assertEqual(installer.destination("brave"), support / "Google/Chrome/NativeMessagingHosts")
             self.assertEqual(installer.destination("helium"), support / "net.imput.helium/NativeMessagingHosts")
+            self.assertEqual(installer.destination("vivaldi"), support / "Vivaldi/NativeMessagingHosts")
+            self.assertEqual(installer.destination("edge"), support / "Microsoft Edge/NativeMessagingHosts")
+            self.assertEqual(installer.destination("zen"), support / "Mozilla/NativeMessagingHosts")
+            self.assertEqual(installer.destination("librewolf"), support / "LibreWolf/NativeMessagingHosts")
 
-    def test_cli_accepts_brave_and_helium(self):
-        for browser in ["brave", "helium"]:
+    def test_cli_accepts_every_browser_with_the_correct_manifest_format(self):
+        for browser in ["firefox", "chromium", "chrome", "brave", "helium", "vivaldi", "edge", "zen", "librewolf"]:
             with self.subTest(browser=browser):
                 output = self.root / f"{browser}.json"
+                firefox_family = browser in ("firefox", "zen", "librewolf")
+                extension_id = "vegsnap@vegsnap.app" if firefox_family else "a" * 32
                 result = subprocess.run([
                     sys.executable, str(Path(installer.__file__)),
                     "--binary", str(self.binary), "--browser", browser,
-                    "--extension-id", "a" * 32, "--output", str(output),
+                    "--extension-id", extension_id, "--output", str(output),
                 ], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(json.loads(output.read_text())["allowed_origins"], [f'chrome-extension://{"a" * 32}/'])
+                data = json.loads(output.read_text())
+                if firefox_family:
+                    self.assertEqual(data["allowed_extensions"], [extension_id])
+                    self.assertNotIn("allowed_origins", data)
+                else:
+                    self.assertEqual(data["allowed_origins"], [f"chrome-extension://{extension_id}/"])
 
 
 if __name__ == "__main__":
