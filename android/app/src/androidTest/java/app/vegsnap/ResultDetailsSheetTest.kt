@@ -57,7 +57,7 @@ class ResultDetailsSheetTest {
         .put("outcome", "uncertain").put("basis", "composition")
         .put("summary", "The complete composition needs a source confirmation.")
         .put("checkedAt", "2026-10-06T00:00:00Z").put("category", "household")
-        .put("identity", JSONObject().put("brand", "Fixture Maker"))
+        .put("identity", JSONObject().put("brand", "Fixture Maker").put("market", "DE"))
         .put("findings", JSONArray().apply { repeat(80) { index ->
             put(JSONObject().put("term", "Ingredient ${index + 1}").put("status", listOf("plant", "animal", "ambiguous", "unknown")[index % 4])
                 .put("explanation", "A synthetic ingredient used to verify continuous long-result scrolling and section navigation."))
@@ -149,7 +149,7 @@ class ResultDetailsSheetTest {
             0, status = AnalysisStatus.FAILED, historyId = "synthetic-result-tabs", failureReason = AIErrorCode.QUOTA)
         show(result(concerns = false), language = "de", failedRetry = retry)
         compose.onNodeWithText("Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt.")
-            .assertIsDisplayed()
+            .performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(AIErrorCode.QUOTA.german).assertDoesNotExist()
     }
 
@@ -157,7 +157,7 @@ class ResultDetailsSheetTest {
         val retry = AnalysisJob("hosted-retry", 0L, CheckInput("water"), AppSettings(connection = "hosted"),
             0, status = AnalysisStatus.FAILED, historyId = "synthetic-result-tabs", failureReason = AIErrorCode.RATE_LIMIT)
         show(result(concerns = false), failedRetry = retry)
-        compose.onNodeWithText("Too many requests to Vegsnap AI. Wait a minute, then try again.").assertIsDisplayed()
+        compose.onNodeWithText("Too many requests to Vegsnap AI. Wait a minute, then try again.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(AIErrorCode.RATE_LIMIT.english).assertDoesNotExist()
     }
 
