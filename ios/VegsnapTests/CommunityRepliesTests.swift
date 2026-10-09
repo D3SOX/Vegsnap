@@ -51,6 +51,19 @@ import XCTest
         await state.load(original, engine: engine, locale: "en", offline: true)
         XCTAssertEqual(CommunityFixtureProtocol.requests.count, 1); XCTAssertNil(state.page)
     }
+    func testCountryCorrectionDropsOldEvidenceUntilFreshLookup() async throws {
+        let original = try original(); let state = CommunityRepliesState()
+        CommunityFixtureProtocol.body = response()
+        await state.load(original, engine: engine, locale: "en", offline: false)
+        XCTAssertEqual(state.displayResult(original, engine: engine, locale: "en", hidden: []).basis, "manufacturer")
+        var corrected = original; corrected.identity.market = "DE"
+        XCTAssertEqual(state.displayResult(corrected, engine: engine, locale: "en", hidden: []).outcome, .uncertain)
+        CommunityFixtureProtocol.body = #"{"replies":[],"more":false}"#
+        await state.load(corrected, engine: engine, locale: "en", offline: false)
+        let request = try XCTUnwrap(CommunityFixtureProtocol.requests.last)
+        XCTAssertTrue(request.url!.absoluteString.contains("market=DE"))
+        XCTAssertEqual(state.displayResult(corrected, engine: engine, locale: "en", hidden: []).outcome, .uncertain)
+    }
     func testMalformedResponseAndCancelledLookupCannotPublishEvidence() async throws {
         let original = try original(); let state = CommunityRepliesState()
         CommunityFixtureProtocol.body = response().replacingOccurrences(of: "whole_product", with: "unreviewed_scope")

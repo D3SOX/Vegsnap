@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -63,6 +64,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ScanScreen(state: ScanState, model: VegsnapViewModel) {
     val context = LocalContext.current
@@ -85,6 +87,8 @@ internal fun ScanScreen(state: ScanState, model: VegsnapViewModel) {
     LaunchedEffect(barcodeActive, settings.offline) { model.cameraBarcodeScanning(barcodeActive) }
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val aspect = if (landscape) 4f / 3f else 3f / 4f
+    var controlsHeight by remember { mutableIntStateOf(0) }
+    val controlsBottom = with(LocalDensity.current) { controlsHeight.toDp() } + 16.dp
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (permission && state.result == null) CameraView(
             enabled = !state.busy && !state.capturing && state.photos.size < 3 && flyingPhoto == null,
@@ -103,9 +107,14 @@ internal fun ScanScreen(state: ScanState, model: VegsnapViewModel) {
                 TextButton(onClick = { model.selectTab("manual") }) { Text(stringResource(R.string.manual)) }
             }
         }
-        CategorySelector(state.category, !state.busy && !state.capturing, { value -> model.update { it.copy(category = value) } },
-            Modifier.align(Alignment.TopStart).padding(16.dp))
-        if (state.cameraBarcode.isNotBlank()) Surface(Modifier.align(Alignment.TopEnd).padding(top = 76.dp, start = 16.dp, end = 16.dp).widthIn(max = 300.dp), shape = RoundedCornerShape(16.dp)) {
+        FlowRow(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(16.dp).onSizeChanged { controlsHeight = it.height },
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CategorySelector(state.category, !state.busy && !state.capturing, { value -> model.update { it.copy(category = value) } })
+            Surface(shape = MaterialTheme.shapes.medium) {
+                ProductMarketButton(state.market, !state.busy && !state.capturing) { model.setProductMarket(it); true }
+            }
+        }
+        if (state.cameraBarcode.isNotBlank()) Surface(Modifier.align(Alignment.TopEnd).padding(top = controlsBottom, start = 16.dp, end = 16.dp).widthIn(max = 300.dp), shape = RoundedCornerShape(16.dp)) {
             Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(state.cameraBarcode, style = MaterialTheme.typography.labelLarge)
@@ -278,6 +287,7 @@ internal fun ManualScreen(state: ScanState, model: VegsnapViewModel) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.manual_hint))
             CategorySelector(state.category, enabled, { value -> model.update { it.copy(category = value) } })
+            ProductMarketButton(state.market, enabled) { model.setProductMarket(it); true }
             OutlinedTextField(value = state.name, onValueChange = { value -> model.update { it.copy(name = value.take(300)) } },
                 label = { Text(stringResource(R.string.product_name)) }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = enabled)
             if (state.barcode.isNotBlank()) OutlinedTextField(value = state.barcode, onValueChange = { value -> model.update { it.copy(barcode = value.take(14)) } },

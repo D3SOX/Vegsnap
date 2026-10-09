@@ -127,18 +127,18 @@ internal class AnalysisQueueStore(private val root: File) {
     private fun encode(job: AnalysisJob): JSONObject = JSONObject().put("id", job.id).put("createdAt", job.createdAt)
         .put("photoCount", job.photoCount).put("status", job.status.name).put("stage", job.stage?.name)
         .put("startedAt", job.startedAt).put("result", job.result).put("attempt", job.attempt).put("historyId", job.historyId).put("failureReason", job.failureReason?.code)
-        .put("input", JSONObject().put("text", job.input.text).put("category", job.input.category).put("complete", job.input.complete)
-            .put("name", job.input.name).put("barcode", job.input.barcode).put("locale", job.input.locale).put("truncated", job.input.truncated))
+        .put("input", encodeDraftInput(job.input))
         .put("settings", JSONObject().put("aiEnabled", job.settings.aiEnabled).put("baseUrl", job.settings.baseUrl)
             .put("model", job.settings.model).put("vision", job.settings.vision).put("offline", job.settings.offline)
-            .put("connection", job.settings.connection).put("chatgptModel", job.settings.chatgptModel))
+            .put("connection", job.settings.connection).put("chatgptModel", job.settings.chatgptModel)
+            .put("autoCountry", job.settings.autoCountry).put("fallbackCountry", job.settings.fallbackCountry))
     private fun decode(value: JSONObject): AnalysisJob {
         val input = value.getJSONObject("input"); val settings = value.getJSONObject("settings")
         return AnalysisJob(value.getString("id"), value.getLong("createdAt"),
-            CheckInput(input.getString("text"), input.getString("category"), if (input.has("complete")) input.getBoolean("complete") else null,
-                input.getString("name"), input.getString("barcode"), input.getString("locale"), input.getBoolean("truncated")),
+            decodeDraftInput(input),
             AppSettings(aiEnabled = settings.getBoolean("aiEnabled"), baseUrl = settings.getString("baseUrl"), model = settings.getString("model"),
-                vision = settings.getBoolean("vision"), offline = settings.getBoolean("offline"), connection = settings.getString("connection"), chatgptModel = settings.getString("chatgptModel")),
+                vision = settings.getBoolean("vision"), offline = settings.getBoolean("offline"), connection = settings.getString("connection"), chatgptModel = settings.getString("chatgptModel"),
+                autoCountry = settings.optBoolean("autoCountry", true), fallbackCountry = settings.optString("fallbackCountry", "DE")),
             value.getInt("photoCount").also { require(it in 0..3) }, AnalysisStatus.valueOf(value.getString("status")),
             if (value.has("stage")) CheckStage.valueOf(value.getString("stage")) else null,
             if (value.has("startedAt")) value.getLong("startedAt") else null,

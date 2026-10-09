@@ -7,7 +7,8 @@ export function editableInput(result: HistoryResult): CheckInput {
     category: result.category,
     ...result.input,
     name: result.input?.name ?? result.identity.name, brand: result.input?.brand ?? result.identity.brand,
-    barcode: result.input?.barcode ?? result.identity.barcode, market: result.input?.market ?? result.identity.market,
+    barcode: result.input?.barcode ?? result.identity.barcode, market: result.identity.marketSource === 'manual' ? result.identity.market : result.input?.market ?? result.identity.market,
+    ...(result.identity.marketSource === 'manual' ? {autoMarket:false} : {}),
     images: [...(result.photos ?? [])],
   };
 }

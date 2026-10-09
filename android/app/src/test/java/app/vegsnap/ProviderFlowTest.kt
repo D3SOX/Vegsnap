@@ -279,7 +279,7 @@ class ProviderFlowTest {
     @Test fun otherMarketExactBarcodePreservesConflictingCompositionWithWarning() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product("milk", "en:united-states"))
-            val result = databaseRepository(server).check(CheckInput("Ingredients: water, salt", "food", barcode = "4006381333931"), emptyList(), AppSettings(connection = "api"), "")
+            val result = databaseRepository(server).check(CheckInput("Ingredients: water, salt", "food", barcode = "4006381333931", autoMarket = false), emptyList(), AppSettings(connection = "api"), "")
             assertEquals("conflicting", result.getString("outcome"))
             assertEquals(2, result.getJSONArray("evidence").length())
             assertEquals("exact_barcode", result.getJSONObject("identity").getString("match"))

@@ -4,13 +4,16 @@ struct ResultView: View {
     var store: AppStore; var saved: SavedCheck
     @State private var community = CommunityRepliesState()
     @State private var communityRefresh = 0
-    var result: CheckResult { community.displayResult(saved.result, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
+    var currentSaved: SavedCheck { store.history.first(where: { $0.id == saved.id }) ?? saved }
+    var result: CheckResult { community.displayResult(currentSaved.result, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
+    @State private var market = ""
     @State private var findingFilter = "all"
     @State private var query = ""
     @State private var message: ManufacturerMessage?
     @State private var messageLanguage = language
     @State private var photo: String?
     var body: some View {
+        let saved = currentSaved
         let result = self.result
         let findings = result.findings.filter { (findingFilter == "all" || $0.status == findingFilter) && (query.isEmpty || ($0.term + " " + ($0.displayTerm ?? "")).localizedCaseInsensitiveContains(query)) }
         List {
@@ -99,6 +102,15 @@ struct ResultView: View {
             if result.usedAI || result.companyAssessment != nil {
                 Section { ContentReportButton(store: store, kind: "ai", initialText: ([result.summary, result.companyAssessment?.summary ?? ""] + result.evidence.filter { ["ai_extraction", "manufacturer", "certification"].contains($0.kind) }.map(\.excerpt)).joined(separator: "\n\n")) }
             }
+            Section {
+                if let source = saved.result.identity.marketSource {
+                    Text(L(["packaging": "Detected from packaging (AI — check the label)", "database": "Detected from database", "manual": "Selected manually", "fallback": "Fallback country"][source] ?? "Fallback country")).font(.footnote).foregroundStyle(.secondary)
+                }
+                TextField(L("Product country (e.g. SE)"), text: $market).textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    .onChange(of: market) { _, value in market = String(value.uppercased().filter { $0.isASCII && $0.isLetter }.prefix(2)) }
+                Button(L("Save country")) { do { try store.updateProductMarket(saved.id, market: market) } catch { store.report(error) } }
+                    .disabled(!Locale.Region.isoRegions.contains(where: { $0.identifier == market }))
+            } header: { Text(L("Product country")) } footer: { Text(L("Saving a correction refreshes community replies. Check again to refresh the original analysis.")) }
             CommunitySection(store: store, state: community, onRefresh: { communityRefresh += 1 })
             Section {
                 Button(L("Check again"), systemImage: "arrow.clockwise") {
@@ -110,6 +122,8 @@ struct ResultView: View {
                 ShareLink(item: result.title + "\n" + result.outcomeLabel + "\n\n" + result.summary) { Label(L("Share result"), systemImage: "square.and.arrow.up") }
             }
         }.navigationTitle(L("Result")).navigationBarTitleDisplayMode(.inline)
+            .onAppear { market = saved.result.identity.market }
+            .onChange(of: saved.result.identity.market) { _, value in market = value }
             .task(id: CommunityRequestKey(id: saved.id, identity: saved.result.identity, offline: store.settings.offline, refresh: communityRefresh, locale: store.locale)) {
                 await community.load(saved.result, engine: store.engine, locale: store.locale, offline: store.settings.offline)
             }

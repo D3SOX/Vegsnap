@@ -31,9 +31,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
-internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean, state: CommunityRepliesState? = null) {
+internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean, state: CommunityRepliesState? = null,
+    onSaveMarket: (suspend (String) -> Boolean)? = null) {
     val context = LocalContext.current
     val language = LocalConfiguration.current.locales[0].language
     val baseUrl = remember(context) { JSONObject(context.assets.open("community-service.json").bufferedReader().use { it.readText() }).optString("baseUrl") }
@@ -41,7 +44,7 @@ internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean, state
     val origin = links.submit.substringBefore("/submit#").toHttpUrl()
     val repository = remember(origin) { CommunityRepliesRepository(origin) }
     key(result.optString("id"), result.optJSONObject("identity")?.toString(), baseUrl) {
-        CommunityRepliesViewer(result, offline, links, loadReplies = repository::search, state = state, open = { url ->
+        CommunityRepliesViewer(result, offline, links, loadReplies = repository::search, state = state, onSaveMarket = onSaveMarket, open = { url ->
             runCatching { CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(url)) }
                 .onFailure { Toast.makeText(context, R.string.contact_open_failed, Toast.LENGTH_LONG).show() }
         })
@@ -52,10 +55,12 @@ internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean, state
 internal fun CommunityRepliesViewer(
     result: JSONObject, offline: Boolean, links: CommunityLinks,
     loadReplies: suspend (CommunityLookup) -> CommunityReplyPage, open: (String) -> Unit, state: CommunityRepliesState? = null,
+    onSaveMarket: (suspend (String) -> Boolean)? = null,
 ) {
     val context = LocalContext.current
     val hiddenStore = remember(context) { HiddenCommunityReplies(context) }
     val controller = state ?: rememberCommunityRepliesState(result, offline, loadReplies)
+    val scope = rememberCoroutineScope()
     LaunchedEffect(controller) { controller.hidden = hiddenStore.ids() }
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,7 +94,13 @@ internal fun CommunityRepliesViewer(
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = { controller.editing = !controller.editing }, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_edit_lookup)) }
-                    TextButton(onClick = controller::find, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_find)) }
+                    TextButton(onClick = {
+                        val correction = controller.marketCorrection()
+                        if (correction != null && onSaveMarket != null) scope.launch {
+                            controller.loading = true
+                            try { onSaveMarket(correction) } finally { controller.loading = false }
+                        } else controller.find()
+                    }, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_find)) }
                 }
                 Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (controller.loading) Text(stringResource(R.string.community_loading), style = MaterialTheme.typography.bodySmall)

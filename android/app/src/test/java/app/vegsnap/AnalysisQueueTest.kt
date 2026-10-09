@@ -14,19 +14,21 @@ class AnalysisQueueTest {
         finally { root.deleteRecursively() }
     }
     @Test fun `enqueue snapshots independent inputs and sanitized files without credentials`() = withStore { root, store ->
-        val input = CheckInput("water, oats", "food", true, locale = "de")
-        val settings = AppSettings(connection = "api", model = "vision-model", baseUrl = "https://api.example/v1")
+        val input = CheckInput("water, oats", "food", true, locale = "de", market = "SE", autoMarket = false)
+        val settings = AppSettings(connection = "api", model = "vision-model", baseUrl = "https://api.example/v1", autoCountry = false, fallbackCountry = "SE")
         val photo = byteArrayOf(1, 2, 3)
         val first = store.enqueue(input, settings, listOf(photo))
         photo[0] = 9
         val second = store.enqueue(input.copy(text = "cotton", category = "clothing", complete = false), settings.copy(model = "another-model"), emptyList())
         val restored = AnalysisQueueStore(File(root, "queue")).apply { initialize() }
         assertEquals(input, restored.get(first.id)?.input)
+        assertEquals(false, restored.get(first.id)?.settings?.autoCountry)
+        assertEquals("SE", restored.get(first.id)?.settings?.fallbackCountry)
         assertEquals(settings.model, restored.get(first.id)?.settings?.model)
         assertEquals("another-model", restored.get(second.id)?.settings?.model)
         assertArrayEquals(byteArrayOf(1, 2, 3), restored.files(first.id).single().readBytes())
         val saved = JSONObject(File(root, "queue/${first.id}/job.json").readText())
-        assertEquals(setOf("aiEnabled", "baseUrl", "model", "vision", "offline", "connection", "chatgptModel"), saved.getJSONObject("settings").keys().asSequence().toSet())
+        assertEquals(setOf("aiEnabled", "baseUrl", "model", "vision", "offline", "connection", "chatgptModel", "autoCountry", "fallbackCountry"), saved.getJSONObject("settings").keys().asSequence().toSet())
         assertFalse(saved.toString().contains("token", ignoreCase = true))
     }
     @Test fun `failed enqueue never publishes a job or damages an existing one`() = withStore { _, store ->

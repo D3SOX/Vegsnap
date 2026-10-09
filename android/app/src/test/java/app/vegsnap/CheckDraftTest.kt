@@ -6,6 +6,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CheckDraftTest {
+    @Test fun detectedCountryNeverBecomesTheFallbackWhenRestoringACheck() {
+        val result = org.json.JSONObject().put("identity", org.json.JSONObject().put("market", "SE").put("marketSource", "database"))
+        val original = CheckInput(market = "DE", autoMarket = true)
+        val restored = restoreCheckInput(result, original, "DE")
+        assertEquals("DE", restored.market)
+        assertEquals(null, restored.autoMarket)
+        result.getJSONObject("identity").put("marketSource", "manual").put("market", "FI")
+        val manual = restoreCheckInput(result, original, "DE")
+        assertEquals("FI", manual.market)
+        assertEquals(false, manual.autoMarket)
+    }
+
     @Test fun `only inconclusive builtin barcode results offer AI escalation`() {
         val result = JSONObject().put("outcome", "uncertain").put("usedAI", false)
             .put("identity", JSONObject().put("barcode", "4006381333931"))
@@ -52,5 +64,15 @@ class CheckDraftTest {
         assertEquals("", camera.name)
         assertEquals("", camera.barcode)
         assertEquals(manual, manual.forCheck(photosOnly = false))
+    }
+    @Test fun `selected market survives old drafts photo checks and rechecks`() {
+        val input = CheckInput(market = "SE")
+        assertEquals(input, decodeDraftInput(encodeDraftInput(input)))
+        assertEquals("DE", decodeDraftInput(encodeDraftInput(input).apply { remove("market") }).market)
+        assertEquals("SE", ScanState(market = "SE").forCheck(photosOnly = true).market)
+        val result = JSONObject().put("category", "drink").put("identity", JSONObject().put("market", "SE"))
+        assertEquals("SE", recheckInput(result).market)
+        assertEquals("SE", extractionInputContext(input).getString("market"))
+        assertEquals("en:sweden", productMarketTag("SE"))
     }
 }

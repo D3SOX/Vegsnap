@@ -7,7 +7,7 @@ test('hosted adapter sends product data to its fixed origin and preserves valida
     received = new Request(url, init);
     return Response.json({ text: '', category: 'other', complete: false, research: { searched: true, sources: [{ url: 'https://maker.example/product', title: 'Product' }] } });
   }, { preconnect: globalThis.fetch.preconnect });
-  const result = await createHostedAIProvider('a'.repeat(64), fetcher).extract({ name: 'Product', images: ['data:image/jpeg;base64,AA=='] });
+  const result = await createHostedAIProvider('a'.repeat(64), fetcher).extract({ name: 'Product', autoMarket: true, images: ['data:image/jpeg;base64,AA=='] });
   expect(received?.url).toBe(`${HOSTED_AI.baseUrl}/api/check`);
   expect(received?.headers.get('Authorization')).toBe(`Bearer ${'a'.repeat(64)}`);
   expect(await received?.json()).toEqual({ name: 'Product', images: ['data:image/jpeg;base64,AA=='] });

@@ -72,3 +72,12 @@ describe('editing a checked product', () => {
     expect(editableInput({ ...stored, evidence: [] }).text).toBe('');
   });
 });
+
+test('editing detected countries preserves the fallback while manual corrections win', () => {
+  const detected: HistoryResult = { ...result(), input: {market:'DE',autoMarket:true}, identity:{...result().identity,market:'SE',marketSource:'database'} };
+  expect(editableInput(detected).market).toBe('DE');
+  expect(editableInput(detected).autoMarket).toBe(true);
+  const manual: HistoryResult = {...detected,identity:{...detected.identity,market:'FI',marketSource:'manual'}};
+  expect(editableInput(manual).market).toBe('FI');
+  expect(editableInput(manual).autoMarket).toBe(false);
+});

@@ -91,6 +91,13 @@ describe('public database boundaries', () => {
       await expect(lookupProduct(code, { fetch: fetcher, now })).rejects.toThrow();
     }
   });
+  test('a selected Swedish market is carried through matching database records', async () => {
+    const fetcher = mock(async () => response(product('water, salt', { countries_tags: ['en:sweden'] }))) as unknown as typeof fetch;
+    expect((await lookupProduct(code, { fetch: fetcher, market: 'SE' }))?.input.market).toBe('SE');
+    expect((await checkProduct({ barcode: code, market: 'SE' }, { mode: 'explicit', fetch: fetcher }))?.identity.market).toBe('SE');
+    const german = mock(async () => response(product('water, salt'))) as unknown as typeof fetch;
+    await expect(lookupProduct(code, { fetch: german, market: 'SE' })).rejects.toThrow('confirm the market');
+  });
   test('explicit composition conflict is never hidden by a reassuring database', async () => {
     const fetcher = mock(async () => response(product('milk'))) as unknown as typeof fetch;
     const result = await checkProduct({ barcode: code, text: 'Ingredients: water, salt', complete: true, category: 'food' }, { mode: 'explicit', fetch: fetcher });

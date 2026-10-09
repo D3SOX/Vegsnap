@@ -17,6 +17,10 @@ internal class CommunityRepliesState(val original: CommunityLookup) {
     var error by mutableStateOf<Int?>(null)
     var hidden by mutableStateOf<Set<String>>(emptySet())
     var confirmed by mutableStateOf<Set<String>>(emptySet())
+    fun marketCorrection(): String? {
+        val market = lookup.market.trim().uppercase(java.util.Locale.ROOT)
+        return market.takeIf { validProductMarket(it) && it != original.market && lookup.copy(market = original.market) == original }
+    }
     fun find() {
         page = null; confirmed = emptySet(); error = null
         if (runCatching { lookup.parameters() }.isFailure) { editing = true; error = R.string.community_invalid_lookup; return }

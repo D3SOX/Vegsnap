@@ -5,6 +5,18 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testOldSettingsAndInputsDecodeWithoutDetectionFields() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        var settingsJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(Settings())) as? [String: Any])
+        settingsJSON.removeValue(forKey: "autoCountry"); settingsJSON.removeValue(forKey: "fallbackCountry")
+        let settings = try decoder.decode(Settings.self, from: JSONSerialization.data(withJSONObject: settingsJSON))
+        XCTAssertTrue(settings.automaticCountry); XCTAssertEqual(settings.defaultCountry, "DE")
+        var inputJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(CheckInput(market: "SE"))) as? [String: Any])
+        inputJSON.removeValue(forKey: "autoMarket")
+        let input = try decoder.decode(CheckInput.self, from: JSONSerialization.data(withJSONObject: inputJSON))
+        XCTAssertNil(input.autoMarket); XCTAssertEqual(input.market, "SE")
+    }
     func testPackagingLanguageUsesObservedNamesAndCodes() {
         for language in ["sv", "swe", "Swedish", "svenska"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "sv") }
         for language in ["de", "deu", "German", "Deutsch"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "de") }
@@ -264,6 +276,27 @@ import Security
         let restored = try AppStore(root: root); XCTAssertEqual(restored.history.count, 1)
         restored.delete(Set(restored.history.map(\.id)))
         XCTAssertTrue(try AppStore(root: root).history.isEmpty)
+    }
+    func testProductCountryCorrectionPersistsAndFailedSaveKeepsOriginal() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let original = try analyze("Ingredients: water, mystery")
+        let saved = SavedCheck(id: original.id, result: original, input: CheckInput(text: "Ingredients: water, mystery"), photos: ["photo.jpg"])
+        store.history = [saved]; store.selectedResult = saved
+        try store.files.save(store.history, "history.json")
+        try store.updateProductMarket(saved.id, market: "SE")
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.history[0].result.identity.market, "SE")
+        XCTAssertEqual(restored.history[0].input?.market, "SE")
+        XCTAssertEqual(restored.history[0].result.outcome, original.outcome)
+        XCTAssertEqual(restored.history[0].photos, saved.photos)
+        XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
+        XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "Sweden"))
+        FileStore.rejectWrite = { $0.lastPathComponent == "history.json" }
+        XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "DE"))
+        XCTAssertEqual(store.history[0].result.identity.market, "SE")
+        XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
     }
     func testStoppingNetworkWorkDoesNotRestartHostedRefresh() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

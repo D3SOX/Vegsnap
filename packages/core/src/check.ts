@@ -7,6 +7,7 @@ import { mergeResults, withoutCompositionFindings } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
 import { applyCompanyAssessment } from './company-assessment';
+import { selectProductCountry } from './market';
 import type { CheckInput, CheckOptions, CheckResult, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
@@ -26,7 +27,12 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   options.signal?.throwIfAborted();
   options.onProgress?.('evaluating');
   let result = analyzeText(input, options.now);
-  const finish = () => attachCompanyConcerns(result, input.locale, result.identity.brand ?? input.brand);
+  const markets: string[] = [];
+  let packagingCountry: string | undefined;
+  const finish = () => {
+    result.identity = {...result.identity,...selectProductCountry(input,packagingCountry,markets)};
+    return attachCompanyConcerns(result, input.locale, result.identity.brand ?? input.brand);
+  };
   const checked = new Set<string>();
   async function lookup(code?: string) {
     if (!code) return;
@@ -36,14 +42,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { result = mergeResults(result, databaseResult(local, input, options.now)); return; }
+      if (local) { markets.push(...local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return; }
       if (options.offline) {
         result.warnings.push(input.locale === 'de' ? 'Kein passender Eintrag im teilweisen Offline-Datenbestand.' : 'No exact record in the partial offline database.');
         return;
       }
       const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
-        category: input.category, market: input.market, locale: input.locale });
-      if (product) result = mergeResults(result, databaseResult(product, input, options.now));
+        category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
+      if (product) { markets.push(...product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
       else result.warnings.push(input.locale === 'de' ? 'Kein passender Datenbankeintrag gefunden.' : 'No exact product record was found.');
     } catch (error) {
       if (options.signal?.aborted) throw error;
@@ -79,6 +85,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (!input.images?.length && extracted.text && ![canonical(original), canonical(composition)].includes(canonical(extracted.text))) {
       throw new Error('AI extraction changed the supplied text; the original evidence was kept.');
     }
+    packagingCountry = extracted.packaging?.country;
     // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
     const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
     const complete = input.complete === false ? false : input.images?.length ? extracted.complete : localComplete && extracted.complete;

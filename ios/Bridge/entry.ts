@@ -73,9 +73,13 @@ export function check(id: string, json: string) {
       }
       if (extraction && !args.offline && result.outcome === 'uncertain' && result.aiStatus !== 'failed') {
         try {
-          const database = await identifiedProduct(extraction, args.input, controller.signal);
-          if (database) result = core.attachCompanyConcerns({ ...mergeResults(result, database),
+          const database = await identifiedProduct(extraction, {...args.input, market:result.identity.market}, controller.signal);
+          if (database) {
+            const merged = mergeResults(result, database);
+            result = core.attachCompanyConcerns({ ...merged,
+            identity: {...merged.identity, market:result.identity.market, marketSource:result.identity.marketSource},
             manufacturerContact: result.manufacturerContact, companyAssessment: result.companyAssessment }, args.input.locale, result.identity.brand);
+          }
         } catch (error) { if (controller.signal.aborted) throw error; }
       }
       if (!args.aiEnabled && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';

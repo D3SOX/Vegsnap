@@ -48,8 +48,10 @@ class CommunityRepliesViewerTest {
         "2026-01-10", "vegan", "ingredients", "2026-01-11T12:00:00Z", "https://maker.example/contact", false)
 
     private fun show(offline: State<Boolean> = mutableStateOf(false), dark: Boolean = false, fontScale: Float = 1f,
-        open: (String) -> Unit = {}, displayVerdict: Boolean = false, load: suspend (CommunityLookup) -> CommunityReplyPage) {
+        open: (String) -> Unit = {}, displayVerdict: Boolean = false, source: State<String> = mutableStateOf(result.toString()),
+        onSaveMarket: (suspend (String) -> Boolean)? = null, load: suspend (CommunityLookup) -> CommunityReplyPage) {
         compose.setContent {
+            val result = remember(source.value) { JSONObject(source.value) }
             val context = LocalContext.current
             val configuration = LocalConfiguration.current
             val english = remember(context, configuration) { context.createConfigurationContext(Configuration(configuration).apply {
@@ -64,7 +66,7 @@ class CommunityRepliesViewerTest {
                                 val current = if (offline.value) result else applyCommunityReplies(result,state.appliedReplies(),"en","https://community.example")
                                 androidx.compose.material3.Text(current.optString("title", "Original verdict"))
                             }
-                            CommunityRepliesViewer(result, offline.value, links, load, open, state)
+                            CommunityRepliesViewer(result, offline.value, links, load, open, state, onSaveMarket)
                         }
                     }
                 }
@@ -199,6 +201,27 @@ class CommunityRepliesViewerTest {
         compose.onNodeWithText("Original verdict").assertExists()
         click("Restore blocked replies")
         compose.onNodeWithText("Manufacturer says vegan").assertExists()
+    }
+    @Test fun correctingCountrySavesTheIdentityReloadsAndDropsOldVerdict() {
+        val saved = mutableStateOf(result.toString())
+        val markets = mutableListOf<String>()
+        show(displayVerdict = true, source = saved, onSaveMarket = { country ->
+            saved.value = JSONObject(saved.value).apply { getJSONObject("identity").put("market", country) }.toString()
+            true
+        }) { lookup ->
+            markets.add(lookup.market)
+            CommunityReplyPage(if (lookup.market == "SE") listOf(reply.copy(scope = "whole_product")) else emptyList(), false)
+        }
+        compose.onNodeWithText("Manufacturer says vegan").assertExists()
+        click("Edit product details")
+        compose.onNode(hasSetTextAction() and hasText("Country code")).performScrollTo().performTextReplacement("DE")
+        click("Find replies")
+        compose.onNodeWithText("Manufacturer says vegan").assertDoesNotExist()
+        compose.onNodeWithText("Original verdict").assertExists()
+        compose.runOnIdle {
+            assertEquals(listOf("SE", "DE"), markets)
+            assertEquals("DE", JSONObject(saved.value).getJSONObject("identity").getString("market"))
+        }
     }
 
 }

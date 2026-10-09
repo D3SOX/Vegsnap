@@ -1,5 +1,6 @@
 import { DATABASES, normalizeBarcode } from './database';
 import type { CheckInput, DatabaseProduct } from './types';
+import { countryCode, selectProductCountry } from './market';
 
 export const OFFLINE_MAX_BYTES = 10_000_000;
 export interface OfflineSnapshot {
@@ -52,16 +53,11 @@ export function parseOfflineSnapshot(text: string): OfflineSnapshot {
   if (text.length > OFFLINE_MAX_BYTES || new TextEncoder().encode(text).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.');
   return validateOfflineSnapshot(JSON.parse(text));
 }
-const markets: Record<string, string> = {
-  DE: 'germany', AT: 'austria', CH: 'switzerland', SE: 'sweden', FI: 'finland', DK: 'denmark', NO: 'norway',
-  FR: 'france', NL: 'netherlands', BE: 'belgium', ES: 'spain', IT: 'italy', PL: 'poland', IE: 'ireland', PT: 'portugal',
-  GB: 'united-kingdom', US: 'united-states', CA: 'canada', AU: 'australia',
-};
 type OfflineEntry = { product: OfflineSnapshot['products'][number]; snapshot: OfflineSnapshot };
 function rankEntries(entries: readonly OfflineEntry[], input: Pick<CheckInput, 'category' | 'market'>): OfflineEntry[] {
-  const marketTag = markets[(input.market ?? 'DE').toUpperCase()];
+  const market = input.market ?? 'DE';
   const preferred = input.category === 'cosmetics' ? 'obf' : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? 'opf' : 'off';
-  const matchesMarket = (product: OfflineSnapshot['products'][number]) => Boolean(marketTag && product.countries_tags.includes(`en:${marketTag}`));
+  const matchesMarket = (product: OfflineSnapshot['products'][number]) => product.countries_tags.some(tag => countryCode(tag) === market);
   return [...entries].sort((a, b) => Number(matchesMarket(b.product)) - Number(matchesMarket(a.product)) || Number(b.product.source === preferred) - Number(a.product.source === preferred) || b.product.last_modified_t - a.product.last_modified_t || Date.parse(b.snapshot.generatedAt) - Date.parse(a.snapshot.generatedAt));
 }
 export class OfflineProductIndex {
@@ -85,13 +81,14 @@ export class OfflineProductIndex {
     });
     return matches.slice(offset, offset + 20);
   }
-  lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market'> = {}): DatabaseProduct | null {
+  lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market' | 'autoMarket'> = {}): DatabaseProduct | null {
     const code = normalizeBarcode(barcode);
     if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
-    const market = (input.market ?? 'DE').toUpperCase();
-    const marketTag = markets[market];
-    const matchesMarket = (product: OfflineSnapshot['products'][number]) => Boolean(marketTag && product.countries_tags.includes(`en:${marketTag}`));
-    const entry = rankEntries(this.products.get(code.padStart(14, '0')) ?? [], input)[0];
+    const entries = this.products.get(code.padStart(14, '0')) ?? [];
+    const countryTags = [...new Set(entries.flatMap(entry=>entry.product.countries_tags))];
+    const market = selectProductCountry(input,undefined,countryTags).market;
+    const matchesMarket = (product: OfflineSnapshot['products'][number]) => product.countries_tags.some(tag => countryCode(tag) === market);
+    const entry = rankEntries(entries, {...input,market})[0];
     if (!entry) return null;
     const { product, snapshot } = entry;
     const db = DATABASES.find(item => item.id === product.source)!;
@@ -99,6 +96,7 @@ export class OfflineProductIndex {
     const text = (input.locale === 'de' ? product.ingredients_de : product.ingredients_en) || product.ingredients || product.ingredients_de || product.ingredients_en || '';
     const name = (input.locale === 'de' ? product.name_de : product.name_en) || product.name || product.name_de || product.name_en || '';
     return {
+      markets: countryTags,
       input: { barcode: code, name, brand: product.brands, text, complete: false, locale: input.locale, market,
         category: input.category && input.category !== 'other' ? input.category : db.category, sourceUrl: `${db.origin}/product/${product.code}` },
       evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${input.locale === 'de' ? 'Offline-Auszug' : 'offline snapshot'} (${snapshot.region})`,

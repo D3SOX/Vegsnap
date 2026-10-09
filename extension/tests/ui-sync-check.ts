@@ -54,13 +54,18 @@ mock.module('wxt/browser', () => ({ browser: {
           checkRequests++; checkedInputs.push(structuredClone(message.input)); await checkWait;
           if (checkError) return { ok: false, error: 'Fixture check failed' };
           const { images, ...input } = message.input;
-          return { ok: true, result: { ...fixtureResult, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
+          return { ok: true, result: { ...fixtureResult, id: `check-${checkRequests}`, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
         }
         case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
+        case 'set-result-market': {
+          history = history.map(item=>item.id === message.id ? {...item,identity:{...item.identity,market:message.market,marketSource:'manual' as const}} : item);
+          changed();
+          return {ok:true,result:history.find(item=>item.id === message.id)};
+        }
         case 'hosted': {
           if (message.command === 'connect') hostedConnects++;
           const saved = session.hostedStatus as { state: string } | undefined;
@@ -202,15 +207,32 @@ try {
   await until(() => ingredientLabels()[0] === 'Herkunft der Zutat unklar', 'Ingredient indicator labels follow the selected language');
   assert.deepEqual(ingredientLabels(), ['Herkunft der Zutat unklar', 'Vegane Zutat', 'Zutat tierischen Ursprungs', 'Herkunft der Zutat unbekannt']);
   console.log('Actual result UI: translated name/question and secondary original name preserve source evidence');
+  await tab(roots[1]!, 1);
+  await until(()=>historyItems(roots[1]!).length === 1,'Country correction fixture is available in the second window');
+  await act(async()=>{(historyItems(roots[1]!)[0] as HTMLButtonElement).click();});
+  const countryInput = (root:HTMLElement)=>root.querySelector<HTMLInputElement>('.product-country input');
+  await until(()=>roots.every(root=>countryInput(root)?.value === 'DE'),'Both open results show the original country');
+  const originalEvidence = structuredClone(history[0]!.evidence);
+  await act(async()=>{
+    countryInput(roots[0]!)!.value = 'SE';
+    countryInput(roots[0]!)!.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await act(async()=>{ roots[0]!.querySelector<HTMLButtonElement>('.product-country button')!.click(); });
+  await until(()=>roots.every(root=>countryInput(root)?.value === 'SE'),'Saving country updates both open results');
+  assert.equal(history[0]!.identity.market,'SE');
+  assert.deepEqual(history[0]!.evidence,originalEvidence,'Correcting country preserves original analysis evidence');
+  console.log('Actual result UI: country correction persists and synchronizes both open results without rewriting evidence');
   console.log('Actual two-window UI: shared history/settings/session/model updates, trash isolation and private ephemeral email reveal verified');
 
   settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
+  // The two fixtures share a document; real extension windows have independent focus.
+  await tab(roots[1]!, 1);
   const editButton = () => roots[0]!.querySelector<HTMLButtonElement>('.edit-details');
   const beforeEdit = checkRequests;
   await act(async () => { editButton()!.click(); });
   assert.equal(roots[0]!.querySelector('h1')?.textContent, 'Edit product details');
   assert.equal(roots[0]!.querySelector('textarea')?.value, 'naturlig arom', 'Older history restores only supplied text');
-  assert.equal(document.activeElement, roots[0]!.querySelector('textarea'), 'Editing focuses the details field');
+  await until(()=>document.activeElement === roots[0]!.querySelector('textarea'), 'Editing focuses the details field');
   assert.equal(checkRequests, beforeEdit, 'Opening an edit does not run a check');
   const cancelButton = () => [...roots[0]!.querySelectorAll('button')].find(button => button.textContent === 'Cancel');
   await act(async () => { cancelButton()!.click(); });
@@ -238,7 +260,7 @@ try {
   checkError = false; await submitEdit();
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Edited details produce a new result');
   assert.deepEqual(checkedInputs.at(-1), { text: 'Ingredients: oats, water', category: 'drink', complete: true, images: [originalPhoto],
-    name: 'Fictional oat drink', brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE', sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, 'Rechecks retain identity while text is edited');
+    name: 'Fictional oat drink', brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE', autoMarket: false, sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, 'Rechecks retain identity while text is edited');
   assert.equal(history[0]?.input?.text, 'Ingredients: oats', 'Editing leaves the original saved check intact');
   await act(async () => { editButton()!.click(); });
   assert.equal(roots[0]!.querySelector('textarea')?.value, 'Ingredients: oats, water', 'Fresh results can be edited again');

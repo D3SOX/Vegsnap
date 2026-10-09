@@ -29,6 +29,15 @@ class BarcodePayloadTest {
         .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", name)
             .put("countries_tags", JSONArray().put("en:sweden")).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
 
+    @Test fun exactBarcodeCountryIsDetectedWithoutAi() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(product())
+            val result = requireNotNull(repository(server).lookupBarcode(CheckInput(category = "food", barcode = barcode, autoMarket = true)))
+            assertEquals("SE", result.getJSONObject("identity").getString("market"))
+            assertEquals("database", result.getJSONObject("identity").getString("marketSource"))
+            assertEquals(1, server.requestCount)
+        }
+    }
     @Test fun passiveIdentityOnlyMatchRemainsUncertainAndDoesNotInvokeAi() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product())

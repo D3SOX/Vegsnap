@@ -2,6 +2,7 @@ export type Category = 'food' | 'drink' | 'cosmetics' | 'household' | 'clothing'
 export type Outcome = 'vegan' | 'not_vegan' | 'uncertain' | 'conflicting';
 export type Basis = 'certified' | 'manufacturer' | 'research' | 'composition' | 'packaging' | 'insufficient';
 export type Locale = 'en' | 'de';
+export type MarketSource = 'manual' | 'fallback' | 'packaging' | 'database';
 export interface CheckInput {
   text?: string;
   barcode?: string;
@@ -11,6 +12,8 @@ export interface CheckInput {
   /** Only true when the user/source explicitly supplies the whole composition list. */
   complete?: boolean;
   market?: string;
+  /** Local preference; never sent to an AI service. Explicit false keeps a manual override. */
+  autoMarket?: boolean;
   locale?: Locale;
   sourceUrl?: string;
   /** Already resized and stripped of metadata by the client. Never a remote URL. */
@@ -79,7 +82,7 @@ export interface CheckResult {
   title: string;
   summary: string;
   category: Category;
-  identity: { name?: string; brand?: string; barcode?: string; market: string; match: 'exact_barcode' | 'unconfirmed' };
+  identity: { name?: string; brand?: string; barcode?: string; market: string; marketSource?: MarketSource; match: 'exact_barcode' | 'unconfirmed' };
   findings: Finding[];
   evidence: Evidence[];
   questions: string[];
@@ -130,7 +133,7 @@ export interface ProviderConfig {
 export type CheckStage = 'database' | 'ai' | 'evaluating';
 export interface CheckOptions {
   /** Validated on-device product snapshots, checked before public network databases. */
-  offlineProducts?: { lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market'>): DatabaseProduct | null };
+  offlineProducts?: { lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market' | 'autoMarket'>): DatabaseProduct | null };
   /** Reports real work boundaries without estimating completion percentages. */
   onProgress?: (stage: CheckStage) => void;
   mode: 'explicit' | 'background';
@@ -142,6 +145,7 @@ export interface CheckOptions {
   now?: () => Date;
 }
 export interface DatabaseProduct {
+  markets?: string[];
   warnings?: string[];
   input: CheckInput;
   evidence: Evidence;

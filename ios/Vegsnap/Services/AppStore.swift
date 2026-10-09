@@ -41,7 +41,7 @@ import CryptoKit
         jobs = try files.read("queue.json") ?? []
         let saved: Draft? = try files.read("draft.json")
         draftID = saved?.id ?? UUID().uuidString
-        draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, locale: language)
+        draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, market: loadedSettings.defaultCountry, locale: language)
         draftPhotos = saved?.photos ?? []
         selectedTab = loadedSettings.startTab == "last" ? loadedSettings.lastTab : loadedSettings.startTab
         let completedIDs = Set(history.map(\.id))
@@ -57,7 +57,24 @@ import CryptoKit
     }
     var locale: String { settings.language == "system" ? language : settings.language }
     func report(_ error: Error) { if !(error is CancellationError) { self.error = error.localizedDescription } }
-    func saveSettings() { do { try files.save(settings, "settings.json") } catch { report(error) } }
+    func saveSettings() {
+        do {
+            try files.save(settings, "settings.json")
+            if draft.autoMarket == nil && !draftSubmitted { draft.market = settings.defaultCountry; saveDraft() }
+        } catch { report(error) }
+    }
+    func updateProductMarket(_ id: String, market: String) throws {
+        guard Locale.Region.isoRegions.contains(where: { $0.identifier == market }) else { throw AppError(L("Enter a two-letter country code.")) }
+        guard !jobs.contains(where: { $0.id == id }), let index = history.firstIndex(where: { $0.id == id }) else { throw AppError(L("This result is unavailable or has a check in progress.")) }
+        var next = history
+        next[index].result.identity.market = market
+        next[index].result.identity.marketSource = "manual"
+        next[index].input?.market = market
+        next[index].input?.autoMarket = false
+        try files.save(next, "history.json")
+        history = next
+        if selectedResult?.id == id { selectedResult = next[index] }
+    }
     func saveDraft() {
         do { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
     }
@@ -88,7 +105,7 @@ import CryptoKit
     }
     func clearDraft() {
         do {
-            try replaceDraft(CheckInput(category: settings.defaultCategory, locale: locale), photos: [], id: UUID().uuidString)
+            try replaceDraft(CheckInput(category: settings.defaultCategory, market: settings.defaultCountry, locale: locale), photos: [], id: UUID().uuidString)
             cleanPhotos(); consumeInbox()
         } catch { report(error) }
     }
@@ -100,6 +117,8 @@ import CryptoKit
             if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return false }
             var input = supplied ?? draft; input.locale = locale
+            input.autoMarket = input.autoMarket ?? settings.automaticCountry
+            if supplied != nil && input.autoMarket == true { input.market = settings.defaultCountry }
             let photos = suppliedPhotos ?? draftPhotos
             guard input.hasContent || !photos.isEmpty else { return false }
             guard input.text.utf16.count <= 30_000, input.name.utf16.count <= 300, input.brand.utf16.count <= 300 else { throw AppError(L("Text exceeds the input limit.")) }

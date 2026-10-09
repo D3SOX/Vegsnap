@@ -23,10 +23,11 @@ struct CheckInput: Codable, Equatable {
     var locale = "en"
     var sourceUrl: String? = nil
     var images: [String]? = nil
+    var autoMarket: Bool? = nil
     var hasContent: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !barcode.isEmpty || !name.isEmpty || !(images ?? []).isEmpty }
 }
 struct Identity: Codable, Equatable {
-    var name: String?; var brand: String?; var barcode: String?; var market: String; var match: String
+    var name: String?; var brand: String?; var barcode: String?; var market: String; var match: String; var marketSource: String? = nil
 }
 struct Finding: Codable { var term: String; var displayTerm: String?; var displayLocale: String?; var status: String; var ruleId: String?; var explanation: String; var evidenceId: String }
 struct Evidence: Codable, Identifiable { var id: String; var kind: String; var title: String; var excerpt: String; var url: String?; var retrievedAt: String; var sourceDate: String?; var license: String?; var claim: String?; var verification: String? }
@@ -64,7 +65,7 @@ struct CheckResult: Codable, Identifiable {
     }
     var outcomeIcon: String { basis == "manufacturer" ? "building.2.fill" : outcome.icon }
     var retryInput: CheckInput {
-        CheckInput(text: evidence.filter { ["user_text", "ocr"].contains($0.kind) }.map(\.excerpt).joined(separator: "\n"), barcode: identity.barcode ?? "", name: identity.name ?? "", brand: identity.brand ?? "", category: category, complete: false, market: identity.market, locale: language)
+        CheckInput(text: evidence.filter { ["user_text", "ocr"].contains($0.kind) }.map(\.excerpt).joined(separator: "\n"), barcode: identity.barcode ?? "", name: identity.name ?? "", brand: identity.brand ?? "", category: category, complete: false, market: identity.market, locale: language, autoMarket: identity.marketSource == "manual" ? false : nil)
     }
 }
 struct Settings: Codable, Equatable {
@@ -82,6 +83,10 @@ struct Settings: Codable, Equatable {
     var appearance = "system"
     var language = "system"
     var ocrLanguages = ["en-US", "de-DE"]
+    var autoCountry: Bool? = nil
+    var fallbackCountry: String? = nil
+    var automaticCountry: Bool { get { autoCountry ?? true } set { autoCountry = newValue } }
+    var defaultCountry: String { get { fallbackCountry ?? "DE" } set { fallbackCountry = newValue } }
     var catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
 }
 struct HistoryDocument: Codable { var schemaVersion = 1; var exportedAt = ISO8601DateFormatter().string(from: Date()); var results: [CheckResult] }

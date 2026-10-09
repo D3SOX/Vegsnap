@@ -1,7 +1,8 @@
 import { normalizeBarcode } from './barcode';
 export { normalizeBarcode } from './barcode';
-import type { Category, CheckOptions, DatabaseProduct } from './types';
+import type { Category, CheckInput, CheckOptions, DatabaseProduct } from './types';
 import { readBoundedText } from './http';
+import { countryCode, selectProductCountry } from './market';
 
 export const DATABASES = [
   { id: 'off', name: 'Open Food Facts', origin: 'https://world.openfoodfacts.org', category: 'food' },
@@ -9,7 +10,7 @@ export const DATABASES = [
   { id: 'opf', name: 'Open Products Facts', origin: 'https://world.openproductsfacts.org', category: 'other' },
 ] as const;
 const FIELDS = 'code,product_name,product_name_de,brands,ingredients_text,ingredients_text_de,countries_tags,labels_tags,last_modified_t';
-type LookupOptions = Pick<CheckOptions, 'fetch' | 'signal' | 'now'> & { category?: Category; market?: string; locale?: 'de' | 'en' };
+type LookupOptions = Pick<CheckOptions, 'fetch' | 'signal' | 'now'> & Pick<CheckInput,'category'|'market'|'locale'|'autoMarket'>;
 type Entry = { expires: number; value: DatabaseProduct | null };
 type ClientState = { cache: Map<string, Entry>; requests: Map<string, number[]> };
 const clients = new WeakMap<typeof fetch, ClientState>();
@@ -33,7 +34,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
   const errors: string[] = [];
   for (const db of databases) {
     options.signal?.throwIfAborted();
-    const key = `${db.id}:${code}:${options.locale ?? 'en'}:${options.market ?? 'DE'}:${options.category ?? ''}`;
+    const key = `${db.id}:${code}:${options.locale ?? 'en'}:${options.market ?? 'DE'}:${options.category ?? ''}:${options.autoMarket === true}`;
     const cached = state.cache.get(key);
     if (cached && cached.expires > now().getTime()) {
       if (cached.value) return structuredClone(cached.value);
@@ -65,14 +66,19 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       const returnedCode = string(product.code);
       if (!returnedCode || !normalizeBarcode(returnedCode) || returnedCode.padStart(14, '0') !== code.padStart(14, '0')) throw new Error('Product identifier mismatch');
       const markets = list(product.countries_tags);
-      const requestedMarket = (options.market ?? 'DE').toUpperCase();
-      if (requestedMarket === 'DE' && markets.length > 0 && !markets.includes('en:germany')) {
-        throw new Error('The database record does not list Germany; confirm the market before using it.');
+      const requestedMarket = selectProductCountry(options,undefined,markets).market;
+      const differentMarket = markets.length > 0 && !markets.some(tag => countryCode(tag) === requestedMarket);
+      if (differentMarket && !options.autoMarket) {
+        throw new Error(`The database record does not list ${requestedMarket}; confirm the market before using it.`);
       }
       const text = options.locale === 'de' ? string(product.ingredients_text_de) ?? string(product.ingredients_text) : string(product.ingredients_text) ?? string(product.ingredients_text_de);
       const name = options.locale === 'de' ? string(product.product_name_de) ?? string(product.product_name) : string(product.product_name) ?? string(product.product_name_de);
       const modified = typeof product.last_modified_t === 'number' && Number.isFinite(product.last_modified_t) ? new Date(product.last_modified_t * 1000) : undefined;
       const value: DatabaseProduct = {
+        markets,
+        warnings: differentMarket ? [options.locale === 'de'
+          ? `Dieser Datensatz nennt andere Märkte als ${requestedMarket}. Vergleiche die Rezeptur mit deiner Packung.`
+          : `This record lists other markets than ${requestedMarket}. Compare its composition with your package.`] : [],
         input: { barcode: code, name, brand: string(product.brands), text, complete: false,
           category: options.category && options.category !== 'other' ? options.category : db.category,
           locale: options.locale, market: requestedMarket, sourceUrl: `${db.origin}/product/${code}` },

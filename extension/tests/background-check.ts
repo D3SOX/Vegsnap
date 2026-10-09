@@ -3,6 +3,7 @@ import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
 import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
 import hostedConfig from '../../data/hosted-ai.json';
+import { countryCode } from '../../packages/core/src/market';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
 import { defaultSettings, STORES } from '../src/settings';
@@ -100,15 +101,17 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
   if (operation !== 'list') historyOperations.push(`${operation}:end`);
   return operation === 'list' ? saved : undefined;
 } }));
+const evaluateProduct = realCheckProduct;
+const parseCountry = countryCode;
 mock.module('@vegsnap/core', () => ({
-  HOSTED_AI: hostedConfig,
+  countryCode: parseCountry, HOSTED_AI: hostedConfig,
   createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => {
     hostedRemaining = Math.max(0, hostedRemaining - 1);
     if (hostedExtractionFails) throw new Error('Hosted attempt failed');
     return { text: 'oats', complete: true, category: 'food' };
   } }; },
   acceptsImages,
-  checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return realCheckProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
+  checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return evaluateProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
   createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => { providerExtractions++; return { text: 'test', complete: false, category: 'other' }; } }; },
   validateAIExtraction: (value: unknown) => value,
   parseAIExtraction: () => ({ text: '', complete: false, category: 'other' }),
@@ -138,7 +141,7 @@ assert.equal(calls[1]?.mode, 'explicit');
 assert(calls[1]?.provider);
 assert.equal(calls[1]?.offlineProducts, offlineIndex, 'Explicit checks consult the same on-device index');
 assert.equal(saved.length, 1);
-assert.deepEqual((saved[0] as { input: CheckInput }).input, { text: 'ingredients: milk', locale: 'en', market: 'DE' }, 'History retains the original draft for editing');
+assert.deepEqual((saved[0] as { input: CheckInput }).input, { text: 'ingredients: milk', locale: 'en', market: 'DE', autoMarket: true }, 'History retains the original draft for editing');
 assert.equal((await listener!({ type: 'set-api-token', endpoint: 'https://api.openai.com/v1', token: 'test-secret' }, trusted)).ok, true);
 assert(!JSON.stringify(local).includes('test-secret'));
 assert(JSON.stringify(session).includes('test-secret'));
@@ -539,7 +542,7 @@ deniedOrigins.add('https://api.openai.com/*');
 const beforeExtractions = providerExtractions;
 async function explicit(input: CheckInput) {
   const reply = await listener!({ type: 'check', input }, firefoxTrusted);
-  assert(reply.ok);
+  assert(reply.ok, JSON.stringify(reply));
   return reply.result as CheckReply;
 }
 for (const text of ['Ingredients: oats, sugar, sunflower oil', 'Ingredients: milk']) {
@@ -754,3 +757,18 @@ assert.equal((session.chatGPTConnection as { state: string }).state, 'signedout'
 assert.deepEqual(sharedAccount().savedAccounts, [{ id: 'second', email: 'second@example.invalid' }]);
 assert.equal(session.chatGPTModelCatalog, undefined, 'Removing the active account discards its model catalog');
 console.log('Saved ChatGPT accounts: trusted routing, native payloads, privacy, cross-window intents, declined switches, removal, reconnect and Luna defaults verified');
+useRealEvaluator = false; extensionScheme = 'moz-extension:'; dataAllowed = true;
+local.settings = {...defaultSettings, connection:'database'};
+const selectedCountryCheck = await listener!({type:'check',input:{name:'Fun Light',market:'SE'}},firefoxTrusted);
+assert(selectedCountryCheck.ok);
+assert.equal(checkInputs.at(-1)?.market,'SE','Explicit product country must not be replaced with Germany');
+assert.equal((await listener!({type:'check',input:{name:'Fun Light',market:'Sweden'}},firefoxTrusted)).ok,false);
+const correctionFixture = {id:'market-correction',identity:{name:'Drink',brand:'Maker',market:'DE',match:'unconfirmed'},outcome:'uncertain',photos:['private-photo'],evidence:[{excerpt:'original analysis'}]};
+saved.push(correctionFixture);
+const correction = await listener!({type:'set-result-market',id:correctionFixture.id,market:'SE'},firefoxTrusted);
+assert(correction.ok);
+assert.deepEqual(correction.result,{...correctionFixture,identity:{...correctionFixture.identity,market:'SE',marketSource:'manual'}});
+assert.deepEqual(saved.at(-1),correction.result,'Corrected country is written to local history');
+assert.equal(correctionFixture.identity.market,'DE','Original analysis object is not mutated');
+assert.equal((await listener!({type:'set-result-market',id:'missing-result',market:'SE'},firefoxTrusted)).ok,false);
+assert.equal((await listener!({type:'set-result-market',id:correctionFixture.id,market:'DE,SE'},firefoxTrusted)).ok,false);
