@@ -107,7 +107,8 @@ The commands below use the Chrome Web Store extension ID. If you installed the C
 
 Download the archive for your computer from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest). Registration requires Python 3. Install the files in a permanent location before running `install.py`.
 
-### Linux x86_64
+<details>
+<summary>Linux x86_64</summary>
 
 Download `vegsnap-companion-linux-x86_64.tar.gz`, then run:
 
@@ -115,12 +116,21 @@ Download `vegsnap-companion-linux-x86_64.tar.gz`, then run:
 mkdir -p ~/.local/lib/vegsnap
 tar -xzf ~/Downloads/vegsnap-companion-linux-x86_64.tar.gz -C ~/.local/lib/vegsnap
 chmod +x ~/.local/lib/vegsnap/vegsnap-companion
+```
+
+<details>
+<summary>Firefox</summary>
+
+```sh
 python3 ~/.local/lib/vegsnap/install.py \
   --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
   --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
-For Chromium:
+</details>
+
+<details>
+<summary>Chromium</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -128,7 +138,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Google Chrome:
+</details>
+
+<details>
+<summary>Google Chrome</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -136,7 +149,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Brave:
+</details>
+
+<details>
+<summary>Brave</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -144,7 +160,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Helium:
+</details>
+
+<details>
+<summary>Helium</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -152,7 +171,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Vivaldi:
+</details>
+
+<details>
+<summary>Vivaldi</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -160,7 +182,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser vivaldi --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Microsoft Edge:
+</details>
+
+<details>
+<summary>Microsoft Edge</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -168,7 +193,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser edge --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Zen:
+</details>
+
+<details>
+<summary>Zen</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -176,7 +204,10 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser zen --extension-id vegsnap@vegsnap.app
 ```
 
-For LibreWolf:
+</details>
+
+<details>
+<summary>LibreWolf</summary>
 
 ```sh
 python3 "$HOME/.local/lib/vegsnap/install.py" \
@@ -184,9 +215,14 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser librewolf --extension-id vegsnap@vegsnap.app
 ```
 
+</details>
+
 Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
 
-### macOS, Apple silicon and Intel
+</details>
+
+<details>
+<summary>macOS, Apple silicon and Intel</summary>
 
 Download `vegsnap-companion-macos-universal.tar.gz`, then run:
 
@@ -195,12 +231,21 @@ mkdir -p "$HOME/Library/Application Support/Vegsnap"
 tar -xzf ~/Downloads/vegsnap-companion-macos-universal.tar.gz \
   -C "$HOME/Library/Application Support/Vegsnap"
 chmod +x "$HOME/Library/Application Support/Vegsnap/vegsnap-companion"
+```
+
+<details>
+<summary>Firefox</summary>
+
+```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
   --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
-For Chromium:
+</details>
+
+<details>
+<summary>Chromium</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -208,7 +253,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Google Chrome:
+</details>
+
+<details>
+<summary>Google Chrome</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -216,7 +264,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Brave:
+</details>
+
+<details>
+<summary>Brave</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -224,7 +275,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Helium:
+</details>
+
+<details>
+<summary>Helium</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -232,7 +286,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Vivaldi:
+</details>
+
+<details>
+<summary>Vivaldi</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -240,7 +297,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser vivaldi --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Microsoft Edge:
+</details>
+
+<details>
+<summary>Microsoft Edge</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -248,7 +308,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser edge --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Zen:
+</details>
+
+<details>
+<summary>Zen</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -256,7 +319,10 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser zen --extension-id vegsnap@vegsnap.app
 ```
 
-For LibreWolf:
+</details>
+
+<details>
+<summary>LibreWolf</summary>
 
 ```sh
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
@@ -264,9 +330,14 @@ python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --browser librewolf --extension-id vegsnap@vegsnap.app
 ```
 
+</details>
+
 The companion uses macOS Keychain. The release is not notarized. If macOS blocks it, review the downloaded executable in System Settings under Privacy & Security.
 
-### Windows x86_64
+</details>
+
+<details>
+<summary>Windows x86_64</summary>
 
 Download `vegsnap-companion-windows-x86_64.zip`. Install Python 3 and the [Microsoft Visual C++ v14 Redistributable for x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist/), then run these commands in PowerShell:
 
@@ -274,12 +345,21 @@ Download `vegsnap-companion-windows-x86_64.zip`. Install Python 3 and the [Micro
 $vegsnapDirectory = Join-Path $env:LOCALAPPDATA "Vegsnap\Companion"
 New-Item -ItemType Directory -Force -Path $vegsnapDirectory | Out-Null
 Expand-Archive -Force -Path "$HOME\Downloads\vegsnap-companion-windows-x86_64.zip" -DestinationPath $vegsnapDirectory
+```
+
+<details>
+<summary>Firefox</summary>
+
+```powershell
 py -3 "$vegsnapDirectory\install.py" `
   --binary "$vegsnapDirectory\vegsnap-companion.exe" `
   --browser firefox --extension-id vegsnap@vegsnap.app
 ```
 
-For Chromium:
+</details>
+
+<details>
+<summary>Chromium</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -287,7 +367,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser chromium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Google Chrome:
+</details>
+
+<details>
+<summary>Google Chrome</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -295,7 +378,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Brave:
+</details>
+
+<details>
+<summary>Brave</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -303,7 +389,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Helium:
+</details>
+
+<details>
+<summary>Helium</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -311,7 +400,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Vivaldi:
+</details>
+
+<details>
+<summary>Vivaldi</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -319,7 +411,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser vivaldi --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Microsoft Edge:
+</details>
+
+<details>
+<summary>Microsoft Edge</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -327,7 +422,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser edge --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
-For Zen:
+</details>
+
+<details>
+<summary>Zen</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -335,7 +433,10 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser zen --extension-id vegsnap@vegsnap.app
 ```
 
-For LibreWolf:
+</details>
+
+<details>
+<summary>LibreWolf</summary>
 
 ```powershell
 py -3 "$vegsnapDirectory\install.py" `
@@ -343,7 +444,11 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser librewolf --extension-id vegsnap@vegsnap.app
 ```
 
+</details>
+
 The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Vegsnap\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
+
+</details>
 
 ### Connect your browser
 
