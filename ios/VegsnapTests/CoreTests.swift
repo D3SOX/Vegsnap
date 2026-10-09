@@ -151,6 +151,39 @@ import Security
         XCTAssertEqual(record.name, "Base product")
         XCTAssertEqual(record.composition, "Ingredients: oats")
     }
+    func testCancelledPackRequestsDoNotPublishErrors() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root); StalledNetworkProtocol.started = nil }
+        Network.testProtocolClasses = [StalledNetworkProtocol.self]
+        let store = try AppStore(root: root); store.settings.offline = false
+        store.settings.catalogURL = "https://fixture.invalid/catalog.json"
+        for download in [false, true] {
+            let started = expectation(description: "Pack request started")
+            StalledNetworkProtocol.started = started
+            if download {
+                store.downloadPack(PackDescriptor(id: "fixture", region: "fixture", url: "https://fixture.invalid/pack.json", bytes: 1000, sha256: String(repeating: "0", count: 64), generatedAt: "2026-10-09T00:00:00Z", products: 0))
+            } else { store.refreshCatalog() }
+            await fulfillment(of: [started], timeout: 3)
+            store.cancelPack()
+            for _ in 0..<100 { if !store.packBusy { break }; try await Task.sleep(for: .milliseconds(20)) }
+            XCTAssertFalse(store.packBusy); XCTAssertNil(store.error)
+        }
+        XCTAssertTrue(store.catalog.isEmpty)
+    }
+    func testCancellationStopsVisionRecognition() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 1200, height: 1600)).image { context in
+            UIColor.white.setFill(); context.fill(CGRect(x: 0, y: 0, width: 1200, height: 1600))
+            for row in 0..<40 {
+                ("Ingredients: oats, water, honey, salt" as NSString).draw(at: CGPoint(x: 20, y: row * 40), withAttributes: [.font: UIFont.systemFont(ofSize: 28), .foregroundColor: UIColor.black])
+            }
+        }
+        let data = try XCTUnwrap(image.pngData())
+        let task = Task { try await PhotoProcessor.recognize(data, languages: ["en-US"]) }
+        try await Task.sleep(for: .milliseconds(10))
+        task.cancel()
+        do { _ = try await task.value; XCTFail("Cancelled OCR returned a result") }
+        catch { XCTAssertTrue(error is CancellationError) }
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -530,11 +563,11 @@ import Security
     }
     func testCancellingChatGPTStopsModelRequestAndClearsConnecting() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: root); StalledChatGPTProtocol.started = nil }
-        Network.testProtocolClasses = [StalledChatGPTProtocol.self]
+        defer { try? FileManager.default.removeItem(at: root); StalledNetworkProtocol.started = nil }
+        Network.testProtocolClasses = [StalledNetworkProtocol.self]
         let started = expectation(description: "Model request started")
         let finished = expectation(description: "Connection task finished after cancellation")
-        StalledChatGPTProtocol.started = started
+        StalledNetworkProtocol.started = started
         let session = ChatGPTSession(clientID: "fixture", subject: "subject", email: "fixture@example.test", idToken: "id", accessToken: "token", refreshToken: "refresh", scopes: ["chatgpt.tokens.use.direct"], expiresAt: Date().timeIntervalSince1970 + 3600)
         try Keychain.save(session.jsonString(), for: "https://auth.openai.com")
         let store = try AppStore(root: root)
@@ -637,7 +670,7 @@ private final class RejectInboxRemoval: FileManager, @unchecked Sendable {
     override func removeItem(at URL: URL) throws { throw CocoaError(.fileWriteNoPermission) }
 }
 
-private final class StalledChatGPTProtocol: URLProtocol, @unchecked Sendable {
+private final class StalledNetworkProtocol: URLProtocol, @unchecked Sendable {
     static var started: XCTestExpectation?
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

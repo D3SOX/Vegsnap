@@ -77,8 +77,11 @@ struct BrowseDetail: View {
                 if !record.snapshotDate.isEmpty { Text(L("Offline snapshot") + ": " + String(record.snapshotDate.prefix(10))) }
             }
             Section { Button(L("Check this product")) {
-                store.enqueue(input: CheckInput(barcode: record.barcode, name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: [])
-                store.selectedTab = "check"
+                do {
+                    let barcode: String? = try store.engine.call("barcode", record.barcode)
+                    store.enqueue(input: CheckInput(barcode: barcode ?? "", name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: [])
+                    store.selectedTab = "check"
+                } catch { store.report(error) }
             } }
         }.navigationTitle(L("Product record")).navigationBarTitleDisplayMode(.inline)
     }

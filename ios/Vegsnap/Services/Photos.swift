@@ -25,15 +25,28 @@ enum PhotoProcessor {
         throw AppError(L("Choose a smaller photo."))
     }
     static func recognize(_ data: Data, languages: [String]) async throws -> (text: String, barcode: String?) {
-        try await Task.detached(priority: .userInitiated) {
-            let text = VNRecognizeTextRequest(); text.recognitionLevel = .accurate; text.usesLanguageCorrection = true
+        let requests = OCRRequests()
+        let worker = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            let text = requests.text; text.recognitionLevel = .accurate; text.usesLanguageCorrection = true
             let available = try text.supportedRecognitionLanguages()
             text.recognitionLanguages = languages.filter { available.contains($0) }
             text.automaticallyDetectsLanguage = true
-            let barcode = VNDetectBarcodesRequest(); barcode.symbologies = [.ean8, .ean13, .upce, .itf14]
-            try VNImageRequestHandler(data: data).perform([text, barcode])
+            let barcode = requests.barcode; barcode.symbologies = [.ean8, .ean13, .upce, .itf14]
+            try Task.checkCancellation()
+            do { try VNImageRequestHandler(data: data).perform([text, barcode]) }
+            catch { try Task.checkCancellation(); throw error }
+            try Task.checkCancellation()
             return (text.results?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n") ?? "", barcode.results?.first.flatMap { observation in observation.payloadStringValue.map { observation.symbology == .upce ? expandUPCE($0) : $0 } })
-        }.value
+        }
+        return try await withTaskCancellationHandler {
+            let result = try await worker.value
+            try Task.checkCancellation()
+            return result
+        } onCancel: {
+            worker.cancel()
+            requests.text.cancel(); requests.barcode.cancel()
+        }
     }
     static func rotate(_ data: Data) throws -> Data {
         guard let image = UIImage(data: data) else { throw AppError(L("This photo could not be opened.")) }
@@ -69,4 +82,10 @@ struct PickedPhoto: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(importedContentType: .image) { received in try load(received.file) }
     }
+}
+
+// The worker configures/reads the requests; the cancellation handler only calls Vision's cancel().
+private final class OCRRequests: @unchecked Sendable {
+    let text = VNRecognizeTextRequest()
+    let barcode = VNDetectBarcodesRequest()
 }

@@ -337,8 +337,12 @@ import CryptoKit
                 let doc = try JSONDecoder().decode(PackCatalog.self, from: data)
                 guard doc.schemaVersion == 1, doc.packs.count <= 100, Set(doc.packs.map(\.id)).count == doc.packs.count,
                       doc.packs.allSatisfy({ safeURL($0.url) != nil && (1...10_000_000).contains($0.bytes) && (0...10_000).contains($0.products) && $0.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && HistoryTransfer.parseDate($0.generatedAt) != nil }) else { throw AppError(L("Invalid regional pack catalog.")) }
+                try Task.checkCancellation()
                 catalog = doc.packs
-            } catch { report(error) }
+            } catch {
+                guard !Task.isCancelled, (error as? URLError)?.code != .cancelled else { return }
+                report(error)
+            }
         }
     }
     func downloadPack(_ pack: PackDescriptor) {
@@ -352,7 +356,10 @@ import CryptoKit
                 let header = try JSONDecoder().decode(Header.self, from: data)
                 guard header.region == pack.region, header.generatedAt == pack.generatedAt, header.products.count == pack.products else { throw AppError(L("Invalid regional pack catalog.")) }
                 try Task.checkCancellation(); try importPack(data)
-            } catch { report(error) }
+            } catch {
+                guard !Task.isCancelled, (error as? URLError)?.code != .cancelled else { return }
+                report(error)
+            }
         }
     }
     func cancelPack() { packTask?.cancel() }
