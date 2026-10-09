@@ -138,6 +138,7 @@ assert.equal(calls[1]?.mode, 'explicit');
 assert(calls[1]?.provider);
 assert.equal(calls[1]?.offlineProducts, offlineIndex, 'Explicit checks consult the same on-device index');
 assert.equal(saved.length, 1);
+assert.deepEqual((saved[0] as { input: CheckInput }).input, { text: 'ingredients: milk', locale: 'en', market: 'DE' }, 'History retains the original draft for editing');
 assert.equal((await listener!({ type: 'set-api-token', endpoint: 'https://api.openai.com/v1', token: 'test-secret' }, trusted)).ok, true);
 assert(!JSON.stringify(local).includes('test-secret'));
 assert(JSON.stringify(session).includes('test-secret'));
@@ -232,6 +233,8 @@ assert(photoCheck.ok);
 assert.deepEqual((photoCheck.result as { photos: string[] }).photos, sanitizedPhotos);
 assert.equal(saved.length, beforePhotoSave + 1);
 assert.deepEqual((saved.at(-1) as { photos: string[] }).photos, sanitizedPhotos, 'History retains the sanitized photos supplied for this analysis');
+assert.equal((saved.at(-1) as { input: CheckInput }).input.text, 'Example label');
+assert.equal((saved.at(-1) as { input: CheckInput }).input.images, undefined, 'Drafts do not duplicate stored photos');
 assert.deepEqual(checkInputs.at(-1)?.images, sanitizedPhotos, 'Analysis and local history refer to the same prepared photos');
 const historyState = await listener!({ type: 'state' }, trusted);
 assert(historyState.ok);
@@ -347,6 +350,8 @@ console.log('Existing Amazon access: single-country grants survive reload withou
 
 assert.equal((await listener!({ type: 'check', input: { name: 'Example granola', sourceUrl: swedishPage.url } }, trusted)).ok, true);
 assert.equal(checkInputs.at(-1)?.market, 'SE', 'Starting the pending explicit check preserves its actual marketplace');
+assert.equal((await listener!({ type: 'check', input: { name: 'Example granola', market: 'SE' } }, trusted)).ok, true);
+assert.equal(checkInputs.at(-1)?.market, 'SE', 'Editing a saved check preserves its market without a source URL');
 const beforeRevocation = notifiedTabs.length;
 deniedOrigins.add('https://www.dm.de/*');
 permissionsRemovedListener!();
@@ -653,3 +658,80 @@ try {
   assert.equal(session.hostedCredential, undefined, 'An overlapping disconnect cannot resurrect a pending session');
 } finally { globalThis.fetch = originalFetch; }
 console.log('Hosted AI: fixed endpoint, temporary credentials, browser verification, consent, revocation and concurrent windows verified');
+
+// Saved-account operations use only native registration IDs; tokens never reach extension state.
+function sharedAccount(): import('../src/companion-state').CompanionSnapshot { return session.chatGPTConnection as import('../src/companion-state').CompanionSnapshot; }
+extensionScheme = 'chrome-extension:'; dataAllowed = true;
+local.settings = { ...defaultSettings, connection: 'chatgpt', model: 'vision', chatgptModel: 'vision' };
+let savedAccounts = [{ id: 'first', email: 'first@example.invalid' }, { id: 'second', email: 'second@example.invalid' }];
+let selectedAccount = 'first', accountConnected = true;
+let declinedAccount: string | undefined;
+let accountGate: Promise<void> | undefined;
+nativeResponder = async request => {
+  const payload = request.payload as { accountId?: string; newAccount?: boolean } | undefined;
+  if (request.command === 'signIn') {
+    await accountGate;
+    if (payload?.accountId === declinedAccount && declinedAccount !== undefined) throw new Error('Sign-in declined');
+    if (payload?.newAccount) { savedAccounts.push({ id: 'third', email: 'third@example.invalid' }); selectedAccount = 'third'; }
+    else if (payload?.accountId) selectedAccount = payload.accountId;
+    accountConnected = true;
+  }
+  if (request.command === 'removeAccount') {
+    savedAccounts = savedAccounts.filter(account => account.id !== payload?.accountId);
+    if (payload?.accountId === selectedAccount) { accountConnected = false; selectedAccount = savedAccounts[0]?.id ?? ''; }
+  }
+  if (request.command === 'disconnect') accountConnected = false;
+  if (request.command === 'models') return { models: [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }, ...(selectedAccount === 'first' ? [{ id: 'vision', name: 'Vision' }] : [])] };
+  return { connected: accountConnected, email: savedAccounts.find(account => account.id === selectedAccount)?.email,
+    selectedAccount, savedAccounts: savedAccounts.map(account => ({ ...account, access_token: 'secret-account-token' })), refresh_token: 'secret-session-token' };
+};
+assert((await listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted)).ok);
+assert.equal((local.settings as { model: string }).model, 'vision', 'Reconnecting preserves an explicit available model');
+assert.deepEqual(sharedAccount().savedAccounts, savedAccounts);
+assert(!JSON.stringify(session).includes('secret-account-token') && !JSON.stringify(session).includes('secret-session-token'));
+assert((await listener!({ type: 'companion', command: 'signIn', accountId: 'second' }, trusted)).ok);
+assert.equal((local.settings as { model: string }).model, 'gpt-6-luna', 'Switching to an account without the previous model defaults to Luna');
+assert.equal(sharedAccount().selectedAccount, 'second');
+assert.deepEqual(nativeRequests.filter(request => request.command === 'signIn').at(-1)?.payload, { accountId: 'second' });
+const beforeInvalidAccounts = nativeRequests.length;
+for (const message of [
+  { command: 'signIn', accountId: 'second', newAccount: true },
+  { command: 'signIn', accountId: '' },
+  { command: 'signIn', accountId: 42 },
+  { command: 'status', accountId: 'first' },
+  { command: 'removeAccount' },
+  { command: 'removeAccount', accountId: 'first', newAccount: true },
+]) assert.equal((await listener!({ type: 'companion', ...message }, trusted)).ok, false);
+assert.equal((await listener!({ type: 'companion', command: 'removeAccount', accountId: 'first' }, page)).ok, false, 'Content scripts cannot manage accounts');
+assert.equal(nativeRequests.length, beforeInvalidAccounts, 'Invalid account requests never reach the companion');
+
+declinedAccount = 'first';
+assert.equal((await listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted)).ok, false);
+assert.equal((session.chatGPTConnection as { state: string }).state, 'connected', 'A declined switch keeps the previous account connected');
+assert.equal(sharedAccount().selectedAccount, 'second');
+assert.equal(sharedAccount().savedAccounts?.length, 2);
+declinedAccount = undefined;
+const accountSignIn = deferred(); accountGate = accountSignIn.promise;
+const beforeAccountQueue = nativeRequests.length;
+const sameAccountA = listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted);
+const sameAccountB = listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted);
+const differentAccount = listener!({ type: 'companion', command: 'signIn', accountId: 'second' }, trusted);
+await tick(); accountSignIn.resolve(); await Promise.all([sameAccountA, sameAccountB, differentAccount]); accountGate = undefined;
+assert.deepEqual(nativeRequests.slice(beforeAccountQueue).filter(request => request.command === 'signIn').map(request => request.payload), [{ accountId: 'first' }, { accountId: 'second' }], 'Matching account intents coalesce while different account selections remain distinct');
+assert.equal(sharedAccount().selectedAccount, 'second');
+assert((await listener!({ type: 'companion', command: 'signIn', newAccount: true }, trusted)).ok);
+assert.equal(sharedAccount().savedAccounts?.length, 3);
+assert.deepEqual(nativeRequests.filter(request => request.command === 'signIn').at(-1)?.payload, { newAccount: true });
+const catalogBeforeRemoval = session.chatGPTModelCatalog;
+assert((await listener!({ type: 'companion', command: 'removeAccount', accountId: 'first' }, trusted)).ok);
+assert.equal((session.chatGPTConnection as { state: string }).state, 'connected', 'Removing an inactive account keeps the active connection');
+assert.deepEqual(session.chatGPTModelCatalog, catalogBeforeRemoval);
+assert((await listener!({ type: 'companion', command: 'disconnect' }, trusted)).ok);
+assert.equal(sharedAccount().savedAccounts?.length, 2, 'Disconnect keeps saved accounts');
+assert.equal(session.chatGPTModelCatalog, undefined);
+assert((await listener!({ type: 'companion', command: 'signIn', accountId: 'third' }, trusted)).ok);
+assert((await listener!({ type: 'companion', command: 'removeAccount', accountId: 'third' }, trusted)).ok);
+assert.equal((session.chatGPTConnection as { state: string }).state, 'signedout', 'Removing the connected account disconnects it');
+assert.deepEqual(sharedAccount().savedAccounts, [{ id: 'second', email: 'second@example.invalid' }]);
+assert.equal(session.chatGPTModelCatalog, undefined, 'Removing the active account discards its model catalog');
+console.log('Saved ChatGPT accounts: trusted routing, native payloads, privacy, cross-window intents, declined switches, removal, reconnect and Luna defaults verified');

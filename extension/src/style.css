@@ -17,6 +17,9 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .account-email{display:flex;align-items:center;gap:1rem;min-height:44px;max-width:100%;text-align:left}.account-email>span:first-child{overflow-wrap:anywhere;min-width:0}.account-email>span:last-child{font-size:.85rem;flex-shrink:0}.email-obscured{filter:blur(7px);user-select:none}
 
 .finding > small { display: block; margin-top: 2px; }
+.edit-details{margin-top:16px}
+.saved-accounts{margin-block:16px}.saved-accounts summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:650}.saved-accounts summary:focus-visible{outline:3px solid #75975b;outline-offset:3px}.saved-account{display:flex;align-items:center;gap:8px;border-top:1px solid var(--border);padding-block:8px}.account-select{flex:1;min-width:0;text-align:left;overflow-wrap:anywhere}.account-select strong,.account-select small{display:block}.account-select small{color:var(--muted);margin-top:4px}
+.saved-accounts summary::after{content:'›';margin-left:auto}.saved-accounts[open] summary::after{transform:rotate(90deg)}
 
 .manufacturer-contact{margin-top:24px}.manufacturer-contact details{margin:12px 0}.manufacturer-contact summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px}.manufacturer-contact summary:focus-visible,.contact-action:focus-visible{outline:3px solid #75975b;outline-offset:3px}.contact-action{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:12px;text-decoration:none}.contact-email{overflow-wrap:anywhere;font-size:13px}
 

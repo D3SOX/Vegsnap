@@ -163,7 +163,7 @@ export default defineBackground(() => {
             if (!isCheckInput(message.input)) throw new Error('Invalid product input.');
             if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId))) throw new Error('Invalid check identifier.');
             const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
-            const input: CheckInput = { ...message.input, locale: config.language, market: typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins)) ? storeMarket(message.input.sourceUrl) : 'DE' };
+            const input: CheckInput = { ...message.input, locale: config.language, market: typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins)) ? storeMarket(message.input.sourceUrl) : message.input.market || 'DE' };
             let onlineConsent: CheckReply['onlineConsent'];
             let provider;
             if (config.connection === 'chatgpt' && config.model) {
@@ -206,7 +206,8 @@ export default defineBackground(() => {
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
             if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
-            const localResult = { ...result, ...(input.images?.length ? { photos: input.images } : {}) };
+            const { images, ...savedInput } = input;
+            const localResult = { ...result, input: savedInput, ...(images?.length ? { photos: images } : {}) };
             if (config.saveHistory) await changeHistory(() => history('save', localResult));
             return { ok: true, result: { ...localResult, ...(onlineConsent ? { onlineConsent } : {}) } };
           }
@@ -218,8 +219,16 @@ export default defineBackground(() => {
             return { ok: true, result };
           }
           case 'companion': {
-            if (!['status', 'signIn', 'disconnect', 'models'].includes(String(message.command))) throw new Error('Invalid companion command.');
-            const result = await connection(message.command as CompanionCommand);
+            if (!['status', 'signIn', 'disconnect', 'models', 'removeAccount'].includes(String(message.command))) throw new Error('Invalid companion command.');
+            if (message.accountId !== undefined && (typeof message.accountId !== 'string' || !message.accountId.trim() || message.accountId.length > 1000 || /[\u0000-\u001f\u007f]/.test(message.accountId)) ||
+              message.newAccount !== undefined && typeof message.newAccount !== 'boolean' || message.newAccount === true && message.accountId !== undefined ||
+              message.command === 'removeAccount' && typeof message.accountId !== 'string' ||
+              !['signIn', 'removeAccount'].includes(String(message.command)) && (message.accountId !== undefined || message.newAccount !== undefined) ||
+              message.command === 'removeAccount' && message.newAccount !== undefined) throw new Error('Invalid saved account selection.');
+            const result = await connection(message.command as CompanionCommand, {
+              ...(typeof message.accountId === 'string' ? { accountId: message.accountId } : {}),
+              ...(message.newAccount === true ? { newAccount: true } : {}),
+            });
             if (message.command !== 'disconnect') await changeSettings(async () => {
               const catalog = (await browser.storage.session.get('chatGPTModelCatalog')).chatGPTModelCatalog;
               if (!Array.isArray(catalog)) return;

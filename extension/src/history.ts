@@ -1,7 +1,18 @@
-import type { CheckResult } from '@vegsnap/core';
-export interface HistoryResult extends CheckResult { photos?: string[]; }
+import type { CheckInput, CheckResult } from '@vegsnap/core';
+export interface HistoryResult extends CheckResult { photos?: string[]; input?: Omit<CheckInput, 'images'>; }
+/** Older checks only retain supplied text, not the full original input. */
+export function editableInput(result: HistoryResult): CheckInput {
+  return {
+    text: [...new Set(result.evidence.filter(item => item.kind === 'user_text').map(item => item.excerpt))].join('\n').slice(0, 30_000),
+    category: result.category,
+    ...result.input,
+    name: result.input?.name ?? result.identity.name, brand: result.input?.brand ?? result.identity.brand,
+    barcode: result.input?.barcode ?? result.identity.barcode, market: result.input?.market ?? result.identity.market,
+    images: [...(result.photos ?? [])],
+  };
+}
 export function historyExport(results: HistoryResult[]): CheckResult[] {
-  return results.map(({ photos: _photos, ...result }) => result);
+  return results.map(({ photos: _photos, input: _input, ...result }) => result);
 }
 const DB_NAME = 'vegsnap';
 function database(): Promise<IDBDatabase> {

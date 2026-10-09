@@ -7,7 +7,8 @@ import { act } from 'preact/test-utils';
 import { defaultSettings, type Settings } from '../src/settings';
 import type { HistoryResult } from '../src/history';
 import type { CheckReply, Request } from '../src/protocol';
-import type { OfflinePackInfo } from '@vegsnap/core';
+import type { CheckInput, OfflinePackInfo } from '@vegsnap/core';
+import type { SavedAccount } from '../src/companion-state';
 
 const window = new Window({ url: 'https://vegsnap.test/app.html' });
 const document = window.document as unknown as Document;
@@ -25,11 +26,18 @@ let offlinePacks: OfflinePackInfo[] = [
 const email = 'fake-account@example.invalid';
 const session: Record<string, unknown> = { chatGPTConnection: { state: 'connected', email }, chatGPTModelCatalog: [{ id: 'fixture-vision', name: 'Fixture Vision', supportsImages: true }] };
 let nativeConnected = true;
+let uiSavedAccounts: SavedAccount[] | undefined;
+let uiSelectedAccount = 'first';
+const accountRequests: Extract<Request, { type: 'companion' }>[] = [];
+let confirmAccountRemoval = true;
+Object.assign(globalThis, { confirm: () => confirmAccountRemoval });
 let extensionScheme = 'chrome-extension:';
 let checkConsent: CheckReply['onlineConsent'];
 let permissionRequests = 0, checkRequests = 0;
 let startupWait: Promise<void> | undefined;
 let checkWait: Promise<void> | undefined;
+let checkError = false;
+const checkedInputs: CheckInput[] = [];
 let grantConsent = false;
 let hostedVerified = false;
 let hostedEnabled = true;
@@ -42,7 +50,12 @@ mock.module('wxt/browser', () => ({ browser: {
     onMessage: { addListener: (listener: MessageListener) => messageListeners.add(listener), removeListener: (listener: MessageListener) => messageListeners.delete(listener) },
     async sendMessage(message: Request) {
       switch (message.type) {
-        case 'check': checkRequests++; await checkWait; return { ok: true, result: { ...fixtureResult, ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
+        case 'check': {
+          checkRequests++; checkedInputs.push(structuredClone(message.input)); await checkWait;
+          if (checkError) return { ok: false, error: 'Fixture check failed' };
+          const { images, ...input } = message.input;
+          return { ok: true, result: { ...fixtureResult, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
+        }
         case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
@@ -57,9 +70,20 @@ mock.module('wxt/browser', () => ({ browser: {
           return { ok: true, result: status };
         }
         case 'companion':
+          accountRequests.push(message);
           if (message.command === 'disconnect') nativeConnected = false;
           if (message.command === 'signIn') nativeConnected = true;
-          session.chatGPTConnection = nativeConnected ? { state: 'connected', email } : { state: 'signedout' };
+          if (uiSavedAccounts !== undefined) {
+            if (message.newAccount) { uiSavedAccounts.push({ id: 'third', email: 'third@example.invalid' }); uiSelectedAccount = 'third'; }
+            if (message.command === 'signIn' && message.accountId) uiSelectedAccount = message.accountId;
+            if (message.command === 'removeAccount') {
+              uiSavedAccounts = uiSavedAccounts.filter(account => account.id !== message.accountId);
+              if (uiSelectedAccount === message.accountId) { nativeConnected = false; uiSelectedAccount = uiSavedAccounts[0]?.id ?? ''; }
+            }
+            session.chatGPTConnection = { state: nativeConnected ? 'connected' : 'signedout', savedAccounts: structuredClone(uiSavedAccounts), selectedAccount: uiSelectedAccount,
+              ...(nativeConnected ? { email: uiSavedAccounts.find(account => account.id === uiSelectedAccount)?.email } : {}) };
+            if (nativeConnected) session.chatGPTModelCatalog = [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }];
+          } else session.chatGPTConnection = nativeConnected ? { state: 'connected', email } : { state: 'signedout' };
           if (!nativeConnected) delete session.chatGPTModelCatalog;
           storageChanged(['chatGPTConnection', 'chatGPTModelCatalog'], 'session');
           break;
@@ -180,6 +204,62 @@ try {
   console.log('Actual result UI: translated name/question and secondary original name preserve source evidence');
   console.log('Actual two-window UI: shared history/settings/session/model updates, trash isolation and private ephemeral email reveal verified');
 
+  settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
+  const editButton = () => roots[0]!.querySelector<HTMLButtonElement>('.edit-details');
+  const beforeEdit = checkRequests;
+  await act(async () => { editButton()!.click(); });
+  assert.equal(roots[0]!.querySelector('h1')?.textContent, 'Edit product details');
+  assert.equal(roots[0]!.querySelector('textarea')?.value, 'naturlig arom', 'Older history restores only supplied text');
+  assert.equal(document.activeElement, roots[0]!.querySelector('textarea'), 'Editing focuses the details field');
+  assert.equal(checkRequests, beforeEdit, 'Opening an edit does not run a check');
+  const cancelButton = () => [...roots[0]!.querySelectorAll('button')].find(button => button.textContent === 'Cancel');
+  await act(async () => { cancelButton()!.click(); });
+  assert(roots[0]!.querySelector('.verdict'), 'Cancel returns to the original result');
+  assert.equal(checkRequests, beforeEdit, 'Cancel does not run a check');
+
+  const originalPhoto = 'data:image/jpeg;base64,YQ==';
+  history = [{ ...fixtureResult, identity: { ...fixtureResult.identity, brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE' },
+    input: { text: 'Ingredients: oats', category: 'drink', complete: true, sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, photos: [originalPhoto] }];
+  changed(); await tab(roots[0]!, 1);
+  await until(() => historyItems(roots[0]!).length === 1, 'Editable saved check is available');
+  await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
+  await act(async () => { editButton()!.click(); });
+  const editText = roots[0]!.querySelector('textarea')!;
+  assert.equal(editText.value, 'Ingredients: oats');
+  assert.equal(roots[0]!.querySelector<HTMLSelectElement>('form select')?.value, 'drink');
+  assert(roots[0]!.querySelector<HTMLInputElement>('form input[type="checkbox"]')?.checked, 'Original completeness is retained');
+  assert.equal(roots[0]!.querySelector<HTMLImageElement>('.photos img')?.getAttribute('src'), originalPhoto, 'Saved photos can be edited');
+  await act(async () => { editText.value += ', water'; editText.dispatchEvent(new Event('input', { bubbles: true })); });
+  const submitEdit = async () => { await act(async () => { roots[0]!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); }); };
+  checkError = true; await submitEdit();
+  await until(() => !!roots[0]!.querySelector('[role="alert"]'), 'Recheck errors are shown');
+  assert.equal(roots[0]!.querySelector('textarea')?.value, 'Ingredients: oats, water', 'Failed checks retain the edited details');
+  assert(cancelButton(), 'Failed checks retain the cancel action');
+  checkError = false; await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'Edited details produce a new result');
+  assert.deepEqual(checkedInputs.at(-1), { text: 'Ingredients: oats, water', category: 'drink', complete: true, images: [originalPhoto],
+    name: 'Fictional oat drink', brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE', sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, 'Rechecks retain identity while text is edited');
+  assert.equal(history[0]?.input?.text, 'Ingredients: oats', 'Editing leaves the original saved check intact');
+  await act(async () => { editButton()!.click(); });
+  assert.equal(roots[0]!.querySelector('textarea')?.value, 'Ingredients: oats, water', 'Fresh results can be edited again');
+  await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.photos button')!.click(); });
+  assert.equal(roots[0]!.querySelectorAll('.photos img').length, 0, 'Existing photos can be removed from the draft');
+  await act(async () => { cancelButton()!.click(); });
+  assert(roots[0]!.querySelector('.history-photos img'), 'Cancelling photo edits preserves the checked result');
+  history = [{ ...fixtureResult, input: { text: 'Ingredients: oats' } }];
+  changed(); await tab(roots[0]!, 1);
+  await until(() => historyItems(roots[0]!).length === 1, 'A saved result without a barcode is available');
+  await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
+  await act(async () => { editButton()!.click(); });
+  await act(async () => {
+    const textarea = roots[0]!.querySelector('textarea')!;
+    textarea.value += ' 4006381333931'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'Adding a barcode produces a new result');
+  assert.equal(checkedInputs.at(-1)?.barcode, '4006381333931', 'Editing a barcode-less result preserves the newly supplied barcode for lookup');
+  console.log('Actual editing UI: saved and fresh results, original input/photos, identity, focus, cancel and failed-check retry verified');
+
   extensionScheme = 'moz-extension:';
   settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
   async function submitCheck() {
@@ -252,6 +332,58 @@ try {
   await act(async () => { disconnectHosted.click(); });
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Connect to free AI')), 'Disconnect returns every window to the connection action');
   console.log('Actual hosted UI: gesture-bound consent, automatic return/startup refresh and cross-window disconnect verified');
+
+  uiSavedAccounts = [{ id: 'first', email }, { id: 'second', email: 'second@example.invalid' }];
+  uiSelectedAccount = 'first'; nativeConnected = true;
+  settings = { ...settings, connection: 'chatgpt', model: 'gpt-6-luna' }; storageChanged(['settings'], 'local');
+  await tab(roots[0]!, 2); await tab(roots[1]!, 2);
+  await until(() => roots.every(root => root.querySelectorAll('.account-select').length === 2), 'Saved accounts reach both Settings windows');
+  assert(roots.every(root => !root.innerHTML.includes(email) && !root.innerHTML.includes('second@example.invalid')), 'Saved emails are hidden in text and accessible labels');
+  assert.equal(roots[0]!.querySelector<HTMLSelectElement>('.connection label select')?.value, 'gpt-6-luna', 'Default model is shown in the picker');
+  const savedEmailToggle = () => roots[0]!.querySelector<HTMLButtonElement>('.saved-accounts > button')!;
+  await act(async () => { savedEmailToggle().click(); });
+  assert(roots[0]!.textContent?.includes('second@example.invalid'));
+  assert(!roots[1]!.innerHTML.includes('second@example.invalid'), 'Saved-email reveal remains local to one window');
+  await act(async () => { window.dispatchEvent(new window.Event('blur')); });
+  assert(!roots[0]!.innerHTML.includes('second@example.invalid'), 'Blur hides every saved email');
+  const accountButtons = () => [...roots[0]!.querySelectorAll<HTMLButtonElement>('.account-select')];
+  assert(accountButtons()[0]!.disabled, 'The currently connected account is marked and cannot reconnect unnecessarily');
+  const permissionsBeforeSwitch = permissionRequests;
+  await act(async () => { accountButtons()[1]!.click(); assert.equal(permissionRequests, permissionsBeforeSwitch + 1, 'Account switching requests consent from the click gesture'); });
+  await until(() => roots.every(root => root.querySelectorAll<HTMLButtonElement>('.account-select')[1]?.disabled === true), 'Switching updates both windows');
+  assert(accountRequests.some(request => request.command === 'signIn' && request.accountId === 'second'));
+  const anotherAccount = () => [...roots[0]!.querySelectorAll<HTMLButtonElement>('.connection button')].find(button => button.textContent === 'Use another account')!;
+  await act(async () => { anotherAccount().click(); });
+  await until(() => roots.every(root => root.querySelectorAll('.account-select').length === 3), 'Adding another account refreshes both lists');
+  assert(accountRequests.some(request => request.command === 'signIn' && request.newAccount === true));
+  const removeButtons = () => [...roots[0]!.querySelectorAll<HTMLButtonElement>('.saved-accounts .history-delete')];
+  confirmAccountRemoval = false;
+  const beforeCancelledRemoval = accountRequests.length;
+  await act(async () => { removeButtons()[2]!.click(); });
+  assert.equal(accountRequests.length, beforeCancelledRemoval, 'Cancelling removal leaves the account untouched');
+  confirmAccountRemoval = true;
+  await act(async () => { removeButtons()[2]!.click(); });
+  await until(() => roots.every(root => root.querySelectorAll('.account-select').length === 2 && !emailButton(root)), 'Removing the active account disconnects every window but preserves other saved accounts');
+  assert(accountRequests.some(request => request.command === 'removeAccount' && request.accountId === 'third'));
+  assert(roots.every(root => root.querySelector('.saved-accounts summary')?.textContent?.startsWith('Saved accounts')));
+  grantConsent = false;
+  const beforeDeclinedSignIn = accountRequests.length;
+  await act(async () => { accountButtons()[0]!.click(); });
+  await until(() => !!roots[0]!.querySelector('.connection [role="alert"]'), 'Declined sign-in consent is explained');
+  assert.equal(accountRequests.length, beforeDeclinedSignIn, 'Declining consent never contacts the companion');
+  assert(roots.every(root => root.querySelectorAll('.account-select').length === 2 && root.querySelector('.saved-accounts summary')?.textContent?.startsWith('Saved accounts')), 'Declining consent preserves saved-account controls');
+  assert.equal(removeButtons().length, 2, 'Saved accounts can still be removed after declining consent');
+  grantConsent = true;
+  await act(async () => { accountButtons()[0]!.click(); });
+  await until(() => roots.every(root => !!emailButton(root)), 'Saved accounts can reconnect after removal or disconnect');
+  await act(async () => { removeButtons()[1]!.click(); });
+  await until(() => roots.every(root => root.querySelectorAll('.account-select').length === 1 && !!emailButton(root)), 'Removing an inactive account preserves the connected account');
+  settings = { ...settings, language: 'de' }; storageChanged(['settings'], 'local');
+  await until(() => roots.every(root => root.querySelector('.saved-accounts summary')?.textContent?.startsWith('Konto wechseln')), 'Account management follows the UI language');
+  await act(async () => { render(null, roots[1]!); render(h(App, {}), roots[1]!); });
+  await tab(roots[1]!, 2);
+  await until(() => roots[1]!.querySelectorAll('.account-select').length === 1, 'Saved accounts remain available after reopening Settings');
+  console.log('Actual account-management UI: hidden emails, shared switching/add/remove, gesture consent, confirmation, reopening, translations and Luna selection verified');
 } finally {
   await act(async () => { roots.forEach(root => render(null, root)); });
   assert.equal(messageListeners.size, 0, 'Unmount removes runtime listeners');

@@ -35,18 +35,21 @@ struct Session {
     expires_at: u64,
 }
 
-/// Registration survives sign-out; it contains no tokens or email address.
+/// Account registrations survive sign-out; renewable credentials stay in the OS vault.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Registration {
     client_id: String,
     subject_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    email: Option<String>,
 }
 impl Registration {
     fn from_session(session: &Session) -> Self {
         Self {
             client_id: session.client_id.clone(),
             subject_hash: Some(subject_hash(&session.subject)),
+            email: session.email.clone(),
         }
     }
     fn accepts_subject(&self, subject: &str) -> bool {
@@ -70,40 +73,129 @@ fn valid_registration(registration: &Registration) -> bool {
             .subject_hash
             .as_ref()
             .is_none_or(|value| value.len() == 64 && value.chars().all(|ch| ch.is_ascii_hexdigit()))
+        && registration
+            .email
+            .as_ref()
+            .is_none_or(|email| email.len() <= 320 && !email.chars().any(char::is_control))
 }
-fn registration_at(path: &Path, session: Option<&Session>) -> Result<Option<Registration>> {
-    let stored: Option<Registration> = match fs::read(path) {
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Accounts {
+    selected: Option<String>,
+    registrations: Vec<Registration>,
+}
+impl Accounts {
+    fn valid(&self) -> bool {
+        let mut ids = std::collections::HashSet::new();
+        self.registrations
+            .iter()
+            .all(|account| valid_registration(account) && ids.insert(&account.client_id))
+            && match &self.selected {
+                Some(id) => self
+                    .registrations
+                    .iter()
+                    .any(|account| &account.client_id == id),
+                None => self.registrations.is_empty(),
+            }
+    }
+    fn selected(&self, id: Option<&str>) -> Result<Option<Registration>> {
+        let selected = id.or(self.selected.as_deref());
+        match selected {
+            Some(id) => self
+                .registrations
+                .iter()
+                .find(|account| account.client_id == id)
+                .cloned()
+                .map(Some)
+                .ok_or_else(|| "Unknown saved ChatGPT account.".into()),
+            None => Ok(None),
+        }
+    }
+    fn remember(&mut self, account: Registration, select: bool) {
+        if select || self.selected.is_none() {
+            self.selected = Some(account.client_id.clone());
+        }
+        if let Some(saved) = self
+            .registrations
+            .iter_mut()
+            .find(|saved| saved.client_id == account.client_id)
+        {
+            *saved = account;
+        } else {
+            self.registrations.push(account);
+        }
+    }
+    fn remove(&mut self, id: &str) -> Result<()> {
+        self.selected(Some(id))?;
+        self.registrations.retain(|account| account.client_id != id);
+        if self.selected.as_deref() == Some(id) {
+            self.selected = self
+                .registrations
+                .first()
+                .map(|account| account.client_id.clone());
+        }
+        Ok(())
+    }
+    fn status(&self, session: Option<&Session>) -> Value {
+        json!({"connected":session.is_some(),"email":session.and_then(|session| session.email.as_ref()),
+            "selectedAccount":self.selected,"savedAccounts":self.registrations.iter().map(|account|
+                json!({"id":account.client_id,"email":account.email})).collect::<Vec<_>>()})
+    }
+}
+
+fn accounts_at(path: &Path, session: Option<&Session>) -> Result<Accounts> {
+    let mut stored = match fs::read(path) {
         Ok(bytes) => {
-            let value: Registration = serde_json::from_slice(&bytes)
-                .map_err(|_| "Saved ChatGPT registration is unreadable; it was not replaced.")?;
-            if !valid_registration(&value) {
+            // The single-registration form exists in released companions.
+            #[derive(Deserialize)]
+            #[serde(untagged)]
+            enum Saved {
+                Accounts(Accounts),
+                Registration(Registration),
+            }
+            let value: Saved = serde_json::from_slice(&bytes)
+                .map_err(|_| "Saved ChatGPT accounts are unreadable; they were not replaced.")?;
+            let accounts = match value {
+                Saved::Accounts(accounts) => accounts,
+                Saved::Registration(account) => Accounts {
+                    selected: Some(account.client_id.clone()),
+                    registrations: vec![account],
+                },
+            };
+            if !accounts.valid() {
                 return Err("Saved ChatGPT registration is invalid; it was not replaced.".into());
             }
-            Some(value)
+            accounts
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Accounts::default(),
         Err(_) => return Err("Cannot read the saved ChatGPT registration.".into()),
     };
     let Some(session) = session else {
         return Ok(stored);
     };
     let current = Registration::from_session(session);
-    if stored.as_ref().is_some_and(|saved| {
-        saved.client_id != current.client_id || !saved.accepts_subject(&session.subject)
-    }) {
+    let saved = stored
+        .registrations
+        .iter()
+        .find(|saved| saved.client_id == current.client_id);
+    if saved.is_some_and(|saved| !saved.accepts_subject(&session.subject))
+        || saved.is_none() && !stored.registrations.is_empty()
+    {
         return Err("The saved ChatGPT registration does not match this connection.".into());
     }
-    if stored.as_ref() != Some(&current) {
-        save_registration_at(path, &current)?;
+    if saved != Some(&current) || stored.selected.as_deref() != Some(&current.client_id) {
+        stored.remember(current, true);
+        save_accounts_at(path, &stored)?;
     }
-    Ok(Some(current))
+    Ok(stored)
 }
-fn save_registration_at(path: &Path, registration: &Registration) -> Result<()> {
-    if !valid_registration(registration) {
+fn save_accounts_at(path: &Path, accounts: &Accounts) -> Result<()> {
+    if !accounts.valid() {
         return Err("Cannot save an invalid ChatGPT registration.".into());
     }
     let bytes =
-        serde_json::to_vec(registration).map_err(|_| "Cannot encode the ChatGPT registration.")?;
+        serde_json::to_vec(accounts).map_err(|_| "Cannot encode the ChatGPT registration.")?;
     let temporary = path.with_extension(format!("{}.tmp", Uuid::new_v4()));
     let write = || -> std::io::Result<()> {
         let mut options = OpenOptions::new();
@@ -318,28 +410,70 @@ fn json_response<T: serde::de::DeserializeOwned>(response: Response) -> Result<T
 
 pub fn status() -> Result<Value> {
     let session = load()?;
-    registration_at(
+    let accounts = accounts_at(
         &directory()?.join("chatgpt-registration.json"),
         session.as_ref(),
     )?;
-    Ok(match session {
-        Some(session) => json!({"connected":true,"email":session.email}),
-        None => json!({"connected":false}),
-    })
+    Ok(accounts.status(session.as_ref()))
 }
 
 pub fn disconnect() -> Result<Value> {
     // Preserve a readable registration before removing its renewable credentials. Corrupt
     // token records can still be cleared; an existing registration remains authoritative.
     let session = load().ok().flatten();
-    registration_at(
+    let accounts = accounts_at(
         &directory()?.join("chatgpt-registration.json"),
         session.as_ref(),
     )?;
     match entry()?.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(json!({"connected":false})),
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(accounts.status(None)),
         Err(_) => Err("Cannot remove credentials from the OS credential store.".into()),
     }
+}
+
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SignInPayload {
+    account_id: Option<String>,
+    #[serde(default)]
+    new_account: bool,
+}
+impl SignInPayload {
+    fn registration(&self, accounts: &Accounts) -> Result<Option<Registration>> {
+        if self.new_account && self.account_id.is_some() {
+            return Err("Select a saved account or add another account.".into());
+        }
+        if self.new_account {
+            Ok(None)
+        } else {
+            accounts.selected(self.account_id.as_deref())
+        }
+    }
+}
+
+pub fn remove_account(payload: Value) -> Result<Value> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct RemoveAccountPayload {
+        account_id: String,
+    }
+    let input: RemoveAccountPayload =
+        serde_json::from_value(payload).map_err(|_| "Invalid saved account selection.")?;
+    let session = load()?;
+    let path = directory()?.join("chatgpt-registration.json");
+    let mut accounts = accounts_at(&path, session.as_ref())?;
+    accounts.remove(&input.account_id)?;
+    let active = session
+        .as_ref()
+        .is_some_and(|session| session.client_id == input.account_id);
+    if active {
+        match entry()?.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(_) => return Err("Cannot remove credentials from the OS credential store.".into()),
+        }
+    }
+    save_accounts_at(&path, &accounts)?;
+    Ok(accounts.status(if active { None } else { session.as_ref() }))
 }
 
 fn validate_identity(
@@ -525,10 +659,16 @@ fn complete_sign_in<T>(writer: &mut impl Write, finish: impl FnOnce() -> Result<
     result
 }
 
-pub fn sign_in() -> Result<Value> {
+pub fn sign_in(payload: Value) -> Result<Value> {
+    let input: SignInPayload = if payload.is_null() {
+        SignInPayload::default()
+    } else {
+        serde_json::from_value(payload).map_err(|_| "Invalid saved account selection.")?
+    };
     let previous = load()?;
     let registration_path = directory()?.join("chatgpt-registration.json");
-    let registration = registration_at(&registration_path, previous.as_ref())?;
+    let mut accounts = accounts_at(&registration_path, previous.as_ref())?;
+    let registration = input.registration(&accounts)?;
     let pending_id = registration.as_ref().map(|saved| saved.client_id.as_str());
     let listener =
         TcpListener::bind("127.0.0.1:0").map_err(|_| "Cannot start the local sign-in callback.")?;
@@ -545,7 +685,7 @@ pub fn sign_in() -> Result<Value> {
     let state = random_value();
     let nonce = random_value();
     let verifier = random_value();
-    let url = authorization_url(
+    let mut url = authorization_url(
         &host_id()?,
         pending_id.unwrap_or(BOOTSTRAP),
         &redirect,
@@ -553,6 +693,12 @@ pub fn sign_in() -> Result<Value> {
         &nonce,
         &verifier,
     );
+    if let Some(email) = registration
+        .as_ref()
+        .and_then(|account| account.email.as_deref())
+    {
+        url.query_pairs_mut().append_pair("login_hint", email);
+    }
     webbrowser::open(url.as_str()).map_err(|_| "Cannot open the system browser for sign-in.")?;
     let deadline = Instant::now() + Duration::from_secs(180);
     let (code, client_id, mut callback_socket) = loop {
@@ -603,15 +749,17 @@ pub fn sign_in() -> Result<Value> {
     complete_sign_in(&mut callback_socket, || {
         // A state-validated callback issues the registration before token exchange.
         // Retain it even if that one-time code expires or the network fails.
-        save_registration_at(
-            &registration_path,
-            &Registration {
+        accounts.remember(
+            Registration {
                 client_id: client_id.clone(),
                 subject_hash: registration
                     .as_ref()
                     .and_then(|saved| saved.subject_hash.clone()),
+                email: registration.as_ref().and_then(|saved| saved.email.clone()),
             },
-        )?;
+            previous.is_none(),
+        );
+        save_accounts_at(&registration_path, &accounts)?;
         let client = client()?;
         let tokens: Tokens = json_response(
             client
@@ -650,9 +798,10 @@ pub fn sign_in() -> Result<Value> {
             scopes,
             expires_at: now().saturating_add(tokens.expires_in),
         };
-        save_registration_at(&registration_path, &Registration::from_session(&session))?;
+        accounts.remember(Registration::from_session(&session), true);
+        save_accounts_at(&registration_path, &accounts)?;
         save(&session)?;
-        Ok(json!({"connected":true,"email":session.email}))
+        Ok(accounts.status(Some(&session)))
     })
 }
 
@@ -1789,6 +1938,16 @@ mod tests {
         );
     }
 
+    fn save_test_registration_at(path: &Path, registration: &Registration) -> Result<()> {
+        save_accounts_at(
+            path,
+            &Accounts {
+                selected: Some(registration.client_id.clone()),
+                registrations: vec![registration.clone()],
+            },
+        )
+    }
+
     fn registration_test_session() -> Session {
         Session {
             client_id: "oaiapp_test_registration".into(),
@@ -1803,16 +1962,169 @@ mod tests {
     }
 
     #[test]
-    fn sign_out_keeps_existing_registration_without_retaining_tokens_or_email() {
+    fn legacy_registration_loads_without_losing_the_existing_connection() {
+        let directory = std::env::temp_dir().join(format!("vegsnap-accounts-{}", random_value()));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join("registration.json");
+        let session = registration_test_session();
+        fs::write(&path, serde_json::to_vec(&json!({"client_id":session.client_id,"subject_hash":subject_hash(&session.subject)})).unwrap()).unwrap();
+        let accounts = accounts_at(&path, Some(&session)).unwrap();
+        assert_eq!(
+            accounts.selected.as_deref(),
+            Some(session.client_id.as_str())
+        );
+        assert_eq!(accounts.registrations.len(), 1);
+        assert_eq!(accounts.registrations[0].email, session.email);
+        assert_eq!(accounts.status(Some(&session))["connected"], true);
+        let reopened = accounts_at(&path, None).unwrap();
+        assert_eq!(reopened.registrations, accounts.registrations);
+        let persisted = fs::read_to_string(&path).unwrap();
+        assert!(!persisted.contains(&session.access_token));
+        assert!(!persisted.contains(&session.refresh_token));
+        assert!(!persisted.contains(&session.subject));
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn multiple_accounts_persist_switch_and_remove_without_losing_other_registrations() {
+        let directory = std::env::temp_dir().join(format!("vegsnap-accounts-{}", random_value()));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join("registration.json");
+        let first = registration_test_session();
+        let mut second = registration_test_session();
+        second.client_id = "oaiapp_second".into();
+        second.subject = "second-subject".into();
+        second.email = Some("second@example.invalid".into());
+        let mut accounts = accounts_at(&path, Some(&first)).unwrap();
+        accounts.remember(Registration::from_session(&second), true);
+        save_accounts_at(&path, &accounts).unwrap();
+        let mut reopened = accounts_at(&path, Some(&second)).unwrap();
+        assert_eq!(reopened.registrations.len(), 2);
+        assert_eq!(
+            reopened.status(Some(&second))["selectedAccount"],
+            second.client_id
+        );
+        let chosen = SignInPayload {
+            account_id: Some(first.client_id.clone()),
+            new_account: false,
+        }
+        .registration(&reopened)
+        .unwrap()
+        .unwrap();
+        assert!(chosen.accepts_subject(&first.subject));
+        assert!(!chosen.accepts_subject(&second.subject));
+        // A cancelled/new sign-in remembers its issued registration while the active account stays selected.
+        reopened.remember(
+            Registration {
+                client_id: "oaiapp_pending".into(),
+                subject_hash: None,
+                email: None,
+            },
+            false,
+        );
+        save_accounts_at(&path, &reopened).unwrap();
+        reopened = accounts_at(&path, Some(&second)).unwrap();
+        assert_eq!(
+            reopened.selected.as_deref(),
+            Some(second.client_id.as_str())
+        );
+        assert_eq!(
+            reopened
+                .selected(Some("oaiapp_pending"))
+                .unwrap()
+                .unwrap()
+                .subject_hash,
+            None
+        );
+        assert!(
+            SignInPayload {
+                new_account: true,
+                account_id: None
+            }
+            .registration(&reopened)
+            .unwrap()
+            .is_none()
+        );
+        assert!(
+            SignInPayload {
+                new_account: true,
+                account_id: Some(first.client_id.clone())
+            }
+            .registration(&reopened)
+            .is_err()
+        );
+        assert!(
+            SignInPayload {
+                new_account: false,
+                account_id: Some("unknown".into())
+            }
+            .registration(&reopened)
+            .is_err()
+        );
+        reopened.remove(&first.client_id).unwrap();
+        assert_eq!(
+            reopened.selected.as_deref(),
+            Some(second.client_id.as_str())
+        );
+        reopened.remove(&second.client_id).unwrap();
+        assert_eq!(reopened.selected.as_deref(), Some("oaiapp_pending"));
+        reopened.remove("oaiapp_pending").unwrap();
+        assert!(reopened.selected.is_none());
+        assert!(reopened.valid());
+        assert!(reopened.remove("unknown").is_err());
+        save_accounts_at(&path, &reopened).unwrap();
+        assert!(accounts_at(&path, None).unwrap().registrations.is_empty());
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn invalid_account_lists_are_not_replaced() {
+        let directory = std::env::temp_dir().join(format!("vegsnap-accounts-{}", random_value()));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join("registration.json");
+        let registration = Registration::from_session(&registration_test_session());
+        for accounts in [
+            Accounts {
+                selected: Some("unknown".into()),
+                registrations: vec![registration.clone()],
+            },
+            Accounts {
+                selected: None,
+                registrations: vec![registration.clone()],
+            },
+            Accounts {
+                selected: Some(registration.client_id.clone()),
+                registrations: vec![registration.clone(), registration.clone()],
+            },
+        ] {
+            let bytes = serde_json::to_vec(&accounts).unwrap();
+            fs::write(&path, &bytes).unwrap();
+            assert!(accounts_at(&path, None).is_err());
+            assert!(save_accounts_at(&path, &accounts).is_err());
+            assert_eq!(fs::read(&path).unwrap(), bytes);
+        }
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn sign_out_keeps_account_registration_and_label_without_tokens() {
         let directory =
             std::env::temp_dir().join(format!("vegsnap-registration-{}", random_value()));
         fs::create_dir(&directory).unwrap();
         let path = directory.join("registration.json");
         let session = registration_test_session();
-        assert!(registration_at(&path, None).unwrap().is_none());
-        let original = registration_at(&path, Some(&session)).unwrap().unwrap();
+        assert!(accounts_at(&path, None).unwrap().registrations.is_empty());
+        let original = accounts_at(&path, Some(&session))
+            .unwrap()
+            .selected(None)
+            .unwrap()
+            .unwrap();
         // The token vault is empty after disconnect; selection must still reuse this registration.
-        let returning = registration_at(&path, None).unwrap().unwrap();
+        let returning = accounts_at(&path, None)
+            .unwrap()
+            .selected(None)
+            .unwrap()
+            .unwrap();
         assert_eq!(returning, original);
         assert!(returning.accepts_subject(&session.subject));
         assert!(!returning.accepts_subject("different-account"));
@@ -1832,7 +2144,6 @@ mod tests {
         let persisted = fs::read_to_string(&path).unwrap();
         for secret in [
             &session.subject,
-            session.email.as_ref().unwrap(),
             &session.access_token,
             &session.refresh_token,
             &session.id_token,
@@ -1862,16 +2173,21 @@ mod tests {
             None,
         )
         .unwrap();
-        save_registration_at(
+        save_test_registration_at(
             &path,
             &Registration {
                 client_id,
                 subject_hash: None,
+                email: None,
             },
         )
         .unwrap();
         // Failed exchange leaves no token session; its issued registration is nevertheless retained.
-        let pending = registration_at(&path, None).unwrap().unwrap();
+        let pending = accounts_at(&path, None)
+            .unwrap()
+            .selected(None)
+            .unwrap()
+            .unwrap();
         assert_eq!(pending.client_id, "oaiapp_issued");
         assert!(pending.subject_hash.is_none());
         assert_eq!(
@@ -1894,7 +2210,11 @@ mod tests {
         );
         let mut session = registration_test_session();
         session.client_id = pending.client_id;
-        let verified = registration_at(&path, Some(&session)).unwrap().unwrap();
+        let verified = accounts_at(&path, Some(&session))
+            .unwrap()
+            .selected(None)
+            .unwrap()
+            .unwrap();
         assert!(verified.accepts_subject(&session.subject));
         assert!(!verified.accepts_subject("different-account"));
         fs::remove_dir_all(directory).unwrap();
@@ -1907,24 +2227,25 @@ mod tests {
         fs::create_dir(&directory).unwrap();
         let path = directory.join("registration.json");
         fs::write(&path, "corrupt registration").unwrap();
-        assert!(registration_at(&path, None).is_err());
+        assert!(accounts_at(&path, None).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "corrupt registration");
         let session = registration_test_session();
-        save_registration_at(&path, &Registration::from_session(&session)).unwrap();
+        save_test_registration_at(&path, &Registration::from_session(&session)).unwrap();
         let before = fs::read(&path).unwrap();
         let mut changed = registration_test_session();
         changed.subject = "different-account".into();
-        assert!(registration_at(&path, Some(&changed)).is_err());
+        assert!(accounts_at(&path, Some(&changed)).is_err());
         changed = registration_test_session();
         changed.client_id = "oaiapp_other".into();
-        assert!(registration_at(&path, Some(&changed)).is_err());
+        assert!(accounts_at(&path, Some(&changed)).is_err());
         assert_eq!(fs::read(&path).unwrap(), before);
         assert!(
-            save_registration_at(
+            save_test_registration_at(
                 &path,
                 &Registration {
                     client_id: BOOTSTRAP.into(),
-                    subject_hash: None
+                    subject_hash: None,
+                    email: None
                 }
             )
             .is_err()
@@ -2167,6 +2488,7 @@ mod tests {
             subject_hash: Some(
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
             ),
+            email: None,
         };
         assert!(valid_registration(&registration));
         assert!(registration.accepts_subject("abc"));
