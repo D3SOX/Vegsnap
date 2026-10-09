@@ -35,11 +35,23 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
   if (!expectedWords.length || query.length < 2 || query.length > 200) return;
   const expectedCountry = packaging.country ? country(packaging.country) : undefined;
   if (packaging.country && !expectedCountry) return;
-  // Optional recovery must share a conservative per-source budget across checks.
-  signal?.throwIfAborted();
-  const now = Date.now();
-  if (now - (lastRequests.get(source.id) ?? 0) < 6100) return;
-  lastRequests.set(source.id, now);
+  // Only searches that actually start consume a slot; cancelled waiters reserve nothing.
+  while (true) {
+    signal?.throwIfAborted();
+    const delay = 6100 - (Date.now() - (lastRequests.get(source.id) ?? -Infinity));
+    if (delay <= 0) break;
+    await new Promise<void>((resolve, reject) => {
+      const timer = AbortSignal.timeout(delay);
+      const finished = () => {
+        timer.removeEventListener('abort', finished);
+        signal?.removeEventListener('abort', finished);
+        if (signal?.aborted) reject(new Error('Cancelled')); else resolve();
+      };
+      timer.addEventListener('abort', finished);
+      signal?.addEventListener('abort', finished);
+    });
+  }
+  lastRequests.set(source.id, Date.now());
   const url = new URL('/cgi/search.pl', source.origin);
   for (const [key, value] of Object.entries({ search_terms: query, search_simple: '1', action: 'process', json: '1', page: '1', page_size: '20', lc: language,
     fields: `code,product_name,product_name_${language},brands,ingredients_text,ingredients_text_${language},countries,countries_tags,quantity,last_modified_t` })) url.searchParams.set(key, value);

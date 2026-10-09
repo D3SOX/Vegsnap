@@ -11,11 +11,14 @@ const runtime = await readFile(new URL('runtime.js', import.meta.url), 'utf8');
 function harness(response: (url: string, body?: string) => { status: number; body: unknown } = () => ({ status: 404, body: {} })) {
   const calls: { url: string; options: { method: string; body?: string; chatGPT?: boolean } }[] = [];
   const completions = new Map<string, { resolve: (result: CheckResult) => void; reject: (error: Error) => void }>();
+  let now = Date.now();
+  const timers: { at: number; callback: () => void }[] = [];
   const context = createContext({
+    Date: class extends Date { static now() { return now; } },
     nativeUUID: () => crypto.randomUUID(), nativeByteCount: (value: string) => Buffer.byteLength(value),
     nativeURL: (value: string, base: string) => { try { const u = new URL(value, base || undefined); return JSON.stringify(Object.fromEntries(['href', 'origin', 'protocol', 'hostname', 'pathname', 'username', 'password', 'search', 'hash'].map(key => [key, u[key as keyof URL]]))); } catch { return 'null'; } },
     nativeLanguage: (value: string) => ({ Swedish: 'sv', svenska: 'sv', swe: 'sv', sv: 'sv', German: 'de', Deutsch: 'de', de: 'de' }[value] ?? 'en'),
-    nativeTimer: () => {}, nativeCancelFetch: () => {}, nativeProgress: () => {},
+    nativeTimer: (ms: number, callback: () => void) => { timers.push({ at: now + ms, callback }); }, nativeCancelFetch: () => {}, nativeProgress: () => {},
     nativeFetch: (_id: string, url: string, raw: string, callback: (status: number, text: string, error: string) => void) => {
       const options = JSON.parse(raw); calls.push({ url, options });
       const res = response(url, options.body); queueMicrotask(() => callback(res.status, JSON.stringify(res.body), ''));
@@ -25,12 +28,14 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   runInContext(runtime, context); runInContext(bundle, context);
   return {
     calls,
+    advance: (ms: number) => { now += ms; for (const timer of timers.filter(timer => timer.at <= now)) { timers.splice(timers.indexOf(timer), 1); timer.callback(); } },
+    cancel: (id: string) => runInContext(`VegsnapCore.cancel(${JSON.stringify(id)});`, context),
     restart: (first: unknown, retry: unknown) => new Promise<CheckResult>((resolve, reject) => {
       const id = crypto.randomUUID(); completions.set(id, { resolve, reject });
       runInContext(`VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(first))}); VegsnapCore.cancel(${JSON.stringify(id)}); VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(retry))});`, context);
     }),
     call: (operation: string, args: unknown) => JSON.parse(runInContext(`VegsnapCore.call(${JSON.stringify(operation)}, ${JSON.stringify(JSON.stringify(args))})`, context)),
-    check: (args: unknown) => new Promise<CheckResult>((resolve, reject) => { const id = crypto.randomUUID(); completions.set(id, { resolve, reject }); runInContext(`VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(args))})`, context); }),
+    check: (args: unknown, id = crypto.randomUUID()) => new Promise<CheckResult>((resolve, reject) => { completions.set(id, { resolve, reject }); runInContext(`VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(args))})`, context); }),
   };
 }
 describe('iOS JavaScriptCore host contract', () => {
@@ -176,4 +181,30 @@ for (const mismatch of ['brand', 'quantity', 'variant', 'market', 'ambiguous', '
   const result = await app.check({ input: { images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
   expect(result.outcome).toBe('uncertain');
   expect(result.evidence.some(e => e.kind === 'database')).toBe(false);
+});
+
+test('concurrent packaging lookups wait for slots and cancelled waiters reserve nothing', async () => {
+  const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g' } };
+  const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', ingredients_text_sv: 'honey' };
+  const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
+    : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+  const args = { input: { images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true };
+  const searches = () => app.calls.filter(call => call.url.includes('/cgi/search.pl')).length;
+  expect((await app.check(args)).outcome).toBe('not_vegan');
+  const cancelledID = crypto.randomUUID();
+  const cancelled = app.check(args, cancelledID).then(() => 'unexpected success', error => error.message);
+  const second = app.check(args);
+  const third = app.check(args);
+  await Bun.sleep(0);
+  expect(searches()).toBe(1);
+  app.cancel(cancelledID);
+  expect(await cancelled).toBe('Cancelled');
+  app.advance(6099); await Bun.sleep(0);
+  expect(searches()).toBe(1);
+  app.advance(1);
+  expect((await second).outcome).toBe('not_vegan');
+  expect(searches()).toBe(2);
+  app.advance(6100);
+  expect((await third).outcome).toBe('not_vegan');
+  expect(searches()).toBe(3);
 });
