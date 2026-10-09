@@ -1,0 +1,75 @@
+name: Publish to Google Play
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      PLAY_SERVICE_ACCOUNT_JSON:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag (for example v0.2.14)
+        required: true
+        type: string
+      verify_only:
+        description: Verify credentials and Alpha access without uploading
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-store-publishing
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FASTLANE_SKIP_UPDATE_CHECK: 'true'
+      FASTLANE_OPT_OUT_USAGE: 'true'
+      FASTLANE_SKIP_DOCS: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+      - name: Configure Play credentials
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          [[ -n "$PLAY_SERVICE_ACCOUNT_JSON" ]] || { echo 'Configure PLAY_SERVICE_ACCOUNT_JSON before publishing.'; exit 1; }
+          umask 077
+          PLAY_JSON_KEY="$RUNNER_TEMP/vegsnap-play-service-account.json"
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$PLAY_JSON_KEY"
+          echo "PLAY_JSON_KEY=$PLAY_JSON_KEY" >> "$GITHUB_ENV"
+      - name: Verify Alpha API access
+        run: bundle exec fastlane android verify_play
+      - name: Download the published release bundle and its notes
+        if: ${{ !inputs.verify_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'A stable release tag is required.'; exit 1; }
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)' | grep -qx true
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir play-release --pattern vegsnap.aab
+          gh api "repos/$GITHUB_REPOSITORY/contents/android/play/listing.json?ref=$RELEASE_TAG" --jq .content | base64 --decode > play-release/listing.json
+      - name: Submit to Alpha for review
+        if: ${{ !inputs.verify_only }}
+        run: bundle exec fastlane android publish_play aab:play-release/vegsnap.aab listing:play-release/listing.json
+      - name: Record submission
+        if: ${{ success() && !inputs.verify_only }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: printf 'Submitted %s to Google Play Alpha. Google checks and review can still be pending.\n' "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/vegsnap-play-service-account.json"

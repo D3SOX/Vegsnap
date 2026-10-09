@@ -19,6 +19,9 @@ local.properties
 artifacts/
 __pycache__/
 *.pyc
+.bundle/
+vendor/bundle/
+fastlane/report.xml
 
 docs/
 *.p12

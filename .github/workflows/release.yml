@@ -264,3 +264,11 @@ jobs:
     with:
       tag: ${{ inputs.tag || github.ref_name }}
     secrets: inherit
+
+  play:
+    needs: publish
+    if: ${{ !contains(inputs.tag || github.ref_name, '-') }}
+    uses: ./.github/workflows/publish-play-store.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+    secrets: inherit

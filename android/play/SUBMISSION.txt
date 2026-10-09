@@ -7,6 +7,42 @@ Graphics: website/images/store/android/icon.png (512×512), feature-graphic.png
 Public support email: gplay@d3sox.me (confirmed by the owner).
 Price/category proposal: free / Shopping. The owner confirms audience and regions.
 
+AUTOMATED RELEASE UPDATES
+
+Stable releases call .github/workflows/publish-play-store.yml after publishing
+the signed GitHub assets. Fastlane uploads that release's vegsnap.aab and reads
+English/German notes from android/play/listing.json at the same release tag.
+The destination is always the existing Alpha closed-test track. Listings,
+screenshots, tester groups and policy declarations are not changed by this lane.
+Google's automated checks and review still apply.
+
+Authentication uses a service account with Vegsnap testing-release access and
+the PLAY_SERVICE_ACCOUNT_JSON GitHub repository secret. Credentials are written
+to a private runner temporary file and removed after the job. Keep JSON keys
+outside the repository. The Google Play Developer API must be enabled for the
+service account's Google Cloud project.
+
+Local CLI (Ruby 3.4 and Bundler):
+  bundle install
+  export PLAY_JSON_KEY=/secure/path/play-service-account.json
+  bundle exec fastlane android verify_play
+  bundle exec fastlane android publish_play aab:/absolute/path/vegsnap.aab
+
+Use listing:/absolute/path/listing.json to supply notes from another release.
+Use validate_only:true to validate a new bundle without committing the edit.
+Version codes already uploaded to Google Play cannot be uploaded again.
+
+Retry a failed submission of a published release:
+  gh workflow run publish-play-store.yml -f tag=v0.2.15
+
+Verify GitHub Actions authentication without uploading a release:
+  gh workflow run publish-play-store.yml -f tag=v0.2.14 -f verify_only=true
+
+If Google requires a Console-only review action, the lane fails explicitly
+rather than silently leaving an unsubmitted change. Follow the reported action
+in Publishing overview before retrying. Initial app setup and new declarations
+still use the manual steps below.
+
 1. RELEASE SIGNING AND THE APP BUNDLE
 
 The release workflow now builds and publishes both vegsnap.apk and vegsnap.aab
