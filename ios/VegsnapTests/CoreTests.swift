@@ -131,6 +131,26 @@ import Security
         let restored = try AppStore(root: root)
         XCTAssertEqual(restored.packs.first { $0.region == "timestamp-fixture" }?.generatedAt, "2026-10-09T11:00:00.500Z")
     }
+    func testImportedHistorySortsChronologically() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let base = try analyze("Ingredients: oats")
+        let dates = ["2026-10-09T13:00:00+02:00", "2026-10-09T12:00:00Z", "2026-10-09T11:00:00.500Z"]
+        let results = dates.enumerated().map { index, date in
+            var result = base; result.id = "date-\(index)"; result.checkedAt = date; return result
+        }
+        try store.importHistory(HistoryDocument(results: results).jsonData())
+        XCTAssertEqual(store.history.map(\.id), ["date-1", "date-2", "date-0"])
+        XCTAssertEqual(try AppStore(root: root).history.map(\.id), ["date-1", "date-2", "date-0"])
+    }
+    func testOnlineBrowseFallsBackFromBlankLocalizedFields() async throws {
+        Network.testProtocolClasses = [FixtureProtocol.self]
+        let page = try await BrowseService().search("localized-fixture", source: .food, cursor: 0, locale: "de")
+        let record = try XCTUnwrap(page.records.first)
+        XCTAssertEqual(record.name, "Base product")
+        XCTAssertEqual(record.composition, "Ingredients: oats")
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -603,7 +623,10 @@ final class FixtureProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         let content = #"{"text":"Ingredients: water, mystery","complete":true,"category":"food"}"#
         let json: [String: Any] = ["choices": [["finish_reason": "stop", "message": ["content": content]]]]
-        let data = request.url?.host == "world.openfoodfacts.org" ? Data(#"{"products":[],"count":0}"#.utf8) : request.url?.path == "/api/session" ? Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8) : try! JSONSerialization.data(withJSONObject: json)
+        let browseData = request.url?.query?.contains("localized-fixture") == true
+            ? Data(#"{"products":[{"code":"4006381333931","product_name_de":"","product_name":"Base product","ingredients_text_de":"  ","ingredients_text":"Ingredients: oats"}],"count":1}"#.utf8)
+            : Data(#"{"products":[],"count":0}"#.utf8)
+        let data = request.url?.host == "world.openfoodfacts.org" ? browseData : request.url?.path == "/api/session" ? Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8) : try! JSONSerialization.data(withJSONObject: json)
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json", "Content-Length": String(data.count)])!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
     }

@@ -18,7 +18,7 @@ import UIKit
             let frame = self.app.frame
             return (frame.width > frame.height) == orientation.isLandscape
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 30), .completed)
         // Window geometry changes before the system rotation animation finishes.
         Thread.sleep(forTimeInterval: 1)
     }

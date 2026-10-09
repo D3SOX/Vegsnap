@@ -61,7 +61,8 @@ actor BrowseService {
                 guard let products = json["products"] as? [[String: Any]] else { throw AppError(L("The service returned an invalid response.")) }
                 page = BrowsePage(records: products.prefix(20).compactMap { record in
                     guard let code = record["code"] as? String, code.range(of: "^[0-9]{4,30}$", options: .regularExpression) != nil else { return nil }
-                    return BrowseRecord(id: code, name: record["product_name_\(locale)"] as? String ?? record["product_name"] as? String ?? code, brand: record["brands"] as? String ?? "", barcode: code, composition: record["ingredients_text_\(locale)"] as? String ?? record["ingredients_text"] as? String ?? "", description: record["countries"] as? String ?? "", labels: record["labels"] as? String ?? "", url: source.origin + "/product/" + code)
+                    func text(_ keys: String...) -> String? { keys.lazy.compactMap { record[$0] as? String }.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } }
+                    return BrowseRecord(id: code, name: text("product_name_\(locale)", "product_name") ?? code, brand: record["brands"] as? String ?? "", barcode: code, composition: text("ingredients_text_\(locale)", "ingredients_text") ?? "", description: record["countries"] as? String ?? "", labels: record["labels"] as? String ?? "", url: source.origin + "/product/" + code)
                 }, next: products.count >= 20 && cursor < 99 && (json["count"] as? Int ?? Int.max) > (cursor + 1) * 20 ? cursor + 1 : nil)
             }
         }

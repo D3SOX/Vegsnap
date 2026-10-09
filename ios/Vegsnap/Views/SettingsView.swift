@@ -147,6 +147,9 @@ struct SettingsView: View {
             struct Model: Decodable { var id: String }; struct List: Decodable { var data: [Model] }
             try Task.checkCancellation()
             models = try JSONDecoder().decode(List.self, from: data).data.map(\.id).filter { $0.count <= 200 }.sorted()
-        } catch { store.report(error) }
+        } catch {
+            guard !Task.isCancelled, (error as? URLError)?.code != .cancelled else { return }
+            store.report(error)
+        }
     }
 }

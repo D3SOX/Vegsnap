@@ -219,7 +219,8 @@ import CryptoKit
         let imported = try HistoryTransfer.parse(data)
         var next = history
         for result in imported where !next.contains(where: { $0.id == result.id }) { next.append(SavedCheck(id: result.id, result: result, input: nil, photos: [])) }
-        next.sort { $0.result.checkedAt > $1.result.checkedAt }
+        next = next.map { (check: $0, date: HistoryTransfer.parseDate($0.result.checkedAt) ?? .distantPast) }
+            .sorted { $0.date > $1.date }.map(\.check)
         try files.save(next, "history.json"); history = next
     }
     func exportHistory() throws -> Data {
