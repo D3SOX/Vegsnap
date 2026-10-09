@@ -6,7 +6,7 @@ const html = await Bun.file(new URL('../public/index.html', import.meta.url)).te
 async function page(client: string, verified: boolean | Response) {
   const token = 'a'.repeat(64);
   const status = { textContent: '' };
-  const action = { hidden: true };
+  const action = { hidden: true, href: "" };
   let callback: ((challenge: string) => Promise<void>) | undefined;
   let expire: (() => void) | undefined;
   let resets = 0;
@@ -76,4 +76,13 @@ test('verification failure preserves the service retry message', async () => {
 });
 test('extension connections do not open an unrelated Android app', async () => {
   expect((await page('', true)).action.hidden).toBe(true);
+});
+
+test('verified iOS connection offers only its fixed credential-free app return', async () => {
+  const result = await page('ios', true);
+  expect(result.action.hidden).toBe(false);
+  expect(result.action.href).toBe('vegsnap-ios://ai/complete');
+  expect(result.action.href).not.toContain(result.token);
+  expect((await page('ios', false)).action.hidden).toBe(true);
+  expect((await page('https://attacker.invalid', true)).action.hidden).toBe(true);
 });

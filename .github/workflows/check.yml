@@ -44,3 +44,24 @@ jobs:
       - run: cargo +1.98.1 fmt --manifest-path companion/Cargo.toml --check
       - run: cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
       - run: cargo +1.98.1 clippy --locked --manifest-path companion/Cargo.toml --all-targets -- -D warnings
+
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run check:ios-types
+      - run: bun run test:ios-bridge
+      - run: bun run ios:prepare
+      - name: Verify the generated project
+        run: |
+          python3 ios/generate-project.py
+          git diff --exit-code -- ios/Vegsnap.xcodeproj
+      - name: Test in an available iPhone simulator
+        run: |
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for runtime,devices in d["devices"].items() if "iOS-" in runtime and int(runtime.split("iOS-")[1].split("-")[0]) >= 18 for v in devices if v["name"].startswith("iPhone")))')
+          xcodebuild -project ios/Vegsnap.xcodeproj -scheme Vegsnap -destination "platform=iOS Simulator,id=$device" -parallel-testing-enabled NO CODE_SIGN_IDENTITY=- test

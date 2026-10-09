@@ -57,8 +57,15 @@ const markets: Record<string, string> = {
   FR: 'france', NL: 'netherlands', BE: 'belgium', ES: 'spain', IT: 'italy', PL: 'poland', IE: 'ireland', PT: 'portugal',
   GB: 'united-kingdom', US: 'united-states', CA: 'canada', AU: 'australia',
 };
+type OfflineEntry = { product: OfflineSnapshot['products'][number]; snapshot: OfflineSnapshot };
+function rankEntries(entries: readonly OfflineEntry[], input: Pick<CheckInput, 'category' | 'market'>): OfflineEntry[] {
+  const marketTag = markets[(input.market ?? 'DE').toUpperCase()];
+  const preferred = input.category === 'cosmetics' ? 'obf' : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? 'opf' : 'off';
+  const matchesMarket = (product: OfflineSnapshot['products'][number]) => Boolean(marketTag && product.countries_tags.includes(`en:${marketTag}`));
+  return [...entries].sort((a, b) => Number(matchesMarket(b.product)) - Number(matchesMarket(a.product)) || Number(b.product.source === preferred) - Number(a.product.source === preferred) || b.product.last_modified_t - a.product.last_modified_t || Date.parse(b.snapshot.generatedAt) - Date.parse(a.snapshot.generatedAt));
+}
 export class OfflineProductIndex {
-  private readonly products = new Map<string, { product: OfflineSnapshot['products'][number]; snapshot: OfflineSnapshot }[]>();
+  private readonly products = new Map<string, OfflineEntry[]>();
   constructor(snapshots: readonly OfflineSnapshot[]) {
     for (const raw of snapshots) {
       const snapshot = validateOfflineSnapshot(raw);
@@ -70,16 +77,21 @@ export class OfflineProductIndex {
       }
     }
   }
+  search(source: OfflineSnapshot['products'][number]['source'], query: string, offset = 0, market = 'DE') {
+    const matches = [...this.products.values()].flatMap(entries => {
+      const entry = rankEntries(entries.filter(item => item.product.source === source), { market })[0];
+      if (!entry || !`${entry.product.name} ${entry.product.name_de ?? ''} ${entry.product.name_en ?? ''} ${entry.product.brands} ${entry.product.code}`.toLowerCase().includes(query.toLowerCase())) return [];
+      return [{ ...entry.product, snapshotDate: entry.snapshot.generatedAt }];
+    });
+    return matches.slice(offset, offset + 20);
+  }
   lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market'> = {}): DatabaseProduct | null {
     const code = normalizeBarcode(barcode);
     if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
     const market = (input.market ?? 'DE').toUpperCase();
     const marketTag = markets[market];
-    const preferred = input.category === 'cosmetics' ? 'obf' : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? 'opf' : 'off';
     const matchesMarket = (product: OfflineSnapshot['products'][number]) => Boolean(marketTag && product.countries_tags.includes(`en:${marketTag}`));
-    const entries = [...this.products.get(code.padStart(14, '0')) ?? []]
-      .sort((a, b) => Number(matchesMarket(b.product)) - Number(matchesMarket(a.product)) || Number(b.product.source === preferred) - Number(a.product.source === preferred) || b.product.last_modified_t - a.product.last_modified_t || Date.parse(b.snapshot.generatedAt) - Date.parse(a.snapshot.generatedAt));
-    const entry = entries[0];
+    const entry = rankEntries(this.products.get(code.padStart(14, '0')) ?? [], input)[0];
     if (!entry) return null;
     const { product, snapshot } = entry;
     const db = DATABASES.find(item => item.id === product.source)!;
