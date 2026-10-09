@@ -46,7 +46,11 @@ struct OAuthTokens: Decodable {
         return value.isEmpty ? nil : try JSONDecoder().decode(ChatGPTSession.self, from: Data(value.utf8))
     }
     func disconnect() throws { cancel(); guard Self.refreshTask == nil else { throw AppError(L("Wait for the active request to finish.")) }; Self.sessionGeneration += 1; try Keychain.save("", for: issuer); connected = false; email = ""; selectedAccount = nil; modelMetadata = [:] }
-    static func finishRefreshing() async { if let refreshTask { _ = try? await refreshTask.value } }
+    static func finishRefreshing() async throws {
+        // A cancelled waiter must not cancel the refresh shared by other requests.
+        while refreshTask != nil { try await Task.sleep(for: .milliseconds(50)) }
+        try Task.checkCancellation()
+    }
     func removeAccount(_ id: String) throws {
         guard !busy else { return }
         if try Self.load()?.clientID == id { try disconnect() }
@@ -181,9 +185,10 @@ struct OAuthTokens: Decodable {
     static func accessToken() async throws -> String {
         guard let session = try load() else { throw AppError(L("Connect ChatGPT in Settings.")) }
         if session.expiresAt > Date().timeIntervalSince1970 + 60 { return session.accessToken }
-        if let refreshTask { return try await refreshTask.value.accessToken }
+        if let refreshTask { try await finishRefreshing(); return try await refreshTask.value.accessToken }
         let generation = sessionGeneration
         let task = Task { @MainActor in
+            defer { refreshTask = nil }
             let tokens = try await exchange(["grant_type": "refresh_token", "client_id": session.clientID, "refresh_token": session.refreshToken, "resource": resource])
             var next = session; next.scopes = try tokens.validatedScopes(previous: session.scopes)
             if let id = tokens.id_token {
@@ -197,7 +202,8 @@ struct OAuthTokens: Decodable {
             try Keychain.save(next.jsonString(), for: issuer)
             return next
         }
-        refreshTask = task; defer { refreshTask = nil }
+        refreshTask = task
+        try await finishRefreshing()
         return try await task.value.accessToken
     }
     func models() async throws -> [String] {

@@ -268,8 +268,7 @@ import CryptoKit
         defer { chatGPTTask = nil; switchingChatGPT = false; chatGPT.loadStatus(); schedule() }
         let task = Task {
             await stopConnection("chatgpt")
-            await ChatGPTConnection.finishRefreshing()
-            do { try Task.checkCancellation(); try await action() }
+            do { try await ChatGPTConnection.finishRefreshing(); try Task.checkCancellation(); try await action() }
             catch { if !Task.isCancelled { report(error) } }
         }
         chatGPTTask = task

@@ -24,6 +24,10 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   runInContext(runtime, context); runInContext(bundle, context);
   return {
     calls,
+    restart: (first: unknown, retry: unknown) => new Promise<CheckResult>((resolve, reject) => {
+      const id = crypto.randomUUID(); completions.set(id, { resolve, reject });
+      runInContext(`VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(first))}); VegsnapCore.cancel(${JSON.stringify(id)}); VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(retry))});`, context);
+    }),
     call: (operation: string, args: unknown) => JSON.parse(runInContext(`VegsnapCore.call(${JSON.stringify(operation)}, ${JSON.stringify(JSON.stringify(args))})`, context)),
     check: (args: unknown) => new Promise<CheckResult>((resolve, reject) => { const id = crypto.randomUUID(); completions.set(id, { resolve, reject }); runInContext(`VegsnapCore.check(${JSON.stringify(id)}, ${JSON.stringify(JSON.stringify(args))})`, context); }),
   };
@@ -53,6 +57,16 @@ describe('iOS JavaScriptCore host contract', () => {
       const results: { code: string }[] = app.call('offlineSearch', { source: 'off', query, offset: 0 });
       expect(results.map(p => p.code)).toEqual([product.code]);
     }
+  });
+
+  test('an old cancelled operation cannot complete its same-ID retry', async () => {
+    const app = harness();
+    const args = { offline: true, aiEnabled: false };
+    const result = await app.restart(
+      { ...args, input: { text: 'Ingredients: honey', category: 'food', complete: true } },
+      { ...args, input: { text: 'Ingredients: oats, water', category: 'food', complete: true } },
+    );
+    expect(result.outcome).toBe('vegan');
   });
 
   test('exports the engine and evaluates offline without network', async () => {

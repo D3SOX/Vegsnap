@@ -48,7 +48,7 @@ export function check(id: string, json: string) {
         supportsWebSearch: args.provider.baseUrl.replace(/\/$/, '') === 'https://api.openai.com/v1',
         extract: (input, signal) => core.createOpenAIProvider(args.provider, args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined).extract(input, signal),
       } : undefined;
-      const options: core.CheckOptions = { mode: 'explicit', offline: args.offline, provider, offlineProducts: index, signal: controller.signal, onProgress: stage => host.nativeProgress(id, stage) };
+      const options: core.CheckOptions = { mode: 'explicit', offline: args.offline, provider, offlineProducts: index, signal: controller.signal, onProgress: stage => { if (operations.get(id) === controller) host.nativeProgress(id, stage); } };
       let result = await core.checkProduct(args.input, options);
       // Barcode-only checks can research the exact database identity. Keep database
       // composition in its original evidence, never reclassify it as supplied text.
@@ -56,9 +56,9 @@ export function check(id: string, json: string) {
         result = await core.checkProduct({ ...args.input, name: result.identity.name.slice(0, 300), brand: result.identity.brand?.slice(0, 300) }, options);
       }
       if (!args.aiEnabled && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
-      host.nativeComplete(id, JSON.stringify(core.localizeResult(result, args.input.locale)), '');
-    } catch (error) { host.nativeComplete(id, '', error instanceof Error ? error.message : 'Check failed'); }
-    finally { operations.delete(id); }
+      if (operations.get(id) === controller) host.nativeComplete(id, JSON.stringify(core.localizeResult(result, args.input.locale)), '');
+    } catch (error) { if (operations.get(id) === controller) host.nativeComplete(id, '', error instanceof Error ? error.message : 'Check failed'); }
+    finally { if (operations.get(id) === controller) operations.delete(id); }
   })();
 }
 

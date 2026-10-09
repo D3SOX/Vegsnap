@@ -219,6 +219,34 @@ import Security
         XCTAssertEqual(links.evidenceURL(for: id)?.absoluteString, "https://fixture.invalid/api/evidence/" + id)
         XCTAssertNil(links.evidenceURL(for: "../private"))
     }
+    func testCancellingAccountSwitchDoesNotWaitForSharedRefresh() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root); DeferredRefreshProtocol.started = nil; DeferredRefreshProtocol.complete = nil }
+        Network.testProtocolClasses = [DeferredRefreshProtocol.self]
+        let started = expectation(description: "Shared refresh started")
+        let finished = expectation(description: "Cancelled account switch finished")
+        DeferredRefreshProtocol.started = started
+        let expired = ChatGPTSession(clientID: "fixture", subject: "subject", email: "fixture@example.test", idToken: "id", accessToken: "old", refreshToken: "refresh", scopes: ["chatgpt.tokens.use.direct"], expiresAt: 0)
+        try Keychain.save(expired.jsonString(), for: "https://auth.openai.com")
+        let tokenTask = Task { try await ChatGPTConnection.accessToken() }
+        await fulfillment(of: [started], timeout: 3)
+        let store = try AppStore(root: root)
+        var switched = false
+        let switchTask = Task {
+            await store.changeChatGPT { switched = true }
+            finished.fulfill()
+        }
+        for _ in 0..<100 { if store.switchingChatGPT { break }; try await Task.sleep(for: .milliseconds(10)) }
+        store.cancelChatGPT()
+        await fulfillment(of: [finished], timeout: 3)
+        XCTAssertFalse(store.switchingChatGPT); XCTAssertFalse(switched); XCTAssertNil(store.error)
+        // Other callers still receive the shared refresh and its persisted token.
+        DeferredRefreshProtocol.complete?()
+        let token = try await tokenTask.value
+        await switchTask.value
+        XCTAssertEqual(token, "fresh")
+        XCTAssertEqual(try ChatGPTConnection.load()?.accessToken, "fresh")
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -710,5 +738,21 @@ private final class StalledNetworkProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() { Self.started?.fulfill() }
+    override func stopLoading() {}
+}
+
+private final class DeferredRefreshProtocol: URLProtocol, @unchecked Sendable {
+    static var started: XCTestExpectation?
+    static var complete: (() -> Void)?
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        Self.complete = { [self] in
+            let data = Data(#"{"access_token":"fresh","expires_in":3600,"token_type":"Bearer","scope":"chatgpt.tokens.use.direct"}"#.utf8)
+            client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Length": String(data.count)])!, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
+        }
+        Self.started?.fulfill()
+    }
     override func stopLoading() {}
 }
