@@ -41,6 +41,15 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "65E1A579773A6B04FAFBCD54";
 		};
+		"2F13A34AE244662F1B1B8F4F" = {
+			"isa" = "PBXFileReference";
+			"path" = "Vegsnap/Services/CommunityReplies.swift";
+			"sourceTree" = "<group>";
+		};
+		"76BB3EAACB4F10647E700CBA" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "2F13A34AE244662F1B1B8F4F";
+		};
 		"0F054E864872A85EE7DBA676" = {
 			"isa" = "PBXFileReference";
 			"path" = "Vegsnap/Services/ContentReports.swift";
@@ -193,6 +202,7 @@
 				"AF90A93516031FFB44A10BB6",
 				"7788BC4FD13593D4BDF51244",
 				"DEB98F534305E02B331A54C2",
+				"76BB3EAACB4F10647E700CBA",
 				"D3EBDA2F0B4EC0161CD863E7",
 				"B9F6D7953420C18F8302C884",
 				"9B3E3FC3CCF2B93CB37E0C59",
@@ -589,6 +599,15 @@
 			"buildRules" = ();
 			"dependencies" = ();
 		};
+		"67EB69EA2D75424725BA452F" = {
+			"isa" = "PBXFileReference";
+			"path" = "VegsnapTests/CommunityRepliesTests.swift";
+			"sourceTree" = "<group>";
+		};
+		"9192FF925ABFBB4747FA0657" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "67EB69EA2D75424725BA452F";
+		};
 		"2C6ABBC5541EE7064E19AB56" = {
 			"isa" = "PBXFileReference";
 			"path" = "VegsnapTests/CoreTests.swift";
@@ -602,6 +621,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
+				"9192FF925ABFBB4747FA0657",
 				"7F86C395D57DC3FA31FACD50",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
@@ -821,6 +841,7 @@
 				"1AD78CDBD21E6B9C653A7C76",
 				"FDCEC8B47AEDD587F4B0EA26",
 				"65E1A579773A6B04FAFBCD54",
+				"2F13A34AE244662F1B1B8F4F",
 				"0F054E864872A85EE7DBA676",
 				"8BF90562420F60A108D18E3A",
 				"B08386C3AB7D6FC28EA351D1",
@@ -843,6 +864,7 @@
 				"94FFACBD05CCC2330BE53863",
 				"CAD35054A8361FDDDDA0D4AB",
 				"5B725B4CAD96066C6878118B",
+				"67EB69EA2D75424725BA452F",
 				"2C6ABBC5541EE7064E19AB56",
 				"E5A966C26F65B271AB989996",
 				"0A3E27B8CA818264D75C8D81",

@@ -117,7 +117,13 @@
 "Looking up product…" = "Produkt wird gesucht…";
 "Manufacturer" = "Hersteller";
 "Manufacturer question" = "Frage an den Hersteller";
-"Manufacturer replies are community evidence. Check the product, market, date, and scope; they do not change this verdict." = "Herstellerantworten sind Community-Belege. Prüfe Produkt, Markt, Datum und Umfang; sie ändern dieses Ergebnis nicht.";
+"Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage." = "Geprüfte Antworten werden automatisch nur anhand von Produktname, Marke, Barcode und Land abgerufen. Bestätigungen für das ganze Produkt können dieses Ergebnis ändern; prüfe Datum und Geltungsbereich.";
+"Refresh manufacturer replies" = "Herstellerantworten aktualisieren";
+"This range may cover your product. Confirm the variant and country before using it." = "Diese Produktreihe könnte dein Produkt umfassen. Prüfe Variante und Land, bevor du die Antwort verwendest.";
+"This range covers my product" = "Diese Produktreihe umfasst mein Produkt";
+"Product range" = "Produktreihe";
+"Covered countries" = "Geltungsbereich: Länder";
+"More replies exist. The original verdict is kept because this lookup is incomplete." = "Es gibt weitere Antworten. Das ursprüngliche Ergebnis bleibt bestehen, weil diese Abfrage unvollständig ist.";
 "Market" = "Markt";
 "Message language" = "Nachrichtensprache";
 "Model ID" = "Modell-ID";

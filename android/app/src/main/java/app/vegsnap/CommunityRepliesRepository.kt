@@ -12,7 +12,7 @@ import okhttp3.Response
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Explicit public lookup; never sends history, photos, provider credentials or cookies. */
+/** Public product lookup; never sends history, photos, provider credentials or cookies. */
 internal class CommunityRepliesRepository(
     private val origin: HttpUrl,
     private val http: OkHttpClient = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)

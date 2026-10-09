@@ -24,27 +24,28 @@ internal data class CommunityLookup(val name: String, val brand: String, val bar
         val country = market.trim().uppercase(java.util.Locale.ROOT)
         require(country.matches(Regex("[A-Z]{2}")))
         val code = barcode.replace(Regex("[\\s-]"), "")
-        return listOf("market" to country) + if (code.isNotEmpty()) {
-            require(validGtin(code))
-            listOf("barcode" to code.padStart(14, '0'))
-        } else {
-            require(name.trim().length in 1..300 && brand.trim().length in 1..300)
-            listOf("name" to name.trim(), "brand" to brand.trim())
-        }
+        require(name.length <= 300 && brand.length <= 300)
+        if (code.isNotEmpty()) require(validGtin(code))
+        else require(name.trim().isNotEmpty() && brand.trim().isNotEmpty())
+        return listOf("market" to country) +
+            (if (code.isNotEmpty()) listOf("barcode" to code.padStart(14, '0')) else emptyList()) +
+            (if (name.isNotBlank()) listOf("name" to name.trim()) else emptyList()) +
+            (if (brand.isNotBlank()) listOf("brand" to brand.trim()) else emptyList())
     }
 }
 internal data class CommunityReply(
     val id: String, val productName: String, val brand: String, val market: String, val variant: String,
     val question: String, val reply: String, val repliedOn: String, val claim: String, val scope: String,
     val reviewedAt: String, val sourceUrl: String?, val evidencePublic: Boolean,
+    val match: String = "", val coverage: JSONObject? = null,
 )
-internal data class CommunityReplyPage(val replies: List<CommunityReply>, val more: Boolean)
+internal data class CommunityReplyPage(val replies: List<CommunityReply>, val more: Boolean, val candidates: List<CommunityReply> = emptyList())
 
 internal fun parseCommunityReplies(body: String): CommunityReplyPage {
     val value = JSONObject(body)
-    val records = value.getJSONArray("replies")
-    require(records.length() <= 50)
-    val replies = (0 until records.length()).map { index ->
+    fun parse(records: org.json.JSONArray, candidate: Boolean): List<CommunityReply> {
+      require(records.length() <= 50)
+      return (0 until records.length()).map { index ->
         val item = records.getJSONObject(index)
         fun text(field: String, limit: Int, required: Boolean = true): String = item.getString(field).also {
             require(it.length <= limit && (!required || it.isNotBlank()))
@@ -56,10 +57,23 @@ internal fun parseCommunityReplies(body: String): CommunityReplyPage {
         val reviewed = text("reviewedAt", 40).also { java.time.Instant.parse(it) }
         val market = text("market", 2).also { require(it.matches(Regex("[A-Z]{2}"))) }
         require(item.get("evidencePublic") is Boolean)
+        val match = item.optString("match")
+        require(match in setOf("", "barcode", "name", "brand", "candidate") && (candidate || match != "candidate"))
+        val coverage = item.optJSONObject("coverage")
+        if (coverage != null) {
+            require(coverage.getString("type") in setOf("products", "range"))
+            require(coverage.getJSONArray("markets").length() in 1..10)
+            for (index in 0 until coverage.getJSONArray("markets").length())
+                require(coverage.getJSONArray("markets").getString(index).matches(Regex("[A-Z]{2}")))
+            require(coverage.getJSONArray("products").length() <= 25)
+            if (coverage.getString("type") == "range") require(coverage.getJSONObject("range").getString("name").length in 1..300)
+        }
         CommunityReply(id, text("productName", 300), text("brand", 300), market, text("variant", 300, false),
             text("question", 4000), text("reply", 8000), date, claim, scope, reviewed,
-            publicEvidenceUrl(text("sourceUrl", 2000, false)), item.getBoolean("evidencePublic"))
+            publicEvidenceUrl(text("sourceUrl", 2000, false)), item.getBoolean("evidencePublic"), if (candidate) "candidate" else match, coverage)
+    }
     }
     require(value.get("more") is Boolean)
-    return CommunityReplyPage(replies, value.getBoolean("more"))
+    return CommunityReplyPage(parse(value.getJSONArray("replies"), false), value.getBoolean("more"),
+        value.optJSONArray("candidates")?.let { parse(it, true) } ?: emptyList())
 }

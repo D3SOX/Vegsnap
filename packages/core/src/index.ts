@@ -12,6 +12,6 @@ export { resolveCompanyConcerns, attachCompanyConcerns, createCompanyConcernReso
 export type { CompanyEntity, CompanyConcernRecord, CompanyConcernDataset } from './company-concerns';
 export { parseManufacturerContact, applyManufacturerContact, manufacturerMessage, manufacturerMessageLanguages, safeContactEmail, safeContactUrl } from './manufacturer-contact';
 export type { ManufacturerMessage, ManufacturerMessageLanguage } from './manufacturer-contact';
-export { communityLinks, validateCommunitySubmission, communityIdentityKey, SubmissionError } from './community';
-export type { CommunitySubmission, CommunityReply, ReplyClaim, ReplyScope } from './community';
+export { communityLinks, validateCommunitySubmission, communityIdentityKey, replyCoverage, communityMatchRules, applyCommunityReplies, communityLookupParams, parseCommunityReplyPage, SubmissionError } from './community';
+export type { CommunitySubmission, CommunityReply, CommunityProduct, CommunityReplyPage, ReplyCoverage, ReplyClaim, ReplyScope } from './community';
 export { parseCompanyAssessment, parseResultCompanyAssessment, sourcedCompanyAssessment, applyCompanyAssessment } from './company-assessment';

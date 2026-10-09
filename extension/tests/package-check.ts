@@ -3,6 +3,7 @@
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import communityService from '../../data/community-service.json';
 const root = join(import.meta.dir, '..');
 for (const target of ['chrome', 'firefox']) {
   const process = Bun.spawn(['bun', 'run', `build:${target === 'chrome' ? 'chromium' : 'firefox'}`], { cwd: root, stdout: 'pipe', stderr: 'pipe' });
@@ -13,8 +14,10 @@ for (const target of ['chrome', 'firefox']) {
   assert.equal(manifest.content_scripts?.length ?? 0, 0, 'Store scripts must not load before opt-in');
   assert(!manifest.permissions.includes('tabs'), 'No passive all-tab access');
   assert(manifest.optional_permissions.includes('nativeMessaging'), 'Companion must be optional');
-  assert.equal(manifest.host_permissions.length, 3, 'Only Open Facts databases receive default host access');
-  assert(manifest.host_permissions.every(host => /^https:\/\/world\.open(food|beauty|products)facts\.org\/\*$/.test(host)));
+  assert.deepEqual([...manifest.host_permissions].sort(), [
+    'https://world.openfoodfacts.org/*', 'https://world.openbeautyfacts.org/*', 'https://world.openproductsfacts.org/*',
+    `${new URL(communityService.baseUrl).origin}/*`,
+  ].sort(), 'Default host access is limited to Open Facts and the configured community service');
   assert(existsSync(join(directory, manifest.action.default_popup)));
   assert(existsSync(join(directory, 'app.html')));
   assert(existsSync(join(directory, 'content-scripts/store.js')), 'Dynamic store entrypoint must exist');

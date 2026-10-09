@@ -1,10 +1,15 @@
 import { api, clearErrors, copy, fieldError, languageSetup, message, prefill } from './common.js';
 
+import { coverageEditor } from './coverage.js';
+
 const form = document.querySelector('#submission');
 const send = document.querySelector('#send');
 const fileInput = document.querySelector('#evidence');
 const fragment = languageSetup();
 prefill(fragment);
+const primary = Object.fromEntries(['productName','brand','barcode','market','variant'].map(name=>[name,form.elements.namedItem(name).value]));
+const coverage = coverageEditor(form,undefined,primary);
+form.querySelector('fieldset').after(coverage.section);
 // Remove product identity from the address bar after using it, without persisting it.
 history.replaceState(null, '', location.pathname);
 document.querySelector('#repliedOn').max = new Date().toISOString().slice(0,10);
@@ -60,6 +65,7 @@ form.addEventListener('submit', async event => {
     const body = new FormData(form);
     body.set('evidence',processed,processed.type === 'application/pdf' ? 'reply.pdf' : 'reply.png');
     body.set('cf-turnstile-response',token);
+    body.set('coverage',JSON.stringify(coverage.value()));
     const result = await api('/api/submissions',{method:'POST',body});
     form.hidden = true;
     message(copy('success') + result.id);

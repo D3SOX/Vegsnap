@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,12 +29,11 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CancellationException
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONObject
 
 @Composable
-internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean) {
+internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean, state: CommunityRepliesState? = null) {
     val context = LocalContext.current
     val language = LocalConfiguration.current.locales[0].language
     val baseUrl = remember(context) { JSONObject(context.assets.open("community-service.json").bufferedReader().use { it.readText() }).optString("baseUrl") }
@@ -43,7 +41,7 @@ internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean) {
     val origin = links.submit.substringBefore("/submit#").toHttpUrl()
     val repository = remember(origin) { CommunityRepliesRepository(origin) }
     key(result.optString("id"), result.optJSONObject("identity")?.toString(), baseUrl) {
-        CommunityRepliesViewer(result, offline, links, loadReplies = repository::search, open = { url ->
+        CommunityRepliesViewer(result, offline, links, loadReplies = repository::search, state = state, open = { url ->
             runCatching { CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(url)) }
                 .onFailure { Toast.makeText(context, R.string.contact_open_failed, Toast.LENGTH_LONG).show() }
         })
@@ -53,84 +51,68 @@ internal fun CommunityRepliesSection(result: JSONObject, offline: Boolean) {
 @Composable
 internal fun CommunityRepliesViewer(
     result: JSONObject, offline: Boolean, links: CommunityLinks,
-    loadReplies: suspend (CommunityLookup) -> CommunityReplyPage, open: (String) -> Unit,
+    loadReplies: suspend (CommunityLookup) -> CommunityReplyPage, open: (String) -> Unit, state: CommunityRepliesState? = null,
 ) {
     val context = LocalContext.current
     val hiddenStore = remember(context) { HiddenCommunityReplies(context) }
-    var hidden by remember { mutableStateOf(hiddenStore.ids()) }
-    val identity = result.optJSONObject("identity") ?: JSONObject()
-    var lookup by remember { mutableStateOf(CommunityLookup(identity.optString("name"), identity.optString("brand"), identity.optString("barcode"), identity.optString("market"))) }
-    var expanded by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
-    var request by remember { mutableIntStateOf(0) }
-    var submitted by remember { mutableStateOf(lookup) }
-    var loading by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf<CommunityReplyPage?>(null) }
-    var error by remember { mutableStateOf<Int?>(null) }
-    fun find() {
-        page = null
-        error = null
-        if (runCatching { lookup.parameters() }.isFailure) { editing = true; error = R.string.community_invalid_lookup; return }
-        submitted = lookup
-        editing = false
-        loading = true
-        request++
-    }
-    LaunchedEffect(request, offline, expanded) {
-        if (offline || !expanded) { loading = false; page = null; error = null; return@LaunchedEffect }
-        if (request == 0 || !loading) return@LaunchedEffect
-        try { page = loadReplies(submitted) }
-        catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { error = R.string.community_load_failed }
-        finally { loading = false }
-    }
+    val controller = state ?: rememberCommunityRepliesState(result, offline, loadReplies)
+    LaunchedEffect(controller) { controller.hidden = hiddenStore.ids() }
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.community_replies), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.community_notice), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.community_lookup_notice), style = MaterialTheme.typography.bodySmall)
-            if (hidden.isNotEmpty()) {
+            if (controller.hidden.isNotEmpty()) {
                 Text(stringResource(R.string.community_blocked_notice), style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { hiddenStore.clear(); hidden = emptySet() }) { Text(stringResource(R.string.community_restore_replies)) }
+                TextButton(onClick = { hiddenStore.clear(); controller.hidden = emptySet() }) { Text(stringResource(R.string.community_restore_replies)) }
             }
             if (offline) Text(stringResource(R.string.community_offline), style = MaterialTheme.typography.bodySmall)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(onClick = { open(links.submit) }, enabled = !offline) { Text(stringResource(R.string.community_share)) }
-                TextButton(onClick = { if (expanded) expanded = false else { expanded = true; find() } }, enabled = !offline) {
-                    Text(stringResource(if (expanded) R.string.community_hide else R.string.community_view))
+                TextButton(onClick = { if (controller.expanded) controller.expanded = false else controller.expanded = true }, enabled = !offline) {
+                    Text(stringResource(if (controller.expanded) R.string.community_hide else R.string.community_view))
                 }
             }
-            if (expanded) {
-                fun edit(value: CommunityLookup) { lookup = value; page = null; error = null }
-                Text(listOf(lookup.name, lookup.brand, lookup.barcode, lookup.market).filter { it.isNotBlank() }.joinToString(" · "),
+            if (controller.expanded) {
+                fun edit(value: CommunityLookup) { controller.lookup = value; controller.page = null; controller.confirmed = emptySet(); controller.error = null }
+                Text(listOf(controller.lookup.name, controller.lookup.brand, controller.lookup.barcode, controller.lookup.market).filter { it.isNotBlank() }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall)
-                if (editing) {
-                    OutlinedTextField(lookup.name, { edit(lookup.copy(name = it.take(300))) }, label = { Text(stringResource(R.string.community_product_name)) },
-                        modifier = Modifier.fillMaxWidth(), enabled = !loading && !offline, singleLine = true)
-                    OutlinedTextField(lookup.brand, { edit(lookup.copy(brand = it.take(300))) }, label = { Text(stringResource(R.string.community_brand)) },
-                        modifier = Modifier.fillMaxWidth(), enabled = !loading && !offline, singleLine = true)
-                    OutlinedTextField(lookup.barcode, { edit(lookup.copy(barcode = it.take(40))) }, label = { Text(stringResource(R.string.community_barcode)) },
-                        modifier = Modifier.fillMaxWidth(), enabled = !loading && !offline, singleLine = true)
-                    OutlinedTextField(lookup.market, { edit(lookup.copy(market = it.take(2))) }, label = { Text(stringResource(R.string.community_market)) },
-                        modifier = Modifier.fillMaxWidth(), enabled = !loading && !offline, singleLine = true)
+                if (controller.editing) {
+                    OutlinedTextField(controller.lookup.name, { edit(controller.lookup.copy(name = it.take(300))) }, label = { Text(stringResource(R.string.community_product_name)) },
+                        modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
+                    OutlinedTextField(controller.lookup.brand, { edit(controller.lookup.copy(brand = it.take(300))) }, label = { Text(stringResource(R.string.community_brand)) },
+                        modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
+                    OutlinedTextField(controller.lookup.barcode, { edit(controller.lookup.copy(barcode = it.take(40))) }, label = { Text(stringResource(R.string.community_barcode)) },
+                        modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
+                    OutlinedTextField(controller.lookup.market, { edit(controller.lookup.copy(market = it.take(2))) }, label = { Text(stringResource(R.string.community_market)) },
+                        modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = { editing = !editing }, enabled = !loading && !offline) { Text(stringResource(R.string.community_edit_lookup)) }
-                    TextButton(onClick = ::find, enabled = !loading && !offline) { Text(stringResource(R.string.community_find)) }
+                    TextButton(onClick = { controller.editing = !controller.editing }, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_edit_lookup)) }
+                    TextButton(onClick = controller::find, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_find)) }
                 }
                 Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (loading) Text(stringResource(R.string.community_loading), style = MaterialTheme.typography.bodySmall)
-                    error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
-                    page?.let { value ->
-                        if (value.replies.isEmpty()) Text(stringResource(R.string.community_empty), style = MaterialTheme.typography.bodySmall)
+                    if (controller.loading) Text(stringResource(R.string.community_loading), style = MaterialTheme.typography.bodySmall)
+                    controller.error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
+                    controller.page?.let { value ->
+                        if (value.replies.isEmpty() && value.candidates.isEmpty()) Text(stringResource(R.string.community_empty), style = MaterialTheme.typography.bodySmall)
                         else Text(stringResource(R.string.community_review_notice), style = MaterialTheme.typography.bodySmall)
-                        value.replies.filter { it.id !in hidden }.forEach { reply -> key(reply.id) {
-                            CommunityReplyCard(reply, links, open, offline) { hidden = hiddenStore.hide(reply.id) }
+                        value.replies.filter { it.id !in controller.hidden }.forEach { reply -> key(reply.id) {
+                            CommunityReplyCard(reply, links, open, offline) { controller.hidden = hiddenStore.hide(reply.id) }
+                        } }
+                        value.candidates.filter { it.id !in controller.hidden }.forEach { reply -> key(reply.id) {
+                            if (reply.id !in controller.confirmed) {
+                                Text(stringResource(R.string.community_range_candidate), style = MaterialTheme.typography.bodySmall)
+                                TextButton(onClick = { controller.confirmed = controller.confirmed + reply.id }, enabled = !offline) {
+                                    Text(stringResource(R.string.community_confirm_range, reply.coverage?.optJSONObject("range")?.optString("name") ?: reply.productName))
+                                }
+                            }
+                            CommunityReplyCard(reply, links, open, offline) { controller.hidden = hiddenStore.hide(reply.id) }
                         } }
                         if (value.more) {
                             Text(stringResource(R.string.community_more), style = MaterialTheme.typography.bodySmall)
-                            val queryResult = JSONObject().put("identity", JSONObject().put("name", submitted.name).put("brand", submitted.brand)
-                                .put("barcode", submitted.barcode).put("market", submitted.market))
+                            val queryResult = JSONObject().put("identity", JSONObject().put("name", controller.submitted.name).put("brand", controller.submitted.brand)
+                                .put("barcode", controller.submitted.barcode).put("market", controller.submitted.market))
                             val website = communityLinks(queryResult, LocalConfiguration.current.locales[0].language, links.replies.substringBefore("/replies#"))!!.replies
                             TextButton(onClick = { open(website) }, enabled = !offline) { Text(stringResource(R.string.community_view_all)) }
                         }
@@ -146,9 +128,9 @@ private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, ope
     var expanded by remember { mutableStateOf(false) }
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("${reply.brand} · ${reply.productName}", style = MaterialTheme.typography.titleSmall)
+            Text(reply.coverage?.optJSONObject("range")?.optString("name") ?: "${reply.brand} · ${reply.productName}", style = MaterialTheme.typography.titleSmall)
             CommunityReplyField(R.string.community_response_date, reply.repliedOn)
-            CommunityReplyField(R.string.community_market, reply.market)
+            CommunityReplyField(R.string.community_market, reply.coverage?.optJSONArray("markets")?.let { countries -> (0 until countries.length()).joinToString(", ") { countries.getString(it) } } ?: reply.market)
             if (reply.variant.isNotBlank()) CommunityReplyField(R.string.community_variant, reply.variant)
             CommunityReplyField(R.string.community_claim, stringResource(when (reply.claim) {
                 "vegan" -> R.string.community_claim_vegan

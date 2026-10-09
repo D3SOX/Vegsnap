@@ -38,6 +38,7 @@ internal enum class ResultClassification(val label: Int, val icon: ImageVector,
     RESEARCH(R.string.vegan_certification_source, Icons.Outlined.FindInPage, 0xFF005466, 0xFFBFEEFF, 0xFF8ED3E8, 0xFF003C4A),
     UNCERTAIN(R.string.uncertain, Icons.AutoMirrored.Outlined.HelpOutline, 0xFF635000, 0xFFFFECA5, 0xFFE5CE78, 0xFF443700),
     CONFLICTING(R.string.conflicting, Icons.AutoMirrored.Outlined.CompareArrows, 0xFF813800, 0xFFFFDCC5, 0xFFFFB785, 0xFF5C2800),
+    MANUFACTURER_NOT_VEGAN(R.string.not_vegan_manufacturer, Icons.Outlined.Business, 0xFF862133, 0xFFFFD8DF, 0xFFFFADB9, 0xFF5D1D2B),
     NOT_VEGAN(R.string.not_vegan, Icons.Outlined.Cancel, 0xFF922C34, 0xFFFFDADB, 0xFFFFB3B7, 0xFF641B23);
 
     fun colors(dark: Boolean): Pair<Color, Color> = if (dark) Color(darkInk) to Color(darkSurface)
@@ -45,7 +46,7 @@ internal enum class ResultClassification(val label: Int, val icon: ImageVector,
 }
 
 internal fun resultClassification(outcome: String, basis: String = ""): ResultClassification = when (outcome) {
-    "not_vegan" -> ResultClassification.NOT_VEGAN
+    "not_vegan" -> if (basis == "manufacturer") ResultClassification.MANUFACTURER_NOT_VEGAN else ResultClassification.NOT_VEGAN
     "conflicting" -> ResultClassification.CONFLICTING
     "vegan" -> when (basis) {
         "certified" -> ResultClassification.CERTIFIED

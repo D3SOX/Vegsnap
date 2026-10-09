@@ -2,18 +2,21 @@ import SwiftUI
 
 struct ResultView: View {
     var store: AppStore; var saved: SavedCheck
-    var result: CheckResult { saved.result }
+    @State private var community = CommunityRepliesState()
+    @State private var communityRefresh = 0
+    var result: CheckResult { community.displayResult(saved.result, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
     @State private var findingFilter = "all"
     @State private var query = ""
     @State private var message: ManufacturerMessage?
     @State private var messageLanguage = language
     @State private var photo: String?
-    var findings: [Finding] { result.findings.filter { (findingFilter == "all" || $0.status == findingFilter) && (query.isEmpty || ($0.term + " " + ($0.displayTerm ?? "")).localizedCaseInsensitiveContains(query)) } }
     var body: some View {
+        let result = self.result
+        let findings = result.findings.filter { (findingFilter == "all" || $0.status == findingFilter) && (query.isEmpty || ($0.term + " " + ($0.displayTerm ?? "")).localizedCaseInsensitiveContains(query)) }
         List {
             Section {
                 VStack(alignment: .leading, spacing: 14) {
-                    Label(result.outcome.label, systemImage: result.outcome.icon).font(.title2.bold()).foregroundStyle(result.outcome.color).accessibilityIdentifier("resultOutcome")
+                    Label(result.outcomeLabel, systemImage: result.outcomeIcon).font(.title2.bold()).foregroundStyle(result.outcome.color).accessibilityIdentifier("resultOutcome")
                     Text(result.title).font(.title3.weight(.semibold))
                     Text(result.summary)
                     if let brand = result.identity.brand, !brand.isEmpty { Text(brand).foregroundStyle(.secondary) }
@@ -96,7 +99,7 @@ struct ResultView: View {
             if result.usedAI || result.companyAssessment != nil {
                 Section { ContentReportButton(store: store, kind: "ai", initialText: ([result.summary, result.companyAssessment?.summary ?? ""] + result.evidence.filter { ["ai_extraction", "manufacturer", "certification"].contains($0.kind) }.map(\.excerpt)).joined(separator: "\n\n")) }
             }
-            CommunitySection(store: store, result: result)
+            CommunitySection(store: store, state: community, onRefresh: { communityRefresh += 1 })
             Section {
                 Button(L("Check again"), systemImage: "arrow.clockwise") {
                     if store.enqueue(input: saved.input ?? result.retryInput, photos: saved.photos) {
@@ -104,9 +107,12 @@ struct ResultView: View {
                         store.selectedTab = "check"
                     }
                 }
-                ShareLink(item: result.title + "\n" + result.outcome.label + "\n\n" + result.summary) { Label(L("Share result"), systemImage: "square.and.arrow.up") }
+                ShareLink(item: result.title + "\n" + result.outcomeLabel + "\n\n" + result.summary) { Label(L("Share result"), systemImage: "square.and.arrow.up") }
             }
         }.navigationTitle(L("Result")).navigationBarTitleDisplayMode(.inline)
+            .task(id: CommunityRequestKey(id: saved.id, identity: saved.result.identity, offline: store.settings.offline, refresh: communityRefresh, locale: store.locale)) {
+                await community.load(saved.result, engine: store.engine, locale: store.locale, offline: store.settings.offline)
+            }
             .sheet(isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { if let message { MessageView(message: message) } }
             .sheet(isPresented: Binding(get: { photo != nil }, set: { if !$0 { photo = nil } })) { if let photo { PhotoReview(store: store, name: photo) } }
     }
@@ -119,26 +125,26 @@ struct MessageView: View {
         NavigationStack { Form { Section { Text(message.subject).font(.headline); TextEditor(text: $bodyText).frame(minHeight: 300) }; Section { ShareLink(item: message.subject + "\n\n" + bodyText) { Label(L("Share draft"), systemImage: "square.and.arrow.up") }; if let mailto = message.mailto, var components = URLComponents(string: mailto) { let _ = components.queryItems = [URLQueryItem(name: "subject", value: message.subject), URLQueryItem(name: "body", value: bodyText)]; if let url = components.url { Link(L("Open in Mail"), destination: url) } } } }.navigationTitle(L("Manufacturer question")).toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("Done")) { dismiss() } } }.onAppear { bodyText = message.body } }
     }
 }
-struct CommunityReply: Decodable, Identifiable {
-    var id: String; var productName: String; var brand: String; var market: String; var variant: String; var question: String; var reply: String; var repliedOn: String; var claim: String; var scope: String; var sourceUrl: String; var reviewedAt: String; var evidencePublic: Bool
-}
 struct CommunitySection: View {
-    var store: AppStore; var result: CheckResult
-    @State private var replies: [CommunityReply] = []
-    @State private var loading = false
-    @State private var loaded = false
-    @State private var more = false
-    @State private var failure: String?
-    @State private var links: CommunityLinks?
-    @State private var loadTask: Task<Void, Never>?
+    var store: AppStore; var state: CommunityRepliesState; var onRefresh: () -> Void
+    var replies: [CommunityReply] { (state.page?.replies ?? []) + (state.page?.candidates ?? []) }
     var body: some View {
         Section {
-            Text(L("Manufacturer replies are community evidence. Check the product, market, date, and scope; they do not change this verdict.")).font(.footnote).foregroundStyle(.secondary)
-            Button { loadTask = Task { await load() } } label: { Label(L("Find manufacturer replies"), systemImage: "bubble.left.and.text.bubble.right") }.disabled(loading || store.settings.offline)
-            if loading { ProgressView() }
-            if loaded && replies.isEmpty { Text(L("No matching replies found.")) }
-            if let failure { Text(failure).foregroundStyle(.secondary) }
+            Text(L("Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage.")).font(.footnote).foregroundStyle(.secondary)
+            Button(action: onRefresh) { Label(L("Refresh manufacturer replies"), systemImage: "arrow.clockwise") }.disabled(state.loading || store.settings.offline)
+            if state.loading { ProgressView() }
+            if state.page != nil && replies.isEmpty { Text(L("No matching replies found.")) }
+            if let failure = state.failure { Text(failure).foregroundStyle(.secondary) }
             ForEach(replies.filter { !store.hiddenReplies.contains($0.id) }) { reply in DisclosureGroup(reply.productName + " · " + reply.brand) {
+                if reply.match == "candidate" {
+                    Text(L("This range may cover your product. Confirm the variant and country before using it.")).font(.footnote).foregroundStyle(.secondary)
+                    Button(L("This range covers my product")) { state.confirmed.insert(reply.id) }.disabled(state.confirmed.contains(reply.id))
+                }
+                if let coverage = reply.coverage {
+                    if let range = coverage.range { LabeledContent(L("Product range"), value: range.name) }
+                    LabeledContent(L("Covered countries"), value: coverage.markets.joined(separator: ", "))
+                    ForEach(Array(coverage.products.enumerated()), id: \.offset) { _, product in Text(product.productName + " · " + product.brand + (product.variant.isEmpty ? "" : " · " + product.variant)).font(.footnote) }
+                }
                 if !reply.variant.isEmpty { LabeledContent(L("Variant"), value: reply.variant) }
                 Text(L("Question")).font(.caption).foregroundStyle(.secondary)
                 Text(reply.question).textSelection(.enabled)
@@ -152,39 +158,16 @@ struct CommunitySection: View {
                 LabeledContent(L("Scope"), value: L(["whole_product": "Whole product", "ingredients": "Ingredients", "processing": "Processing"][reply.scope] ?? "Unknown"))
                 Text(L("Reviewed") + ": " + reply.reviewedAt.prefix(10))
                 if reply.evidencePublic {
-                    if let url = links?.evidenceURL(for: reply.id) { Link(L("Download reviewed evidence"), destination: url).disabled(store.settings.offline) }
+                    if let url = state.links?.evidenceURL(for: reply.id) { Link(L("Download reviewed evidence"), destination: url).disabled(store.settings.offline) }
                 } else { Text(L("Evidence reviewed privately.")).font(.footnote).foregroundStyle(.secondary) }
-                if let url = safeURL(reply.sourceUrl) { Link(L("Source"), destination: url) }
+                if let url = safeURL(reply.sourceUrl) { Link(L("Source"), destination: url).disabled(store.settings.offline) }
             } }
             if !store.hiddenReplies.isEmpty { Text(L("Hidden replies stay hidden on this device.")).font(.footnote) }
-            if more, let links, let url = safeURL(links.replies) { Link(L("View all replies"), destination: url).disabled(store.settings.offline) }
-            if let links, let url = safeURL(links.submit) { Link(L("Contribute a redacted reply"), destination: url).disabled(store.settings.offline) }
+            if state.page?.more == true {
+                Text(L("More replies exist. The original verdict is kept because this lookup is incomplete.")).font(.footnote).foregroundStyle(.secondary)
+                if let url = safeURL(state.links?.replies) { Link(L("View all replies"), destination: url).disabled(store.settings.offline) }
+            }
+            if let url = safeURL(state.links?.submit) { Link(L("Contribute a redacted reply"), destination: url).disabled(store.settings.offline) }
         } header: { Text(L("Community manufacturer replies")) }
-        .task {
-            struct Arguments: Encodable { var result: CheckResult; var locale: String }
-            links = try? store.engine.call("community", Arguments(result: result, locale: store.locale))
-        }
-        .onDisappear { loadTask?.cancel() }
-        .onChange(of: store.settings.offline) { _, offline in if offline { loadTask?.cancel() } }
-    }
-    private func load() async {
-        guard !store.settings.offline, let links, var url = URLComponents(string: links.replies) else { return }
-        loading = true; failure = nil; defer { loading = false }
-        url.path = "/api/replies"; url.fragment = nil
-        var items = [URLQueryItem(name: "market", value: result.identity.market)]
-        if let code = result.identity.barcode, !code.isEmpty { items.append(URLQueryItem(name: "barcode", value: code)) }
-        else {
-            guard let name = result.identity.name, !name.isEmpty, let brand = result.identity.brand, !brand.isEmpty else { failure = L("A product name and brand, or a barcode, are needed."); return }
-            items += [URLQueryItem(name: "name", value: name), URLQueryItem(name: "brand", value: brand)]
-        }
-        url.queryItems = items
-        do {
-            struct Page: Decodable { var replies: [CommunityReply]; var more: Bool }
-            let data = try await Network.get(url.url!, limit: 4_000_000)
-            let page = try JSONDecoder().decode(Page.self, from: data)
-            guard page.replies.count <= 50, page.replies.allSatisfy({ UUID(uuidString: $0.id) != nil && $0.productName.count <= 300 && $0.brand.count <= 300 && $0.reply.count <= 8000 && $0.question.count <= 4000 && ["vegan", "not_vegan", "inconclusive"].contains($0.claim) && ["whole_product", "ingredients", "processing"].contains($0.scope) && HistoryTransfer.parseDate($0.reviewedAt) != nil }) else { throw AppError(L("The service returned an invalid response.")) }
-            try Task.checkCancellation()
-            replies = page.replies; more = page.more; loaded = true
-        } catch { if !Task.isCancelled { failure = error.localizedDescription } }
     }
 }
