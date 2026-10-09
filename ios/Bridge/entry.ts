@@ -58,10 +58,10 @@ export function check(id: string, json: string) {
       let extraction: core.AIExtraction | undefined;
       const adapter: core.ProviderAdapter | undefined = args.hostedToken ? core.createHostedAIProvider(args.hostedToken) : args.provider ? {
         supportsWebSearch: args.provider.baseUrl.replace(/\/$/, '') === 'https://api.openai.com/v1',
-        extract: (input, signal) => core.createOpenAIProvider(args.provider, args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined, globalThis.fetch).extract(input, signal),
+        extract: (input, signal, countryContext) => core.createOpenAIProvider(args.provider, args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined, globalThis.fetch).extract(input, signal, countryContext),
       } : undefined;
-      const provider: core.ProviderAdapter | undefined = adapter && { ...adapter, extract: async (input, signal) => {
-        extraction = core.validateAIExtraction(await adapter.extract(input, signal), { allowResearch: true });
+      const provider: core.ProviderAdapter | undefined = adapter && { ...adapter, extract: async (input, signal, countryContext) => {
+        extraction = core.validateAIExtraction(await adapter.extract(input, signal, countryContext), { allowResearch: true });
         return extraction;
       } };
       const options: core.CheckOptions = { mode: 'explicit', offline: args.offline, provider, offlineProducts: index, signal: controller.signal, onProgress: stage => { if (operations.get(id) === controller) host.nativeProgress(id, stage); } };

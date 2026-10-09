@@ -122,7 +122,7 @@ export interface AIExtraction {
 }
 export interface ProviderAdapter {
   supportsWebSearch?: boolean;
-  extract(input: CheckInput, signal?: AbortSignal): Promise<AIExtraction>;
+  extract(input: CheckInput, signal?: AbortSignal, countryContext?: { fallbackMarket: string; markets: readonly string[] }): Promise<AIExtraction>;
 }
 export interface ProviderConfig {
   baseUrl: string;

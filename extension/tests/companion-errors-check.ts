@@ -5,6 +5,7 @@ import { checkProduct } from '@vegsnap/core';
 
 let failure = '';
 const commands: string[] = [];
+const payloads: { text: string; countryContext?: unknown }[] = [];
 mock.module('wxt/browser', () => ({ browser: {
   permissions: { async contains() { return true; } },
   runtime: { getURL: (path: string) => `chrome-extension://fixture${path}`, connectNative() {
@@ -14,7 +15,8 @@ mock.module('wxt/browser', () => ({ browser: {
       onMessage: { addListener(value: typeof listener) { listener = value; } },
       onDisconnect: { addListener(value: typeof disconnect) { disconnect = value; } },
       disconnect() { disconnect(); },
-      postMessage(request: { id: string; command: string }) {
+      postMessage(request: { id: string; command: string; payload?: { text: string; countryContext?: unknown } }) {
+        if (request.command === 'check' && request.payload) payloads.push(request.payload);
         commands.push(request.command);
         queueMicrotask(() => listener(request.command === 'check'
           ? { id: request.id, ok: false, error: failure }
@@ -40,3 +42,13 @@ for (const message of [
   assert.deepEqual(await companion('status'), { connected: true }, 'Plan usage errors do not disconnect the saved account');
 }
 console.log('Companion plan errors: actionable usage/service messages survive native transport and evaluation without retries or account loss');
+
+for (const automatic of [false, true]) {
+  await companionProvider('fixture-model').extract({ market: 'SE', autoMarket: automatic }, undefined,
+    { fallbackMarket: 'DE', markets: ['en:sweden'] }).catch(() => {});
+  const payload = payloads.at(-1)!;
+  assert.deepEqual(payload.countryContext, { automatic, fallbackMarket: 'DE', markets: ['en:sweden'] });
+  const product = JSON.parse(payload.text);
+  assert.equal(product.market, 'SE');
+  for (const key of ['autoMarket', 'countryContext', 'fallbackMarket', 'markets', 'automatic']) assert.equal(key in product, false);
+}

@@ -241,6 +241,89 @@ struct CheckPayload {
     text: String,
     #[serde(default)]
     image_data_urls: Vec<String>,
+    #[serde(default)]
+    country_context: Option<CountryContext>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CountryContext {
+    automatic: bool,
+    fallback_market: String,
+    markets: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct ProductCountries {
+    codes: Vec<String>,
+    aliases: std::collections::HashMap<String, String>,
+}
+
+fn product_country(value: &str) -> Option<String> {
+    use unicode_normalization::UnicodeNormalization;
+    static COUNTRIES: std::sync::OnceLock<ProductCountries> = std::sync::OnceLock::new();
+    let countries = COUNTRIES.get_or_init(|| {
+        serde_json::from_str(include_str!("../../contracts/product-countries.json"))
+            .expect("bundled product country aliases are valid")
+    });
+    let code = value.trim().to_uppercase();
+    if countries.codes.contains(&code) {
+        return Some(code);
+    }
+    let normalized = value.nfkc().collect::<String>().trim().to_lowercase();
+    let name: String = normalized
+        .strip_prefix("en:")
+        .unwrap_or(&normalized)
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .collect();
+    countries.aliases.get(&name).cloned()
+}
+
+impl CountryContext {
+    fn validate(&self) -> Result<()> {
+        if self.fallback_market.len() > 300
+            || product_country(&self.fallback_market).is_none()
+            || self.markets.len() > 1000
+            || self.markets.iter().any(|market| market.len() > 300)
+        {
+            return Err("Invalid product country context.".into());
+        }
+        Ok(())
+    }
+
+    fn research_market(&self, packaging: Option<&str>) -> String {
+        let fallback = product_country(&self.fallback_market).unwrap_or_else(|| "DE".into());
+        if !self.automatic {
+            return fallback;
+        }
+        let country = packaging.and_then(product_country);
+        let markets: Option<Vec<String>> = self
+            .markets
+            .iter()
+            .map(|value| product_country(value))
+            .collect();
+        let Some(markets) = markets else {
+            return fallback;
+        };
+        if packaging.is_some() && country.is_none()
+            || country
+                .as_ref()
+                .is_some_and(|value| !markets.is_empty() && !markets.contains(value))
+        {
+            return fallback;
+        }
+        if let Some(country) = country {
+            return country;
+        }
+        if let Some(first) = markets
+            .first()
+            .filter(|first| markets.iter().all(|value| value == *first))
+        {
+            return first.clone();
+        }
+        fallback
+    }
 }
 
 fn now() -> u64 {
@@ -900,6 +983,9 @@ fn check_content(payload: CheckPayload) -> Result<(String, Vec<Value>)> {
     {
         return Err("Invalid model or product text length.".into());
     }
+    if let Some(context) = &payload.country_context {
+        context.validate()?;
+    }
     let mut content = vec![json!({"type":"input_text","text":payload.text})];
     for image in payload.image_data_urls {
         let encoded = [
@@ -996,6 +1082,7 @@ fn unresolved_public_ingredients(extracted: &Value, research: &Value) -> Vec<Str
 fn research_content(
     analysis: &crate::stream::AnalysisResponse,
     content: &[Value],
+    country_context: Option<&CountryContext>,
 ) -> Option<Vec<Value>> {
     let extracted = extraction_json(&analysis.text)?;
     let name = extracted["name"]
@@ -1052,7 +1139,8 @@ fn research_content(
         .unwrap_or(Value::Null);
     let mut identity = json!({
         "name":name,"brand":brand,"category":extracted["category"],
-        "market":original["market"].as_str().unwrap_or("DE"),
+        "market":country_context.map(|context| context.research_market(extracted["packaging"]["country"].as_str()))
+            .unwrap_or_else(|| original["market"].as_str().unwrap_or("DE").to_owned()),
         "locale":original["locale"].as_str().unwrap_or("en")
     });
     if !unresolved.is_empty() {
@@ -1171,9 +1259,10 @@ fn valid_research_additions(value: &Value) -> bool {
 fn research_if_needed(
     first: crate::stream::AnalysisResponse,
     content: &[Value],
+    country_context: Option<&CountryContext>,
     follow_up: impl FnOnce(Vec<Value>) -> Result<crate::stream::AnalysisResponse>,
 ) -> crate::stream::AnalysisResponse {
-    let Some(research_input) = research_content(&first, content) else {
+    let Some(research_input) = research_content(&first, content, country_context) else {
         return first;
     };
     let Ok(researched) = follow_up(research_input) else {
@@ -1273,8 +1362,12 @@ fn research_if_needed(
 }
 
 pub fn check(payload: Value) -> Result<Value> {
-    let payload: CheckPayload =
+    let mut payload: CheckPayload =
         serde_json::from_value(payload).map_err(|_| "Invalid product check request.")?;
+    if let Some(context) = &payload.country_context {
+        context.validate()?;
+    }
+    let country_context = payload.country_context.take();
     let (model, content) = check_content(payload)?;
     let prompt: Value =
         serde_json::from_str(include_str!("../../contracts/ai-extraction-prompt.json"))
@@ -1316,7 +1409,9 @@ pub fn check(payload: Value) -> Result<Value> {
         crate::stream::read_response(BufReader::new(response))
     };
     let first = request(content.clone(), false)?;
-    let analysis = research_if_needed(first, &content, |identity| request(identity, true));
+    let analysis = research_if_needed(first, &content, country_context.as_ref(), |identity| {
+        request(identity, true)
+    });
     Ok(json!({"text":analysis.text,"research":analysis.research}))
 }
 
@@ -1324,6 +1419,92 @@ pub fn check(payload: Value) -> Result<Value> {
 mod tests {
     use super::*;
     use jsonwebtoken::{EncodingKey, Header, encode};
+
+    #[test]
+    fn research_country_uses_local_clues_without_sending_them_upstream() {
+        for (automatic, markets, packaging, initial, expected) in [
+            (true, vec![], Some("Sweden"), "DE", "SE"),
+            (false, vec![], Some("Sweden"), "DE", "DE"),
+            (true, vec!["en:sweden"], None, "SE", "SE"),
+            (true, vec!["en:sweden"], Some("Finland"), "SE", "DE"),
+            (
+                true,
+                vec!["en:sweden", "en:norway"],
+                Some("Sweden"),
+                "DE",
+                "SE",
+            ),
+            (
+                true,
+                vec!["en:sweden", "en:norway"],
+                Some("Finland"),
+                "DE",
+                "DE",
+            ),
+            (
+                true,
+                vec!["en:sweden", "unknown"],
+                Some("Sweden"),
+                "DE",
+                "DE",
+            ),
+        ] {
+            let public_input = json!({"market":initial,"locale":"en"}).to_string();
+            let mut payload: CheckPayload = serde_json::from_value(json!({
+                "model":"test","text":public_input,
+                "countryContext":{"automatic":automatic,"fallbackMarket":"DE","markets":markets}
+            }))
+            .unwrap();
+            let context = payload.country_context.take().unwrap();
+            context.validate().unwrap();
+            let (_, content) = check_content(payload).unwrap();
+            assert_eq!(content[0]["text"], public_input);
+            let mut first = research_fixture(false);
+            let mut extracted = extraction_json(&first.text).unwrap();
+            if let Some(country) = packaging {
+                extracted["packaging"] = json!({"country":country});
+            }
+            first.text = extracted.to_string();
+            let followup = research_content(&first, &content, Some(&context)).unwrap();
+            let identity: Value =
+                serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
+            assert_eq!(identity["market"], expected);
+            for field in [
+                "countryContext",
+                "fallbackMarket",
+                "markets",
+                "automatic",
+                "autoMarket",
+            ] {
+                assert!(identity.get(field).is_none(), "{field} leaked to provider");
+            }
+        }
+    }
+
+    #[test]
+    fn local_country_context_is_optional_bounded_and_uses_shared_aliases() {
+        let legacy: CheckPayload =
+            serde_json::from_value(json!({"model":"test","text":"label"})).unwrap();
+        assert!(legacy.country_context.is_none());
+        assert!(check_content(legacy).is_ok());
+        for country in ["Sweden", "en:sweden", "sverige", "Ｓｗｅｄｅｎ"] {
+            assert_eq!(product_country(country).as_deref(), Some("SE"));
+        }
+        for country in ["constructor", "EU", "Made in Sweden"] {
+            assert!(product_country(country).is_none());
+        }
+        for context in [
+            json!({"automatic":true,"fallbackMarket":"EU","markets":[]}),
+            json!({"automatic":true,"fallbackMarket":"DE","markets":["x".repeat(301)]}),
+            json!({"automatic":true,"fallbackMarket":"DE","markets":vec!["SE"; 1001]}),
+        ] {
+            let payload = serde_json::from_value(
+                json!({"model":"test","text":"label","countryContext":context}),
+            )
+            .unwrap();
+            assert!(check_content(payload).is_err());
+        }
+    }
 
     #[test]
     fn http_plan_errors_share_safe_stream_recovery_messages() {
@@ -1410,7 +1591,7 @@ mod tests {
     fn research_followup_preserves_contact_with_actual_source_provenance() {
         let contact = json!({"email":"care@maker.example","sourceUrl":"https://maker.example/contact","productName":"Granola Kakao & Hallon","brand":"Paulúns"});
         for searched in [false, true] {
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(searched);
                 let mut extracted = extraction_json(&next.text).unwrap();
                 extracted["contact"] = contact.clone();
@@ -1433,7 +1614,7 @@ mod tests {
     fn research_followup_preserves_company_assessment_with_tool_sources() {
         let assessment = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The consulted policy does not resolve animal-testing practices.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Company policy","quote":"Our policy"}]});
         for searched in [false, true] {
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(searched);
                 let mut extracted = extraction_json(&next.text).unwrap();
                 extracted["companyAssessment"] = assessment.clone();
@@ -1464,7 +1645,7 @@ mod tests {
         first.text = extracted.to_string();
         first.research["sources"] =
             json!([{"url":"https://maker.example/policy","title":"Policy"}]);
-        let result = research_if_needed(first, &[], |_| {
+        let result = research_if_needed(first, &[], None, |_| {
             let mut next = research_fixture(true);
             let mut extracted = extraction_json(&next.text).unwrap();
             let mut unsupported = assessment.clone();
@@ -1481,7 +1662,7 @@ mod tests {
 
     #[test]
     fn malformed_optional_contact_does_not_discard_other_research() {
-        let result = research_if_needed(research_fixture(false), &[], |_| {
+        let result = research_if_needed(research_fixture(false), &[], None, |_| {
             let mut next = research_fixture(true);
             let mut extracted = extraction_json(&next.text).unwrap();
             extracted["contact"] = json!("malformed");
@@ -1502,7 +1683,7 @@ mod tests {
             json!({"type":"input_text","text":json!({"text":"private supplied text", "market":"SE","locale":"en"}).to_string()}),
             json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="}),
         ];
-        let result = research_if_needed(research_fixture(false), &content, |followup| {
+        let result = research_if_needed(research_fixture(false), &content, None, |followup| {
             assert_eq!(followup.len(), 1);
             let serialized = serde_json::to_string(&followup).unwrap();
             assert!(!serialized.contains("private supplied text"));
@@ -1541,7 +1722,7 @@ mod tests {
             json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="}),
         ];
         let mut calls = 0;
-        let result = research_if_needed(first, &content, |input| {
+        let result = research_if_needed(first, &content, None, |input| {
             calls += 1;
             let public_input = input[0]["text"].as_str().unwrap();
             assert!(!public_input.contains("private note"));
@@ -1579,7 +1760,7 @@ mod tests {
         let metadata = json!({"searched":true,"sources":[{"url":"https://maker.example/granola","title":"Product"}]});
         first.text = value.to_string();
         first.research = metadata.clone();
-        let input = research_content(&first, &[]).unwrap();
+        let input = research_content(&first, &[], None).unwrap();
         let identity: Value = serde_json::from_str(input[0]["text"].as_str().unwrap()).unwrap();
         assert_eq!(identity["unresolvedIngredients"], json!(["vitamin D"]));
         for mode in ["not_consulted", "wrong_variant", "private_only", "resolved"] {
@@ -1597,7 +1778,7 @@ mod tests {
                 _ => unreachable!(),
             }
             first.text = data.to_string();
-            assert!(research_content(&first, &[]).is_none(), "{mode}");
+            assert!(research_content(&first, &[], None).is_none(), "{mode}");
         }
     }
 
@@ -1625,7 +1806,7 @@ mod tests {
                 first.text = original.to_string();
                 let saved_text = first.text.clone();
                 let saved_research = first.research.clone();
-                let result = research_if_needed(first, &[], |_| {
+                let result = research_if_needed(first, &[], None, |_| {
                     let mut next = research_fixture(true);
                     let mut value = extraction_json(&next.text).unwrap();
                     let addition = public_entry(limit);
@@ -1656,7 +1837,7 @@ mod tests {
 
     #[test]
     fn valid_research_display_translation_preserves_source_term() {
-        let result = research_if_needed(research_fixture(false), &[], |_| {
+        let result = research_if_needed(research_fixture(false), &[], None, |_| {
             let mut next = research_fixture(true);
             let mut value = extraction_json(&next.text).unwrap();
             value["ingredientAssessments"] = json!([{"term":"naturlig arom","translatedTerm":"natural flavouring","status":"ambiguous","explanation":"Origin depends on the product."}]);
@@ -1726,7 +1907,7 @@ mod tests {
         }
         for (field, invalid) in cases {
             let original = research_fixture(false);
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(true);
                 let mut value = extraction_json(&next.text).unwrap();
                 value[field] = invalid.clone();
@@ -1745,7 +1926,7 @@ mod tests {
         original["ingredientAssessments"] = json!([{"term":"mystery ingredient","status":"plant","explanation":"Initial assessment"}]);
         first.text = original.to_string();
         let actual_research = json!({"searched":true,"sources":[{"url":"https://maker.example/granola","title":"Product"}]});
-        let result = research_if_needed(first, &[], |_| {
+        let result = research_if_needed(first, &[], None, |_| {
             let mut next = research_fixture(true);
             let mut value = extraction_json(&next.text).unwrap();
             value["ingredientAssessments"] = json!([{"term":"mystery ingredient","status":"animal","explanation":"Conflicting assessment"}]);
@@ -1776,7 +1957,7 @@ mod tests {
             first.text = value.to_string();
             let original_text = first.text.clone();
             let original_research = first.research.clone();
-            let result = research_if_needed(first, &[], |_| {
+            let result = research_if_needed(first, &[], None, |_| {
                 let mut next = research_fixture(true);
                 let mut value = extraction_json(&next.text).unwrap();
                 value["ingredientAssessments"] = json!([{"term":"unfamiliar ingredient","status":"animal","explanation":"Conflicting origin"}]);
@@ -1814,9 +1995,11 @@ mod tests {
                 extracted[key] = value.clone();
             }
             first.text = extracted.to_string();
-            research_if_needed(first, &content, |_| panic!("No research request expected"));
+            research_if_needed(first, &content, None, |_| {
+                panic!("No research request expected")
+            });
         }
-        research_if_needed(research_fixture(true), &content, |_| {
+        research_if_needed(research_fixture(true), &content, None, |_| {
             panic!("Search was already used")
         });
     }
@@ -1825,7 +2008,7 @@ mod tests {
     fn failed_or_mismatched_research_keeps_completed_photo_extraction() {
         for mode in ["failure", "not_searched", "wrong_variant"] {
             let original = research_fixture(false).text;
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 if mode == "failure" {
                     return Err("Search failed".into());
                 }
@@ -2447,6 +2630,7 @@ mod tests {
             model: "vision".into(),
             text: "label".into(),
             image_data_urls: photos,
+            country_context: None,
         })
         .unwrap();
         assert_eq!(content.len(), 4);
@@ -2460,7 +2644,8 @@ mod tests {
                 check_content(CheckPayload {
                     model: "vision".into(),
                     text: String::new(),
-                    image_data_urls: photos
+                    image_data_urls: photos,
+                    country_context: None,
                 })
                 .is_err()
             );
@@ -2469,7 +2654,8 @@ mod tests {
             check_content(CheckPayload {
                 model: " ".into(),
                 text: String::new(),
-                image_data_urls: vec![]
+                image_data_urls: vec![],
+                country_context: None,
             })
             .is_err()
         );

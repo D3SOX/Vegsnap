@@ -24,7 +24,7 @@ internal class MatsparCatalogue(
 ) {
     suspend fun lookup(identity: JSONObject): JSONObject? {
         val packaging = identity.optJSONObject("packaging") ?: return null
-        if (identity.optString("category") !in setOf("food", "drink") ||
+        if (productCountryCode(identity.optString("market", "DE")) != "SE" || identity.optString("category") !in setOf("food", "drink") ||
             normalizeProductIdentity(packaging.optString("language")) !in setOf("sv", "swedish", "svenska") ||
             packaging.has("country") && normalizeProductIdentity(packaging.optString("country")) !in setOf("se", "sweden", "sverige") ||
             identity.optString("barcode").let(::validGtin)) return null

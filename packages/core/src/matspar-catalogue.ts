@@ -1,4 +1,5 @@
 import { normalizeBarcode } from './barcode';
+import { countryCode } from './market';
 import { readBoundedText } from './http';
 import { compositionTerms, parseSourceIngredients, safeSourceUrl } from './analyze';
 import type { AIExtraction, CheckInput } from './types';
@@ -30,7 +31,7 @@ function matches(product: JsonObject, name: string, brand: string, quantityValue
 }
 function swedishIdentity(extraction: AIExtraction, input: CheckInput): { name: string; brand: string; quantity: string; variant: string } | undefined {
   const packaging = extraction.packaging;
-  if (!packaging || !['food', 'drink'].includes(extraction.category) ||
+  if (!packaging || countryCode(input.market ?? 'DE') !== 'SE' || !['food', 'drink'].includes(extraction.category) ||
     !['sv', 'swedish', 'svenska'].includes(identity(packaging.language ?? '')) ||
     packaging.country && !['se', 'sweden', 'sverige'].includes(identity(packaging.country)) ||
     normalizeBarcode(input.barcode ?? extraction.barcode ?? '')) return undefined;

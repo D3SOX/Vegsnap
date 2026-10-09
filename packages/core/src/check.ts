@@ -77,7 +77,9 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   if (options.provider.supportsWebSearch === false) result.webSearchStatus = 'unsupported';
   try {
     options.onProgress?.('ai');
-    const extracted = validateAIExtraction(await options.provider.extract(input, options.signal), { allowResearch: true });
+    const extractionInput = { ...input, market: selectProductCountry(input, undefined, markets).market };
+    const extracted = validateAIExtraction(await options.provider.extract(extractionInput, options.signal,
+      { fallbackMarket: input.market ?? 'DE', markets }), { allowResearch: true });
     options.onProgress?.('evaluating');
     const suppliedCode = input.barcode && normalizeBarcode(input.barcode);
     const extractedCode = extracted.barcode && normalizeBarcode(extracted.barcode);
@@ -101,6 +103,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     const authoritativeText = hasCompleteText ? original : extracted.text;
     const completeForEvaluation = authoritativeText.length <= 20_000 && (hasCompleteText || complete);
     const aiInput = { ...input, ...extracted,
+      market: selectProductCountry(input, packagingCountry, markets).market,
       text: authoritativeText,
       category: input.category && input.category !== 'other' ? input.category : extracted.category,
       barcode: suppliedCode || extractedCode || input.barcode,

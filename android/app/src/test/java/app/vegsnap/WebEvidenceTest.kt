@@ -88,6 +88,39 @@ class WebEvidenceTest {
         .put("productName", name).put("brand", brand)
     private fun officialRepository(server: MockWebServer) = CheckRepository(evaluator, "Photo prompt",
         CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(), researchPrompt = "Research the identified product")
+    @Test fun researchUsesPackagingAndDatabaseCountriesWithoutLosingTheOriginalFallback() = runBlocking {
+        data class Scenario(val automatic: Boolean, val markets: List<String>, val packaging: String?, val initial: String, val research: String, val source: String)
+        for (scenario in listOf(
+            Scenario(true, emptyList(), "Sweden", "DE", "SE", "packaging"),
+            Scenario(false, emptyList(), "Sweden", "DE", "DE", "manual"),
+            Scenario(true, listOf("en:sweden"), null, "SE", "SE", "database"),
+            Scenario(true, listOf("en:sweden"), "Finland", "SE", "DE", "fallback"),
+            Scenario(true, listOf("en:sweden", "en:norway"), "Sweden", "DE", "SE", "packaging"),
+            Scenario(true, listOf("en:sweden", "en:norway"), "Finland", "DE", "DE", "fallback"),
+        )) MockWebServer().use { server ->
+            if (scenario.markets.isNotEmpty()) server.enqueue(MockResponse().setBody(JSONObject().put("product",
+                JSONObject().put("code", "4006381333931").put("product_name", "Basic tissues").put("ingredients_text", "mystery")
+                    .put("countries_tags", JSONArray(scenario.markets))).toString()))
+            val first = extraction().apply {
+                remove("webClaims")
+                scenario.packaging?.let { put("packaging", JSONObject().put("country", it)) }
+            }
+            val initialResponse = providerResponse(first.toString()).apply { getJSONArray("output").remove(0) }
+            server.enqueue(MockResponse().setBody(initialResponse.toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(extraction().toString()).toString()))
+            val result = officialRepository(server).check(CheckInput(market = "DE", autoMarket = scenario.automatic,
+                barcode = if (scenario.markets.isEmpty()) "" else "4006381333931"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            if (scenario.markets.isNotEmpty()) server.takeRequest()
+            val initial = JSONObject(server.takeRequest().body.readUtf8())
+            assertEquals(scenario.initial, JSONObject(initial.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text")).getString("market"))
+            val followup = JSONObject(requireNotNull(server.takeRequest(1, TimeUnit.SECONDS)).body.readUtf8())
+            val identity = JSONObject(followup.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals(scenario.research, identity.getString("market"))
+            assertEquals(scenario.research, result.getJSONObject("identity").getString("market"))
+            assertEquals(scenario.source, result.getJSONObject("identity").getString("marketSource"))
+            assertEquals(if (scenario.markets.isEmpty()) 2 else 3, server.requestCount)
+        }
+    }
     @Test fun verboseSearchResultsCannotDiscardTheRetrievedComposition() = runBlocking {
         MockWebServer().use { server ->
             val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Granola").put("brand", "Maker")

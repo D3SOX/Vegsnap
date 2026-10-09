@@ -45,6 +45,29 @@ class HostedAIFlowTest {
             assertFalse(payload.has("complete"))
         }
     }
+    @Test fun hostedCountryContextPreservesFallbackAndExactDatabaseClues() = runBlocking {
+        for (automatic in listOf(true, false)) MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(JSONObject().put("product", JSONObject().put("code", "4006381333931")
+                .put("product_name", "Oats").put("ingredients_text", "mystery").put("countries_tags", org.json.JSONArray().put("en:sweden"))).toString()))
+            server.enqueue(MockResponse().setBody(extraction))
+            val origin = server.url("/").toString().trimEnd('/')
+            val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())
+            }.build()
+            CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), "test instructions", client,
+                hostedBaseUrl = origin).check(CheckInput(category = "food", market = "DE", autoMarket = automatic, barcode = "4006381333931"),
+                listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
+            server.takeRequest()
+            val payload = JSONObject(server.takeRequest().body.readUtf8())
+            assertEquals(if (automatic) "SE" else "DE", payload.getString("market"))
+            if (automatic) {
+                assertEquals("DE", payload.getJSONObject("countryContext").getString("fallbackMarket"))
+                assertEquals("SE", payload.getJSONObject("countryContext").getJSONArray("markets").getString(0))
+            } else assertFalse(payload.has("countryContext"))
+            assertFalse(payload.has("autoMarket"))
+            assertEquals(2, server.requestCount)
+        }
+    }
     @Test fun missingHostedSessionKeepsLocalEvidenceWithoutSendingAPhoto() = runBlocking {
         MockWebServer().use { server ->
             val origin = server.url("/").toString().trimEnd('/')

@@ -8,6 +8,7 @@ import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
 import { normalizeBarcode } from './barcode';
+import { selectProductCountry } from './market';
 import { lookupMatspar, retainMatsparComposition, matchesMatsparIdentity } from './matspar-catalogue';
 
 export const EXTRACTION_PROMPT = promptData.prompt;
@@ -183,7 +184,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
   const endpoint = new URL(`${base.pathname.replace(/\/$/, '')}/${supportsWebSearch ? 'responses' : 'chat/completions'}`, base.origin).href;
   return {
     supportsWebSearch,
-    async extract(input: CheckInput, signal?: AbortSignal): Promise<AIExtraction> {
+    async extract(input, signal, countryContext): Promise<AIExtraction> {
       const images = input.images ?? [];
       if (images.length > 3) throw new Error('Use at most three product photos per check.');
       if (images.length && !(config.supportsVision ?? acceptsImages(config.model))) throw new Error('Choose a vision-capable model for photo checks.');
@@ -218,10 +219,13 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       const body = await send(requestBody);
       if (supportsWebSearch) {
         const extracted = parseResponsesExtraction(body);
+        const researchInput = { ...input, market: selectProductCountry(
+          { ...input, market: countryContext?.fallbackMarket ?? input.market }, extracted.packaging?.country, countryContext?.markets,
+        ).market };
         let catalogue: Awaited<ReturnType<typeof lookupMatspar>>;
         if (input.images?.length && needsResearch(extracted, input)) {
           try {
-            catalogue = await lookupMatspar(extracted, input, catalogueFetcher ?? fetcher, requestSignal);
+            catalogue = await lookupMatspar(extracted, researchInput, catalogueFetcher ?? fetcher, requestSignal);
           } catch (error) {
             if (requestSignal.aborted) throw error;
           }
@@ -236,7 +240,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
             } } },
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
               packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
-              category: extracted.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, input),
+              category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
               ...(catalogue ? { catalogueComposition: catalogue } : {}) }) }] }],
           }));
           const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);

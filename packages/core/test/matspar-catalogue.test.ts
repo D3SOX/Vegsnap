@@ -2,12 +2,13 @@ import { describe, expect, test } from 'bun:test';
 import { lookupMatspar, retainMatsparComposition } from '../src/matspar-catalogue';
 import { checkProduct } from '../src/check';
 import { createOpenAIProvider } from '../src/provider';
+import { selectProductCountry } from '../src/market';
 import type { AIExtraction, CheckInput } from '../src/types';
 
 const ingredients = 'INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster.';
 const extraction: AIExtraction = { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop',
   packaging: { language: 'sv', country: 'Sverige', quantity: '200 g', variant: 'chili' } };
-const input: CheckInput = { images: ['data:image/jpeg;base64,AA=='] };
+const input: CheckInput = { market: 'SE', images: ['data:image/jpeg;base64,AA=='] };
 const listing = (overrides: Record<string, unknown> = {}) => ({ name: 'Hummus chili', brand: 'Coop', weight_pretty: '200g', slug: 'produkt/hummus-chili-200g-coop', ...overrides });
 function fetcherWith(products: unknown[], full: Record<string, unknown> = listing({ ingredients })) {
   const requests: { url: string; init?: RequestInit }[] = [];
@@ -20,6 +21,16 @@ function fetcherWith(products: unknown[], full: Record<string, unknown> = listin
 }
 
 describe('Matspar catalogue fallback', () => {
+  test('selected countries outside Sweden skip the regional catalogue before any request', async () => {
+    const fallback = selectProductCountry({ market: 'DE', autoMarket: true }, 'SE', ['en:finland']).market;
+    for (const selected of [{ market: 'DE', autoMarket: false }, { market: fallback, autoMarket: true }, { market: undefined }]) {
+      for (const country of [undefined, 'SE']) {
+        const { fetcher, requests } = fetcherWith([listing()]);
+        expect(await lookupMatspar({ ...extraction, packaging: { ...extraction.packaging, country } }, { ...input, ...selected }, fetcher)).toBeUndefined();
+        expect(requests).toHaveLength(0);
+      }
+    }
+  });
   test('catalogue provenance supports only composition and preserves independent contact and company evidence', () => {
     const url = 'https://www.matspar.se/produkt/hummus-chili-200g-coop';
     const independentUrl = 'https://maker.example/contact';
