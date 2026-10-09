@@ -6,6 +6,13 @@ struct ContentReport: Encodable {
     var text = ""
     var reason: String
     static func validID(_ id: String) -> Bool { id.range(of: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", options: .regularExpression) != nil }
+    static func excerpt(_ text: String) -> String {
+        var units = 0
+        return String(text.prefix { character in
+            units += character.utf16.count
+            return units <= 8000
+        })
+    }
     func validatedData() throws -> Data {
         let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)

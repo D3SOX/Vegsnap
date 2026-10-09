@@ -211,8 +211,8 @@ import Security
         defer { try? FileManager.default.removeItem(at: root) }
         let store = try AppStore(root: root)
         let result = try analyze("Ingredients: honey")
-        var job = CheckJob(input: CheckInput(text: "Ingredients: honey"), photos: [])
-        job.id = result.id
+        let job = CheckJob(input: CheckInput(text: "Ingredients: honey"), photos: [])
+        XCTAssertNotEqual(job.id, result.id)
         store.jobs = [job]; try store.files.save(store.jobs, "queue.json")
         let saved = SavedCheck(id: result.id, result: result, input: job.input, photos: [])
         try FileManager.default.createDirectory(at: store.files.url("history.json"), withIntermediateDirectories: true)
@@ -223,6 +223,8 @@ import Security
         try FileManager.default.createDirectory(at: store.files.url("queue.json"), withIntermediateDirectories: true)
         XCTAssertThrowsError(try store.complete(saved, jobID: job.id))
         XCTAssertEqual(store.history.count, 1); XCTAssertEqual(store.jobs.count, 1)
+        XCTAssertEqual(store.history.first?.id, job.id)
+        XCTAssertEqual(store.history.first?.result.id, job.id)
         try FileManager.default.removeItem(at: store.files.url("queue.json"))
         try store.files.save([job], "queue.json")
         let restored = try AppStore(root: root)
@@ -245,6 +247,16 @@ import Security
         }
         _ = try await service.search("final", source: .food, cursor: 0, locale: "en")
         XCTAssertLessThan(Date().timeIntervalSince(start), 10)
+    }
+    func testReportExcerptRespectsUTF16WithoutSplittingCharacters() throws {
+        for character in ["😀", "👩🏽‍💻", "e\u{301}", "a"] {
+            let input = String(repeating: character, count: 8001)
+            let excerpt = ContentReport.excerpt(input)
+            XCTAssertLessThanOrEqual(excerpt.utf16.count, 8000)
+            XCTAssertGreaterThan(excerpt.utf16.count + character.utf16.count, 8000)
+            XCTAssertTrue(input.hasPrefix(excerpt))
+            XCTAssertNoThrow(try ContentReport(kind: "ai", text: excerpt, reason: "Incorrect").validatedData())
+        }
     }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)

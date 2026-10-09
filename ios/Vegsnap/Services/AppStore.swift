@@ -140,13 +140,14 @@ import CryptoKit
             let name = (result.identity.name ?? job.input.name).trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { result.title = name }
             else if !job.input.text.isEmpty { result.title = String(job.input.text.prefix(80)) }
-            let saved = SavedCheck(id: result.id, result: result, input: job.input, photos: job.photos)
-            try complete(saved, jobID: job.id)
+            let saved = try complete(SavedCheck(id: result.id, result: result, input: job.input, photos: job.photos), jobID: job.id)
             if selectedTab == "check" && selectedResult == nil { selectedResult = saved }
         } catch is CancellationError { setStatus(job.id, "cancelled") }
         catch { setStatus(job.id, "failed", error: error.localizedDescription) }
     }
-    func complete(_ saved: SavedCheck, jobID: String) throws {
+    @discardableResult func complete(_ result: SavedCheck, jobID: String) throws -> SavedCheck {
+        // The core generates its own result ID; completion must retain the queue's identity.
+        var saved = result; saved.id = jobID; saved.result.id = jobID
         let nextHistory = [saved] + history.filter { $0.id != saved.id }
         try files.save(nextHistory, "history.json")
         history = nextHistory
@@ -154,6 +155,7 @@ import CryptoKit
         let nextJobs = jobs.filter { $0.id != jobID }
         try files.save(nextJobs, "queue.json")
         jobs = nextJobs
+        return saved
     }
     func setStatus(_ id: String, _ status: String, error: String? = nil) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }

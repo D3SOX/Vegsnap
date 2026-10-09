@@ -15,7 +15,7 @@ struct ContentReportButton: View {
     @Environment(\.scenePhase) private var phase
     var title: String { L(kind == "ai" ? "Report AI content" : "Report this reply") }
     var body: some View {
-        Button(title) { text = String(initialText.prefix(8000)); reason = ""; receipt = nil; failure = nil; open = true }.disabled(store.settings.offline)
+        Button(title) { text = ContentReport.excerpt(initialText); reason = ""; receipt = nil; failure = nil; open = true }.disabled(store.settings.offline)
             .sheet(isPresented: $open, onDismiss: { task?.cancel() }) {
                 NavigationStack {
                     Form {
