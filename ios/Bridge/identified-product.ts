@@ -72,7 +72,7 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
       normalize(text(product.brands)) === normalize(brand) && words(localized(product, 'product_name')).join(' ') === expectedWords.join(' ') &&
       normalize(text(product.quantity)).replace(/\s/g, '') === normalize(packaging.quantity!).replace(/\s/g, '') &&
       words(packaging.variant ?? '').every(word => expectedWords.includes(word)) &&
-      (!expectedCountry || !packagingCountry && !markets.length || markets.some(market => countryCode(market) === expectedCountry));
+      (!expectedCountry || !packagingCountry && input.autoMarket !== false && !markets.length || markets.some(market => countryCode(market) === expectedCountry));
   });
   if (candidates.length !== 1) return;
   const product = candidates[0]!;

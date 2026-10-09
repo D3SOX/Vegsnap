@@ -185,14 +185,19 @@ test('manual country corrections cannot attach composition from a conflicting pa
   expect(result.evidence.some(item => item.kind === 'database')).toBe(false);
   expect(app.calls.some(call => call.url.includes('/cgi/search.pl'))).toBe(false);
 });
-test('manual countries constrain recovery even when the packaging has no country clue', async () => {
+test('manual country recovery requires matching tags while automatic recovery can retain untagged evidence', async () => {
   const extraction = { text: '', complete: false, category: 'food', name: 'Hummus chili', brand: 'Coop', packaging: { language: 'sv', quantity: '200 g' } };
-  const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags: ['en:sweden'], ingredients_text_sv: 'honey' };
-  const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
-    : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
-  const result = await app.check({ input: { market: 'DE', autoMarket: false, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
-  expect(result.identity).toMatchObject({ market: 'DE', marketSource: 'manual' });
-  expect(result.evidence.some(item => item.kind === 'database')).toBe(false);
+  for (const autoMarket of [false, true]) for (const countries_tags of [undefined, [], ['en:sweden'], ['en:germany']]) {
+    const product = { code: '4006381333931', product_name_sv: 'Hummus chili', brands: 'Coop', quantity: '200g', countries_tags, ingredients_text_sv: 'honey' };
+    const app = harness(url => url.includes('/cgi/search.pl') ? { status: 200, body: { count: 1, products: [product] } }
+      : { status: 200, body: { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] } });
+    const result = await app.check({ input: { market: 'SE', autoMarket, images: ['data:image/jpeg;base64,AA=='] }, provider: { baseUrl: 'https://fixture.invalid/v1', model: 'vision', supportsVision: true }, aiEnabled: true });
+    const accepted = countries_tags?.includes('en:sweden') || autoMarket && !countries_tags?.length;
+    expect(result.identity).toMatchObject({ market: 'SE', marketSource: autoMarket ? 'fallback' : 'manual' });
+    expect(result.evidence.some(item => item.kind === 'database')).toBe(accepted);
+    expect(result.outcome).toBe(accepted ? 'not_vegan' : 'uncertain');
+    if (autoMarket && !countries_tags?.length) expect(result.warnings.join(' ')).toContain('does not confirm the product country');
+  }
 });
 test('packaging matches preserve complete database composition, source and app language', async () => {
   const extraction = { text: '', complete: false, category: 'food', name: 'Coop Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', country: 'Sweden', variant: 'med chili' }, ingredientAssessments: [{ term: 'kikärtor', status: 'plant', explanation: 'Chickpeas are plants.' }] };
