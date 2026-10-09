@@ -1,6 +1,8 @@
 import UIKit
 import Vision
 import ImageIO
+import CoreTransferable
+import UniformTypeIdentifiers
 
 /// Decode a bounded thumbnail rather than allocating full-resolution images. Redrawing strips EXIF/GPS.
 enum PhotoProcessor {
@@ -56,4 +58,15 @@ func expandUPCE(_ value: String) -> String {
     default: body = String(d[1...5]) + "0000" + String(d[6])
     }
     return String(d[0]) + body + String(d[7])
+}
+
+/// PhotosPicker lends a file URL; read only the supported byte budget while it is valid.
+struct PickedPhoto: Transferable {
+    let data: Data
+    static func load(_ url: URL) throws -> PickedPhoto {
+        PickedPhoto(data: try readLimitedFile(url, limit: 30_000_000))
+    }
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .image) { received in try load(received.file) }
+    }
 }

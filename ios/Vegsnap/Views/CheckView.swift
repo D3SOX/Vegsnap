@@ -68,7 +68,7 @@ struct CheckView: View {
             importing = true
             Task {
                 defer { importing = false; selection = [] }
-                do { for item in items.prefix(3 - store.draftPhotos.count) { if let data = try await item.loadTransferable(type: Data.self) { try store.addPhoto(data) } } }
+                do { for item in items.prefix(3 - store.draftPhotos.count) { if let photo = try await item.loadTransferable(type: PickedPhoto.self) { try store.addPhoto(photo.data) } } }
                 catch { store.report(error) }
             }
         }

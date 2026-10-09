@@ -53,6 +53,9 @@ for name, folder, product, kind in [('Vegsnap','Vegsnap','Vegsnap.app','applicat
         dependencies.append(add(name+':dependency','PBXTargetDependency',target=ident('Vegsnap:target')))
     phases=[sources,frameworks,resources]
     if name=='Vegsnap':
+        prepare_inputs = ['$(SRCROOT)/prepare.ts', '$(SRCROOT)/../package.json'] + ['$(SRCROOT)/' + str(p.relative_to(root)) for p in sorted((root/'Bridge').glob('*')) if p.is_file()] + ['$(SRCROOT)/../' + str(p.relative_to(root.parent)) for folder in ['packages/core/src', 'data', 'contracts'] for p in sorted((root.parent/folder).rglob('*')) if p.is_file() and p.suffix in ('.ts', '.json')]
+        prepare = add('prepare-engine', 'PBXShellScriptBuildPhase', buildActionMask=2147483647, files=[], inputPaths=prepare_inputs, outputPaths=['$(SRCROOT)/Vegsnap/Resources/Generated'] + ['$(SRCROOT)/Vegsnap/Resources/Generated/' + file for file in ['core.js', 'runtime.js', 'hosted-ai.json', 'community-service.json']], runOnlyForDeploymentPostprocessing=0, alwaysOutOfDate=1, name='Prepare decision engine', shellPath='/bin/sh', shellScript='set -eu\nexport PATH="$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"\nif ! command -v bun >/dev/null 2>&1; then echo "error: Install Bun to build Vegsnap (https://bun.sh)." >&2; exit 1; fi\ncd "$SRCROOT/.."\nbun run ios:prepare\n')
+        phases.insert(0, prepare)
         dependencies.append(add(name+':dependency','PBXTargetDependency',target=ident('VegsnapShare:target')))
         embed=add('embed-share','PBXBuildFile',fileRef=ident('VegsnapShare:product'),settings={'ATTRIBUTES':['RemoveHeadersOnCopy']})
         phases.append(add('embed-extensions','PBXCopyFilesBuildPhase',buildActionMask=2147483647,files=[embed],dstPath='',dstSubfolderSpec=13,name='Embed App Extensions',runOnlyForDeploymentPostprocessing=0))

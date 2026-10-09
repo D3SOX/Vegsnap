@@ -166,7 +166,10 @@ import CryptoKit
             let saved = try complete(SavedCheck(id: result.id, result: result, input: job.input, photos: job.photos), jobID: job.id)
             if selectedTab == "check" && selectedResult == nil { selectedResult = saved }
         } catch is CancellationError { setStatus(job.id, "cancelled") }
-        catch { setStatus(job.id, "failed", error: error.localizedDescription) }
+        catch {
+            if Task.isCancelled { setStatus(job.id, "cancelled") }
+            else { setStatus(job.id, "failed", error: error.localizedDescription) }
+        }
     }
     @discardableResult func complete(_ result: SavedCheck, jobID: String) throws -> SavedCheck {
         // The core generates its own result ID; completion must retain the queue's identity.

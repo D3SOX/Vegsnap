@@ -30,9 +30,11 @@ struct BrowseView: View {
             if let next, !busy { Button(L("Load more")) { search(cursor: next) } }
             if !searched { ContentUnavailableView(L("Explore product records"), systemImage: "books.vertical", description: Text(L("Search food, cosmetics, products, beverages, and companies."))) }
         }.navigationTitle(L("Browse"))
-            .onChange(of: source) { _, _ in cancelSearch(); records = []; next = nil; searched = false; failure = nil }
+            .onChange(of: source) { _, _ in resetSearch() }
+            .onChange(of: store.settings.offline) { _, _ in resetSearch() }
             .onDisappear { cancelSearch() }
     }
+    private func resetSearch() { cancelSearch(); records = []; next = nil; searched = false; failure = nil }
     private func cancelSearch() { searchTask?.cancel(); busy = false }
     private func search(cursor: Int = 0) {
         let requestedQuery = cursor == 0 ? query.trimmingCharacters(in: .whitespacesAndNewlines) : submittedQuery

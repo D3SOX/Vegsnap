@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import bundled from '../../data/offline/bundle.json';
 import { readFile } from 'node:fs/promises';
 import { createContext, runInContext } from 'node:vm';
 import type { CheckResult } from '../../packages/core/src/types';
@@ -28,6 +29,22 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   };
 }
 describe('iOS JavaScriptCore host contract', () => {
+  test('offline search ranks overlapping packs before filtering and pagination', () => {
+    const app = harness();
+    const products = bundled.products.filter(p => p.source === 'off').slice(0, 21).map(p => ({ ...p, name: 'old', brands: 'overlap-fixture', countries_tags: ['en:germany'], last_modified_t: p.last_modified_t + 1 }));
+    const old = { ...bundled, generatedAt: '2026-01-01T00:00:00Z', products };
+    const fresh = { ...old, generatedAt: '2026-02-01T00:00:00Z', products: products.map(p => ({ ...p, name: 'fresh', last_modified_t: p.last_modified_t + 1 })) };
+    const latest = { ...fresh, generatedAt: '2026-03-01T00:00:00Z', products: fresh.products.map(p => ({ ...p, name: 'latest' })) };
+    const otherMarket = { ...latest, products: [{ ...latest.products[0], name: 'wrong market', countries_tags: ['en:france'], last_modified_t: latest.products[0].last_modified_t + 999 }] };
+    app.call('snapshots', [old, fresh, latest, otherMarket]);
+    const first: { code: string; name: string }[] = app.call('offlineSearch', { source: 'off', query: 'overlap-fixture', offset: 0 });
+    const second: { code: string; name: string }[] = app.call('offlineSearch', { source: 'off', query: 'overlap-fixture', offset: 20 });
+    expect(first).toHaveLength(20); expect(second).toHaveLength(1);
+    expect(new Set([...first, ...second].map(p => p.code)).size).toBe(21);
+    expect([...first, ...second].every(p => p.name === 'latest')).toBe(true);
+    expect(app.call('offlineSearch', { source: 'off', query: 'wrong market', offset: 0 })).toHaveLength(0);
+  });
+
   test('exports the engine and evaluates offline without network', async () => {
     const app = harness();
     const result = await app.check({ input: { text: 'Ingredients: oats, honey', category: 'food', locale: 'en' }, offline: true, aiEnabled: false });

@@ -350,6 +350,60 @@
 			"defaultConfigurationIsVisible" = 0;
 			"defaultConfigurationName" = "Release";
 		};
+		"F51328003A0FD911F37D82E5" = {
+			"isa" = "PBXShellScriptBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = ();
+			"inputPaths" = (
+				"$(SRCROOT)/prepare.ts",
+				"$(SRCROOT)/../package.json",
+				"$(SRCROOT)/Bridge/bridge.test.ts",
+				"$(SRCROOT)/Bridge/entry.ts",
+				"$(SRCROOT)/Bridge/runtime.js",
+				"$(SRCROOT)/../packages/core/src/ai-evidence.ts",
+				"$(SRCROOT)/../packages/core/src/analyze.ts",
+				"$(SRCROOT)/../packages/core/src/barcode.ts",
+				"$(SRCROOT)/../packages/core/src/check.ts",
+				"$(SRCROOT)/../packages/core/src/community.ts",
+				"$(SRCROOT)/../packages/core/src/company-assessment.ts",
+				"$(SRCROOT)/../packages/core/src/company-concerns.ts",
+				"$(SRCROOT)/../packages/core/src/database.ts",
+				"$(SRCROOT)/../packages/core/src/hosted-ai.ts",
+				"$(SRCROOT)/../packages/core/src/http.ts",
+				"$(SRCROOT)/../packages/core/src/index.ts",
+				"$(SRCROOT)/../packages/core/src/ingredient-display.ts",
+				"$(SRCROOT)/../packages/core/src/manufacturer-contact.ts",
+				"$(SRCROOT)/../packages/core/src/merge-results.ts",
+				"$(SRCROOT)/../packages/core/src/model-capabilities.ts",
+				"$(SRCROOT)/../packages/core/src/offline.ts",
+				"$(SRCROOT)/../packages/core/src/provider.ts",
+				"$(SRCROOT)/../packages/core/src/types.ts",
+				"$(SRCROOT)/../packages/core/src/web-evidence.ts",
+				"$(SRCROOT)/../data/community-service.json",
+				"$(SRCROOT)/../data/company-concerns.json",
+				"$(SRCROOT)/../data/hosted-ai.json",
+				"$(SRCROOT)/../data/manufacturer-messages.json",
+				"$(SRCROOT)/../data/offline/bundle.json",
+				"$(SRCROOT)/../data/result-translations.json",
+				"$(SRCROOT)/../data/rules.json",
+				"$(SRCROOT)/../contracts/ai-extraction-prompt.json",
+				"$(SRCROOT)/../contracts/ai-extraction.schema.json",
+				"$(SRCROOT)/../contracts/history.schema.json",
+				"$(SRCROOT)/../contracts/result.schema.json",
+			);
+			"outputPaths" = (
+				"$(SRCROOT)/Vegsnap/Resources/Generated",
+				"$(SRCROOT)/Vegsnap/Resources/Generated/core.js",
+				"$(SRCROOT)/Vegsnap/Resources/Generated/runtime.js",
+				"$(SRCROOT)/Vegsnap/Resources/Generated/hosted-ai.json",
+				"$(SRCROOT)/Vegsnap/Resources/Generated/community-service.json",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+			"alwaysOutOfDate" = 1;
+			"name" = "Prepare decision engine";
+			"shellPath" = "/bin/sh";
+			"shellScript" = "set -eu\nexport PATH=\"$HOME/.bun/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"\nif ! command -v bun >/dev/null 2>&1; then echo \"error: Install Bun to build Vegsnap (https://bun.sh).\" >&2; exit 1; fi\ncd \"$SRCROOT/..\"\nbun run ios:prepare\n";
+		};
 		"8B6D689EEDEB1581D2E59191" = {
 			"isa" = "PBXTargetDependency";
 			"target" = "860AE81B68E2E8FDA5FEEE33";
@@ -382,6 +436,7 @@
 			"productType" = "com.apple.product-type.application";
 			"buildConfigurationList" = "0B7A3B74BCB1203B3C58D836";
 			"buildPhases" = (
+				"F51328003A0FD911F37D82E5",
 				"F81F4A69B67969EA565645D7",
 				"CC0D71F8D611C9B1F70C927F",
 				"767DE6B9D8ABEE6A4CA88E39",

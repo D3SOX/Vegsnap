@@ -356,6 +356,15 @@ import Security
         }
         XCTAssertEqual(restored.history.count, 2)
     }
+    func testPickerFileImportRejectsOversizedAssets() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("small fixture".utf8).write(to: url)
+        XCTAssertEqual(try PickedPhoto.load(url).data, Data("small fixture".utf8))
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.truncate(atOffset: 100_000_000); try handle.close()
+        XCTAssertThrowsError(try PickedPhoto.load(url))
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")

@@ -22,7 +22,7 @@ export function call(operation: string, json: string): string {
     case 'provider': core.validateProviderConfig(args); return 'true';
     case 'snapshot': return JSON.stringify(core.validateOfflineSnapshot(args));
     case 'snapshots': snapshots = [core.validateOfflineSnapshot(bundled), ...args.map(core.validateOfflineSnapshot)]; index = new core.OfflineProductIndex(snapshots); return 'true';
-    case 'offlineSearch': return JSON.stringify(snapshots.flatMap(s => s.products.filter(p => p.source === args.source && `${p.name} ${p.brands} ${p.code}`.toLowerCase().includes(args.query.toLowerCase())).map(p => ({ ...p, snapshotDate: s.generatedAt }))).slice(args.offset, args.offset + 20));
+    case 'offlineSearch': return JSON.stringify(index.search(args.source, args.query, args.offset, args.market));
     case 'packs': return JSON.stringify(snapshots.map(s => ({ region: s.region, generatedAt: s.generatedAt, count: s.products.length })));
     case 'mergeOCR': {
       const result = args.result as core.CheckResult;

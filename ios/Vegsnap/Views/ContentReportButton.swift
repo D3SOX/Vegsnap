@@ -15,8 +15,8 @@ struct ContentReportButton: View {
     @Environment(\.scenePhase) private var phase
     var title: String { L(kind == "ai" ? "Report AI content" : "Report this reply") }
     var body: some View {
-        Button(title) { text = ContentReport.excerpt(initialText); reason = ""; receipt = nil; failure = nil; open = true }.disabled(store.settings.offline)
-            .sheet(isPresented: $open, onDismiss: { task?.cancel() }) {
+        Button(title) { cancelReport(); text = ContentReport.excerpt(initialText); reason = ""; receipt = nil; failure = nil; open = true }.disabled(store.settings.offline)
+            .sheet(isPresented: $open, onDismiss: { cancelReport() }) {
                 NavigationStack {
                     Form {
                         if let receipt { Text(L("Report sent. Reference:") + " " + receipt).textSelection(.enabled) }
@@ -29,19 +29,26 @@ struct ContentReportButton: View {
                             Button(L("Send report")) {
                                 sending = true; failure = nil
                                 task = Task {
-                                    defer { sending = false }
-                                    do { receipt = try await ContentReport(kind: kind, contentId: contentID, text: kind == "ai" ? text : "", reason: reason).submit() }
-                                    catch is CancellationError {} catch { failure = error.localizedDescription }
+                                    defer { if !Task.isCancelled { sending = false } }
+                                    do {
+                                        let result = try await ContentReport(kind: kind, contentId: contentID, text: kind == "ai" ? text : "", reason: reason).submit()
+                                        try Task.checkCancellation(); receipt = result
+                                    }
+                                    catch {
+                                        guard !Task.isCancelled, !(error is CancellationError) else { return }
+                                        failure = error.localizedDescription
+                                    }
                                 }
                             }.disabled(sending || store.settings.offline || (try? ContentReport(kind: kind, contentId: contentID, text: kind == "ai" ? text : "", reason: reason).validatedData()) == nil)
                             if sending { ProgressView() }
                         }
                     }.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L(receipt == nil ? "Cancel" : "Done")) { task?.cancel(); open = false } } }
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L(receipt == nil ? "Cancel" : "Done")) { cancelReport(); open = false } } }
                 }
             }
-            .onChange(of: store.settings.offline) { _, offline in if offline { task?.cancel() } }
-            .onChange(of: phase) { _, phase in if phase == .background { task?.cancel() } }
-            .onDisappear { task?.cancel() }
+            .onChange(of: store.settings.offline) { _, offline in if offline { cancelReport() } }
+            .onChange(of: phase) { _, phase in if phase == .background { cancelReport() } }
+            .onDisappear { cancelReport() }
     }
+    private func cancelReport() { task?.cancel(); sending = false }
 }
