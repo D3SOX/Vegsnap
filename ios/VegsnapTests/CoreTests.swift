@@ -202,6 +202,17 @@ import Security
         for _ in 0..<100 { if store.jobs.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
         XCTAssertEqual(store.history.count, 1)
     }
+    func testBarnivorePreservesProducerAndFullMetadata() throws {
+        for metadata in ["Example &amp; Sons · Germany", "Example &amp; Sons"] {
+            let html = """
+            <ul id="results"><li><a href="/products/123-example-drink"><span class="result-name">Example drink</span><span class="result-meta">\(metadata)</span></a></li></ul>
+            """
+            let record = try XCTUnwrap(BrowseService.barnivore(html).records.first)
+            XCTAssertEqual(record.brand, "Example & Sons")
+            XCTAssertEqual(record.description, metadata.replacingOccurrences(of: "&amp;", with: "&"))
+            XCTAssertEqual(record.name, "Example drink"); XCTAssertTrue(record.barcode.isEmpty)
+        }
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

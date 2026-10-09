@@ -77,7 +77,9 @@ actor BrowseService {
             func span(_ name: String) -> String { plain(captures("<span[^>]*class=\"\(name)\"[^>]*>([\\s\\S]*?)</span>", row[1]).first?.first ?? "") }
             let name = span("result-name"); guard !name.isEmpty else { return nil }
             let status = row[1].contains("badge-not-vegan") ? L("Not vegan according to Barnivore") : row[1].contains("badge-vegan") ? L("Vegan according to Barnivore") : L("Check the original record")
-            return BrowseRecord(id: row[0], name: name, description: span("result-meta"), labels: status, url: "https://www.barnivore.com" + row[0])
+            let metadata = span("result-meta")
+            let producer = metadata.components(separatedBy: " · ").first ?? ""
+            return BrowseRecord(id: row[0], name: name, brand: producer, description: metadata, labels: status, url: "https://www.barnivore.com" + row[0])
         }
         guard !rows.isEmpty || html.contains("0 products found") else { throw AppError(L("Barnivore could not be read. Try again later.")) }
         return BrowsePage(records: rows, next: nil)

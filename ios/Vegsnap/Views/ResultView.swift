@@ -134,6 +134,10 @@ struct CommunitySection: View {
             if loaded && replies.isEmpty { Text(L("No matching replies found.")) }
             if let failure { Text(failure).foregroundStyle(.secondary) }
             ForEach(replies.filter { !store.hiddenReplies.contains($0.id) }) { reply in DisclosureGroup(reply.productName + " · " + reply.brand) {
+                if !reply.variant.isEmpty { LabeledContent(L("Variant"), value: reply.variant) }
+                Text(L("Question")).font(.caption).foregroundStyle(.secondary)
+                Text(reply.question).textSelection(.enabled)
+                Text(L("Reply")).font(.caption).foregroundStyle(.secondary)
                 Text(reply.reply).textSelection(.enabled)
                 ContentReportButton(store: store, kind: "community", contentID: reply.id)
                 Button(L("Hide this reply"), role: .destructive) { store.hideReply(reply.id) }
