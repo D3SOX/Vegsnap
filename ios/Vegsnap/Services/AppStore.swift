@@ -27,6 +27,7 @@ import CryptoKit
     var packBusy = false
     private var tasks: [String: Task<Void, Never>] = [:]
     private var packTask: Task<Void, Never>?
+    private var chatGPTTask: Task<Void, Never>?
     private var backgroundID: UIBackgroundTaskIdentifier = .invalid
 
     init(root: URL? = nil, inboxDirectory: URL? = nil) throws {
@@ -259,22 +260,28 @@ import CryptoKit
         for id in ids { cancel(id) }
         for task in running { await task.value }
     }
-    func changeChatGPT(_ action: () async throws -> Void) async {
+    func cancelChatGPT() { chatGPTTask?.cancel(); chatGPT.cancel() }
+    func changeChatGPT(_ action: @escaping @MainActor () async throws -> Void) async {
         guard !switchingChatGPT else { return }; switchingChatGPT = true
-        defer { switchingChatGPT = false; chatGPT.loadStatus(); schedule() }
-        await stopConnection("chatgpt")
-        await ChatGPTConnection.finishRefreshing()
-        do { try await action() } catch { report(error) }
+        defer { chatGPTTask = nil; switchingChatGPT = false; chatGPT.loadStatus(); schedule() }
+        let task = Task {
+            await stopConnection("chatgpt")
+            await ChatGPTConnection.finishRefreshing()
+            do { try Task.checkCancellation(); try await action() }
+            catch { if !Task.isCancelled { report(error) } }
+        }
+        chatGPTTask = task
+        await task.value
     }
     func connectChatGPT(clientID: String? = nil, newAccount: Bool = false) async {
         guard !settings.offline else { return }
-        await changeChatGPT {
+        await changeChatGPT { [self] in
             try await chatGPT.signIn(clientID: clientID, newAccount: newAccount)
-            do {
-                let models = try await chatGPT.models()
-                settings.chatGPTModel = ChatGPTConnection.preferredModel(current: settings.chatGPTModel, available: models)
-                saveSettings()
-            } catch { report(error) }
+            try Task.checkCancellation()
+            let models = try await chatGPT.models()
+            try Task.checkCancellation()
+            settings.chatGPTModel = ChatGPTConnection.preferredModel(current: settings.chatGPTModel, available: models)
+            saveSettings()
         }
     }
     func disconnectHosted() async {
@@ -351,7 +358,7 @@ import CryptoKit
     func stopNetworkWork() {
         for task in tasks.values { task.cancel() }
         for index in jobs.indices where jobs[index].status == "queued" { jobs[index].status = "interrupted" }
-        cancelPack(); hosted.cancel(); chatGPT.cancel()
+        cancelPack(); hosted.cancel(); cancelChatGPT()
         do { try files.save(jobs, "queue.json") } catch { report(error) }
     }
 }

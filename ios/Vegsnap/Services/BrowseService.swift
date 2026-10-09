@@ -10,6 +10,18 @@ enum BrowseSource: String, CaseIterable, Identifiable {
 struct BrowseRecord: Identifiable {
     var id: String; var name: String; var brand = ""; var barcode = ""; var composition = ""; var description = ""; var labels = ""; var url: String; var snapshotDate = ""
 }
+struct OfflineBrowseProduct: Decodable {
+    var code: String; var name: String; var name_de: String?; var name_en: String?
+    var brands: String; var ingredients: String; var ingredients_de: String?; var ingredients_en: String?; var snapshotDate: String
+    func record(source: BrowseSource, locale: String) -> BrowseRecord {
+        func localized(_ base: String, _ german: String?, _ english: String?) -> String {
+            [locale == "de" ? german : english, base, german, english].compactMap { $0 }.first { !$0.isEmpty } ?? ""
+        }
+        return BrowseRecord(id: code, name: localized(name, name_de, name_en), brand: brands, barcode: code,
+                            composition: localized(ingredients, ingredients_de, ingredients_en),
+                            url: source.origin + "/product/" + code, snapshotDate: snapshotDate)
+    }
+}
 struct BrowsePage { var records: [BrowseRecord]; var next: Int? }
 actor BrowseService {
     private var cache: [String: (Date, BrowsePage)] = [:]

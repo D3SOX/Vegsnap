@@ -52,9 +52,8 @@ struct BrowseView: View {
                 if store.settings.offline {
                     guard [.food, .beauty, .products].contains(submittedSource) else { throw AppError(L("This source requires an internet connection.")) }
                     struct Arguments: Encodable { var source: String; var query: String; var offset: Int }
-                    struct Product: Decodable { var code: String; var name: String; var name_de: String?; var brands: String; var ingredients: String; var ingredients_de: String?; var snapshotDate: String }
-                    let products: [Product] = try store.engine.call("offlineSearch", Arguments(source: submittedSource.rawValue, query: submittedQuery, offset: cursor))
-                    page = BrowsePage(records: products.map { BrowseRecord(id: $0.code, name: store.locale == "de" ? $0.name_de ?? $0.name : $0.name, brand: $0.brands, barcode: $0.code, composition: store.locale == "de" ? $0.ingredients_de ?? $0.ingredients : $0.ingredients, url: submittedSource.origin + "/product/" + $0.code, snapshotDate: $0.snapshotDate) }, next: products.count == 20 ? cursor + 20 : nil)
+                    let products: [OfflineBrowseProduct] = try store.engine.call("offlineSearch", Arguments(source: submittedSource.rawValue, query: submittedQuery, offset: cursor))
+                    page = BrowsePage(records: products.map { $0.record(source: submittedSource, locale: store.locale) }, next: products.count == 20 ? cursor + 20 : nil)
                 } else { page = try await service.search(submittedQuery, source: submittedSource, cursor: cursor, locale: store.locale) }
                 try Task.checkCancellation()
                 records += page.records.filter { new in !records.contains { $0.id == new.id } }; next = page.next

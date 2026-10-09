@@ -54,7 +54,7 @@ struct SettingsView: View {
                     }
                     Button(L("Connect another account")) { Task { await store.connectChatGPT(newAccount: true) } }.disabled(store.switchingChatGPT || store.settings.offline)
                     if chatGPT.connected { Button(L("Disconnect ChatGPT"), role: .destructive) { Task { await store.changeChatGPT { try chatGPT.disconnect() } } }.disabled(store.switchingChatGPT) }
-                    if store.switchingChatGPT { ProgressView(L("Connecting…")); Button(L("Cancel")) { chatGPT.cancel() } }
+                    if store.switchingChatGPT { ProgressView(L("Connecting…")); Button(L("Cancel")) { store.cancelChatGPT() } }
                 } else {
                     Menu(L("Provider presets")) {
                         Button("OpenAI") { changeEndpoint("https://api.openai.com/v1") }

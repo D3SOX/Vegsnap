@@ -497,6 +497,43 @@ import Security
         XCTAssertEqual(ChatGPTConnection.preferredModel(current: "other", available: ["other", "gpt-6-luna"]), "other")
         XCTAssertFalse(try engine.acceptsImages("gpt-6-luna", metadata: #"{"supports_vision":false}"#))
     }
+    func testOfflineBrowseUsesLocalizedNamesAndComposition() throws {
+        let data = Data(#"{"code":"4006381333931","name":"Base","name_en":"English","name_de":"Deutsch","brands":"Brand","ingredients":"base text","ingredients_en":"oats","ingredients_de":"Hafer","snapshotDate":"2026-10-09T00:00:00Z"}"#.utf8)
+        var product = try JSONDecoder().decode(OfflineBrowseProduct.self, from: data)
+        XCTAssertEqual(product.record(source: .food, locale: "en").name, "English")
+        XCTAssertEqual(product.record(source: .food, locale: "en").composition, "oats")
+        XCTAssertEqual(product.record(source: .food, locale: "de").name, "Deutsch")
+        XCTAssertEqual(product.record(source: .food, locale: "de").composition, "Hafer")
+        product.name_en = ""; product.ingredients_en = nil
+        XCTAssertEqual(product.record(source: .food, locale: "en").name, "Base")
+        XCTAssertEqual(product.record(source: .food, locale: "en").composition, "base text")
+    }
+    func testCancellingChatGPTStopsModelRequestAndClearsConnecting() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root); StalledChatGPTProtocol.started = nil }
+        Network.testProtocolClasses = [StalledChatGPTProtocol.self]
+        let started = expectation(description: "Model request started")
+        let finished = expectation(description: "Connection task finished after cancellation")
+        StalledChatGPTProtocol.started = started
+        let session = ChatGPTSession(clientID: "fixture", subject: "subject", email: "fixture@example.test", idToken: "id", accessToken: "token", refreshToken: "refresh", scopes: ["chatgpt.tokens.use.direct"], expiresAt: Date().timeIntervalSince1970 + 3600)
+        try Keychain.save(session.jsonString(), for: "https://auth.openai.com")
+        let store = try AppStore(root: root)
+        var completedModels = false
+        let task = Task {
+            await store.changeChatGPT {
+                _ = try await store.chatGPT.models()
+                completedModels = true
+            }
+            finished.fulfill()
+        }
+        await fulfillment(of: [started], timeout: 3)
+        XCTAssertTrue(store.switchingChatGPT)
+        store.cancelChatGPT()
+        await fulfillment(of: [finished], timeout: 3)
+        await task.value
+        XCTAssertFalse(store.switchingChatGPT); XCTAssertFalse(completedModels)
+        XCTAssertTrue(store.chatGPT.modelMetadata.isEmpty); XCTAssertNil(store.error)
+    }
     func testAccountSwitchStopsOnlyChatGPTAndBlocksEnqueueAndRetry() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -575,4 +612,12 @@ final class FixtureProtocol: URLProtocol, @unchecked Sendable {
 
 private final class RejectInboxRemoval: FileManager, @unchecked Sendable {
     override func removeItem(at URL: URL) throws { throw CocoaError(.fileWriteNoPermission) }
+}
+
+private final class StalledChatGPTProtocol: URLProtocol, @unchecked Sendable {
+    static var started: XCTestExpectation?
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() { Self.started?.fulfill() }
+    override func stopLoading() {}
 }

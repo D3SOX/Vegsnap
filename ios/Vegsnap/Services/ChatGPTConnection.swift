@@ -96,6 +96,7 @@ struct OAuthTokens: Decodable {
             listener.newConnectionHandler = { [weak self] connection in Task { @MainActor in self?.receive(connection) } }
             listener.start(queue: .main)
         }
+        try Task.checkCancellation()
         let redirect = "http://127.0.0.1:\(port)/auth/callback"
         var url = URLComponents(string: issuer + "/api/accounts/authorize")!
         var fields = ["client_id": returning ?? bootstrap, "ext_agent_host_id": host, "response_type": "code", "redirect_uri": redirect, "scope": "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct", "resource": resource, "state": expectedState, "nonce": nonce, "code_challenge_method": "S256", "code_challenge": Data(SHA256.hash(data: Data(verifier.utf8))).base64URL]
