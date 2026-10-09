@@ -113,6 +113,60 @@ describe('grounded web research', () => {
 });
 
 describe('researched product composition', () => {
+  test('Coop front photo carries packaging clues into required research without private input or images', async () => {
+    const packaging = { language: 'Swedish', variant: 'chili', quantity: '200 g' };
+    const first = { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging };
+    const sourceUrl = 'https://retailer.example/coop-hummus-chili-200g';
+    const requests: { input: { content: { text: string }[] }[] }[] = [];
+    const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+      (async (_target: string | URL | Request, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body)) as (typeof requests)[number];
+        requests.push(request);
+        if (requests.length === 1) return reply(envelope(first));
+        // Simplified matched-source fixture, not a claim about Coop's actual recipe.
+        return reply(envelope({ ...first,
+          webCompositions: [{ url: sourceUrl, text: 'water, salt', ingredients: ['water', 'salt'], complete: true,
+            sourceType: 'retailer', productName: first.name, brand: first.brand }],
+        }, [{ type: 'web_search_call', status: 'completed', action: { sources: [{ url: sourceUrl }] } }]));
+      }) as unknown as typeof fetch, (async () => new Response(null, { status: 503 })) as unknown as typeof fetch);
+    const result = await checkProduct({ ...input, text: 'Private shopping note' }, { mode: 'explicit', provider });
+    expect(requests).toHaveLength(2);
+    expect(JSON.parse(requests[1]!.input[0]!.content[0]!.text).packaging).toEqual(packaging);
+    expect(JSON.stringify(requests[1])).not.toContain('Private shopping note');
+    expect(JSON.stringify(requests[1])).not.toContain('data:image/');
+    expect(result.outcome).toBe('vegan');
+    expect(result.evidence.some(item => item.url === sourceUrl && item.excerpt === 'water, salt')).toBe(true);
+  });
+  test('research preserves valid supplied or photo-read barcodes and omits invalid ones', async () => {
+    for (const identifiers of [
+      { supplied: undefined, observed: '7340191191914', expected: '7340191191914' },
+      { supplied: '7350113940018', observed: undefined, expected: '7350113940018' },
+      { supplied: '7340191191915', observed: '7340191191915', expected: undefined },
+    ]) {
+      const first = { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', barcode: identifiers.observed };
+      const contexts: Record<string, unknown>[] = [];
+      const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+        (async (_target: string | URL | Request, init?: RequestInit) => {
+          const request = JSON.parse(String(init?.body)) as { input: { content: { text: string }[] }[] };
+          contexts.push(JSON.parse(request.input[0]!.content[0]!.text));
+          return reply(envelope(first, contexts.length === 2 ? [{ type: 'web_search_call', status: 'completed' }] : []));
+        }) as unknown as typeof fetch);
+      await provider.extract({ ...input, barcode: identifiers.supplied });
+      expect(contexts).toHaveLength(2);
+      expect(contexts[1]!.barcode).toBe(identifiers.expected);
+      expect(contexts[0]!.barcode).toBe(identifiers.supplied === identifiers.expected ? identifiers.expected : undefined);
+    }
+  });
+  test('optional packaging clues reject arbitrary, blank, and oversized fields', () => {
+    const first = { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop' };
+    expect(parseAIExtraction(JSON.stringify({ ...first, packaging: { language: 'Swedish', quantity: '200 g' } }))).toMatchObject({
+      packaging: { language: 'Swedish', quantity: '200 g' },
+    });
+    for (const packaging of [null, [], {}, 'Swedish', { language: '' }, { language: ' ' }, { quantity: 200 },
+      { language: 'x'.repeat(301) }, { privateNote: 'do not send' }]) {
+      expect(() => parseAIExtraction(JSON.stringify({ ...first, packaging }))).toThrow('packaging');
+    }
+  });
   const granola = { text: '', complete: false, category: 'food' as const, name: 'Granola Kakao & Hallon', brand: 'Paulúns' };
   const composition = { url, text: 'havregryn, kakao, hallon', complete: true, sourceType: 'manufacturer' as const, productName: granola.name, brand: granola.brand };
   const ingredientAssessments = ['havregryn', 'kakao', 'hallon'].map(term => ({ term, status: 'plant' as const, explanation: 'Plant ingredient.' }));
@@ -195,6 +249,22 @@ describe('researched product composition', () => {
     expect(extracted.ingredientAssessments).toEqual(first.ingredientAssessments);
     expect(extracted.webCompositions).toBeUndefined();
     expect(extracted.research?.searched).toBe(false);
+  });
+  test('source metadata overflow preserves a retrieved composition and its consulted URL', async () => {
+    let requests = 0;
+    const compositionUrl = 'https://source.example/retrieved-composition';
+    const firstSources = Array.from({ length: 50 }, (_, index) => ({ url: `https://first.example/${index}`, title: `First ${index}` }));
+    const secondSources = [...Array.from({ length: 49 }, (_, index) => ({ url: `https://second.example/${index}`, title: `Second ${index}` })),
+      { url: compositionUrl, title: 'Retrieved composition' }];
+    const retrievedComposition = { ...composition, url: compositionUrl };
+    const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+      (async () => reply(++requests === 1
+        ? envelope(granola, [{ type: 'web_search_call', status: 'completed', action: { sources: firstSources } }])
+        : envelope({ ...granola, webCompositions: [retrievedComposition] }, [{ type: 'web_search_call', status: 'completed', action: { sources: secondSources } }]))) as unknown as typeof fetch);
+    const extracted = await provider.extract(input);
+    expect(extracted.webCompositions).toEqual([retrievedComposition]);
+    expect(extracted.research?.sources).toHaveLength(50);
+    expect(extracted.research?.sources.some(source => source.url === compositionUrl)).toBe(true);
   });
   test('research follow-up cannot replace the observed product identity or transcription', async () => {
     let requests = 0;

@@ -88,6 +88,265 @@ class WebEvidenceTest {
         .put("productName", name).put("brand", brand)
     private fun officialRepository(server: MockWebServer) = CheckRepository(evaluator, "Photo prompt",
         CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(), researchPrompt = "Research the identified product")
+    @Test fun verboseSearchResultsCannotDiscardTheRetrievedComposition() = runBlocking {
+        MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Granola").put("brand", "Maker")
+            val second = JSONObject(first.toString()).put("webCompositions", JSONArray().put(sourceComposition("Granola", "Maker", "water, salt")))
+            fun response(extraction: JSONObject, prefix: String): JSONObject = providerResponse(extraction.toString()).apply {
+                val sources = JSONArray((0 until 40).map { JSONObject().put("url", "https://noise.example/$prefix/$it") })
+                if (prefix == "second") sources.put(JSONObject().put("url", "https://maker.example/tissues"))
+                getJSONArray("output").getJSONObject(0).getJSONObject("action").put("sources", sources)
+            }
+            server.enqueue(MockResponse().setBody(response(first, "first").toString()))
+            server.enqueue(MockResponse().setBody(response(second, "second").toString()))
+            val result = officialRepository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals("vegan", result.getString("outcome"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("web-composition"))
+        }
+        val sources = (0 until 60).map { JSONObject().put("url", "https://source.example/$it") }
+        val extracted = JSONObject().put("webCompositions", JSONArray().put(JSONObject().put("url", "https://source.example/59")))
+        val bounded = boundedResearchSources(sources, listOf(extracted))
+        assertEquals(50, bounded.length())
+        assertEquals("https://source.example/59", bounded.getJSONObject(0).getString("url"))
+    }
+    @Test fun identifiedDatabaseRecordUsesCommunityProvenanceAndNeverClaimsAnObservedBarcode() = runBlocking {
+        MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Oat drink").put("brand", "Maker")
+                .put("packaging", JSONObject().put("language", "English").put("quantity", "1 l"))
+            val second = JSONObject(first.toString()).put("ingredientAssessments", JSONArray()
+                .put(JSONObject().put("term", "water").put("status", "plant").put("explanation", "Water is non-animal."))
+                .put(JSONObject().put("term", "milk").put("status", "plant").put("explanation", "Incorrect model assessment.")))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(second.toString()).toString()))
+            var lookups = 0
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                identifiedDatabaseLookup = { identity ->
+                    lookups++
+                    assertFalse(identity.toString().contains("Private shopping note"))
+                    identifiedDatabaseRecord(BrowseRecord("4006381333931", BrowseSource.FOOD, "Oat drink", barcode = "4006381333931", brand = "Maker",
+                        composition = "water, milk", quantity = "1l", url = "https://world.openfoodfacts.org/product/4006381333931", updated = "2026-10-09"), identity)
+                })
+            val result = repository.check(CheckInput("Private shopping note"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(1, lookups)
+            assertEquals("not_vegan", result.getString("outcome"))
+            assertEquals("unconfirmed", result.getJSONObject("identity").getString("match"))
+            assertEquals("", result.getJSONObject("identity").getString("barcode"))
+            val evidence = result.getJSONArray("evidence")
+            assertTrue((0 until evidence.length()).map { evidence.getJSONObject(it) }.any { it.getString("kind") == "database" && it.getString("excerpt") == "water, milk" })
+            assertTrue(result.getJSONArray("warnings").toString().contains("Community-maintained"))
+            assertEquals("searched", result.getString("webSearchStatus"))
+            server.takeRequest()
+            val followup = server.takeRequest().body.readUtf8()
+            assertTrue(followup.contains("databaseComposition"))
+            assertFalse(followup.contains("Private shopping note"))
+            assertFalse(followup.contains("input_image"))
+        }
+    }
+    @Test fun partialDatabaseAssessmentsKeepUnknownCommunityIngredients() = runBlocking {
+        MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Drink").put("brand", "Maker")
+            val second = JSONObject(first.toString()).put("ingredientAssessments", JSONArray().put(JSONObject()
+                .put("term", "water").put("status", "plant").put("explanation", "Water is vegan.")))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(second.toString()).toString()))
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                identifiedDatabaseLookup = { identity -> identifiedDatabaseRecord(BrowseRecord("4006381333931", BrowseSource.FOOD, "Drink", brand = "Maker",
+                    composition = "water, unfamiliar additive", quantity = "1l", url = "https://world.openfoodfacts.org/product/4006381333931"), identity) })
+            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals("uncertain", result.getString("outcome"))
+            assertTrue(result.getJSONArray("findings").toString().contains("unfamiliar additive"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("openfoodfacts.org"))
+        }
+    }
+    @Test fun unrelatedFollowupCannotAssessTheFetchedCatalogueProduct() = runBlocking {
+        MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Hummus med chili").put("brand", "Coop")
+            val catalogue = JSONObject().put("url", "https://www.matspar.se/produkt/hummus-chili-200g-coop")
+                .put("productName", "Hummus chili").put("brand", "Coop").put("quantity", "200g").put("text", "water, unfamiliar additive")
+            val second = JSONObject(first.toString()).put("name", "Other hummus").put("brand", "Other")
+                .put("ingredientAssessments", JSONArray(listOf("water", "unfamiliar additive").map {
+                    JSONObject().put("term", it).put("status", "plant").put("explanation", "Unrelated product assessment.") }))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(second.toString(), "https://other.example/hummus").toString()))
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(), catalogueLookup = { catalogue })
+            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals("uncertain", result.getString("outcome"))
+            assertTrue(result.getJSONArray("findings").toString().contains("unfamiliar additive"))
+            assertFalse(result.toString().contains("Unrelated product assessment"))
+            assertFalse(result.getJSONArray("evidence").toString().contains("other.example"))
+            assertTrue(result.getJSONArray("evidence").toString().contains(catalogue.getString("url")))
+        }
+    }
+    @Test fun catalogueAndCommunityEvidenceComplementEachOtherAndPreserveConflicts() = runBlocking {
+        for ((text, outcome) in listOf("water, salt" to "vegan", "water, milk" to "conflicting")) MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                .put("name", "Hummus med chili").put("brand", "Coop")
+            val url = "https://www.matspar.se/produkt/hummus-chili-200g-coop"
+            val catalogue = JSONObject().put("url", url).put("productName", "Hummus chili").put("brand", "Coop")
+                .put("quantity", "200g").put("text", "water, salt").put("sourceType", "retailer")
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                catalogueLookup = { catalogue }, identifiedDatabaseLookup = { identity ->
+                    identifiedDatabaseRecord(BrowseRecord("4006381333931", BrowseSource.FOOD, "Hummus chili", brand = "Coop",
+                        composition = text, quantity = "200g", url = "https://world.openfoodfacts.org/product/4006381333931"), identity)
+                })
+            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(outcome, result.getString("outcome"))
+            assertEquals("Coop", result.getJSONObject("identity").getString("brand"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("web-composition"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("openfoodfacts.org"))
+            assertEquals("searched", result.getString("webSearchStatus"))
+            server.takeRequest()
+            val request = server.takeRequest().body.readUtf8()
+            assertTrue(request.contains("databaseComposition"))
+            assertTrue(request.contains("catalogueComposition"))
+        }
+    }
+    @Test fun catalogueCompositionGetsRealProvenanceAndCannotBeRewrittenOrPromotedToManufacturerClaim() = runBlocking {
+        for (compositionText in listOf("water, salt", "milk", "")) MockWebServer().use { server ->
+            val url = "https://www.matspar.se/produkt/hummus-chili-200g-coop"
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                .put("name", "Hummus med chili").put("brand", "Coop")
+                .put("packaging", JSONObject().put("language", "Swedish").put("quantity", "200 g").put("variant", "chili"))
+            val catalogue = JSONObject().put("url", url).put("productName", "Hummus chili").put("brand", "Coop")
+                .put("quantity", "200g").put("text", "water, salt").put("sourceType", "retailer")
+            val second = JSONObject(first.toString()).put("name", "Coop Hummus Chili").put("webCompositions", if (compositionText.isEmpty()) JSONArray() else JSONArray().put(
+                sourceComposition(first.getString("name"), "Coop", compositionText, "retailer").put("url", url)))
+                .put("webClaims", JSONArray().put(JSONObject().put("url", url).put("quote", "vegan").put("claim", "vegan")
+                    .put("sourceType", "manufacturer").put("productName", first.getString("name")).put("brand", "Coop")))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(second.toString()).also { it.getJSONArray("output").remove(0) }.toString()))
+            var lookups = 0
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                catalogueLookup = { identity -> assertEquals("Coop", identity.getString("brand")); lookups++; catalogue })
+            val result = repository.check(CheckInput("Private shopping note"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(1, lookups)
+            assertEquals("vegan", result.getString("outcome"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("water, salt"))
+            assertFalse(result.getJSONArray("findings").toString().contains("milk"))
+            assertFalse(result.getJSONArray("evidence").toString().contains("web-claim"))
+            server.takeRequest()
+            val request = JSONObject(server.takeRequest().body.readUtf8())
+            assertFalse(request.has("tool_choice"))
+            assertFalse(request.toString().contains("Private shopping note"))
+            assertTrue(request.toString().contains("catalogueComposition"))
+        }
+    }
+    @Test fun fetchedSwedishCompositionUsesSourceTermsEvenWithoutModelQuotation() {
+        val text = "INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster."
+        val terms = listOf("Kikärtor", "vatten", "rapsolja", "SESAMPASTA", "röd paprika", "salt", "E 330", "chili", "paprikapulver", "vitlökspulver", "E 202")
+        val identity = JSONObject().put("name", "Hummus med chili").put("brand", "Coop")
+        val extracted = JSONObject().put("name", "Coop Hummus Chili").put("brand", "Coop").put("ingredientAssessments", JSONArray(
+            (terms + "milk").map { JSONObject().put("term", it).put("status", "plant").put("explanation", "Plant ingredient.") }))
+        val catalogue = JSONObject().put("url", "https://www.matspar.se/produkt/hummus-chili-200g-coop")
+            .put("productName", "Hummus chili").put("text", text)
+        retainCatalogueComposition(extracted, catalogue, identity)
+        val composition = extracted.getJSONArray("webCompositions").getJSONObject(0)
+        assertEquals(text, composition.getString("text"))
+        assertEquals(terms, (0 until composition.getJSONArray("ingredients").length()).map { composition.getJSONArray("ingredients").getString(it) })
+        assertEquals(identity.getString("name"), extracted.getString("name"))
+        assertTrue(composition.getBoolean("complete"))
+    }
+    @Test fun partialCatalogueParsingCannotHideUnknownIngredients() {
+        val identity = JSONObject().put("name", "Hummus chili").put("brand", "Coop")
+        val extracted = JSONObject(identity.toString()).put("ingredientAssessments", JSONArray().put(JSONObject()
+            .put("term", "water").put("status", "plant").put("explanation", "Water is vegan.")))
+        val catalogue = JSONObject().put("url", "https://www.matspar.se/produkt/hummus-chili-200g-coop")
+            .put("productName", "Hummus chili").put("text", "water, unfamiliar additive")
+        retainCatalogueComposition(extracted, catalogue, identity)
+        val composition = extracted.getJSONArray("webCompositions").getJSONObject(0)
+        assertFalse(composition.has("ingredients"))
+        val input = CheckInput(name = "Hummus chili", category = "food")
+        val result = applyWebCompositions(evaluator.evaluate(input), input, extracted, evaluator)
+        assertEquals("uncertain", result.getString("outcome"))
+        assertTrue(result.getJSONArray("findings").toString().contains("unfamiliar additive"))
+    }
+    @Test fun fetchedCatalogueSurvivesFailedFollowupAndKeepsAnimalGuards() = runBlocking {
+        for (failed in listOf(false, true)) MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                .put("name", "Hummus med chili").put("brand", "Coop")
+            val catalogue = JSONObject().put("url", "https://www.matspar.se/produkt/hummus-chili-200g-coop")
+                .put("productName", "Hummus chili").put("brand", "Coop").put("quantity", "200g")
+                .put("text", "water, milk").put("sourceType", "retailer")
+            val second = JSONObject(first.toString()).put("ingredientAssessments", JSONArray().put(JSONObject()
+                .put("term", "water").put("status", "plant").put("explanation", "Water is vegan.")))
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            server.enqueue(if (failed) MockResponse().setResponseCode(503) else MockResponse().setBody(providerResponse(second.toString()).toString()))
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                catalogueLookup = { catalogue })
+            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals("not_vegan", result.getString("outcome"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("water, milk"))
+        }
+    }
+    @Test fun coopFrontPhotoCarriesPackagingCluesIntoRequiredResearchWithoutPrivateInputOrImages() = runBlocking {
+        MockWebServer().use { server ->
+            val packaging = JSONObject().put("language", "Swedish").put("variant", "chili").put("quantity", "200 g")
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                .put("name", "Hummus med chili").put("brand", "Coop").put("packaging", packaging)
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).also { it.getJSONArray("output").remove(0) }.toString()))
+            val second = JSONObject(first.toString()).put("webCompositions", JSONArray().put(sourceComposition(first.getString("name"), "Coop", "water, salt", "retailer")))
+            server.enqueue(MockResponse().setBody(providerResponse(second.toString()).toString()))
+            val result = officialRepository(server).check(CheckInput("Private shopping note"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(2, server.requestCount)
+            server.takeRequest()
+            val request = JSONObject(server.takeRequest().body.readUtf8())
+            assertEquals("required", request.getString("tool_choice"))
+            val context = JSONObject(request.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals("Swedish", context.getJSONObject("packaging").getString("language"))
+            assertEquals("chili", context.getJSONObject("packaging").getString("variant"))
+            assertEquals("200 g", context.getJSONObject("packaging").getString("quantity"))
+            assertFalse(request.toString().contains("Private shopping note"))
+            assertFalse(request.toString().contains("input_image"))
+            assertEquals("vegan", result.getString("outcome"))
+        }
+    }
+    @Test fun malformedPackagingCluesCannotReachResearch() = runBlocking {
+        for (packaging in listOf(JSONObject.NULL, JSONArray(), JSONObject(), "Swedish", JSONObject().put("language", " "),
+            JSONObject().put("quantity", 200), JSONObject().put("language", "x".repeat(301)), JSONObject().put("privateNote", "do not send"))) {
+            MockWebServer().use { server ->
+                val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                    .put("name", "Hummus med chili").put("brand", "Coop").put("packaging", packaging)
+                server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+                // A second request must fail promptly if validation incorrectly lets it through.
+                server.enqueue(MockResponse().setResponseCode(503))
+                val result = officialRepository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+                assertEquals(1, server.requestCount)
+                assertEquals("failed", result.getString("aiStatus"))
+            }
+        }
+    }
+    @Test fun requiredResearchPreservesValidSuppliedOrPhotoReadBarcodesAndOmitsInvalidOnes() = runBlocking {
+        for ((supplied, observed, expected) in listOf(
+            Triple(null, "7340191191914", "7340191191914"),
+            Triple("7350113940018", null, "7350113940018"),
+            Triple("7340191191915", "7340191191915", null),
+        )) {
+            MockWebServer().use { server ->
+                val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                    .put("name", "Hummus med chili").put("brand", "Coop").put("barcode", observed)
+                if (supplied?.let(::validGtin) == true) server.enqueue(MockResponse().setResponseCode(404))
+                server.enqueue(MockResponse().setBody(providerResponse(first.toString()).also { it.getJSONArray("output").remove(0) }.toString()))
+                server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+                if (observed?.let(::validGtin) == true) server.enqueue(MockResponse().setResponseCode(404))
+                val result = officialRepository(server).check(CheckInput(category = "food", barcode = supplied.orEmpty()),
+                    listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+                assertEquals("images", result.getString("aiStatus"))
+                assertEquals(if (expected == null) 2 else 3, server.requestCount)
+                val requests = (0 until server.requestCount).map { server.takeRequest() }.filter { it.method == "POST" }
+                val request = JSONObject(requests.last().body.readUtf8())
+                val context = JSONObject(request.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+                assertEquals(expected, context.optString("barcode").takeIf { it.isNotEmpty() })
+            }
+        }
+    }
     @Test fun researchedRavioliAnimalIngredientCannotBeOverriddenByModelAssessment() = runBlocking {
         MockWebServer().use { server ->
             val extracted = JSONObject().put("text", "").put("complete", false).put("category", "food")

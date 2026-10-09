@@ -160,7 +160,8 @@ async function route(request: Request, env: Env): Promise<Response> {
     return fetch(url, { ...init, body: JSON.stringify(payload), redirect: 'manual' });
   };
   try {
-    return json(await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch).extract(input, request.signal));
+    // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
+    return json(await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal));
   } catch { throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.'); }
 }
 export default {

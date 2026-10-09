@@ -8,6 +8,24 @@ import org.json.JSONObject
 internal fun normalizeProductIdentity(value: String): String = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKC)
     .lowercase(java.util.Locale.ROOT).trim().replace(Regex("\\s+"), " ")
 
+/** Keep evidence URLs when bounding verbose provider search results, without inventing provenance. */
+internal fun boundedResearchSources(sources: List<JSONObject>, extractions: List<JSONObject>): JSONArray {
+    val cited = mutableSetOf<String>()
+    for (extracted in extractions) {
+        for (field in listOf("webCompositions", "webClaims")) {
+            val items = extracted.optJSONArray(field) ?: JSONArray()
+            for (i in 0 until items.length()) cited += items.getJSONObject(i).optString("url")
+        }
+        extracted.optJSONObject("contact")?.let { cited += it.optString("sourceUrl"); cited += it.optString("url") }
+        extracted.optJSONObject("companyAssessment")?.let { company ->
+            cited += company.optString("ownershipSourceUrl")
+            val items = company.optJSONArray("sources") ?: JSONArray()
+            for (i in 0 until items.length()) cited += items.getJSONObject(i).optString("url")
+        }
+    }
+    return JSONArray(sources.distinctBy { it.getString("url") }.sortedBy { it.getString("url") !in cited }.take(50))
+}
+
 internal fun publicEvidenceUrl(value: String): String? {
     val url = value.toHttpUrlOrNull() ?: return null
     if (!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() || value.length > 2000) return null
@@ -60,6 +78,56 @@ internal fun validateWebCompositions(extracted: JSONObject) {
             require(item.get(field) is String && item.getString(field).length in 1..limit)
         }
     }
+}
+
+/** A model split must cover the fetched list before it can replace the local split. */
+private fun coversCatalogueComposition(text: String, items: JSONArray): Boolean {
+    val parsed = parseSourceIngredients(text, items) ?: return false
+    val heading = compositionHeading.find(text)
+    var body = heading?.let { text.substring(it.range.last + 1) } ?: text
+    compositionPrecaution.find(body)?.let { body = body.take(it.range.first) }
+    // This retailer's origin-location footnote is not part of the ingredient list.
+    body = body.replace(Regex("\\s+\\*Ursprung: Se till vänster\\.?\\s*$", RegexOption.IGNORE_CASE), "")
+    return compositionTerms(body).all { term ->
+        var remaining = term
+        for (ingredient in parsed.sortedByDescending { it.length }) {
+            remaining = remaining.replace(Regex("(?<![\\p{L}\\p{N}])${Regex.escape(ingredient)}(?![\\p{L}\\p{N}])"), "")
+        }
+        !Regex("[\\p{L}\\p{N}]").containsMatchIn(remaining)
+    }
+}
+
+/** Allow Swedish grammatical and brand-prefix variations, preserving every recipe qualifier. */
+internal fun matchesCatalogueIdentity(extracted: JSONObject, original: JSONObject): Boolean {
+    val brand = normalizeProductIdentity(original.optString("brand"))
+    fun nameWords(value: String) = normalizeProductIdentity(value).removePrefix("$brand ")
+        .split(Regex("\\s+")).filter { it.isNotBlank() && it != "med" }.sorted()
+    return brand.isNotBlank() && normalizeProductIdentity(extracted.optString("brand")) == brand &&
+        nameWords(extracted.optString("name")) == nameWords(original.optString("name"))
+}
+
+/** The app fetched and matched this record itself; AI formatting cannot erase its composition. */
+internal fun retainCatalogueComposition(extracted: JSONObject, catalogue: JSONObject, identity: JSONObject) {
+    val url = catalogue.getString("url")
+    val text = catalogue.getString("text")
+    val items = extracted.optJSONArray("webCompositions") ?: JSONArray()
+    val compositions = (0 until items.length()).map { items.getJSONObject(it) }
+    val source = JSONObject().put("url", url).put("text", text).put("sourceType", "retailer").put("complete", true)
+        .put("productName", identity.getString("name")).put("brand", identity.getString("brand"))
+    val assessments = extracted.optJSONArray("ingredientAssessments") ?: JSONArray()
+    val assessedTerms = JSONArray((0 until assessments.length()).map { assessments.getJSONObject(it).getString("term") }
+        .filter { parseSourceIngredients(text, JSONArray().put(it)) != null }.distinct())
+    val parsed = compositions.filter { it.optString("url") == url }.mapNotNull { it.optJSONArray("ingredients") }
+        .firstOrNull { coversCatalogueComposition(text, it) }
+        ?: assessedTerms.takeIf { coversCatalogueComposition(text, it) }
+    parsed?.let { source.put("ingredients", it) }
+    extracted.put("name", identity.getString("name")).put("brand", identity.getString("brand"))
+        .put("webCompositions", JSONArray(listOf(source) + compositions.filter { it.getString("url") != url }.take(2)))
+    val research = extracted.optJSONObject("research") ?: JSONObject()
+    val sources = research.optJSONArray("sources") ?: JSONArray()
+    sources.put(JSONObject().put("url", url).put("title", catalogue.getString("productName") + " — Matspar"))
+    extracted.put("research", research.put("searched", true).put("sources", boundedResearchSources(
+        (0 until sources.length()).map { sources.getJSONObject(it) }, listOf(extracted))))
 }
 
 /** Researched composition is a separate source, never invented photo transcription. */

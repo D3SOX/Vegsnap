@@ -7,6 +7,8 @@ import { applyAIEvidence } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
+import { normalizeBarcode } from './barcode';
+import { lookupMatspar, retainMatsparComposition, matchesMatsparIdentity } from './matspar-catalogue';
 
 export const EXTRACTION_PROMPT = promptData.prompt;
 export const PROVIDER_PRESETS = [
@@ -22,13 +24,18 @@ function validIngredientList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= 100 && value.every(term => typeof term === 'string' && Boolean(term.trim()) && term.length <= 300);
 }
 export function validateAIExtraction(value: unknown, options: { allowResearch?: boolean } = {}): AIExtraction {
-  const keys = ['text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
+  const keys = ['text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'packaging', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
   if (!object(value) || Object.keys(value).some(key => !keys.includes(key)) ||
     typeof value.text !== 'string' || value.text.length > 30_000 || typeof value.complete !== 'boolean' ||
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
     ['name', 'brand', 'barcode'].some(key => value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 300)) ||
     typeof value.barcode === 'string' && !/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(value.barcode)) {
     throw new Error('AI returned invalid extraction data.');
+  }
+  if (value.packaging !== undefined && (!object(value.packaging) || !Object.keys(value.packaging).length ||
+    Object.entries(value.packaging).some(([key, clue]) => !['language', 'country', 'variant', 'quantity'].includes(key) ||
+      typeof clue !== 'string' || !clue.trim() || clue.length > 300))) {
+    throw new Error('AI returned invalid packaging clues.');
   }
   if (value.ingredients !== undefined && !validIngredientList(value.ingredients)) throw new Error('AI returned invalid parsed ingredients.');
   if (!value.text.trim() && value.complete) throw new Error('AI marked an empty composition as complete.');
@@ -143,9 +150,18 @@ function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtr
     compositions.set(sourceKey, { ...item, ingredients: parseSourceIngredients(item.text, item.ingredients) ? item.ingredients : previous?.ingredients ?? item.ingredients });
   }
   const webCompositions = [...compositions.values()];
-  const sources = [...new Map([...(original.research?.sources ?? []), ...researched.research.sources].map(source => [source.url, source])).values()];
+  const consulted = new Map([...(original.research?.sources ?? []), ...researched.research.sources].map(source => [source.url, source]));
+  const citedUrls = new Set<string>([
+    ...webCompositions.map(item => item.url),
+    ...webClaims.map(item => item.url),
+    ...[original.contact, researched.contact].flatMap(contact => contact ? [contact.sourceUrl, ...(contact.url ? [contact.url] : [])] : []),
+    ...[original.companyAssessment, researched.companyAssessment].flatMap(company => company ? [
+      ...company.sources.map(source => source.url), ...(company.ownershipSourceUrl ? [company.ownershipSourceUrl] : []),
+    ] : []),
+  ]);
+  const sources = [...consulted.values()].sort((a, b) => Number(citedUrls.has(b.url)) - Number(citedUrls.has(a.url))).slice(0, 50);
   // Preserve all original evidence and later contradictions, or keep the original intact when bounds are exceeded.
-  if (assessments.length > 100 || webClaims.length > 5 || webCompositions.length > 3 || sources.length > 50) return original;
+  if (assessments.length > 100 || webClaims.length > 5 || webCompositions.length > 3) return original;
   const companyAssessment = sourcedCompanyAssessment({ ...researched, research: { searched: true, sources } });
   return { ...original, webClaims, webCompositions, ingredientAssessments: assessments,
     ...(researched.contact ? { contact: researched.contact } : {}),
@@ -161,7 +177,7 @@ export function validateProviderConfig(config: ProviderConfig): URL {
   if (config.token && /[\r\n]/.test(config.token)) throw new Error('Invalid API token.');
   return base;
 }
-export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fetch = globalThis.fetch): ProviderAdapter {
+export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fetch = globalThis.fetch, catalogueFetcher?: typeof fetch): ProviderAdapter {
   const base = validateProviderConfig(config);
   const supportsWebSearch = base.origin === 'https://api.openai.com' && base.pathname.replace(/\/$/, '') === '/v1';
   const endpoint = new URL(`${base.pathname.replace(/\/$/, '')}/${supportsWebSearch ? 'responses' : 'chat/completions'}`, base.origin).href;
@@ -178,7 +194,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       }
       if ((input.text?.length ?? 0) > 30_000) throw new Error('Selected text exceeds 30,000 characters.');
       const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
-        { type: 'text', text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
+        { type: 'text', text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
         ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
       ];
       const requestBody = supportsWebSearch ? {
@@ -202,21 +218,32 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       const body = await send(requestBody);
       if (supportsWebSearch) {
         const extracted = parseResponsesExtraction(body);
+        let catalogue: Awaited<ReturnType<typeof lookupMatspar>>;
+        if (input.images?.length && needsResearch(extracted, input)) {
+          try {
+            catalogue = await lookupMatspar(extracted, input, catalogueFetcher ?? fetcher, requestSignal);
+          } catch (error) {
+            if (requestSignal.aborted) throw error;
+          }
+        }
         if (!needsResearch(extracted, input)) return extracted;
         try {
           const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
-            instructions: `${EXTRACTION_PROMPT}\n${promptData.researchPrompt}`,
+            instructions: `${EXTRACTION_PROMPT}\n${promptData.researchPrompt}${catalogue ? '\n\nA verified Matspar product record has already been fetched and exact-matched. Use its ingredients only as parsing input. Do not perform another product lookup or treat its ingredients as photo transcription or a vegan claim. Keep the same canonical name and brand, top-level text empty and complete false. Return its full composition in webCompositions with every source-verbatim ingredient parsed, and ingredientAssessments for every parsed term. Continue web research only for unresolved origins or a product-specific declaration.' : ''}`,
             text: { format: { type: 'json_schema', name: 'product_research', strict: false, schema: {
               type: 'object', properties: { name: { type: 'string', enum: [extracted.name] }, brand: { type: 'string', enum: [extracted.brand] } },
               required: ['text', 'complete', 'category', 'name', 'brand'],
             } } },
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
-              category: extracted.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, input) }) }] }],
+              packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
+              category: extracted.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, input),
+              ...(catalogue ? { catalogueComposition: catalogue } : {}) }) }] }],
           }));
-          return mergeResearch(extracted, researched);
+          const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);
+          return catalogue ? retainMatsparComposition(merged, catalogue) : merged;
         } catch (error) {
           if (signal?.aborted) throw error;
-          return extracted;
+          return catalogue ? retainMatsparComposition(extracted, catalogue) : extracted;
         }
       }
       if (!object(body) || !Array.isArray(body.choices) || !object(body.choices[0])) throw new Error('AI provider returned no completion.');

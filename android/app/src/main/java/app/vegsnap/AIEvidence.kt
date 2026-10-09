@@ -74,6 +74,14 @@ internal fun mergeSourceCompositions(items: List<JSONObject>): List<JSONObject> 
 /** Bound and validate optional AI evidence before it can affect a stored result. */
 internal fun validateAIEvidence(extracted: JSONObject) {
     validateIngredients(extracted)
+    if (extracted.has("packaging")) {
+        val packaging = extracted.getJSONObject("packaging")
+        require(packaging.length() in 1..4)
+        for (key in packaging.keys()) {
+            val clue = packaging.get(key)
+            require(key in setOf("language", "country", "variant", "quantity") && clue is String && clue.isNotBlank() && clue.length <= 300)
+        }
+    }
     for (field in listOf("name", "brand")) if (extracted.has(field)) require(extracted.getString(field).length <= 300)
     if (extracted.has("ingredientAssessments")) {
         val items = extracted.getJSONArray("ingredientAssessments")
