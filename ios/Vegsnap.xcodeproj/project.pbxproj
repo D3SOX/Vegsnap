@@ -402,6 +402,7 @@
 				"$(SRCROOT)/../contracts/ai-extraction-prompt.json",
 				"$(SRCROOT)/../contracts/ai-extraction.schema.json",
 				"$(SRCROOT)/../contracts/history.schema.json",
+				"$(SRCROOT)/../contracts/product-countries.json",
 				"$(SRCROOT)/../contracts/result.schema.json",
 			);
 			"outputPaths" = (
