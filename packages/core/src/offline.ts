@@ -89,7 +89,7 @@ export class OfflineProductIndex {
     const countryTags = [...new Set(entries.flatMap(entry=>entry.product.countries_tags))];
     const market = selectProductCountry(input,undefined,countryTags).market;
     const matchesMarket = (product: OfflineSnapshot['products'][number]) => product.countries_tags.some(tag => countryCode(tag) === market);
-    const eligible = input.autoMarket === false ? entries.filter(({ product }) => !product.countries_tags.length || matchesMarket(product)) : entries;
+    const eligible = !input.autoMarket ? entries.filter(({ product }) => !product.countries_tags.length || matchesMarket(product)) : entries;
     const entry = rankEntries(eligible, {...input,market})[0];
     if (!entry) return null;
     const { product, snapshot } = entry;
