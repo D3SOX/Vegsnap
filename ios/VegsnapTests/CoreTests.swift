@@ -5,6 +5,20 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testProductCountriesExcludeRegionalAndReservedCodes() {
+        for code in ["EU", "UN", "EZ", "AC", "XK", "QO", "ZZ", "001", "419", "de", ""] {
+            XCTAssertFalse(ProductCountry.isValid(code), code)
+            var settings = Settings()
+            settings.fallbackCountry = code
+            XCTAssertEqual(settings.defaultCountry, "DE")
+        }
+        for code in ["DE", "SE", "FI", "CZ", "TR", "GB", "AX", "RE"] {
+            XCTAssertTrue(ProductCountry.isValid(code), code)
+            var settings = Settings()
+            settings.defaultCountry = code
+            XCTAssertEqual(settings.defaultCountry, code)
+        }
+    }
     func testSettingsPreserveCustomDraftCountryAndUpdateOnlyAnInheritedFallback() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -314,7 +328,12 @@ import Security
         XCTAssertEqual(restored.history[0].result.outcome, original.outcome)
         XCTAssertEqual(restored.history[0].photos, saved.photos)
         XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
-        XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "Sweden"))
+        for invalid in ["Sweden", "EU", "UN", "EZ", "AC", "XK"] {
+            XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: invalid))
+            XCTAssertEqual(store.history[0].result.identity.market, "SE")
+            XCTAssertFalse(store.enqueue(input: CheckInput(text: "water", market: invalid)))
+            XCTAssertTrue(store.jobs.isEmpty)
+        }
         FileStore.rejectWrite = { $0.lastPathComponent == "history.json" }
         XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "DE"))
         XCTAssertEqual(store.history[0].result.identity.market, "SE")

@@ -109,7 +109,7 @@ struct ResultView: View {
                 TextField(L("Product country (e.g. SE)"), text: $market).textInputAutocapitalization(.characters).autocorrectionDisabled()
                     .onChange(of: market) { _, value in market = String(value.uppercased().filter { $0.isASCII && $0.isLetter }.prefix(2)) }
                 Button(L("Save country")) { do { try store.updateProductMarket(saved.id, market: market) } catch { store.report(error) } }
-                    .disabled(!Locale.Region.isoRegions.contains(where: { $0.identifier == market }))
+                    .disabled(!ProductCountry.isValid(market))
             } header: { Text(L("Product country")) } footer: { Text(L("Saving a correction refreshes community replies. Check again to refresh the original analysis.")) }
             CommunitySection(store: store, state: community, onRefresh: { communityRefresh += 1 })
             Section {

@@ -39,10 +39,11 @@ import UIKit
     func testCheckHistoryAndRelaunch() {
         launch(); capture("check-light")
         app.textFields["productName"].tap(); app.textFields["productName"].typeText("Honey granola")
-        let text = app.textViews["ingredients"].exists ? app.textViews["ingredients"] : app.textFields["ingredients"]
-        text.tap(); text.typeText("Ingredients: oats, honey, salt")
         if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
-        app.swipeUp(); app.buttons["checkProduct"].tap()
+        let text = app.descendants(matching: .any).matching(identifier: "ingredients").firstMatch
+        reveal(text, forTap: true); text.tap(); text.typeText("Ingredients: oats, honey, salt")
+        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        reveal(app.buttons["checkProduct"], forTap: true); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.staticTexts["Not vegan"].waitForExistence(timeout: 20)); capture("result-light")
         app.navigationBars.buttons["Done"].tap()
         selectTab("History"); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10)); capture("history-light")

@@ -69,7 +69,7 @@ import CryptoKit
         } catch { report(error) }
     }
     func updateProductMarket(_ id: String, market: String) throws {
-        guard Locale.Region.isoRegions.contains(where: { $0.identifier == market }) else { throw AppError(L("Enter a two-letter country code.")) }
+        guard ProductCountry.isValid(market) else { throw AppError(L("Enter a two-letter country code.")) }
         guard !jobs.contains(where: { $0.id == id }), let index = history.firstIndex(where: { $0.id == id }) else { throw AppError(L("This result is unavailable or has a check in progress.")) }
         var next = history
         next[index].result.identity.market = market
@@ -122,6 +122,7 @@ import CryptoKit
             if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return false }
             var input = supplied ?? draft; input.locale = locale
+            guard ProductCountry.isValid(input.market) else { throw AppError(L("Enter a two-letter country code.")) }
             if input.autoMarket == nil && settings.automaticCountry { input.autoMarket = true }
             if supplied != nil && input.autoMarket != false { input.market = settings.defaultCountry }
             let photos = suppliedPhotos ?? draftPhotos

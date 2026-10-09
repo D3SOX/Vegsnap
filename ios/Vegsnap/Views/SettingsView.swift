@@ -78,7 +78,7 @@ struct SettingsView: View {
             Section(L("Preferences")) {
                 Toggle(L("Detect product country automatically"), isOn: $store.settings.automaticCountry)
                 Picker(L("Fallback country"), selection: $store.settings.defaultCountry) {
-                    ForEach(Locale.Region.isoRegions.map(\.identifier).filter { $0.count == 2 && $0.allSatisfy { $0.isASCII && $0.isLetter } }.sorted(), id: \.self) { code in
+                    ForEach(ProductCountry.codes, id: \.self) { code in
                         Text((Locale.current.localizedString(forRegionCode: code) ?? code) + " (" + code + ")").tag(code)
                     }
                 }
