@@ -28,13 +28,16 @@ enum PhotoProcessor {
         let requests = OCRRequests()
         let worker = Task.detached(priority: .userInitiated) {
             try Task.checkCancellation()
+            // Reject corrupt stored photos before Vision initializes recognition models.
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { throw AppError(L("This photo could not be opened.")) }
             let text = requests.text; text.recognitionLevel = .accurate; text.usesLanguageCorrection = true
             let available = try text.supportedRecognitionLanguages()
             text.recognitionLanguages = languages.filter { available.contains($0) }
             text.automaticallyDetectsLanguage = true
             let barcode = requests.barcode; barcode.symbologies = [.ean8, .ean13, .upce, .itf14]
             try Task.checkCancellation()
-            do { try VNImageRequestHandler(data: data).perform([text, barcode]) }
+            do { try VNImageRequestHandler(cgImage: image).perform([text, barcode]) }
             catch { try Task.checkCancellation(); throw error }
             try Task.checkCancellation()
             return (text.results?.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n") ?? "", barcode.results?.first.flatMap { observation in observation.payloadStringValue.map { observation.symbology == .upce ? expandUPCE($0) : $0 } })
