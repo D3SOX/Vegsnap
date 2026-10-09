@@ -436,7 +436,9 @@ import Security
         defer { try? FileManager.default.removeItem(at: root) }
         let store = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
         store.settings.offline = true
-        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food)
+        store.settings.defaultCountry = "SE"
+        store.saveSettings()
+        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food, market: "FI", autoMarket: false)
         func queueShare(_ text: String) throws {
             let entry = inbox.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: entry, withIntermediateDirectories: true)
@@ -445,16 +447,22 @@ import Security
         try queueShare("second share")
         store.consumeInbox()
         XCTAssertEqual(store.draft.text, "Ingredients: oats, honey")
+        XCTAssertEqual(store.draft.market, "FI")
         store.enqueue()
         XCTAssertEqual(store.draft.text, "second share")
+        XCTAssertEqual(store.draft.market, "SE")
+        XCTAssertNil(store.draft.autoMarket)
+        XCTAssertEqual(try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox).draft.market, "SE")
         try queueShare("third share")
         store.clearDraft()
         XCTAssertEqual(store.draft.text, "third share")
+        XCTAssertEqual(store.draft.market, "SE")
         for _ in 0..<500 {
             if !store.history.isEmpty { break }
             try await Task.sleep(for: .milliseconds(20))
         }
         XCTAssertEqual(store.history.first?.result.outcome, .notVegan)
+        XCTAssertEqual(store.history.first?.result.identity.market, "FI")
         XCTAssertTrue(store.jobs.isEmpty)
     }
     func testIPv6LoopbackProviderReachesNativeNetworkBridge() async throws {

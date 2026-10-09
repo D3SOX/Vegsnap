@@ -40,6 +40,32 @@ test('snapshot matching respects GTIN equivalence, market and newest product mod
   expect(index.lookup(code, { market: 'SE' })?.warnings?.some(message => message.startsWith('Different market:'))).toBe(true);
   expect(() => index.lookup('4006381333932')).toThrow('GTIN');
 });
+test('offline country clues and composition come only from category-eligible barcode records', async () => {
+  const pack = snapshot();
+  pack.sources.push(
+    { id: 'obf', url: 'https://world.openbeautyfacts.org', license: 'ODbL-1.0', retrievedAt: pack.generatedAt },
+    { id: 'opf', url: 'https://world.openproductsfacts.org', license: 'ODbL-1.0', retrievedAt: pack.generatedAt },
+  );
+  const food = pack.products[0]!;
+  food.countries_tags = ['en:sweden']; food.ingredients = 'water';
+  pack.products.push(
+    { ...food, source: 'obf', countries_tags: ['en:finland'], ingredients: 'milk' },
+    { ...food, source: 'opf', countries_tags: ['en:germany'], ingredients: 'wool' },
+  );
+  const index = new OfflineProductIndex([pack]);
+  for (const [category, market, source] of [['food', 'SE', 'off'], ['drink', 'SE', 'off'], ['cosmetics', 'FI', 'obf'], ['clothing', 'DE', 'opf'], ['shoes', 'DE', 'opf'], ['household', 'DE', 'opf']] as const) {
+    const record = index.lookup(code, { category, market: 'NO', autoMarket: true });
+    expect(record?.input.market).toBe(market);
+    expect(record?.markets).toEqual(record?.evidenceMarkets);
+    expect(record?.evidence.id).toBe(`offline:${source}:${code}`);
+  }
+  expect(index.lookup(code, { category: 'other', market: 'NO', autoMarket: true })?.input.market).toBe('NO');
+  const result = await checkProduct({ barcode: code, category: 'food', market: 'DE', autoMarket: true }, { mode: 'background', offline: true, offlineProducts: index });
+  expect(result.identity).toMatchObject({ market: 'SE', marketSource: 'database' });
+  expect(result.outcome).toBe('uncertain');
+  const onlyFood = new OfflineProductIndex([snapshot()]);
+  expect(onlyFood.lookup(code, { category: 'cosmetics', autoMarket: true })).toBeNull();
+});
 test('invalid identifiers, duplicates, untrusted fields and source metadata cannot enter a pack', () => {
   for (const mutate of [
     (pack: OfflineSnapshot) => { pack.products[0]!.code = '4006381333932'; },
