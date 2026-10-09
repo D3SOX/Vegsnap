@@ -68,6 +68,39 @@ class HostedAIFlowTest {
             assertEquals(2, server.requestCount)
         }
     }
+    @Test fun hostedResearchForAnotherCountryCannotOverrideLocalBarcodeClues() = runBlocking {
+        MockWebServer().use { server ->
+            val source = "https://maker.example/oats"
+            val response = JSONObject(extraction).put("text", "Ingredients: mystery").put("ingredients", org.json.JSONArray().put("mystery"))
+                .put("barcode", "4006381333931").put("packaging", JSONObject().put("country", "SE"))
+                .put("research", JSONObject().put("searched", true).put("market", "SE")
+                    .put("sources", org.json.JSONArray().put(JSONObject().put("url", source).put("title", "Oats"))))
+                .put("ingredientAssessments", org.json.JSONArray().put(JSONObject().put("term", "mystery").put("status", "plant").put("explanation", "Swedish formula")))
+                .put("webClaims", org.json.JSONArray().put(JSONObject().put("url", source).put("quote", "Oats are vegan.")
+                    .put("claim", "vegan").put("sourceType", "manufacturer").put("productName", "Oats").put("brand", "Maker")))
+            response.put("contact", JSONObject().put("productName", "Oats").put("brand", "Maker")
+                .put("sourceUrl", source).put("url", source).put("email", "sweden@maker.example"))
+            server.enqueue(MockResponse().setBody(response.toString()))
+            server.enqueue(MockResponse().setBody(JSONObject().put("product", JSONObject().put("code", "4006381333931")
+                .put("product_name", "Oats").put("ingredients_text", "mystery").put("countries_tags", org.json.JSONArray().put("en:germany"))).toString()))
+            val origin = server.url("/").toString().trimEnd('/')
+            val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())
+            }.build()
+            val result = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), "test instructions", client,
+                hostedBaseUrl = origin).check(CheckInput(category = "food", market = "DE", autoMarket = true),
+                listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
+            assertEquals(2, server.requestCount)
+            assertEquals("DE", result.getJSONObject("identity").getString("market"))
+            assertEquals("fallback", result.getJSONObject("identity").getString("marketSource"))
+            assertEquals("uncertain", result.getString("outcome"))
+            assertTrue(result.getJSONArray("warnings").toString().contains("Web research used a different product country"))
+            val evidence = result.getJSONArray("evidence")
+            assertTrue((0 until evidence.length()).any { evidence.getJSONObject(it).optString("kind") == "ai_extraction" && evidence.getJSONObject(it).optString("excerpt") == "Ingredients: mystery" })
+            assertFalse(result.getJSONArray("findings").toString().contains("Swedish formula"))
+            assertFalse(result.has("manufacturerContact"))
+        }
+    }
     @Test fun missingHostedSessionKeepsLocalEvidenceWithoutSendingAPhoto() = runBlocking {
         MockWebServer().use { server ->
             val origin = server.url("/").toString().trimEnd('/')

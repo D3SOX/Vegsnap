@@ -88,6 +88,58 @@ class WebEvidenceTest {
         .put("productName", name).put("brand", brand)
     private fun officialRepository(server: MockWebServer) = CheckRepository(evaluator, "Photo prompt",
         CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(), researchPrompt = "Research the identified product")
+    @Test fun discoveredBarcodeCountryIsLookedUpBeforeResearchAndItsCompositionIsReused() = runBlocking {
+        for (packaging in listOf<String?>(null, "Finland")) MockWebServer().use { server ->
+            val first = extraction().apply {
+                remove("webClaims"); put("barcode", "4006381333931")
+                packaging?.let { put("packaging", JSONObject().put("country", it)) }
+            }
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).apply { getJSONArray("output").remove(0) }.toString()))
+            server.enqueue(MockResponse().setBody(JSONObject().put("product", JSONObject().put("code", "4006381333931")
+                .put("ingredients_text", "mystery").put("countries_tags", JSONArray().put("en:sweden"))).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(extraction().toString()).toString()))
+            val result = officialRepository(server).check(CheckInput(market = "DE", autoMarket = true),
+                listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(3, server.requestCount)
+            val initial = JSONObject(server.takeRequest().body.readUtf8())
+            for (field in listOf("tools", "max_tool_calls", "include")) assertFalse(initial.has(field))
+            val lookup = server.takeRequest()
+            assertEquals("GET", lookup.method)
+            val followup = JSONObject(server.takeRequest().body.readUtf8())
+            assertTrue(followup.has("tools"))
+            val identity = JSONObject(followup.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals(if (packaging == null) "SE" else "DE", identity.getString("market"))
+            assertEquals(identity.getString("market"), result.getJSONObject("identity").getString("market"))
+            assertEquals(if (packaging == null) "database" else "fallback", result.getJSONObject("identity").getString("marketSource"))
+            val evidence = result.getJSONArray("evidence")
+            assertEquals(1, (0 until evidence.length()).count { evidence.getJSONObject(it).optString("kind") == "database" })
+            assertTrue(result.getJSONArray("warnings").stringValues().any { it.contains("other markets") } == (packaging != null))
+        }
+    }
+    @Test fun failedDiscoveredBarcodeLookupKeepsExtractionWithoutAutomaticResearch() = runBlocking {
+        MockWebServer().use { server ->
+            val first = extraction().apply { remove("webClaims"); put("barcode", "4006381333931"); put("text", "Ingredients: mystery") }
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).apply { getJSONArray("output").remove(0) }.toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
+            val result = officialRepository(server).check(CheckInput(category = "household", autoMarket = true),
+                listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(2, server.requestCount)
+            assertEquals("images", result.getString("aiStatus"))
+            assertTrue(result.getJSONArray("warnings").toString().contains("Database unavailable; AI evidence has been kept"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("Ingredients: mystery"))
+        }
+    }
+    @Test fun mismatchedExtractedBarcodeStopsBeforeResearch() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(JSONObject().put("status", 0).toString()))
+            val first = extraction().apply { remove("webClaims"); put("barcode", "3017620422003") }
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).apply { getJSONArray("output").remove(0) }.toString()))
+            val result = officialRepository(server).check(CheckInput(category = "food", barcode = "4006381333931", autoMarket = true),
+                listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals(2, server.requestCount)
+            assertEquals("failed", result.getString("aiStatus"))
+        }
+    }
     @Test fun researchUsesPackagingAndDatabaseCountriesWithoutLosingTheOriginalFallback() = runBlocking {
         data class Scenario(val automatic: Boolean, val markets: List<String>, val packaging: String?, val initial: String, val research: String, val source: String)
         for (scenario in listOf(
@@ -615,7 +667,7 @@ class WebEvidenceTest {
                 chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())
             }.build()
             val repository = CheckRepository(evaluator, "prompt", client)
-            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1,2,3), "Mi")),
+            val result = repository.check(CheckInput(autoMarket = false), listOf(PreparedPhoto(byteArrayOf(1,2,3), "Mi")),
                 AppSettings(connection = "api", aiEnabled = true, model = "test"), "fixture-token")
             val request = requireNotNull(server.takeRequest(1, TimeUnit.SECONDS))
             assertEquals("/v1/responses", request.path)

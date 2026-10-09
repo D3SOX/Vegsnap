@@ -48,7 +48,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return; }
+      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return true; }
       if (options.offline) {
         result.warnings.push(input.locale === 'de' ? 'Kein passender Eintrag im teilweisen Offline-Datenbestand.' : 'No exact record in the partial offline database.');
         return;
@@ -57,6 +57,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
         category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
       if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
       else result.warnings.push(input.locale === 'de' ? 'Kein passender Datenbankeintrag gefunden.' : 'No exact product record was found.');
+      return true;
     } catch (error) {
       if (options.signal?.aborted) throw error;
       result.warnings.push(error instanceof Error ? error.message : 'Database lookup failed.');
@@ -79,13 +80,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     options.onProgress?.('ai');
     const extractionInput = { ...input, market: selectProductCountry(input, undefined, markets).market };
     const extracted = validateAIExtraction(await options.provider.extract(extractionInput, options.signal,
-      { fallbackMarket: input.market ?? 'DE', markets }), { allowResearch: true });
+      { fallbackMarket: input.market ?? 'DE', markets, resolveBarcode: async code => await lookup(code) ? [...markets] : undefined }), { allowResearch: true });
     options.onProgress?.('evaluating');
     const suppliedCode = input.barcode && normalizeBarcode(input.barcode);
     const extractedCode = extracted.barcode && normalizeBarcode(extracted.barcode);
     if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {
       throw new Error('AI identified a different product barcode; confirm the product before using its evidence.');
     }
+    if (extractedCode) await lookup(extractedCode);
     // With text-only input, preserve the entire supplied composition: a substring could omit an unknown ingredient.
     const canonical = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
     const original = input.text ?? '';
@@ -94,6 +96,13 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
       throw new Error('AI extraction changed the supplied text; the original evidence was kept.');
     }
     packagingCountry = extracted.packaging?.country;
+    if (extracted.research?.market && extracted.research.market !== selectProductCountry(input, packagingCountry, markets).market) {
+      // Hosted/native research may use a newer public record than the client's offline snapshot.
+      for (const field of ['ingredientAssessments', 'webClaims', 'webCompositions', 'contact'] as const) delete extracted[field];
+      result.warnings.push(input.locale === 'de'
+        ? 'Die Länderhinweise haben sich nach der Recherche geändert. Webbelege wurden nicht verwendet; prüfe das Produkt erneut.'
+        : 'Country clues changed after research. Web evidence was not used; recheck the product.');
+    }
     // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
     const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
     const complete = input.complete === false ? false : input.images?.length ? extracted.complete : localComplete && extracted.complete;
@@ -123,7 +132,6 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (result.outcome === 'uncertain' && options.provider.supportsWebSearch && extracted.name && extracted.brand && !extracted.complete && !extracted.research?.searched) {
       result.warnings.push(input.locale === 'de' ? 'Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege wurden beibehalten.' : 'Web research did not complete; the available photo or text evidence was kept.');
     }
-    if (extracted.barcode && normalizeBarcode(extracted.barcode)) await lookup(extracted.barcode);
     result = applyManufacturerContact(result, input, extracted);
     result = applyCompanyAssessment(result, input, extracted);
   } catch (error) {

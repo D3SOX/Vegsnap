@@ -75,4 +75,24 @@ class CheckDraftTest {
         assertEquals("SE", extractionInputContext(input).getString("market"))
         assertEquals("en:sweden", productMarketTag("SE"))
     }
+    @Test fun `restored manual countries normalize aliases and reject invalid imports before queueing`() {
+        val original = CheckInput(market = "FI", autoMarket = false)
+        val result = JSONObject().put("category", "food").put("identity", JSONObject().put("marketSource", "manual"))
+        for (market in listOf("SE", "en:sweden", "sverige")) {
+            result.getJSONObject("identity").put("market", market)
+            val restored = restoreCheckInput(result, original, "DE")
+            assertEquals("SE", restored.market)
+            assertEquals(false, restored.autoMarket)
+        }
+        for (market in listOf("SWE", "ZZ", "unknown country", "")) {
+            result.getJSONObject("identity").put("market", market)
+            try { restoreCheckInput(result, original, "DE"); fail("Invalid manual country accepted") }
+            catch (_: IllegalArgumentException) { }
+        }
+        result.getJSONObject("identity").remove("marketSource")
+        assertEquals("SE", restoreCheckInput(result, original.copy(market = "en:sweden"), "DE").market)
+        try { restoreCheckInput(result, original.copy(market = "SWE"), "DE"); fail("Invalid saved manual country accepted") }
+        catch (_: IllegalArgumentException) { }
+    }
+
 }

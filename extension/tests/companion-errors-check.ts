@@ -44,11 +44,12 @@ for (const message of [
 console.log('Companion plan errors: actionable usage/service messages survive native transport and evaluation without retries or account loss');
 
 for (const automatic of [false, true]) {
-  await companionProvider('fixture-model').extract({ market: 'SE', autoMarket: automatic }, undefined,
+  await companionProvider('fixture-model').extract({ market: 'SE', autoMarket: automatic, barcode: '4006381333931' }, undefined,
     { fallbackMarket: 'DE', markets: ['en:sweden'] }).catch(() => {});
   const payload = payloads.at(-1)!;
   assert.deepEqual(payload.countryContext, { automatic, fallbackMarket: 'DE', markets: ['en:sweden'] });
   const product = JSON.parse(payload.text);
   assert.equal(product.market, 'SE');
+  assert.equal(product.barcode, '4006381333931');
   for (const key of ['autoMarket', 'countryContext', 'fallbackMarket', 'markets', 'automatic']) assert.equal(key in product, false);
 }

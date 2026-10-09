@@ -46,7 +46,7 @@ async function sendCompanion(command: string, payload?: unknown, signal?: AbortS
 export function companionProvider(model: string, supportsImages = true): ProviderAdapter {
   return { supportsWebSearch: true, async extract(input, signal, countryContext) {
     if (input.images?.length && !supportsImages) throw new Error('Choose a vision-capable model for photo checks.');
-    const value = await companion('check', { model, countryContext: { automatic: input.autoMarket === true, fallbackMarket: countryContext?.fallbackMarket ?? input.market ?? 'DE', markets: countryContext?.markets ?? [] }, text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, sourceUrl: input.sourceUrl, category: input.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', complete: input.complete }), ...(input.images?.length ? { imageDataUrls: input.images } : {}) }, signal);
+    const value = await companion('check', { model, countryContext: { automatic: input.autoMarket === true, fallbackMarket: countryContext?.fallbackMarket ?? input.market ?? 'DE', markets: countryContext?.markets ?? [] }, text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode, sourceUrl: input.sourceUrl, category: input.category, market: input.market ?? 'DE', locale: input.locale ?? 'en', complete: input.complete }), ...(input.images?.length ? { imageDataUrls: input.images } : {}) }, signal);
     if (!isRecord(value) || typeof value.text !== 'string') throw new Error('The companion returned an invalid response.');
     return validateAIExtraction({ ...parseAIExtraction(value.text), ...(value.research === undefined ? {} : { research: value.research }) }, { allowResearch: true });
   } };

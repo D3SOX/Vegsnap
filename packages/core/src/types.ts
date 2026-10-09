@@ -118,11 +118,15 @@ export interface AIExtraction {
   contact?: ManufacturerContact;
   companyAssessment?: AICompanyAssessment;
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */
-  research?: { searched: boolean; sources: { url: string; title: string }[] };
+  research?: { searched: boolean; sources: { url: string; title: string }[]; market?: string };
 }
 export interface ProviderAdapter {
   supportsWebSearch?: boolean;
-  extract(input: CheckInput, signal?: AbortSignal, countryContext?: { fallbackMarket: string; markets: readonly string[] }): Promise<AIExtraction>;
+  extract(input: CheckInput, signal?: AbortSignal, countryContext?: {
+    fallbackMarket: string;
+    markets: readonly string[];
+    resolveBarcode?: (code: string) => Promise<readonly string[] | undefined>;
+  }): Promise<AIExtraction>;
 }
 export interface ProviderConfig {
   baseUrl: string;

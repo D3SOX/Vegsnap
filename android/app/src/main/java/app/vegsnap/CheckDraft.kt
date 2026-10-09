@@ -46,5 +46,7 @@ internal fun restoreCheckInput(result: JSONObject, original: CheckInput?, fallba
         barcode = original.barcode.ifBlank { restored.barcode }) ?: restored
     val manual = restored.autoMarket == false || original?.autoMarket == false
     val market = if (restored.autoMarket == false) restored.market else if (manual) input.market else fallbackCountry
-    return input.copy(market = market, autoMarket = if (manual) false else null)
+    val normalizedMarket = productCountryCode(market)
+    require(normalizedMarket != null && validProductMarket(normalizedMarket)) { "Invalid product country" }
+    return input.copy(market = normalizedMarket, autoMarket = if (manual) false else null)
 }
