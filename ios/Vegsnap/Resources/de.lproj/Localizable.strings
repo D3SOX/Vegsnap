@@ -291,3 +291,5 @@
 "Vegsnap AI is unavailable. Try again later." = "Die Vegsnap-KI ist nicht verfügbar. Versuche es später erneut.";
 "Verification pending" = "Verifizierung ausstehend";
 "Local text recognition also failed; earlier evidence has been kept." = "Auch die lokale Texterkennung ist fehlgeschlagen; bisherige Belege bleiben erhalten.";
+
+"This draft is already queued. Clear it to start another check." = "Dieser Entwurf wurde bereits eingereiht. Leere ihn, um eine weitere Prüfung zu starten.";

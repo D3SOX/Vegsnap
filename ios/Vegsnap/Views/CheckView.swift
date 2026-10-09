@@ -49,7 +49,8 @@ struct CheckView: View {
             } header: { Text(L("Ingredients or materials")) } footer: { Text(L("Only mark a list complete when you have checked the entire label.")) }
             Section {
                 Button { editing = nil; store.enqueue() } label: { Label(L("Check product"), systemImage: "sparkle.magnifyingglass").frame(maxWidth: .infinity, minHeight: 38) }
-                    .buttonStyle(.borderedProminent).disabled(importing || !store.draft.hasContent && store.draftPhotos.isEmpty).accessibilityIdentifier("checkProduct")
+                    .buttonStyle(.borderedProminent).disabled(importing || store.draftSubmitted || !store.draft.hasContent && store.draftPhotos.isEmpty).accessibilityIdentifier("checkProduct")
+                if store.draftSubmitted { Text(L("This draft is already queued. Clear it to start another check.")).font(.footnote) }
                 if store.settings.offline { Label(L("Offline mode — local evidence only"), systemImage: "wifi.slash").font(.footnote).foregroundStyle(.secondary) }
                 else if store.connectionReady(store.settings) { Text(L("Selected text and photos may be sent to your AI provider if local evidence is insufficient.")).font(.footnote).foregroundStyle(.secondary) }
             }
@@ -60,7 +61,7 @@ struct CheckView: View {
             }
         }
         .navigationTitle("Vegsnap")
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(L("Done")) { editing = nil } }; ToolbarItem(placement: .topBarTrailing) { Button(L("Clear")) { store.clearDraft() }.disabled(!store.draft.hasContent && store.draftPhotos.isEmpty) } }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(L("Done")) { editing = nil } }; ToolbarItem(placement: .topBarTrailing) { Button(L("Clear")) { store.clearDraft() }.disabled(!store.draftSubmitted && !store.draft.hasContent && store.draftPhotos.isEmpty) } }
         .onChange(of: store.draft) { _, _ in store.saveDraft() }
         .onChange(of: selection) { _, items in
             guard !items.isEmpty, !importing else { return }

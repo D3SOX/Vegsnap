@@ -291,3 +291,5 @@
 "Vegsnap AI is unavailable. Try again later." = "Vegsnap AI is unavailable. Try again later.";
 "Verification pending" = "Verification pending";
 "Local text recognition also failed; earlier evidence has been kept." = "Local text recognition also failed; earlier evidence has been kept.";
+
+"This draft is already queued. Clear it to start another check." = "This draft is already queued. Clear it to start another check.";

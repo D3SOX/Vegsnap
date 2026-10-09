@@ -20,8 +20,9 @@ extension AppStore {
                     try files.saveData(clean, name)
                 }
                 let nextDraft = CheckInput(text: input.text, category: settings.defaultCategory, locale: locale)
-                try files.save(Draft(input: nextDraft, photos: importedPhotos), "draft.json")
-                draft = nextDraft; draftPhotos = importedPhotos; selectedTab = "check"
+                let nextID = UUID().uuidString
+                try files.save(Draft(id: nextID, input: nextDraft, photos: importedPhotos), "draft.json")
+                draftID = nextID; draft = nextDraft; draftPhotos = importedPhotos; selectedTab = "check"
                 do { try FileManager.default.removeItem(at: entry) } catch { report(error) }
                 return
             } catch {

@@ -9,7 +9,7 @@ import Security
     override func setUp() async throws { Keychain.testService = "app.vegsnap.ios.tests." + UUID().uuidString; engine = try CoreEngine() }
     override func tearDown() async throws {
         SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: Keychain.service] as CFDictionary)
-        Keychain.testService = nil; Network.testProtocolClasses = nil
+        Keychain.testService = nil; Network.testProtocolClasses = nil; FileStore.rejectWrite = nil
     }
     func analyze(_ text: String, category: Vegsnap.Category = .food, complete: Bool? = true, name: String = "", locale: String = "en") throws -> CheckResult {
         try engine.call("analyze", CheckInput(text: text, name: name, category: category, complete: complete, locale: locale))
@@ -322,6 +322,39 @@ import Security
         restored.clearDraft()
         XCTAssertFalse(try AppStore(root: root).draft.hasContent)
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.files.url("kept.jpg").path))
+    }
+    func testAcceptedDraftCannotResubmitWhenClearingFails() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); store.settings.offline = true
+        store.draft = CheckInput(text: "Ingredients: honey")
+        let draftID = store.draftID
+        var writes = 0
+        FileStore.rejectWrite = { url in
+            guard url == store.files.url("draft.json") else { return false }
+            writes += 1; return writes > 1
+        }
+        store.enqueue(); store.enqueue()
+        XCTAssertEqual(store.jobs.map(\.id), [draftID]); XCTAssertTrue(store.draftSubmitted)
+        XCTAssertEqual(store.draft.text, "Ingredients: honey")
+        for _ in 0..<500 {
+            if !store.history.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(store.history.count, 1)
+        FileStore.rejectWrite = nil
+        let restored = try AppStore(root: root); restored.settings.offline = true
+        XCTAssertTrue(restored.draftSubmitted)
+        restored.enqueue()
+        XCTAssertTrue(restored.jobs.isEmpty); XCTAssertEqual(restored.history.count, 1)
+        restored.clearDraft()
+        XCTAssertNotEqual(restored.draftID, draftID); XCTAssertFalse(restored.draftSubmitted)
+        restored.draft = CheckInput(text: "Ingredients: honey"); restored.enqueue()
+        for _ in 0..<500 {
+            if restored.history.count == 2 { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(restored.history.count, 2)
     }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)

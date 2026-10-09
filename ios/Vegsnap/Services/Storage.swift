@@ -3,6 +3,9 @@ import Security
 import CryptoKit
 
 struct FileStore {
+    #if DEBUG
+    static var rejectWrite: ((URL) -> Bool)?
+    #endif
     let root: URL
     init(root: URL? = nil) throws {
         self.root = root ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Vegsnap", isDirectory: true)
@@ -18,7 +21,12 @@ struct FileStore {
         return try JSONDecoder().decode(T.self, from: Data(contentsOf: path))
     }
     func save<T: Encodable>(_ value: T, _ name: String) throws { try saveData(value.jsonData(), name) }
-    func saveData(_ data: Data, _ name: String) throws { try data.write(to: url(name), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+    func saveData(_ data: Data, _ name: String) throws {
+        #if DEBUG
+        if Self.rejectWrite?(url(name)) == true { throw CocoaError(.fileWriteOutOfSpace) }
+        #endif
+        try data.write(to: url(name), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
     func remove(_ name: String) throws { if FileManager.default.fileExists(atPath: url(name).path) { try FileManager.default.removeItem(at: url(name)) } }
 }
 enum Keychain {

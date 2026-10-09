@@ -7,7 +7,7 @@ import CryptoKit
     let engine: CoreEngine
     let files: FileStore
     let inboxDirectory: URL?
-    struct Draft: Codable { var input: CheckInput; var photos: [String] }
+    struct Draft: Codable { var id: String; var input: CheckInput; var photos: [String] }
     let hosted: HostedAIConnection
     let chatGPT = ChatGPTConnection()
     var switchingChatGPT = false
@@ -16,6 +16,7 @@ import CryptoKit
     var settings: Settings
     var history: [SavedCheck]
     var jobs: [CheckJob]
+    var draftID: String
     var draft: CheckInput
     var draftPhotos: [String]
     var selectedTab: String
@@ -38,6 +39,7 @@ import CryptoKit
         history = try files.read("history.json") ?? []
         jobs = try files.read("queue.json") ?? []
         let saved: Draft? = try files.read("draft.json")
+        draftID = saved?.id ?? UUID().uuidString
         draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, locale: language)
         draftPhotos = saved?.photos ?? []
         selectedTab = loadedSettings.startTab == "last" ? loadedSettings.lastTab : loadedSettings.startTab
@@ -56,7 +58,7 @@ import CryptoKit
     func report(_ error: Error) { if !(error is CancellationError) { self.error = error.localizedDescription } }
     func saveSettings() { do { try files.save(settings, "settings.json") } catch { report(error) } }
     func saveDraft() {
-        do { try files.save(Draft(input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
+        do { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
     }
     func addPhoto(_ data: Data) throws {
         guard draftPhotos.count < 3 else { throw AppError(L("Use at most three photos.")) }
@@ -66,9 +68,10 @@ import CryptoKit
         do { try replaceDraft(draft, photos: draftPhotos + [name]) }
         catch { try? files.remove(name); throw error }
     }
-    private func replaceDraft(_ input: CheckInput, photos: [String]) throws {
-        try files.save(Draft(input: input, photos: photos), "draft.json")
-        draft = input; draftPhotos = photos
+    private func replaceDraft(_ input: CheckInput, photos: [String], id: String? = nil) throws {
+        let nextID = id ?? draftID
+        try files.save(Draft(id: nextID, input: input, photos: photos), "draft.json")
+        draftID = nextID; draft = input; draftPhotos = photos
     }
     func removePhoto(_ name: String) {
         do { try replaceDraft(draft, photos: draftPhotos.filter { $0 != name }); cleanPhotos() }
@@ -76,12 +79,16 @@ import CryptoKit
     }
     func clearDraft() {
         do {
-            try replaceDraft(CheckInput(category: settings.defaultCategory, locale: locale), photos: [])
+            try replaceDraft(CheckInput(category: settings.defaultCategory, locale: locale), photos: [], id: UUID().uuidString)
             cleanPhotos(); consumeInbox()
         } catch { report(error) }
     }
+    var draftSubmitted: Bool { jobs.contains { $0.id == draftID } || history.contains { $0.id == draftID } }
     func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) {
         do {
+            guard supplied != nil || !draftSubmitted else { return }
+            // Persist the identity before accepting this draft into the queue.
+            if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return }
             var input = supplied ?? draft; input.locale = locale
             let photos = suppliedPhotos ?? draftPhotos
@@ -92,7 +99,8 @@ import CryptoKit
                 guard let code else { throw AppError(L("Check the barcode digits and checksum.")) }; input.barcode = code
             }
             input.images = nil
-            let job = CheckJob(input: input, photos: photos, settings: settings, accountID: settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil)
+            var job = CheckJob(input: input, photos: photos, settings: settings, accountID: settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil)
+            if supplied == nil { job.id = draftID }
             let nextJobs = jobs + [job]
             try files.save(nextJobs, "queue.json"); jobs = nextJobs
             if supplied == nil { clearDraft() }
