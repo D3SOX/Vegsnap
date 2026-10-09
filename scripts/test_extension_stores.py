@@ -131,24 +131,42 @@ class StoreTests(unittest.TestCase):
             self.assertTrue(self.submit(api).startswith('Already'))
             self.assertEqual(len(api.calls), 1)
 
-    def test_skips_an_older_pending_version_without_mutations(self):
-        api = FakeAPI({'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')})
-        self.assertEqual(self.submit(api), 'Skipped: Chrome 0.2.8 is still pending review; retry 0.2.9 after it finishes')
-        self.assertEqual(len(api.calls), 1)
+    def test_replaces_an_older_pending_version_after_canceling_review(self):
+        submitted = revision('0.2.8', 'PENDING_REVIEW')
+        submitted['distributionChannels'].append({'crxVersion': '0.2.8'})
+        api = FakeAPI({'submittedItemRevisionStatus': submitted}, {},
+                      {'uploadState': 'SUCCEEDED', 'crxVersion': '0.2.9'}, {'state': 'PENDING_REVIEW'})
+        self.assertEqual(self.submit(api), 'Canceled pending review for 0.2.8; PENDING_REVIEW')
+        self.assertEqual(api.calls[1], (f"{publisher.API}/v2/publishers/{LISTING['chromium_publisher_id']}/items/{LISTING['chromium_store_id']}:cancelSubmission", b''))
+        self.assertIn('/upload/v2/publishers/', api.calls[2][0])
+        self.assertEqual(api.calls[2][1], (self.directory / 'vegsnap-chrome-store.zip').read_bytes())
+        self.assertEqual(json.loads(api.calls[3][1]), {'publishType': 'DEFAULT_PUBLISH', 'skipReview': False})
 
-    def test_records_skipped_chrome_submission_in_workflow_summary(self):
-        api = FakeAPI({'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')})
+    def test_failed_cancellation_stops_before_uploading(self):
+        api = FakeAPI()
+        with patch.object(api, 'request', side_effect=[
+                {'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')},
+                RuntimeError('Store API HTTP 429: cancellation limit reached'),
+        ]) as request:
+            with self.assertRaisesRegex(RuntimeError, 'cancellation limit'):
+                self.submit(api)
+        self.assertEqual(request.call_count, 2)
+        self.assertTrue(request.call_args.args[0].endswith(':cancelSubmission'))
+
+    def test_records_replaced_chrome_submission_in_workflow_summary(self):
+        api = FakeAPI({'submittedItemRevisionStatus': revision('0.2.8', 'PENDING_REVIEW')}, {},
+                      {'uploadState': 'SUCCEEDED', 'crxVersion': '0.2.9'}, {'state': 'PENDING_REVIEW'})
         summary = self.directory / 'summary.md'
         summary.write_text('Previous step\n')
         with patch.object(publisher, 'ChromeAPI', return_value=api), \
                 patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': str(summary)}), \
                 patch('sys.argv', ['publish-extension-stores.py', 'chrome', '--tag', 'v0.2.9', '--directory', str(self.directory)]):
             publisher.main()
-        self.assertEqual(summary.read_text(), 'Previous step\nChrome 0.2.9: Skipped: Chrome 0.2.8 is still pending review; retry 0.2.9 after it finishes\n')
-        self.assertEqual(len(api.calls), 1)
+        self.assertEqual(summary.read_text(), 'Previous step\nChrome 0.2.9: Canceled pending review for 0.2.8; PENDING_REVIEW\n')
+        self.assertEqual(len(api.calls), 4)
 
     def test_does_not_overwrite_a_newer_pending_or_different_staged_version(self):
-        for version, state in (('0.3.0', 'PENDING_REVIEW'), ('0.2.8', 'STAGED')):
+        for version, state in (('0.3.0', 'PENDING_REVIEW'), ('0.2.10', 'PENDING_REVIEW'), ('0.2.8', 'STAGED')):
             api = FakeAPI({'submittedItemRevisionStatus': revision(version, state)})
             with self.subTest(version=version, state=state), self.assertRaisesRegex(ValueError, 'Another Chrome version'):
                 self.submit(api)
@@ -182,6 +200,19 @@ class StoreTests(unittest.TestCase):
             self.submit(FakeAPI({'takenDown': True}))
         with self.assertRaisesRegex(ValueError, 'REJECTED'):
             self.submit(FakeAPI({}, {'uploadState': 'SUCCEEDED', 'crxVersion': '0.2.9'}, {'state': 'REJECTED'}))
+
+    def test_cancellation_posts_empty_body_and_accepts_empty_response(self):
+        api = publisher.ChromeAPI.__new__(publisher.ChromeAPI)
+        api.token = 'test-token'
+        api.secrets = [api.token]
+        for body in (b'', b'{}'):
+            with self.subTest(body=body), patch.object(publisher.urllib.request, 'urlopen') as urlopen:
+                urlopen.return_value.__enter__.return_value = io.BytesIO(body)
+                self.assertEqual(api.request(f'{publisher.API}/v2/publishers/test/items/test:cancelSubmission', b''), {})
+            request = urlopen.call_args.args[0]
+            self.assertEqual(request.get_method(), 'POST')
+            self.assertEqual(request.data, b'')
+            self.assertEqual(request.get_header('Authorization'), 'Bearer test-token')
 
     def test_missing_credentials_and_error_redaction(self):
         with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(ValueError, 'CHROME_CLIENT_ID'):

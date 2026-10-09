@@ -75,7 +75,8 @@ class ChromeAPI:
         request = urllib.request.Request(url, data=data, headers=headers)
         try:
             with urllib.request.urlopen(request, timeout=120) as response:
-                return json.load(response)
+                body = response.read()
+                return json.loads(body) if body else {}
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors='replace')
             for secret in self.secrets:
@@ -100,13 +101,18 @@ def publish_chrome(api, directory, version, listing, sleep=time.sleep):
     if any(tuple(map(int, old.split('.'))) >= target for old in revision_versions(published)):
         raise ValueError('Refusing to replace an equal or newer published Chrome version')
     submitted = status.get('submittedItemRevisionStatus', {})
+    canceled_version = None
+    if submitted.get('state') == 'PENDING_REVIEW':
+        submitted_versions = set(revision_versions(submitted))
+        if len(submitted_versions) == 1:
+            pending_version = next(iter(submitted_versions))
+            if tuple(map(int, pending_version.split('.'))) < target:
+                api.request(f'{base}:cancelSubmission', b'')
+                canceled_version = pending_version
+                submitted = {}
     if submitted.get('state') in ('PENDING_REVIEW', 'STAGED'):
         submitted_versions = set(revision_versions(submitted))
         if submitted_versions != {version}:
-            if submitted['state'] == 'PENDING_REVIEW' and len(submitted_versions) == 1:
-                pending_version = next(iter(submitted_versions))
-                if tuple(map(int, pending_version.split('.'))) < target:
-                    return f'Skipped: Chrome {pending_version} is still pending review; retry {version} after it finishes'
             raise ValueError('Another Chrome version is under review or staged; finish it in the dashboard first')
         if submitted['state'] == 'PENDING_REVIEW':
             return 'Already pending review'
@@ -129,6 +135,8 @@ def publish_chrome(api, directory, version, listing, sleep=time.sleep):
     response = api.request(f'{base}:publish', json.dumps({'publishType': publish_type, 'skipReview': False}).encode())
     if response.get('state') not in ('PENDING_REVIEW', 'PUBLISHED'):
         raise ValueError(f"Chrome submission did not succeed: {response.get('state')}")
+    if canceled_version:
+        return f"Canceled pending review for {canceled_version}; {response['state']}"
     return response['state']
 
 
