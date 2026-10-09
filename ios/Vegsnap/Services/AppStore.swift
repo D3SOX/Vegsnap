@@ -62,10 +62,24 @@ import CryptoKit
         guard draftPhotos.count < 3 else { throw AppError(L("Use at most three photos.")) }
         let clean = try PhotoProcessor.sanitize(data)
         let name = UUID().uuidString + ".jpg"
-        try files.saveData(clean, name); draftPhotos.append(name); saveDraft()
+        try files.saveData(clean, name)
+        do { try replaceDraft(draft, photos: draftPhotos + [name]) }
+        catch { try? files.remove(name); throw error }
     }
-    func removePhoto(_ name: String) { draftPhotos.removeAll { $0 == name }; saveDraft(); cleanPhotos() }
-    func clearDraft() { draft = CheckInput(category: settings.defaultCategory, locale: locale); draftPhotos = []; saveDraft(); cleanPhotos(); consumeInbox() }
+    private func replaceDraft(_ input: CheckInput, photos: [String]) throws {
+        try files.save(Draft(input: input, photos: photos), "draft.json")
+        draft = input; draftPhotos = photos
+    }
+    func removePhoto(_ name: String) {
+        do { try replaceDraft(draft, photos: draftPhotos.filter { $0 != name }); cleanPhotos() }
+        catch { report(error) }
+    }
+    func clearDraft() {
+        do {
+            try replaceDraft(CheckInput(category: settings.defaultCategory, locale: locale), photos: [])
+            cleanPhotos(); consumeInbox()
+        } catch { report(error) }
+    }
     func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) {
         do {
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return }
@@ -79,7 +93,8 @@ import CryptoKit
             }
             input.images = nil
             let job = CheckJob(input: input, photos: photos, settings: settings, accountID: settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil)
-            jobs.append(job); try files.save(jobs, "queue.json")
+            let nextJobs = jobs + [job]
+            try files.save(nextJobs, "queue.json"); jobs = nextJobs
             if supplied == nil { clearDraft() }
             schedule()
         } catch { report(error) }

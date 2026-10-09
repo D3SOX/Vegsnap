@@ -283,6 +283,46 @@ import Security
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.files.url("kept.jpg").path))
         XCTAssertTrue(try AppStore(root: root).jobs.isEmpty)
     }
+    func testFailedEnqueueDoesNotPublishOrDuplicateJobs() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root); store.settings.offline = true
+        store.draft = CheckInput(text: "Ingredients: honey")
+        try FileManager.default.createDirectory(at: store.files.url("queue.json"), withIntermediateDirectories: true)
+        store.enqueue()
+        XCTAssertTrue(store.jobs.isEmpty); XCTAssertTrue(store.history.isEmpty)
+        XCTAssertEqual(store.draft.text, "Ingredients: honey")
+        try FileManager.default.removeItem(at: store.files.url("queue.json"))
+        store.enqueue()
+        for _ in 0..<500 {
+            if !store.history.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        XCTAssertEqual(store.history.count, 1); XCTAssertTrue(store.jobs.isEmpty)
+    }
+    func testFailedDraftPhotoChangesPreservePersistedDraft() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        store.draft = CheckInput(text: "my draft"); store.draftPhotos = ["kept.jpg"]
+        try store.files.saveData(Data("photo fixture".utf8), "kept.jpg"); store.saveDraft()
+        let persisted = try Data(contentsOf: store.files.url("draft.json"))
+        try FileManager.default.removeItem(at: store.files.url("draft.json"))
+        try FileManager.default.createDirectory(at: store.files.url("draft.json"), withIntermediateDirectories: true)
+        store.clearDraft(); store.removePhoto("kept.jpg")
+        XCTAssertEqual(store.draft.text, "my draft"); XCTAssertEqual(store.draftPhotos, ["kept.jpg"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.files.url("kept.jpg").path))
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { $0.fill(CGRect(x: 0, y: 0, width: 40, height: 40)) }
+        XCTAssertThrowsError(try store.addPhoto(XCTUnwrap(image.pngData())))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: root.path).filter { $0.hasSuffix(".jpg") }, ["kept.jpg"])
+        try FileManager.default.removeItem(at: store.files.url("draft.json"))
+        try persisted.write(to: store.files.url("draft.json"))
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.draft.text, "my draft"); XCTAssertEqual(restored.draftPhotos, ["kept.jpg"])
+        restored.clearDraft()
+        XCTAssertFalse(try AppStore(root: root).draft.hasContent)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.files.url("kept.jpg").path))
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")
