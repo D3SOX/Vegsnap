@@ -265,6 +265,24 @@ import Security
         restored.delete(Set(restored.history.map(\.id)))
         XCTAssertTrue(try AppStore(root: root).history.isEmpty)
     }
+    func testStoppingNetworkWorkDoesNotRestartHostedRefresh() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root); StalledNetworkProtocol.started = nil }
+        let config = try ServiceConfiguration.load("hosted-ai")
+        try Keychain.save(String(repeating: "a", count: 64), for: config.baseUrl + "/ios-access")
+        Network.testProtocolClasses = [StalledNetworkProtocol.self]
+        let request = expectation(description: "No networking after shutdown")
+        request.isInverted = true; StalledNetworkProtocol.started = request
+        let store = try AppStore(root: root)
+        store.settings.connection = "hosted"; store.settings.offline = false
+        XCTAssertTrue(store.enqueue(input: CheckInput(text: "Ingredients: oats", category: .food)))
+        // This is the shutdown used by the background assertion's expiration handler.
+        store.stopNetworkWork()
+        await fulfillment(of: [request], timeout: 0.5)
+        XCTAssertEqual(store.jobs.first?.status, "cancelled")
+        XCTAssertFalse(store.hosted.busy); XCTAssertNil(store.hosted.error)
+        XCTAssertTrue(store.history.isEmpty)
+    }
     func testInterruptedQueueDoesNotAutomaticallyResend() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

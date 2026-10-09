@@ -124,7 +124,7 @@ import CryptoKit
         }
     }
     private func run(_ job: CheckJob) async {
-        defer { tasks.removeValue(forKey: job.id); schedule(); endBackgroundIfIdle(); if job.settings.connection == "hosted" && !settings.offline { hosted.refresh() } }
+        defer { tasks.removeValue(forKey: job.id); schedule(); endBackgroundIfIdle(); if !Task.isCancelled && job.settings.connection == "hosted" && !settings.offline { hosted.refresh() } }
         do {
             var input = job.input
             let photos = try job.photos.map { try Data(contentsOf: files.url($0)) }
