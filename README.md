@@ -26,7 +26,7 @@ Vegsnap supports food, cosmetics, household products, clothing and shoes. It use
 
 You do not need a Vegsnap account. History stays on your device. The app has no ads or telemetry.
 
-You can look up reviewed manufacturer replies in the Android app or open the community service from the extension. To contribute a reply, open the submission form and redact personal details before sending it. The [community service](packages/community/README.md) publishes approved contributions on Cloudflare. Replies stay separate from the product verdict. Opening a result does not upload your history.
+You can look up reviewed manufacturer replies in the Android app or open the community service from the extension. To contribute a reply, open the submission form and redact personal details before sending it. The [community service](packages/community/README.md) publishes approved contributions on Cloudflare. Opening a product automatically looks up reviewed replies using its barcode, name, brand and country. Matching whole-product confirmations can change the displayed verdict; ingredient-only replies cannot. Conflicting evidence is shown explicitly. Your saved scan, history and photos stay on your device. Replies can cover several products or a reviewed product range. Android offline mode disables lookup; Firefox requires its data-sharing permission.
 
 This is an early release. Device, store and provider compatibility tests are ongoing.
 

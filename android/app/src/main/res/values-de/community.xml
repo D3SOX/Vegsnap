@@ -1,5 +1,5 @@
 <resources>
-    <string name="community_lookup_notice">Beim Ansehen werden Produktname und Marke oder Barcode sowie der Ländercode an den Community-Dienst auf Cloudflare übertragen.</string>
+    <string name="community_lookup_notice">Die Suche sendet nur Produktname, Marke, Barcode und Land an den Community-Dienst auf Cloudflare.</string>
     <string name="community_hide">Geteilte Antworten ausblenden</string>
     <string name="community_product_name">Genauer Produktname</string>
     <string name="community_brand">Marke</string>
@@ -11,7 +11,7 @@
     <string name="community_load_failed">Antworten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="community_empty">Für dieses Produkt und diesen Markt wurden keine geprüften Antworten gefunden.</string>
     <string name="community_review_notice">Diese Beiträge wurden geprüft. Das bestätigt die Echtheit der Herstellerantwort nicht unabhängig. Vergleiche Datum, Variante und Umfang mit deinem Produkt.</string>
-    <string name="community_more">Die neuesten 50 passenden Antworten werden angezeigt.</string>
+    <string name="community_more">Die neuesten 50 passenden Antworten werden angezeigt. Das Ergebnis bleibt unverändert, bis alle relevanten Belege geprüft werden können.</string>
     <string name="community_view_all">Community-Website öffnen</string>
     <string name="community_response_date">Herstellerantwort vom</string>
     <string name="community_variant">Variante</string>
@@ -32,4 +32,7 @@
     <string name="community_evidence">Geprüften Nachweis herunterladen</string>
     <string name="community_source">Herstellerquelle</string>
     <string name="community_edit_lookup">Produktangaben bearbeiten</string>
+    <string name="community_range_candidate">Mögliche Produktreihe. Bestätige, dass dein Produkt dazugehört.</string>
+    <string name="community_confirm_range">Mein Produkt gehört zu %1$s</string>
+    <string name="not_vegan_manufacturer">Hersteller bezeichnet es als nicht vegan</string>
 </resources>

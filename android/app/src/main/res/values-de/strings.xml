@@ -179,6 +179,6 @@
     <string name="community_replies">Herstellerantworten aus der Community</string>
     <string name="community_share">Antwort teilen</string>
     <string name="community_view">Geteilte Antworten ansehen</string>
-    <string name="community_notice">Hast du eine Herstellerantwort? Reiche sie zur Prüfung ein. Nur deine Angaben im Formular werden übertragen. Geprüfte Antworten ändern dieses Ergebnis nicht.</string>
+    <string name="community_notice">Beim Öffnen eines Produkts werden geprüfte Herstellerantworten gesucht. Bestätigungen für das ganze Produkt können das Ergebnis ändern. Verlauf und Fotos bleiben auf diesem Gerät.</string>
     <string name="community_offline">Gehe online, um Antworten zu teilen oder anzusehen.</string>
 </resources>

@@ -1,6 +1,6 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { imageSupport, localizeResult } from '@vegsnap/core';
+import { imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
@@ -16,7 +16,7 @@ import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
-import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, requestDataConsent } from './data-consent';
+import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, hasDataConsent, requestDataConsent } from './data-consent';
 
 async function request<T>(message: Request): Promise<T> {
   const reply = await browser.runtime.sendMessage(message) as Reply<T>;
@@ -39,7 +39,10 @@ export function App() {
   const [config, setConfig] = useState<Settings>(defaultSettings);
   const [tab, setTab] = useState<'scan' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
-  const [result, setResult] = useState<HistoryResult>();
+  const [storedResult, setResult] = useState<HistoryResult>();
+  const [community, setCommunity] = useState<{ key: string; replies: CommunityReply[] }>();
+  const communityKey = storedResult ? `${storedResult.id}:${JSON.stringify(storedResult.identity)}` : '';
+  const result = storedResult && community?.key === communityKey ? { ...storedResult, ...applyCommunityReplies(storedResult, community.replies, config.language) } : storedResult;
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
   const [offlinePacks, setOfflinePacks] = useState<OfflinePackInfo[]>([]);
@@ -329,7 +332,9 @@ export function App() {
         {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
         <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
         <ManufacturerContactSection key={result.id} result={result} locale={config.language}/>
-        <CommunityRepliesSection result={result} locale={config.language}/>
+        <CommunityRepliesSection key={communityKey} result={storedResult!} locale={config.language} fetchReplies={contentFetch}
+          canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
+          onReplies={replies=>setCommunity({key:communityKey,replies})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
       </section> : tab === 'scan' ? <section>
         <h1>{t.scan}</h1>

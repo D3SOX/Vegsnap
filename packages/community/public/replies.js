@@ -1,10 +1,16 @@
 import { api, card, clearErrors, copy, element, fieldError, languageSetup, message, prefill } from './common.js';
 const form = document.querySelector('#search'), results = document.querySelector('#replies');
-let records, more = false, generation = 0;
+let records, candidates = [], more = false, generation = 0;
 const render = () => {
   if (!records) return;
   results.replaceChildren(...records.map(card));
   if (!records.length) results.append(element('p',copy('none'),'notice'));
+  for (const candidate of candidates) {
+    const article = card(candidate); article.prepend(element('p',copy('candidate'),'notice'));
+    const confirm = element('button',copy('confirmRange')); confirm.type = 'button';
+    confirm.addEventListener('click',()=>{ records.push({...candidate,match:'name'}); candidates = candidates.filter(item=>item.id !== candidate.id); render(); message(copy('confirmedRange')); });
+    article.append(confirm); results.append(article);
+  }
   if (more) results.append(element('p',copy('more'),'hint'));
 };
 const fragment = languageSetup(render); prefill(fragment);
@@ -19,14 +25,14 @@ function updateShareLink() {
 }
 form.addEventListener('input',updateShareLink); document.querySelector('#language').addEventListener('change',updateShareLink); updateShareLink();
 async function search() {
-  const current = ++generation; clearErrors(form); records = undefined; results.replaceChildren(element('p',copy('loading')));
+  const current = ++generation; clearErrors(form); records = undefined; candidates = []; results.replaceChildren(element('p',copy('loading')));
   const invalid = [...form.elements].find(input => input.willValidate && !input.validity.valid);
   if (invalid) { results.replaceChildren(); fieldError(form,invalid.name,invalid.validationMessage); return; }
   try {
     const params = new URLSearchParams(new FormData(form));
     const value = await api(`/api/replies?${params}`);
     if (generation !== current) return;
-    records = value.replies; more = value.more; render();
+    records = value.replies; candidates = value.candidates ?? []; more = value.more; render();
   } catch (error) {
     if (generation !== current) return;
     results.replaceChildren();

@@ -179,6 +179,6 @@
     <string name="community_replies">Community manufacturer replies</string>
     <string name="community_share">Share a reply</string>
     <string name="community_view">View shared replies</string>
-    <string name="community_notice">Have a manufacturer response? Share it for review. Only what you submit in the form is uploaded. Reviewed replies do not change this result.</string>
+    <string name="community_notice">Opening a product checks reviewed manufacturer replies. Whole-product confirmations can update the verdict. Your history and photos stay on this device.</string>
     <string name="community_offline">Go online to share or view community replies.</string>
 </resources>

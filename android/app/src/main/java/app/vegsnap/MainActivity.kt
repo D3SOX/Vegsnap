@@ -623,7 +623,10 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
     val settings by model.settings.collectAsState()
     val sendToAI = canSendBarcodeToAI(originalResult)
     val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
-    val result = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
+    val localizedResult = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
+    val communityState = rememberCommunityReplies(localizedResult, settings.offline)
+    val communityBaseUrl = remember(context) { JSONObject(context.assets.open("community-service.json").bufferedReader().use { it.readText() }).optString("baseUrl") }
+    val result = if (settings.offline || communityState == null) localizedResult else applyCommunityReplies(localizedResult, communityState.appliedReplies(), locale, communityBaseUrl)
     val resultId = result.getString("id")
     val scroll = remember(resultId) { LazyListState() }
     val scope = rememberCoroutineScope()
@@ -738,7 +741,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                         result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                         ManufacturerContactSection(result)
-                        CommunityRepliesSection(result, settings.offline)
+                        CommunityRepliesSection(localizedResult, settings.offline, communityState)
                     }
                 }
                 item(key = "sources-heading") {

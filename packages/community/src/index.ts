@@ -1,4 +1,4 @@
-import { communityIdentityKey, SubmissionError, validateCommunitySubmission, type CommunityReply, type CommunitySubmission } from '@vegsnap/core/community';
+import { communityIdentityKey, communityMatchRules, SubmissionError, validateCommunitySubmission, type CommunityReply, type CommunitySubmission } from '@vegsnap/core/community';
 import { normalizeBarcode } from '@vegsnap/core/barcode';
 import { cleanEvidence, MAX_EVIDENCE_BYTES } from './evidence';
 import { ReportError, submitReport, reviewReports } from './reports';
@@ -19,7 +19,8 @@ interface Row {
   question: string; reply: string; replied_on: string; claim: CommunitySubmission['claim']; scope: CommunitySubmission['scope'];
   source_url: string; evidence_key: string; evidence_type: string; evidence_public: number;
   status: 'pending' | 'approved' | 'rejected'; created_at: string; reviewed_at: string | null;
-  review_note: string; original_json: string; revision: number;
+  review_note: string; original_json: string; revision: number; coverage_json: string | null; match_rules_json: string;
+  match?: CommunityReply['match'];
 }
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
 const json = (value: unknown, status = 200) => Response.json(value, { status });
@@ -29,7 +30,8 @@ const MAX_METADATA_BYTES = 96_000;
 function publicReply(row: Row): CommunityReply {
   return { id: row.id, productName: row.product_name, brand: row.brand, barcode: row.barcode, market: row.market,
     variant: row.variant, question: row.question, reply: row.reply, repliedOn: row.replied_on, claim: row.claim,
-    scope: row.scope, sourceUrl: row.source_url, reviewedAt: row.reviewed_at!, evidencePublic: row.evidence_public === 1 };
+    scope: row.scope, sourceUrl: row.source_url, reviewedAt: row.reviewed_at!, evidencePublic: row.evidence_public === 1,
+    ...(row.coverage_json ? { coverage: JSON.parse(row.coverage_json) as CommunitySubmission['coverage'] } : {}), ...(row.match ? { match: row.match } : {}) };
 }
 async function boundedBody(request: Request, maxBytes: number): Promise<Uint8Array> {
   const reader = request.body?.getReader();
@@ -93,6 +95,11 @@ async function submit(request: Request, env: Env): Promise<Response> {
   catch { throw new HttpError(400, 'Invalid form data.'); }
   const raw: Record<string, unknown> = {};
   for (const key of ['productName', 'brand', 'barcode', 'market', 'variant', 'question', 'reply', 'repliedOn', 'claim', 'scope', 'sourceUrl']) raw[key] = form.get(key) ?? '';
+  const coverage = form.get('coverage');
+  if (coverage) {
+    try { raw.coverage = JSON.parse(String(coverage)); }
+    catch { throw new SubmissionError('coverage', 'Check the reply coverage.'); }
+  }
   const submission = validateCommunitySubmission(raw);
   if (form.get('consent') !== 'yes') throw new SubmissionError('consent', 'Confirm that you have removed personal information and may share this response.');
   if (form.get('terms') !== 'yes') throw new SubmissionError('terms', 'Accept the contribution rules before sharing a reply.');
@@ -108,30 +115,64 @@ async function submit(request: Request, env: Env): Promise<Response> {
   await env.EVIDENCE.put(key, evidence.bytes, { httpMetadata: { contentType: evidence.type } });
   try {
     await env.DB.prepare(`INSERT INTO submissions(id, product_name, name_key, brand, brand_key, barcode, market, variant,
-      question, reply, replied_on, claim, scope, source_url, evidence_key, evidence_type, created_at, original_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, submission.productName,
+      question, reply, replied_on, claim, scope, source_url, evidence_key, evidence_type, created_at, original_json, coverage_json, match_rules_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, submission.productName,
       communityIdentityKey(submission.productName), submission.brand, communityIdentityKey(submission.brand), submission.barcode,
       submission.market, submission.variant, submission.question, submission.reply, submission.repliedOn, submission.claim,
-      submission.scope, submission.sourceUrl, key, evidence.type, now, JSON.stringify(submission)).run();
+      submission.scope, submission.sourceUrl, key, evidence.type, now, JSON.stringify(submission), submission.coverage ? JSON.stringify(submission.coverage) : null, JSON.stringify(communityMatchRules(submission))).run();
   } catch (error) { await env.EVIDENCE.delete(key); throw error; }
   return json({ id, status: 'pending' }, 201);
 }
 async function lookup(url: URL, env: Env): Promise<Response> {
-  const market = url.searchParams.get('market')?.toUpperCase() ?? '';
+  const market = url.searchParams.get('market')?.trim().toUpperCase() ?? '';
   if (!/^[A-Z]{2}$/.test(market)) throw new SubmissionError('market', 'Select the product market.');
   const rawBarcode = url.searchParams.get('barcode') ?? '';
-  let query: D1PreparedStatement;
-  if (rawBarcode) {
-    const barcode = normalizeBarcode(rawBarcode)?.padStart(14, '0');
-    if (!barcode) throw new SubmissionError('barcode', 'Check the barcode digits and checksum.');
-    query = env.DB.prepare("SELECT * FROM submissions WHERE status = 'approved' AND barcode = ? AND market = ? ORDER BY replied_on DESC, id LIMIT 51").bind(barcode, market);
-  } else {
-    const name = url.searchParams.get('name') ?? '', brand = url.searchParams.get('brand') ?? '';
-    if (!name.trim() || !brand.trim() || name.length > 300 || brand.length > 300) throw new SubmissionError('name', 'Enter the exact product name and brand, or its barcode.');
-    query = env.DB.prepare("SELECT * FROM submissions WHERE status = 'approved' AND name_key = ? AND brand_key = ? AND market = ? ORDER BY replied_on DESC, id LIMIT 51").bind(communityIdentityKey(name), communityIdentityKey(brand), market);
-  }
-  const { results } = await query.all<Row>();
-  return json({ replies: results.slice(0, 50).map(publicReply), more: results.length > 50 });
+  const barcode = rawBarcode ? normalizeBarcode(rawBarcode)?.padStart(14, '0') : '';
+  if (barcode === undefined) throw new SubmissionError('barcode', 'Check the barcode digits and checksum.');
+  const name = url.searchParams.get('name') ?? '', brand = url.searchParams.get('brand') ?? '';
+  if (name.length > 300 || brand.length > 300 || !barcode && (!name.trim() || !brand.trim()))
+    throw new SubmissionError('name', 'Enter the exact product name and brand, or its barcode.');
+  const nameKey = communityIdentityKey(name), brandKey = communityIdentityKey(brand);
+  const identity = nameKey && brandKey ? JSON.stringify([nameKey, brandKey]) : '';
+  // The previous deployed Worker can still write during a migration/deployment rollout.
+  // Legacy replies use their current identity columns, including edits made by that Worker.
+  const rules = `CASE WHEN s.coverage_json IS NULL THEN json_array(
+    json_object('market', s.market, 'kind', 'barcode', 'key', s.barcode, 'barcode', s.barcode),
+    json_object('market', s.market, 'kind', 'name', 'key', json_array(s.name_key, s.brand_key), 'barcode', s.barcode)
+  ) ELSE s.match_rules_json END`;
+  const condition = `json_extract(r.value, '$.market') = ? AND (
+    (json_extract(r.value, '$.kind') = 'barcode' AND json_extract(r.value, '$.key') = ? AND ? != '') OR
+    (json_extract(r.value, '$.kind') = 'name' AND json_extract(r.value, '$.key') = ? AND (? = '' OR json_extract(r.value, '$.barcode') = '')) OR
+    (json_extract(r.value, '$.kind') = 'brand' AND json_extract(r.value, '$.key') = ? AND ? != '')
+  )`;
+  const values = [market, barcode, barcode, identity, barcode, brandKey, brandKey];
+  const { results } = await env.DB.prepare(`SELECT s.*, (
+    SELECT json_extract(r.value, '$.kind') FROM json_each(${rules}) r WHERE ${condition}
+    ORDER BY CASE json_extract(r.value, '$.kind') WHEN 'barcode' THEN 0 WHEN 'name' THEN 1 ELSE 2 END LIMIT 1
+  ) AS match FROM submissions s WHERE s.status = 'approved'
+    AND EXISTS (SELECT 1 FROM json_each(${rules}) r WHERE ${condition})
+    ORDER BY s.replied_on DESC, s.id LIMIT 51`).bind(...values, ...values).all<Row>();
+  // Range-name prefixes and restricted-brand aliases only suggest coverage.
+  const candidates = nameKey || brandKey ? (await env.DB.prepare(`SELECT s.* FROM submissions s WHERE s.status = 'approved'
+    AND EXISTS (SELECT 1 FROM json_each(${rules}) r WHERE json_extract(r.value, '$.market') = ?
+      AND ((json_extract(r.value, '$.kind') = 'prefix' AND ? != '' AND instr(?, json_extract(r.value, '$.key')) = 1
+        AND substr(?, length(json_extract(r.value, '$.key')) + 1, 1) IN ('', ' ', '-')) OR
+        (json_extract(r.value, '$.kind') = 'brand_candidate' AND json_extract(r.value, '$.key') = ? AND ? != '')))
+    ORDER BY s.replied_on DESC, s.id LIMIT 51`).bind(market, nameKey, nameKey, nameKey, brandKey, brandKey).all<Row>()).results : [];
+  const matched = new Set(results.map(row => row.id));
+  const lookupReply = (row: Row): CommunityReply => {
+    const reply = publicReply(row);
+    // Old clients display these fields without understanding the coverage object.
+    // Return the matched product/country while exports retain the original summary.
+    const product = reply.coverage?.products.find(product => row.match === 'barcode'
+      ? product.barcode === barcode
+      : row.match === 'name' && communityIdentityKey(product.productName) === nameKey && communityIdentityKey(product.brand) === brandKey
+        && (!barcode || !product.barcode));
+    return { ...reply, ...product, market };
+  };
+  const suggestions = candidates.filter(row => !matched.has(row.id)).slice(0, 50).map(row => lookupReply({ ...row, match: 'candidate' }));
+  return json({ replies: results.slice(0, 50).map(lookupReply), more: results.length > 50 || candidates.length > 50,
+    ...(suggestions.length ? { candidates: suggestions } : {}) });
 }
 async function review(request: Request, env: Env, id: string): Promise<Response> {
   const value = await parseJson(request);
@@ -144,14 +185,15 @@ async function review(request: Request, env: Env, id: string): Promise<Response>
   if (note.length > 2000) throw new SubmissionError('reviewNote', 'Review notes must be no longer than 2000 characters.');
   const status = value.decision;
   const record = status === 'approved' ? validateCommunitySubmission(value.submission) : null;
+  if (record && current.coverage_json && !record.coverage) throw new HttpError(409, 'Reload the review page to edit this reply’s product coverage before saving.');
   if (status === 'approved' && (!current.evidence_key || !await env.EVIDENCE.head(current.evidence_key))) throw new HttpError(409, 'The evidence is missing. This submission cannot be approved.');
   const evidencePublic = status === 'approved' && value.evidencePublic === true ? 1 : 0;
   const updated = record
     ? await env.DB.prepare(`UPDATE submissions SET product_name=?, name_key=?, brand=?, brand_key=?, barcode=?, market=?, variant=?,
-        question=?, reply=?, replied_on=?, claim=?, scope=?, source_url=?, status=?, evidence_public=?, reviewed_at=?, review_note=?, revision=revision+1
+        question=?, reply=?, replied_on=?, claim=?, scope=?, source_url=?, status=?, evidence_public=?, reviewed_at=?, review_note=?, coverage_json=?, match_rules_json=?, revision=revision+1
         WHERE id=? AND revision=? RETURNING id`).bind(record.productName, communityIdentityKey(record.productName), record.brand,
         communityIdentityKey(record.brand), record.barcode, record.market, record.variant, record.question, record.reply, record.repliedOn,
-        record.claim, record.scope, record.sourceUrl, status, evidencePublic, new Date().toISOString(), note, id, value.revision).first()
+        record.claim, record.scope, record.sourceUrl, status, evidencePublic, new Date().toISOString(), note, record.coverage ? JSON.stringify(record.coverage) : null, JSON.stringify(communityMatchRules(record)), id, value.revision).first()
     : await env.DB.prepare("UPDATE submissions SET status='rejected', evidence_public=0, reviewed_at=?, review_note=?, revision=revision+1 WHERE id=? AND revision=? RETURNING id")
         .bind(new Date().toISOString(), note, id, value.revision).first();
   if (!updated) throw new HttpError(409, 'Another review changed this submission. Reload before saving.');
