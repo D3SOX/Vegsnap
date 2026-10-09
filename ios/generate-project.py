@@ -11,13 +11,15 @@ def ident(key): return hashlib.sha256(key.encode()).hexdigest()[:24].upper()
 def add(key, isa, **fields):
     key = ident(key); objects[key] = dict(isa=isa, **fields); return key
 def ref(path, kind=None): return add('file:'+path, 'PBXFileReference', path=path, sourceTree='<group>', **({'lastKnownFileType':kind} if kind else {}))
-def buildfile(path, **extra): return add('build:'+path, 'PBXBuildFile', fileRef=ref(path), **extra)
+def buildfile(path, target, **extra): return add('build:'+target+':'+path, 'PBXBuildFile', fileRef=ref(path), **extra)
 products = []; children = []; targets = []
 for name, folder, product, kind in [('Vegsnap','Vegsnap','Vegsnap.app','application'),('VegsnapShare','ShareExtension','VegsnapShare.appex','app-extension'),('VegsnapTests','VegsnapTests','VegsnapTests.xctest','bundle.unit-test'),('VegsnapUITests','VegsnapUITests','VegsnapUITests.xctest','bundle.ui-testing')]:
     files = sorted(p.relative_to(root).as_posix() for p in (root/folder).rglob('*.swift'))
     if name in ('Vegsnap', 'VegsnapShare'): files += sorted(p.relative_to(root).as_posix() for p in (root/'Shared').glob('*.swift'))
-    sources = add(name+':sources','PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(p) for p in files],runOnlyForDeploymentPostprocessing=0)
-    children += [ref(p) for p in files]
+    sources = add(name+':sources','PBXSourcesBuildPhase',buildActionMask=2147483647,files=[buildfile(p, name) for p in files],runOnlyForDeploymentPostprocessing=0)
+    for p in files:
+        file_ref = ref(p)
+        if file_ref not in children: children.append(file_ref)
     resource_paths = ['Vegsnap/Resources/Generated','Vegsnap/Resources/Assets.xcassets','Vegsnap/Resources/PrivacyInfo.xcprivacy'] if name == 'Vegsnap' else []
     resource_files = []
     for p in resource_paths:

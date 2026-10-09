@@ -41,6 +41,10 @@ import CryptoKit
         draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, locale: language)
         draftPhotos = saved?.photos ?? []
         selectedTab = loadedSettings.startTab == "last" ? loadedSettings.lastTab : loadedSettings.startTab
+        let completedIDs = Set(history.map(\.id))
+        let pendingJobs = jobs.filter { !completedIDs.contains($0.id) }
+        if pendingJobs.count != jobs.count { try files.save(pendingJobs, "queue.json") }
+        jobs = pendingJobs
         // Interrupted work requires an explicit retry, so relaunch never silently resends photos.
         for i in jobs.indices where !["failed", "cancelled"].contains(jobs[i].status) { jobs[i].status = "interrupted" }
         engine.progress = { [weak self] id, stage in self?.setStatus(id, stage) }
@@ -137,12 +141,19 @@ import CryptoKit
             if !name.isEmpty { result.title = name }
             else if !job.input.text.isEmpty { result.title = String(job.input.text.prefix(80)) }
             let saved = SavedCheck(id: result.id, result: result, input: job.input, photos: job.photos)
-            history.insert(saved, at: 0)
-            try files.save(history, "history.json")
-            jobs.removeAll { $0.id == job.id }; try files.save(jobs, "queue.json")
+            try complete(saved, jobID: job.id)
             if selectedTab == "check" && selectedResult == nil { selectedResult = saved }
         } catch is CancellationError { setStatus(job.id, "cancelled") }
         catch { setStatus(job.id, "failed", error: error.localizedDescription) }
+    }
+    func complete(_ saved: SavedCheck, jobID: String) throws {
+        let nextHistory = [saved] + history.filter { $0.id != saved.id }
+        try files.save(nextHistory, "history.json")
+        history = nextHistory
+        // A failure here leaves the job available for cleanup, without resending it.
+        let nextJobs = jobs.filter { $0.id != jobID }
+        try files.save(nextJobs, "queue.json")
+        jobs = nextJobs
     }
     func setStatus(_ id: String, _ status: String, error: String? = nil) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
@@ -151,6 +162,11 @@ import CryptoKit
     }
     func cancel(_ id: String) { if let task = tasks[id] { task.cancel() } else { setStatus(id, "cancelled") } }
     func retry(_ id: String) {
+        if history.contains(where: { $0.id == id }) {
+            let nextJobs = jobs.filter { $0.id != id }
+            do { try files.save(nextJobs, "queue.json"); jobs = nextJobs } catch { report(error) }
+            return
+        }
         guard tasks[id] == nil, !switchingChatGPT, !disconnectingHosted, let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         jobs[index].settings = settings; jobs[index].accountID = settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil
         setStatus(id, "queued"); schedule()

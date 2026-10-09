@@ -48,7 +48,8 @@ import UIKit
     func testBrowseOfflineAndSettings() {
         launch(); app.buttons["Browse"].firstMatch.tap()
         XCTAssertTrue(app.textFields["browseQuery"].waitForExistence(timeout: 10))
-        app.textFields["browseQuery"].tap(); app.textFields["browseQuery"].typeText("oat\n")
+        app.textFields["browseQuery"].tap(); app.textFields["browseQuery"].typeText("Quaker Oats\n")
+        XCTAssertTrue(app.staticTexts["Quaker Oats"].firstMatch.waitForExistence(timeout: 10))
         capture("browse-light")
         app.buttons["Settings"].firstMatch.tap(); XCTAssertTrue(app.switches["offlineMode"].waitForExistence(timeout: 10)); capture("settings-light")
     }

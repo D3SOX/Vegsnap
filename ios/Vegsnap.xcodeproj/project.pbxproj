@@ -10,7 +10,7 @@
 			"path" = "Vegsnap/Models/Models.swift";
 			"sourceTree" = "<group>";
 		};
-		"9D8C465EE0A44FEB464AA736" = {
+		"625D763443DC89449A93E0D5" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "7B0B9E2563785F30FE38888E";
 		};
@@ -19,7 +19,7 @@
 			"path" = "Vegsnap/Services/AppStore.swift";
 			"sourceTree" = "<group>";
 		};
-		"4307B74E5B475E3519A0F790" = {
+		"AF90A93516031FFB44A10BB6" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "1AD78CDBD21E6B9C653A7C76";
 		};
@@ -28,7 +28,7 @@
 			"path" = "Vegsnap/Services/BrowseService.swift";
 			"sourceTree" = "<group>";
 		};
-		"2ACCF50ABD83CFB26D2C37CD" = {
+		"7788BC4FD13593D4BDF51244" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "FDCEC8B47AEDD587F4B0EA26";
 		};
@@ -37,7 +37,7 @@
 			"path" = "Vegsnap/Services/ChatGPTConnection.swift";
 			"sourceTree" = "<group>";
 		};
-		"865809D38162293065EC78B4" = {
+		"DEB98F534305E02B331A54C2" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "65E1A579773A6B04FAFBCD54";
 		};
@@ -46,7 +46,7 @@
 			"path" = "Vegsnap/Services/ContentReports.swift";
 			"sourceTree" = "<group>";
 		};
-		"E384B3D850D4121805872E95" = {
+		"D3EBDA2F0B4EC0161CD863E7" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "0F054E864872A85EE7DBA676";
 		};
@@ -55,7 +55,7 @@
 			"path" = "Vegsnap/Services/CoreEngine.swift";
 			"sourceTree" = "<group>";
 		};
-		"3B67B50EE0BBAD18DA6C0E01" = {
+		"B9F6D7953420C18F8302C884" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "8BF90562420F60A108D18E3A";
 		};
@@ -64,7 +64,7 @@
 			"path" = "Vegsnap/Services/HostedAIConnection.swift";
 			"sourceTree" = "<group>";
 		};
-		"2A5B67201961596E89850824" = {
+		"9B3E3FC3CCF2B93CB37E0C59" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "B08386C3AB7D6FC28EA351D1";
 		};
@@ -73,7 +73,7 @@
 			"path" = "Vegsnap/Services/Network.swift";
 			"sourceTree" = "<group>";
 		};
-		"D1C7199031F48870A2E569E2" = {
+		"ED13BBA04D3B931FEA0BE9D8" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "47CDD0B3D7C14F862C0EE464";
 		};
@@ -82,7 +82,7 @@
 			"path" = "Vegsnap/Services/Photos.swift";
 			"sourceTree" = "<group>";
 		};
-		"A35CF0CBA13DEF852A432D88" = {
+		"1BA6E3C3AE0E9F6E3AB0A3D4" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "9DCA86A37E8EF15A51E77181";
 		};
@@ -91,7 +91,7 @@
 			"path" = "Vegsnap/Services/SharedInbox.swift";
 			"sourceTree" = "<group>";
 		};
-		"288DB2E1D7DC5A0D11E59827" = {
+		"129AD80D7C6435E38A925A87" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "ADCC26AC640A34D9A437597B";
 		};
@@ -100,7 +100,7 @@
 			"path" = "Vegsnap/Services/Storage.swift";
 			"sourceTree" = "<group>";
 		};
-		"31C5712D08AF558877862B9E" = {
+		"C5B13845204D140352FEA2E7" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "D3365271BF0DD76E2B62C0E7";
 		};
@@ -109,7 +109,7 @@
 			"path" = "Vegsnap/VegsnapApp.swift";
 			"sourceTree" = "<group>";
 		};
-		"2BE5C42F2E843A93492E6364" = {
+		"563E2E0DDD4092DF31D7DCF5" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "B4F2A16E3611E70DA1BEB8ED";
 		};
@@ -118,7 +118,7 @@
 			"path" = "Vegsnap/Views/BarcodeScanner.swift";
 			"sourceTree" = "<group>";
 		};
-		"505EA6E383BC5A6EBFD90C05" = {
+		"F3FBDF05D56DC7B4822A7706" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "F81DFF430FBBB47D54F58113";
 		};
@@ -127,7 +127,7 @@
 			"path" = "Vegsnap/Views/BrowseView.swift";
 			"sourceTree" = "<group>";
 		};
-		"7059CEF6C8E84C6A6569C35F" = {
+		"B3CA5492A6685B3349138170" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "7D56E9647781B2A0DB3B819D";
 		};
@@ -136,7 +136,7 @@
 			"path" = "Vegsnap/Views/CheckView.swift";
 			"sourceTree" = "<group>";
 		};
-		"FD9428800643561E5F539ADA" = {
+		"3D7E923288845858F725A9B8" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "09444DFA8585B309A0BCDE90";
 		};
@@ -145,7 +145,7 @@
 			"path" = "Vegsnap/Views/ContentReportButton.swift";
 			"sourceTree" = "<group>";
 		};
-		"0B0716D9F076259311B436A2" = {
+		"1210C22EE7AFE30C43BEC38F" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "FBE8E8A569B4E75CD50CA7D4";
 		};
@@ -154,7 +154,7 @@
 			"path" = "Vegsnap/Views/HistoryView.swift";
 			"sourceTree" = "<group>";
 		};
-		"6653CC7B91D651009791CBA2" = {
+		"9F584E3A373FF47119AE95A0" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "CC84AE3980700D5771B91B42";
 		};
@@ -163,7 +163,7 @@
 			"path" = "Vegsnap/Views/ResultView.swift";
 			"sourceTree" = "<group>";
 		};
-		"BB0C61E4F163B5273E9EE6AA" = {
+		"1FCFDD523A4FC66B04303015" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "A05A8872F9122FEEEF7C5E43";
 		};
@@ -172,7 +172,7 @@
 			"path" = "Vegsnap/Views/SettingsView.swift";
 			"sourceTree" = "<group>";
 		};
-		"2EE82543A492E407B92239B4" = {
+		"B5AD6010352C347B85817FBE" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "4769153864CCA72F0CEC7EC2";
 		};
@@ -181,7 +181,7 @@
 			"path" = "Shared/InboxPayload.swift";
 			"sourceTree" = "<group>";
 		};
-		"B96715D7E6C5DD77D91F3A2D" = {
+		"8BF39C88E3F563F7D5452B9A" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "372E8CD536B7CD7A5EED3293";
 		};
@@ -189,26 +189,26 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
-				"9D8C465EE0A44FEB464AA736",
-				"4307B74E5B475E3519A0F790",
-				"2ACCF50ABD83CFB26D2C37CD",
-				"865809D38162293065EC78B4",
-				"E384B3D850D4121805872E95",
-				"3B67B50EE0BBAD18DA6C0E01",
-				"2A5B67201961596E89850824",
-				"D1C7199031F48870A2E569E2",
-				"A35CF0CBA13DEF852A432D88",
-				"288DB2E1D7DC5A0D11E59827",
-				"31C5712D08AF558877862B9E",
-				"2BE5C42F2E843A93492E6364",
-				"505EA6E383BC5A6EBFD90C05",
-				"7059CEF6C8E84C6A6569C35F",
-				"FD9428800643561E5F539ADA",
-				"0B0716D9F076259311B436A2",
-				"6653CC7B91D651009791CBA2",
-				"BB0C61E4F163B5273E9EE6AA",
-				"2EE82543A492E407B92239B4",
-				"B96715D7E6C5DD77D91F3A2D",
+				"625D763443DC89449A93E0D5",
+				"AF90A93516031FFB44A10BB6",
+				"7788BC4FD13593D4BDF51244",
+				"DEB98F534305E02B331A54C2",
+				"D3EBDA2F0B4EC0161CD863E7",
+				"B9F6D7953420C18F8302C884",
+				"9B3E3FC3CCF2B93CB37E0C59",
+				"ED13BBA04D3B931FEA0BE9D8",
+				"1BA6E3C3AE0E9F6E3AB0A3D4",
+				"129AD80D7C6435E38A925A87",
+				"C5B13845204D140352FEA2E7",
+				"563E2E0DDD4092DF31D7DCF5",
+				"F3FBDF05D56DC7B4822A7706",
+				"B3CA5492A6685B3349138170",
+				"3D7E923288845858F725A9B8",
+				"1210C22EE7AFE30C43BEC38F",
+				"9F584E3A373FF47119AE95A0",
+				"1FCFDD523A4FC66B04303015",
+				"B5AD6010352C347B85817FBE",
+				"8BF39C88E3F563F7D5452B9A",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
@@ -397,16 +397,20 @@
 			"path" = "ShareExtension/ShareViewController.swift";
 			"sourceTree" = "<group>";
 		};
-		"90ACE73ECB320CD4AA0E4B9A" = {
+		"958B550889B89907D46D39BC" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "CAD35054A8361FDDDDA0D4AB";
+		};
+		"41E647CE2EA41100540D3D2E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "372E8CD536B7CD7A5EED3293";
 		};
 		"540AAE0A4007FFA00CF03BF6" = {
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
-				"90ACE73ECB320CD4AA0E4B9A",
-				"B96715D7E6C5DD77D91F3A2D",
+				"958B550889B89907D46D39BC",
+				"41E647CE2EA41100540D3D2E",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
@@ -533,7 +537,7 @@
 			"path" = "VegsnapTests/CoreTests.swift";
 			"sourceTree" = "<group>";
 		};
-		"37BA16BC5D72C74AC80FA638" = {
+		"7F86C395D57DC3FA31FACD50" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "2C6ABBC5541EE7064E19AB56";
 		};
@@ -541,7 +545,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
-				"37BA16BC5D72C74AC80FA638",
+				"7F86C395D57DC3FA31FACD50",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
@@ -641,7 +645,7 @@
 			"path" = "VegsnapUITests/VegsnapUITests.swift";
 			"sourceTree" = "<group>";
 		};
-		"BB2C3B856E79BD76D312E358" = {
+		"0E29D76DF8830B2AF8053E3E" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "E5A966C26F65B271AB989996";
 		};
@@ -649,7 +653,7 @@
 			"isa" = "PBXSourcesBuildPhase";
 			"buildActionMask" = 2147483647;
 			"files" = (
-				"BB2C3B856E79BD76D312E358",
+				"0E29D76DF8830B2AF8053E3E",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};
@@ -781,7 +785,6 @@
 				"2B5027D25832C2D38C33330F",
 				"94FFACBD05CCC2330BE53863",
 				"CAD35054A8361FDDDDA0D4AB",
-				"372E8CD536B7CD7A5EED3293",
 				"5B725B4CAD96066C6878118B",
 				"2C6ABBC5541EE7064E19AB56",
 				"E5A966C26F65B271AB989996",

@@ -22,7 +22,8 @@ final class ShareViewController: UIViewController {
         var text: [String] = []; var photos: [String] = []
         let items = extensionContext?.inputItems as? [NSExtensionItem] ?? []
         for provider in items.flatMap({ $0.attachments ?? [] }).prefix(6) {
-            if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier), photos.count < 3 {
+            if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                guard photos.count < 3 else { continue }
                 let url: URL = try await withCheckedThrowingContinuation { continuation in
                     provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, error in
                         do {
@@ -35,7 +36,7 @@ final class ShareViewController: UIViewController {
                     }
                 }
                 photos.append(url.lastPathComponent)
-            } else {
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) || provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
                 let type = provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) ? UTType.url.identifier : UTType.plainText.identifier
                 let value: String = try await withCheckedThrowingContinuation { continuation in
                     provider.loadItem(forTypeIdentifier: type) { item, error in

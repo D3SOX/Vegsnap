@@ -26,10 +26,14 @@ actor BrowseService {
         components.queryItems = parameters.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         let url = components.url!
         if let cached = cache[url.absoluteString], Date().timeIntervalSince(cached.0) < 300 { return cached.1 }
-        let wait = 6.1 - Date().timeIntervalSince(lastStarted)
-        // Reserve a slot before suspension so simultaneous tabs cannot bypass the rate limit.
-        lastStarted = Date().addingTimeInterval(max(0, wait))
-        if wait > 0 { try await Task.sleep(for: .seconds(wait)) }
+        // Recheck after suspension: only requests that actually start consume a slot.
+        while true {
+            try Task.checkCancellation()
+            let wait = 6.1 - Date().timeIntervalSince(lastStarted)
+            if wait <= 0 { break }
+            try await Task.sleep(for: .seconds(wait))
+        }
+        lastStarted = Date()
         let data = try await Network.get(url)
         let page: BrowsePage
         if source == .barnivore { page = try Self.barnivore(String(decoding: data, as: UTF8.self)) }

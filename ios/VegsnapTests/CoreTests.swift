@@ -206,6 +206,46 @@ import Security
         let image = try XCTUnwrap(UIImage(data: rotated))
         XCTAssertEqual(image.size.width, CGFloat(height)); XCTAssertEqual(image.size.height, CGFloat(width))
     }
+    func testCompletionWriteFailuresKeepRecoverableState() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let result = try analyze("Ingredients: honey")
+        var job = CheckJob(input: CheckInput(text: "Ingredients: honey"), photos: [])
+        job.id = result.id
+        store.jobs = [job]; try store.files.save(store.jobs, "queue.json")
+        let saved = SavedCheck(id: result.id, result: result, input: job.input, photos: [])
+        try FileManager.default.createDirectory(at: store.files.url("history.json"), withIntermediateDirectories: true)
+        XCTAssertThrowsError(try store.complete(saved, jobID: job.id))
+        XCTAssertTrue(store.history.isEmpty); XCTAssertEqual(store.jobs.count, 1)
+        try FileManager.default.removeItem(at: store.files.url("history.json"))
+        try FileManager.default.removeItem(at: store.files.url("queue.json"))
+        try FileManager.default.createDirectory(at: store.files.url("queue.json"), withIntermediateDirectories: true)
+        XCTAssertThrowsError(try store.complete(saved, jobID: job.id))
+        XCTAssertEqual(store.history.count, 1); XCTAssertEqual(store.jobs.count, 1)
+        try FileManager.default.removeItem(at: store.files.url("queue.json"))
+        try store.files.save([job], "queue.json")
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.history.count, 1); XCTAssertTrue(restored.jobs.isEmpty)
+        store.retry(job.id)
+        XCTAssertTrue(store.jobs.isEmpty); XCTAssertEqual(store.history.count, 1)
+        let persisted: [CheckJob] = try XCTUnwrap(store.files.read("queue.json"))
+        XCTAssertTrue(persisted.isEmpty)
+    }
+    func testCancelledSearchesDoNotReserveFutureRateLimitSlots() async throws {
+        Network.testProtocolClasses = [FixtureProtocol.self]
+        let service = BrowseService()
+        _ = try await service.search("first", source: .food, cursor: 0, locale: "en")
+        let start = Date()
+        for query in ["cancel one", "cancel two"] {
+            let task = Task { try await service.search(query, source: .food, cursor: 0, locale: "en") }
+            try await Task.sleep(for: .milliseconds(50))
+            task.cancel()
+            do { _ = try await task.value; XCTFail("Cancelled search completed") } catch is CancellationError {}
+        }
+        _ = try await service.search("final", source: .food, cursor: 0, locale: "en")
+        XCTAssertLessThan(Date().timeIntervalSince(start), 10)
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")
@@ -340,12 +380,12 @@ import Security
 }
 
 final class FixtureProtocol: URLProtocol, @unchecked Sendable {
-    override class func canInit(with request: URLRequest) -> Bool { ["fixture.invalid", "::1", "[::1]"].contains(request.url?.host ?? "") }
+    override class func canInit(with request: URLRequest) -> Bool { ["fixture.invalid", "::1", "[::1]", "world.openfoodfacts.org"].contains(request.url?.host ?? "") }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let content = #"{"text":"Ingredients: water, mystery","complete":true,"category":"food"}"#
         let json: [String: Any] = ["choices": [["finish_reason": "stop", "message": ["content": content]]]]
-        let data = request.url?.path == "/api/session" ? Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8) : try! JSONSerialization.data(withJSONObject: json)
+        let data = request.url?.host == "world.openfoodfacts.org" ? Data(#"{"products":[],"count":0}"#.utf8) : request.url?.path == "/api/session" ? Data(#"{"state":"connected","remaining":3,"expiresAt":1999999999999,"enabled":true}"#.utf8) : try! JSONSerialization.data(withJSONObject: json)
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json", "Content-Length": String(data.count)])!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
     }

@@ -4,6 +4,7 @@ struct BrowseView: View {
     var store: AppStore
     @State private var source: BrowseSource = .food
     @State private var query = ""
+    @State private var submittedQuery = ""
     @State private var records: [BrowseRecord] = []
     @State private var next: Int?
     @State private var searched = false
@@ -34,9 +35,14 @@ struct BrowseView: View {
     }
     private func cancelSearch() { searchTask?.cancel(); busy = false }
     private func search(cursor: Int = 0) {
+        let requestedQuery = cursor == 0 ? query.trimmingCharacters(in: .whitespacesAndNewlines) : submittedQuery
+        guard (2...200).contains(requestedQuery.count) else {
+            cancelSearch(); failure = L("Enter 2–200 characters to search."); return
+        }
+        submittedQuery = requestedQuery
         searchTask?.cancel(); busy = true; failure = nil; searched = true
-        if cursor == 0 { records = [] }
-        let submittedSource = source; let submittedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cursor == 0 { records = []; next = nil }
+        let submittedSource = source; let submittedQuery = requestedQuery
         searchTask = Task {
             defer { if !Task.isCancelled { busy = false } }
             do {
