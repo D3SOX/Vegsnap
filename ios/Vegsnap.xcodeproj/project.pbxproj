@@ -373,6 +373,7 @@
 				"$(SRCROOT)/../packages/core/src/index.ts",
 				"$(SRCROOT)/../packages/core/src/ingredient-display.ts",
 				"$(SRCROOT)/../packages/core/src/manufacturer-contact.ts",
+				"$(SRCROOT)/../packages/core/src/matspar-catalogue.ts",
 				"$(SRCROOT)/../packages/core/src/merge-results.ts",
 				"$(SRCROOT)/../packages/core/src/model-capabilities.ts",
 				"$(SRCROOT)/../packages/core/src/offline.ts",
