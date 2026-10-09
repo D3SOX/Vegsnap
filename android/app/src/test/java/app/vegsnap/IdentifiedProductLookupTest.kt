@@ -131,4 +131,19 @@ class IdentifiedProductLookupTest {
             }
         }
     }
+    @Test fun localizedCountryDisplayDoesNotOverrideCanonicalRecoveryTags() = runBlocking {
+        for (automatic in listOf(false, true)) for (tag in listOf("en:sweden", "en:germany")) MockWebServer().use { server ->
+            server.enqueue(response(product().put("countries", "Schweden").put("countries_tags", JSONArray().put(tag))))
+            val input = identity().put("name", "Hummus chili").put("market", "SE").put("autoMarket", automatic).apply {
+                getJSONObject("packaging").put("language", "German").put("variant", "chili")
+            }
+            val found = IdentifiedProductLookup(repository(server)).lookup(input)
+            if (tag == "en:sweden") {
+                assertNotNull(found)
+                assertEquals("Schweden", found!!.markets)
+                assertEquals(listOf(tag), found.countryTags)
+            } else assertNull(found)
+            assertEquals("de", server.takeRequest().requestUrl!!.queryParameter("lc"))
+        }
+    }
 }

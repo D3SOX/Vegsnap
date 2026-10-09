@@ -28,7 +28,8 @@ internal enum class BrowseSource(val title: String, val root: String, val licens
 }
 internal data class BrowseRecord(val id: String, val source: BrowseSource, val name: String,
     val barcode: String = "", val brand: String = "", val composition: String = "", val markets: String = "",
-    val description: String = "", val quantity: String = "", val labels: String = "", val updated: String = "", val url: String, val snapshotDate: String = "")
+    val description: String = "", val quantity: String = "", val labels: String = "", val updated: String = "", val url: String, val snapshotDate: String = "",
+    val countryTags: List<String> = emptyList())
 internal data class BrowsePage(val records: List<BrowseRecord>, val next: Int?, val snapshotInfo: List<OfflinePackInfo>? = null)
 internal enum class BrowseFailure { OFFLINE, RATE_LIMITED, TEMPORARILY_UNAVAILABLE, TIMEOUT, CONNECTION, UNAVAILABLE }
 internal class BrowseException(val reason: BrowseFailure) : IOException(reason.name)
@@ -93,15 +94,15 @@ internal class BrowseRepository(
         val records = (0 until minOf(products.length(), 20)).mapNotNull { index ->
             val product = products.optJSONObject(index) ?: return@mapNotNull null
             val code = product.text("code", 30).takeIf { it.matches(Regex("[0-9]{4,30}")) } ?: return@mapNotNull null
+            val countryTags = product.optJSONArray("countries_tags").stringValues().take(30).map { it.take(100) }.filter { it.isNotBlank() }
             val markets = product.text("countries", 1000).ifBlank {
-                val tags = product.optJSONArray("countries_tags")
-                (0 until minOf(tags?.length() ?: 0, 30)).map { tags!!.optString(it).take(100).substringAfter(':').replace('-', ' ') }.joinToString(", ")
+                countryTags.joinToString(", ") { it.substringAfter(':').replace('-', ' ') }
             }
             val changed = product.optLong("last_modified_t", 0)
             BrowseRecord(code, source, product.text("product_name_$language", 300).ifBlank { product.text("product_name", 300) }.ifBlank { code },
                 barcode = code.takeIf(::validGtin).orEmpty(), brand = product.text("brands", 300),
                 composition = product.text("ingredients_text_$language", 20_000).ifBlank { product.text("ingredients_text", 20_000) },
-                markets = markets, quantity = product.text("quantity", 100), labels = product.text("labels", 1000),
+                markets = markets, countryTags = countryTags, quantity = product.text("quantity", 100), labels = product.text("labels", 1000),
                 updated = if (changed > 0) runCatching { java.time.Instant.ofEpochSecond(changed).toString().take(10) }.getOrDefault("") else "",
                 url = source.root + "product/" + code)
         }.distinctBy { it.id }
