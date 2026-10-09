@@ -666,6 +666,7 @@ local.settings = { ...defaultSettings, connection: 'chatgpt', model: 'vision', c
 let savedAccounts = [{ id: 'first', email: 'first@example.invalid' }, { id: 'second', email: 'second@example.invalid' }];
 let selectedAccount = 'first', accountConnected = true;
 let declinedAccount: string | undefined;
+let accountCatalogError = false;
 let accountGate: Promise<void> | undefined;
 nativeResponder = async request => {
   const payload = request.payload as { accountId?: string; newAccount?: boolean } | undefined;
@@ -681,7 +682,10 @@ nativeResponder = async request => {
     if (payload?.accountId === selectedAccount) { accountConnected = false; selectedAccount = savedAccounts[0]?.id ?? ''; }
   }
   if (request.command === 'disconnect') accountConnected = false;
-  if (request.command === 'models') return { models: [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }, ...(selectedAccount === 'first' ? [{ id: 'vision', name: 'Vision' }] : [])] };
+  if (request.command === 'models') {
+    if (accountCatalogError) throw new Error('Catalog unavailable');
+    return { models: [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }, ...(selectedAccount === 'first' ? [{ id: 'vision', name: 'Vision' }] : [])] };
+  }
   return { connected: accountConnected, email: savedAccounts.find(account => account.id === selectedAccount)?.email,
     selectedAccount, savedAccounts: savedAccounts.map(account => ({ ...account, access_token: 'secret-account-token' })), refresh_token: 'secret-session-token' };
 };
@@ -706,10 +710,25 @@ assert.equal((await listener!({ type: 'companion', command: 'removeAccount', acc
 assert.equal(nativeRequests.length, beforeInvalidAccounts, 'Invalid account requests never reach the companion');
 
 declinedAccount = 'first';
+const beforeDeclinedSwitch = nativeRequests.length;
 assert.equal((await listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted)).ok, false);
 assert.equal((session.chatGPTConnection as { state: string }).state, 'connected', 'A declined switch keeps the previous account connected');
 assert.equal(sharedAccount().selectedAccount, 'second');
 assert.equal(sharedAccount().savedAccounts?.length, 2);
+assert.deepEqual(nativeRequests.slice(beforeDeclinedSwitch).map(request => request.command), ['signIn', 'status', 'models'], 'A declined switch reloads the recovered account catalog');
+assert.deepEqual(session.chatGPTModelCatalog, [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }]);
+assert.equal(sharedAccount().task, '');
+assert.equal(sharedAccount().error, 'Sign-in declined', 'A successful catalog reload preserves the sign-in error');
+accountCatalogError = true;
+assert.equal((await listener!({ type: 'companion', command: 'signIn', accountId: 'first' }, trusted)).ok, false);
+assert.equal(sharedAccount().state, 'connected', 'Catalog recovery failure preserves the recovered account');
+assert.equal(sharedAccount().selectedAccount, 'second');
+assert.equal(sharedAccount().task, '', 'Catalog recovery failure clears the model-loading task');
+assert.equal(sharedAccount().error, 'Sign-in declined', 'Catalog recovery failure does not replace the original sign-in error');
+assert.equal(session.chatGPTModelCatalog, undefined);
+accountCatalogError = false;
+assert((await listener!({ type: 'companion', command: 'models' }, trusted)).ok);
+assert.deepEqual(session.chatGPTModelCatalog, [{ id: 'gpt-6-luna', name: 'GPT-6 Luna' }], 'Manual catalog refresh remains available after failed recovery');
 declinedAccount = undefined;
 const accountSignIn = deferred(); accountGate = accountSignIn.promise;
 const beforeAccountQueue = nativeRequests.length;

@@ -84,6 +84,9 @@ export function createCompanionState() {
         try { next = connectionStatus(await companion('status')); } catch { /* Preserve known saved accounts if the companion is unavailable. */ }
       }
       if (command !== 'models') await browser.storage.session.remove('chatGPTModelCatalog');
+      if (next.state === 'connected' && command !== 'models') {
+        try { await loadModels(next); } catch { /* Preserve the original account-operation error. */ }
+      }
       await save({ ...next, task: '', error: failure(error) });
       freshUntil = 0;
       throw error;
