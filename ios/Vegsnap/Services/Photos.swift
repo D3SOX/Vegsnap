@@ -30,7 +30,7 @@ enum PhotoProcessor {
             try Task.checkCancellation()
             // Reject corrupt stored photos before Vision initializes recognition models.
             guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { throw AppError(L("This photo could not be opened.")) }
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else { throw AppError(L("This photo could not be opened.")) }
             let text = requests.text; text.recognitionLevel = .accurate; text.usesLanguageCorrection = true
             let available = try text.supportedRecognitionLanguages()
             text.recognitionLanguages = languages.filter { available.contains($0) }
