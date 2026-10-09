@@ -2,6 +2,7 @@ package app.vegsnap
 
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
+import java.util.Locale
 
 /** Selects one public database record only when the packaging identifies it unambiguously. */
 internal class IdentifiedProductLookup(private val browse: BrowseRepository = BrowseRepository()) {
@@ -21,13 +22,18 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
         val queryName = stripBrandPrefix(name, brand)
         val query = "$brand $queryName".trim()
         if (query.length !in 2..200) return@withTimeoutOrNull null
-        val page = browse.search(source, query, locale = identity.optString("locale", "en"))
+        val language = identityNormalize(packaging.optString("language"))
+        val lookupLocale = Locale.getISOLanguages().firstOrNull { code ->
+            val locale = Locale.forLanguageTag(code)
+            language in listOf(code, locale.getISO3Language(), identityNormalize(locale.getDisplayLanguage(Locale.ENGLISH)),
+                identityNormalize(locale.getDisplayLanguage(locale)))
+        } ?: "en"
+        val page = browse.search(source, query, locale = lookupLocale)
         if (page.next != null) return@withTimeoutOrNull null
 
-        val language = identityNormalize(packaging.optString("language"))
-        val ignored = when (language) {
-            "sv", "swedish", "svenska" -> "med"
-            "en", "english" -> "with"
+        val ignored = when (lookupLocale) {
+            "sv" -> "med"
+            "en" -> "with"
             else -> ""
         }
         val identityWords = nameWords(stripBrandPrefix(name, brand), ignored)

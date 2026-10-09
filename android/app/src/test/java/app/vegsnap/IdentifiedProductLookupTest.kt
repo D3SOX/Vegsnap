@@ -60,6 +60,20 @@ class IdentifiedProductLookupTest {
         }
     }
 
+    @Test fun packagingLanguageMatchesTheSourceNameWhileResultsKeepTheAppLocale() = runBlocking {
+        for (language in listOf("Swedish", "sv", "swe", "svenska")) MockWebServer().use { server ->
+            server.enqueue(response(product().put("product_name_sv", "Hummus chili").put("product_name_de", "Hummus mit Chili")
+                .put("ingredients_text_sv", "vatten, kikärtor").put("ingredients_text_de", "Wasser, Kichererbsen")))
+            val input = identity().put("locale", "de").apply { getJSONObject("packaging").put("language", language) }
+            val found = IdentifiedProductLookup(repository(server)).lookup(input)
+            assertNotNull(found)
+            assertEquals("Hummus chili", found?.name)
+            assertEquals("vatten, kikärtor", found?.composition)
+            assertTrue(server.takeRequest().requestUrl!!.queryParameter("fields")!!.contains("product_name_sv"))
+            assertEquals("de", identifiedDatabaseRecord(requireNotNull(found), input).first.locale)
+        }
+    }
+
     @Test fun missingIdentityCluesBarcodeUnknownCountryOrMorePagesSkipSelection() = runBlocking {
         for (input in listOf(
             identity().put("name", " "), identity().put("brand", ""),
