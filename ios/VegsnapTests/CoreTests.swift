@@ -258,6 +258,31 @@ import Security
             XCTAssertNoThrow(try ContentReport(kind: "ai", text: excerpt, reason: "Incorrect").validatedData())
         }
     }
+    func testFailedJobRemovalPreservesPhotosAndRetryableQueue() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let job = CheckJob(input: CheckInput(text: "pending"), photos: ["kept.jpg"], status: "failed")
+        store.jobs = [job]
+        let photo = Data("saved photo fixture".utf8)
+        try store.files.saveData(photo, "kept.jpg")
+        try store.files.save([job], "queue.json")
+        let persisted = try Data(contentsOf: store.files.url("queue.json"))
+        try FileManager.default.removeItem(at: store.files.url("queue.json"))
+        try FileManager.default.createDirectory(at: store.files.url("queue.json"), withIntermediateDirectories: true)
+        store.removeJob(job.id)
+        XCTAssertEqual(store.jobs.map(\.id), [job.id])
+        XCTAssertEqual(try Data(contentsOf: store.files.url("kept.jpg")), photo)
+        XCTAssertNotNil(store.error)
+        try FileManager.default.removeItem(at: store.files.url("queue.json"))
+        try persisted.write(to: store.files.url("queue.json"))
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.jobs.map(\.id), [job.id])
+        restored.removeJob(job.id)
+        XCTAssertTrue(restored.jobs.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.files.url("kept.jpg").path))
+        XCTAssertTrue(try AppStore(root: root).jobs.isEmpty)
+    }
     func testChatGPTCallbackGuards() throws {
         let result = try ChatGPTConnection.validateCallback(URL(string: "http://127.0.0.1/auth/callback?code=code&state=expected&client_id=oaiapp_test")!, state: "expected", returning: nil)
         XCTAssertEqual(result.clientID, "oaiapp_test")

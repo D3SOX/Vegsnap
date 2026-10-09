@@ -173,7 +173,12 @@ import CryptoKit
         jobs[index].settings = settings; jobs[index].accountID = settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil
         setStatus(id, "queued"); schedule()
     }
-    func removeJob(_ id: String) { cancel(id); jobs.removeAll { $0.id == id }; do { try files.save(jobs, "queue.json") } catch { report(error) }; cleanPhotos() }
+    func removeJob(_ id: String) {
+        cancel(id)
+        let remaining = jobs.filter { $0.id != id }
+        do { try files.save(remaining, "queue.json"); jobs = remaining; cleanPhotos() }
+        catch { report(error) }
+    }
     func delete(_ ids: Set<String>) {
         let next = history.filter { !ids.contains($0.id) }
         do { try files.save(next, "history.json"); history = next; cleanPhotos() } catch { report(error) }
