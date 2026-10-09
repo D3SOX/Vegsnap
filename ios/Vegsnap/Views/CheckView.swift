@@ -8,6 +8,7 @@ struct CheckView: View {
     @State private var camera = false
     @State private var scanner = false
     @State private var importing = false
+    @State private var importTask: Task<Void, Never>?
     @State private var preview: String?
     @FocusState private var editing: String?
     var body: some View {
@@ -61,17 +62,23 @@ struct CheckView: View {
             }
         }
         .navigationTitle("Vegsnap")
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(L("Done")) { editing = nil } }; ToolbarItem(placement: .topBarTrailing) { Button(L("Clear")) { store.clearDraft() }.disabled(!store.draftSubmitted && !store.draft.hasContent && store.draftPhotos.isEmpty) } }
+        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(L("Done")) { editing = nil } }; ToolbarItem(placement: .topBarTrailing) { Button(L("Clear")) { store.clearDraft() }.disabled(!importing && !store.draftSubmitted && !store.draft.hasContent && store.draftPhotos.isEmpty) } }
         .onChange(of: store.draft) { _, _ in store.saveDraft() }
         .onChange(of: selection) { _, items in
             guard !items.isEmpty, !importing else { return }
             importing = true
-            Task {
-                defer { importing = false; selection = [] }
-                do { for item in items.prefix(3 - store.draftPhotos.count) { if let photo = try await item.loadTransferable(type: PickedPhoto.self) { try store.addPhoto(photo.data) } } }
-                catch { store.report(error) }
+            let draftID = store.draftID
+            importTask = Task {
+                defer { importing = false; selection = []; importTask = nil }
+                do {
+                    for item in items.prefix(max(0, 3 - store.draftPhotos.count)) {
+                        try await store.importPhoto(for: draftID) { try await item.loadTransferable(type: PickedPhoto.self)?.data }
+                    }
+                } catch { if !Task.isCancelled && store.draftID == draftID { store.report(error) } }
             }
         }
+        .onChange(of: store.draftID) { _, _ in importTask?.cancel() }
+        .onDisappear { importTask?.cancel() }
         .sheet(isPresented: $camera) { CameraPicker { data in do { try store.addPhoto(data) } catch { store.report(error) } } }
         .sheet(isPresented: $scanner) { BarcodeScanner { code in store.draft.barcode = code; store.saveDraft() } }
         .sheet(isPresented: Binding(get: { preview != nil }, set: { if !$0 { preview = nil } })) {

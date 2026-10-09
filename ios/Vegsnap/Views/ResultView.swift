@@ -94,7 +94,7 @@ struct ResultView: View {
                 }
             }
             if result.usedAI || result.companyAssessment != nil {
-                Section { ContentReportButton(store: store, kind: "ai", initialText: ([result.summary, result.companyAssessment?.summary ?? ""] + result.evidence.filter { ["ai", "web"].contains($0.kind) }.map(\.excerpt)).joined(separator: "\n\n")) }
+                Section { ContentReportButton(store: store, kind: "ai", initialText: ([result.summary, result.companyAssessment?.summary ?? ""] + result.evidence.filter { ["ai_extraction", "manufacturer", "certification"].contains($0.kind) }.map(\.excerpt)).joined(separator: "\n\n")) }
             }
             CommunitySection(store: store, result: result)
             Section {

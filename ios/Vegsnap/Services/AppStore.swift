@@ -61,6 +61,14 @@ import CryptoKit
     func saveDraft() {
         do { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
     }
+    func importPhoto(for draftID: String, load: () async throws -> Data?) async throws {
+        guard self.draftID == draftID else { return }
+        try Task.checkCancellation()
+        let data = try await load()
+        try Task.checkCancellation()
+        guard self.draftID == draftID, let data else { return }
+        try addPhoto(data)
+    }
     func addPhoto(_ data: Data) throws {
         guard draftPhotos.count < 3 else { throw AppError(L("Use at most three photos.")) }
         let clean = try PhotoProcessor.sanitize(data)

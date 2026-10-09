@@ -389,6 +389,47 @@ import Security
         let image = try XCTUnwrap(UIImage(data: rotated))
         XCTAssertEqual(image.size.width, CGFloat(height)); XCTAssertEqual(image.size.height, CGFloat(width))
     }
+    func testDelayedPhotoImportDoesNotChangeReplacementDraft() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let originalID = store.draftID
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 40)).image { $0.fill(CGRect(x: 0, y: 0, width: 40, height: 40)) }
+        let data = try XCTUnwrap(image.pngData())
+        var finish: CheckedContinuation<Data?, Never>?
+        let started = expectation(description: "Photo loading started")
+        let task = Task {
+            try await store.importPhoto(for: originalID) {
+                await withCheckedContinuation { finish = $0; started.fulfill() }
+            }
+        }
+        await fulfillment(of: [started], timeout: 2)
+        store.clearDraft(); store.draft.text = "Replacement draft"; store.saveDraft()
+        finish?.resume(returning: data); try await task.value
+        XCTAssertNotEqual(store.draftID, originalID)
+        XCTAssertEqual(store.draft.text, "Replacement draft"); XCTAssertTrue(store.draftPhotos.isEmpty)
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path).contains { $0.hasSuffix(".jpg") })
+        try await store.importPhoto(for: store.draftID) { data }
+        XCTAssertEqual(store.draftPhotos.count, 1)
+    }
+    func testCancelledPhotoImportDoesNotWritePhoto() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let originalID = store.draftID
+        var finish: CheckedContinuation<Data?, Never>?
+        let started = expectation(description: "Photo loading started")
+        let task = Task {
+            try await store.importPhoto(for: originalID) {
+                await withCheckedContinuation { finish = $0; started.fulfill() }
+            }
+        }
+        await fulfillment(of: [started], timeout: 2)
+        task.cancel(); finish?.resume(returning: Data())
+        do { try await task.value; XCTFail("Cancelled import succeeded") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertEqual(store.draftID, originalID); XCTAssertTrue(store.draftPhotos.isEmpty)
+    }
     func testRetryWriteFailureDoesNotScheduleOrChangeJob() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
