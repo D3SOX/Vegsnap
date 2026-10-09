@@ -45,38 +45,60 @@ test('selects macOS when Firefox on Linux spoofs a Safari macOS user agent', () 
   });
 });
 
-test('browser selection filters commands across operating systems and respects restored selections', () => {
-  const browsers = ['firefox', 'chromium', 'chrome', 'brave', 'helium', 'vivaldi', 'edge', 'zen', 'librewolf'];
-  const commands = ['linux', 'macos', 'windows'].flatMap(os =>
-    browsers.map(browser => ({ os, dataset: { browser }, hidden: false })));
-  const choice = { hidden: true };
-  let change = () => {};
-  const select = {
-    value: 'brave',
-    closest: () => choice,
-    addEventListener: (event: string, listener: () => void) => {
-      expect(event).toBe('change');
-      change = listener;
-    },
-  };
-  const viewer = { open: false, querySelector: () => ({ addEventListener() {} }), addEventListener() {} };
-  runInNewContext(setup, {
-    navigator: { userAgent: '', platform: '', maxTouchPoints: 0 },
-    document: {
-      querySelector: (selector: string) => selector === '.image-viewer' ? viewer
-        : selector === '[data-browser-select]' ? select : null,
-      querySelectorAll: (selector: string) => selector === '.browser-registration [data-browser]' ? commands : [],
-    },
-    matchMedia: () => ({ matches: false, addEventListener() {} }),
+interface BrowserIdentityHints extends BrowserHints {
+  userAgentData?: { platform: string; mobile: boolean; brands?: { brand: string; version: string }[] };
+  brave?: { isBrave: () => Promise<boolean> };
+}
+
+function detectedBrowser(hints: BrowserIdentityHints): Promise<string | null> {
+  // Exercise the real detection code without mocking the picker DOM.
+  const detection = setup.slice(0, setup.indexOf('// All commands remain available'));
+  return runInNewContext(detection + '\ndetectDesktopBrowser(navigator);', {
+    navigator: hints,
+    document: { querySelectorAll: () => [], querySelector: () => null },
   });
-  expect(choice.hidden).toBe(false);
-  expect(commands.filter(command => !command.hidden).map(command => command.dataset.browser)).toEqual(['brave', 'brave', 'brave']);
-  for (const browser of ['', ...browsers]) {
-    select.value = browser;
-    change();
-    expect(commands.filter(command => !command.hidden).map(command => command.dataset.browser))
-      .toEqual(browser ? [browser, browser, browser] : []);
-  }
+}
+
+describe('browser identity hints', () => {
+  const cases: { name: string; hints: Partial<BrowserIdentityHints>; browser: string | null }[] = [
+    ...[
+      ['Brave', 'brave'], ['Helium', 'helium'], ['Vivaldi', 'vivaldi'], ['Microsoft Edge', 'edge'],
+      ['LibreWolf', 'librewolf'], ['Zen Browser', 'zen'], ['Firefox', 'firefox'], ['Google Chrome', 'chrome'],
+    ].map(([brand, browser]) => ({
+      name: brand!,
+      hints: { userAgentData: { platform: 'Linux', mobile: false, brands: [{ brand: 'Chromium', version: '140' }, { brand: brand!, version: '140' }] } },
+      browser: browser!,
+    })),
+    ...[
+      ['Brave', 'brave'], ['Helium', 'helium'], ['Vivaldi', 'vivaldi'], ['Edg', 'edge'],
+      ['LibreWolf', 'librewolf'], ['Zen', 'zen'], ['Firefox', 'firefox'], ['Chromium', 'chromium'],
+    ].map(([agent, browser]) => ({
+      name: agent! + ' user agent',
+      hints: { userAgent: 'Mozilla/5.0 Chrome/140.0 ' + agent + '/140.0' },
+      browser: browser!,
+    })),
+    { name: 'Firefox fork takes priority', hints: { userAgent: 'Mozilla/5.0 Firefox/140.0 LibreWolf/140.0' }, browser: 'librewolf' },
+    { name: 'Vivaldi takes priority over Chrome branding', hints: { userAgent: 'Vivaldi/7.0', userAgentData: { platform: 'Linux', mobile: false, brands: [{ brand: 'Google Chrome', version: '140' }] } }, browser: 'vivaldi' },
+    { name: 'generic Chromium brands remain unselected', hints: { userAgent: 'Mozilla/5.0 Chrome/140.0', userAgentData: { platform: 'Linux', mobile: false, brands: [{ brand: 'Chromium', version: '140' }, { brand: 'Not A Brand', version: '99' }] } }, browser: null },
+    { name: 'Safari is unsupported', hints: { userAgent: macUserAgent }, browser: null },
+    { name: 'missing hints', hints: {}, browser: null },
+  ];
+  test.each(cases)('$name', async ({ hints, browser }) => {
+    expect(await detectedBrowser({ userAgent: '', platform: '', ...hints })).toBe(browser);
+  });
+  test('Brave API takes priority over Chrome branding', async () => {
+    expect(await detectedBrowser({
+      userAgent: 'Mozilla/5.0 Chrome/140.0', platform: 'Linux',
+      userAgentData: { platform: 'Linux', mobile: false, brands: [{ brand: 'Google Chrome', version: '140' }] },
+      brave: { isBrave: async () => true },
+    })).toBe('brave');
+  });
+  test('a blocked Brave API preserves the advertised identity', async () => {
+    expect(await detectedBrowser({
+      userAgent: 'Mozilla/5.0 Edg/140.0', platform: 'Linux',
+      brave: { isBrave: async () => { throw new Error('Blocked'); } },
+    })).toBe('edge');
+  });
 });
 
 describe('desktop OS hints', () => {

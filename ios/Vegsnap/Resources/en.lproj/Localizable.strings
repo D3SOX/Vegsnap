@@ -117,7 +117,13 @@
 "Looking up product…" = "Looking up product…";
 "Manufacturer" = "Manufacturer";
 "Manufacturer question" = "Manufacturer question";
-"Manufacturer replies are community evidence. Check the product, market, date, and scope; they do not change this verdict." = "Manufacturer replies are community evidence. Check the product, market, date, and scope; they do not change this verdict.";
+"Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage." = "Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage.";
+"Refresh manufacturer replies" = "Refresh manufacturer replies";
+"This range may cover your product. Confirm the variant and country before using it." = "This range may cover your product. Confirm the variant and country before using it.";
+"This range covers my product" = "This range covers my product";
+"Product range" = "Product range";
+"Covered countries" = "Covered countries";
+"More replies exist. The original verdict is kept because this lookup is incomplete." = "More replies exist. The original verdict is kept because this lookup is incomplete.";
 "Market" = "Market";
 "Message language" = "Message language";
 "Model ID" = "Model ID";

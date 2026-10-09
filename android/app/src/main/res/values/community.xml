@@ -1,5 +1,5 @@
 <resources>
-    <string name="community_lookup_notice">Viewing replies sends the product name and brand or barcode, plus country, to the community service on Cloudflare.</string>
+    <string name="community_lookup_notice">Lookup sends only product name, brand, barcode and country to the community service on Cloudflare.</string>
     <string name="community_hide">Hide shared replies</string>
     <string name="community_product_name">Exact product name</string>
     <string name="community_brand">Brand</string>
@@ -11,7 +11,7 @@
     <string name="community_load_failed">Could not load replies. Check your connection and try again.</string>
     <string name="community_empty">No reviewed replies were found for this product and market.</string>
     <string name="community_review_notice">A moderator checked these contributions. This does not independently authenticate the manufacturer. Compare the date, variant and scope with your product.</string>
-    <string name="community_more">Showing the latest 50 matching replies.</string>
+    <string name="community_more">Showing the latest 50 matching replies. The verdict stays unchanged until all relevant evidence can be checked.</string>
     <string name="community_view_all">Open community website</string>
     <string name="community_response_date">Manufacturer response dated</string>
     <string name="community_variant">Variant</string>
@@ -32,4 +32,7 @@
     <string name="community_evidence">Download reviewed evidence</string>
     <string name="community_source">Manufacturer source</string>
     <string name="community_edit_lookup">Edit product details</string>
+    <string name="community_range_candidate">Possible product range. Confirm that your product belongs to it.</string>
+    <string name="community_confirm_range">My product belongs to %1$s</string>
+    <string name="not_vegan_manufacturer">Manufacturer says not vegan</string>
 </resources>

@@ -22,13 +22,13 @@ class CommunityRepliesRepositoryTest {
         .put("replies", JSONArray().apply { if (record != null) put(record) }).put("more", more)
     private fun response(value: JSONObject) = MockResponse().setHeader("Content-Type", "application/json").setBody(value.toString())
 
-    @Test fun `explicit lookup sends only canonical GTIN and country and preserves scoped text`() = runBlocking {
+    @Test fun `lookup sends only product identity and country and preserves scoped text`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(response(page(more = true)))
             val result = CommunityRepliesRepository(server.url("/")).search(lookup)
             val request = server.takeRequest(5, TimeUnit.SECONDS)!!
             assertEquals("/api/replies", request.requestUrl!!.encodedPath)
-            assertEquals(setOf("market", "barcode"), request.requestUrl!!.queryParameterNames)
+            assertEquals(setOf("market", "barcode", "name", "brand"), request.requestUrl!!.queryParameterNames)
             assertEquals("03017620422003", request.requestUrl!!.queryParameter("barcode"))
             assertEquals("SE", request.requestUrl!!.queryParameter("market"))
             for (header in listOf("Authorization", "Cookie", "Referer")) assertNull(request.getHeader(header))

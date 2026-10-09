@@ -19,6 +19,16 @@ export function call(operation: string, json: string): string {
     case 'barcode': return JSON.stringify(core.normalizeBarcode(args) ?? null);
     case 'message': return JSON.stringify(core.manufacturerMessage(args.result, args.locale) ?? null);
     case 'community': return JSON.stringify(core.communityLinks(args.result, args.locale) ?? null);
+    case 'communityLookup': return JSON.stringify(core.communityLookupParams(args).toString());
+    case 'communityReplies': return JSON.stringify(core.parseCommunityReplyPage(JSON.parse(args)));
+    case 'communityVerdict': {
+      const page = core.parseCommunityReplyPage(args.page);
+      const hidden = new Set<string>(args.hidden);
+      const confirmed = new Set<string>(args.confirmed);
+      const replies = page.more ? [] : [...page.replies, ...page.candidates.filter(reply => confirmed.has(reply.id)).map(reply => ({ ...reply, match: 'name' as const }))]
+        .filter(reply => !hidden.has(reply.id));
+      return JSON.stringify(core.applyCommunityReplies(args.result, replies, args.locale));
+    }
     case 'acceptsImages': return JSON.stringify(core.acceptsImages(args.model, args.metadata));
     case 'provider': core.validateProviderConfig(args); return 'true';
     case 'snapshot': return JSON.stringify(core.validateOfflineSnapshot(args));

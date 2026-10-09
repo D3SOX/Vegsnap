@@ -34,18 +34,183 @@ if (os) {
   download?.classList.add('primary');
 }
 
-// All commands remain available when JavaScript is disabled.
+// Use advertised browser names only; generic Chromium hints identify many forks.
+function desktopBrowser(hints) {
+  const names = [
+    ['brave', /^Brave$/i, /\bBrave\//i],
+    ['helium', /^Helium$/i, /\bHelium\//i],
+    ['vivaldi', /^Vivaldi$/i, /\bVivaldi\//i],
+    ['edge', /^Microsoft Edge$/i, /\bEdg\//i],
+    ['librewolf', /^LibreWolf$/i, /\bLibreWolf\//i],
+    ['zen', /^Zen(?: Browser)?$/i, /\bZen\//i],
+    ['firefox', /^Firefox$/i, /\bFirefox\//i],
+    ['chrome', /^Google Chrome$/i, null],
+    ['chromium', null, /\bChromium\//i],
+  ];
+  for (const [browser, brand, agent] of names) {
+    if (brand && hints.userAgentData?.brands?.some(item => brand.test(item.brand))
+      || agent?.test(hints.userAgent || '')) return browser;
+  }
+  return null;
+}
+
+async function detectDesktopBrowser(hints) {
+  let browser = desktopBrowser(hints);
+  try {
+    if (await hints.brave?.isBrave?.()) browser = 'brave';
+  } catch { /* Browser privacy settings may block the optional Brave API. */ }
+  return browser;
+}
+
+// All commands remain available when JavaScript is disabled. Use the translated
+// native options as the custom icon menu's source.
 const browserSelect = document.querySelector('[data-browser-select]');
 if (browserSelect) {
+  const choice = browserSelect.closest('.browser-choice');
   const commands = document.querySelectorAll('.browser-registration [data-browser]');
+  const prompts = document.querySelectorAll('.browser-prompt');
+  const options = [...browserSelect.options];
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.id = browserSelect.id;
+  browserSelect.id += '-native';
+  trigger.className = 'browser-select-trigger';
+  trigger.setAttribute('role', 'combobox');
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-labelledby', 'companion-browser-label companion-browser-value');
+  trigger.innerHTML = '<span class="platform-icon" aria-hidden="true"></span><span id="companion-browser-value"></span><span class="browser-select-arrow" aria-hidden="true"></span>';
+  const selectedIcon = trigger.querySelector('.platform-icon');
+  const selectedLabel = trigger.querySelector('#companion-browser-value');
+  const menu = document.createElement('ul');
+  menu.id = 'companion-browser-options';
+  menu.className = 'browser-select-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-labelledby', 'companion-browser-label');
+  menu.hidden = true;
+  trigger.setAttribute('aria-controls', menu.id);
+  const iconClasses = { '': 'browser', firefox: 'firefox-browser', chromium: 'chrome', chrome: 'chrome' };
+  const items = options.map((option, index) => {
+    const item = document.createElement('li');
+    item.id = `${menu.id}-${index}`;
+    item.setAttribute('role', 'option');
+    item.dataset.value = option.value;
+    const icon = document.createElement('span');
+    icon.className = `platform-icon icon-${iconClasses[option.value] || option.value}`;
+    icon.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.textContent = option.textContent;
+    item.append(icon, label);
+    menu.append(item);
+    return item;
+  });
+  choice.append(trigger, menu);
+  browserSelect.hidden = true;
+  choice.hidden = false;
+  let activeIndex = 0;
+  let changed = false;
+
   function updateBrowserCommands() {
     for (const command of commands) {
       command.hidden = command.dataset.browser !== browserSelect.value;
     }
+    for (const prompt of prompts) prompt.hidden = Boolean(browserSelect.value);
+    selectedLabel.textContent = options[browserSelect.selectedIndex].textContent;
+    selectedIcon.className = `platform-icon icon-${iconClasses[browserSelect.value] || browserSelect.value}`;
+    for (const item of items) {
+      item.setAttribute('aria-selected', String(item.dataset.value === browserSelect.value));
+    }
   }
-  browserSelect.closest('.browser-choice').hidden = false;
-  browserSelect.addEventListener('change', updateBrowserCommands);
+
+  function highlight(index) {
+    activeIndex = (index + items.length) % items.length;
+    items.forEach((item, i) => item.classList.toggle('active', i === activeIndex));
+    trigger.setAttribute('aria-activedescendant', items[activeIndex].id);
+    const item = items[activeIndex];
+    if (item.offsetTop < menu.scrollTop) menu.scrollTop = item.offsetTop;
+    else if (item.offsetTop + item.offsetHeight > menu.scrollTop + menu.clientHeight) {
+      menu.scrollTop = item.offsetTop + item.offsetHeight - menu.clientHeight;
+    }
+  }
+
+  function closeMenu() {
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.removeAttribute('aria-activedescendant');
+  }
+
+  function openMenu() {
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    highlight(browserSelect.selectedIndex);
+  }
+
+  function choose(index) {
+    browserSelect.value = options[index].value;
+    browserSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    closeMenu();
+  }
+
+  trigger.addEventListener('click', () => menu.hidden ? openMenu() : closeMenu());
+  // Options keep combobox focus so focusout cannot hide them before click fires.
+  menu.addEventListener('mousedown', event => {
+    if (event.button === 0) event.preventDefault();
+  });
+  menu.addEventListener('click', event => {
+    const index = items.indexOf(event.target.closest('[role="option"]'));
+    if (index !== -1) {
+      choose(index);
+      trigger.focus({ preventScroll: true });
+    }
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!choice.contains(event.target)) closeMenu();
+  });
+  choice.addEventListener('focusout', event => {
+    if (!choice.contains(event.relatedTarget)) closeMenu();
+  });
+  let search = '';
+  let lastKey = 0;
+  trigger.addEventListener('keydown', event => {
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      if (event.key === 'Escape' && !menu.hidden) event.preventDefault();
+      closeMenu();
+      return;
+    }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', ' '].includes(event.key)) {
+      event.preventDefault();
+      const wasClosed = menu.hidden;
+      if (wasClosed) openMenu();
+      if (event.key === 'Home') highlight(0);
+      else if (event.key === 'End') highlight(items.length - 1);
+      else if (event.key === 'ArrowDown') highlight(activeIndex + 1);
+      else if (event.key === 'ArrowUp') highlight(activeIndex - 1);
+      else if (!wasClosed) choose(activeIndex);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      if (menu.hidden) openMenu();
+      search = Date.now() - lastKey > 700 ? event.key : search + event.key;
+      lastKey = Date.now();
+      const index = options.findIndex(option => option.textContent.toLowerCase().startsWith(search.toLowerCase()));
+      if (index !== -1) highlight(index);
+    }
+  });
+  browserSelect.addEventListener('change', () => {
+    changed = true;
+    updateBrowserCommands();
+  });
   updateBrowserCommands();
+
+  // A delayed detection result must never replace a user's choice, even a reset.
+  async function detectBrowser() {
+    if (mobile || browserSelect.value) return;
+    const browser = await detectDesktopBrowser(navigator);
+    if (browser && !changed && !browserSelect.value) {
+      browserSelect.value = browser;
+      updateBrowserCommands();
+    }
+  }
+  detectBrowser();
 }
 
 // Match full-size screenshot links to the images selected by <picture>.

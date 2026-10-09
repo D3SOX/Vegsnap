@@ -12,6 +12,20 @@ import UIKit
         XCTAssertTrue(app.textFields["productName"].waitForExistence(timeout: 20))
     }
     func capture(_ name: String) { let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment) }
+    func selectTab(_ name: String) {
+        let tab = app.tabBars.buttons[name]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in tab.exists && tab.isHittable }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 20), .completed, "Tab is not ready: \(name)")
+        // A busy simulator can drop a tap during a tab-bar transition. Retry only
+        // when the requested tab has not become selected; screen assertions still run once.
+        for _ in 0..<2 {
+            if tab.isSelected { return }
+            tab.tap()
+            let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in tab.isSelected }, object: nil)
+            if XCTWaiter.wait(for: [selected], timeout: 10) == .completed { return }
+        }
+        XCTFail("Tab did not become selected: \(name)")
+    }
     func rotate(_ orientation: UIDeviceOrientation) {
         XCUIDevice.shared.orientation = orientation
         let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -31,9 +45,9 @@ import UIKit
         app.swipeUp(); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.staticTexts["Not vegan"].waitForExistence(timeout: 20)); capture("result-light")
         app.navigationBars.buttons["Done"].tap()
-        app.buttons["History"].firstMatch.tap(); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10)); capture("history-light")
+        selectTab("History"); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10)); capture("history-light")
         app.terminate(); launch(reset: false)
-        app.buttons["History"].firstMatch.tap(); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10))
+        selectTab("History"); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10))
     }
     func testDraftPersistsAndBarcodeValidation() {
         launch()
@@ -46,12 +60,12 @@ import UIKit
         XCTAssertEqual(app.textFields["barcode"].value as? String, "12345678")
     }
     func testBrowseOfflineAndSettings() {
-        launch(); app.buttons["Browse"].firstMatch.tap()
+        launch(); selectTab("Browse")
         XCTAssertTrue(app.textFields["browseQuery"].waitForExistence(timeout: 10))
         app.textFields["browseQuery"].tap(); app.textFields["browseQuery"].typeText("Quaker Oats\n")
         XCTAssertTrue(app.staticTexts["Quaker Oats"].firstMatch.waitForExistence(timeout: 10))
         capture("browse-light")
-        app.buttons["Settings"].firstMatch.tap(); XCTAssertTrue(app.switches["offlineMode"].waitForExistence(timeout: 10)); capture("settings-light")
+        selectTab("Settings"); XCTAssertTrue(app.switches["offlineMode"].waitForExistence(timeout: 10)); capture("settings-light")
     }
     func reveal(_ element: XCUIElement, scrollingDown: Bool = false, forTap: Bool = false) {
         for _ in 0..<8 {
@@ -67,7 +81,7 @@ import UIKit
         app.buttons[name].firstMatch.tap()
     }
     func testConnectionChoicesAndOfflineGates() {
-        launch(); app.buttons["Settings"].firstMatch.tap()
+        launch(); selectTab("Settings")
         reveal(app.buttons["Connect to free AI"])
         XCTAssertFalse(app.buttons["Connect to free AI"].isEnabled)
         chooseConnection("ChatGPT")
@@ -86,9 +100,9 @@ import UIKit
     }
     func testAccessibilityLayout() {
         launch(); capture("adaptive-check")
-        app.buttons["Settings"].firstMatch.tap()
+        selectTab("Settings")
         XCTAssertTrue(app.switches["offlineMode"].waitForExistence(timeout: 10)); capture("adaptive-settings")
-        app.buttons["History"].firstMatch.tap(); capture("adaptive-history")
+        selectTab("History"); capture("adaptive-history")
         rotate(.landscapeLeft); capture("adaptive-landscape")
         rotate(.portrait)
     }

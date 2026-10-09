@@ -1,4 +1,5 @@
 import { api, clearErrors, element, fieldError, message } from './common.js';
+import { coverageEditor } from './coverage.js';
 const access = document.querySelector('#access'), queue = document.querySelector('#queue'), records = document.querySelector('#records');
 let token = '', cursor = '', nextCursor = null, generation = 0;
 const headers = () => ({Authorization:`Bearer ${token}`});
@@ -32,6 +33,7 @@ function reviewForm(record) {
     input.required = ['productName','brand','market','question','reply','repliedOn'].includes(name);
     const title = element('label',label); title.htmlFor = input.id; form.append(title,input);
   }
+  const coverage = coverageEditor(form,record.coverage,record,true); form.append(coverage.section);
   for (const [name,label,options] of [
     ['claim','Reported answer',[['inconclusive','Still inconclusive'],['vegan','Vegan'],['not_vegan','Not vegan']]],
     ['scope','Response covers',[['ingredients','Specific ingredients / materials'],['processing','Processing / production'],['whole_product','The whole product']]],
@@ -53,6 +55,7 @@ function reviewForm(record) {
     if (!decision) return;
     const submission = Object.fromEntries(fields.map(([name]) => [name,form.elements.namedItem(name).value]));
     for (const name of ['claim','scope']) submission[name] = form.elements.namedItem(name).value;
+    submission.coverage = coverage.value();
     for (const button of form.querySelectorAll('button')) button.disabled = true;
     try {
       await api(`/api/review/${record.id}`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},

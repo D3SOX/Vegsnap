@@ -14,7 +14,7 @@
   <p>
     <a href="https://vegsnap.app"><img src="marketing/badges/website.svg" alt="Visit the Vegsnap website" width="200" height="58"></a>
     <a href="https://github.com/D3SOX/vegsnap/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
-    <a href="https://play.google.com/apps/testing/app.vegsnap"><img src="marketing/badges/play.svg" alt="Join the Google Play closed test" width="200" height="58"></a>
+    <a href="https://vegsnap.app/#play-test"><img src="marketing/badges/play.svg" alt="Join the Google Play closed test" width="200" height="58"></a>
     <br>
     <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension from releases" width="200" height="58"></a>
     <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
@@ -26,7 +26,7 @@ Vegsnap supports food, cosmetics, household products, clothing and shoes. It use
 
 You do not need a Vegsnap account. History stays on your device. The app has no ads or telemetry.
 
-You can look up reviewed manufacturer replies in the Android app or open the community service from the extension. To contribute a reply, open the submission form and redact personal details before sending it. The [community service](packages/community/README.md) publishes approved contributions on Cloudflare. Replies stay separate from the product verdict. Opening a result does not upload your history.
+You can look up reviewed manufacturer replies in the Android app or open the community service from the extension. To contribute a reply, open the submission form and redact personal details before sending it. The [community service](packages/community/README.md) publishes approved contributions on Cloudflare. Opening a product automatically looks up reviewed replies using its barcode, name, brand and country. Matching whole-product confirmations can change the displayed verdict; ingredient-only replies cannot. Conflicting evidence is shown explicitly. Your saved scan, history and photos stay on your device. Replies can cover several products or a reviewed product range. Android offline mode disables lookup; Firefox requires its data-sharing permission.
 
 This is an early release. Device, store and provider compatibility tests are ongoing.
 
@@ -42,7 +42,7 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 Connected AI can also assess a company using searched sources. Its assessment stays separate from reviewed records and can be inconclusive. Neither changes the product's vegan result. A missing record or no concerns found is not an ethical endorsement.
 
-German and English are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/).
+German and English are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/). Releases include `vegsnap-unsigned.ipa`. It must be signed before installation, including the embedded share extension and its App Group entitlement.
 
 ## Screenshots
 

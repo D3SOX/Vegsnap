@@ -48,7 +48,7 @@ class CommunityRepliesViewerTest {
         "2026-01-10", "vegan", "ingredients", "2026-01-11T12:00:00Z", "https://maker.example/contact", false)
 
     private fun show(offline: State<Boolean> = mutableStateOf(false), dark: Boolean = false, fontScale: Float = 1f,
-        open: (String) -> Unit = {}, load: suspend (CommunityLookup) -> CommunityReplyPage) {
+        open: (String) -> Unit = {}, displayVerdict: Boolean = false, load: suspend (CommunityLookup) -> CommunityReplyPage) {
         compose.setContent {
             val context = LocalContext.current
             val configuration = LocalConfiguration.current
@@ -59,7 +59,12 @@ class CommunityRepliesViewerTest {
                 MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
                     Surface {
                         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).testTag("community-scroll")) {
-                            CommunityRepliesViewer(result, offline.value, links, load, open)
+                            val state = rememberCommunityRepliesState(result, offline.value, load)
+                            if (displayVerdict) {
+                                val current = if (offline.value) result else applyCommunityReplies(result,state.appliedReplies(),"en","https://community.example")
+                                androidx.compose.material3.Text(current.optString("title", "Original verdict"))
+                            }
+                            CommunityRepliesViewer(result, offline.value, links, load, open, state)
                         }
                     }
                 }
@@ -75,7 +80,7 @@ class CommunityRepliesViewerTest {
     }
     private fun click(text: String) = compose.onNodeWithText(text).performScrollTo().performClick()
 
-    @Test fun nativeViewerLoadsOnlyOnRequestAndShowsScopeAndOriginalText() {
+    @Test fun nativeViewerLoadsAutomaticallyAndShowsScopeAndOriginalText() {
         var requests = 0
         val before = result.toString()
         val opened = mutableListOf<String>()
@@ -84,8 +89,7 @@ class CommunityRepliesViewerTest {
             assertEquals(CommunityLookup("Oat drink", "Maker", "", "SE"), lookup)
             CommunityReplyPage(listOf(reply), true)
         }
-        compose.runOnIdle { assertEquals(0, requests) }
-        click("View shared replies")
+        compose.runOnIdle { assertEquals(1, requests) }
         compose.onNodeWithText("Specific ingredients or materials").assertExists()
         compose.onNodeWithText("Vanilla 1 L").assertExists()
         click("Read reply")
@@ -104,7 +108,6 @@ class CommunityRepliesViewerTest {
         val before = result.toString()
         var requests = 0
         show { requests++; assertEquals("Maker", it.brand); CommunityReplyPage(emptyList(), false) }
-        click("View shared replies")
         compose.onNodeWithText("Enter a two-letter country code and a valid barcode, or the exact product name and brand.").assertExists()
         compose.runOnIdle { assertEquals(0, requests) }
         compose.onNode(hasSetTextAction() and hasText("Brand")).performScrollTo().performTextInput("Maker")
@@ -115,7 +118,6 @@ class CommunityRepliesViewerTest {
     @Test fun loadingFailureCanBeRetriedWithoutLeavingTheApp() {
         var requests = 0
         show { if (++requests == 1) throw java.io.IOException("offline") else CommunityReplyPage(emptyList(), false) }
-        click("View shared replies")
         compose.onNodeWithText("Could not load replies. Check your connection and try again.").assertExists()
         click("Find replies")
         compose.onNodeWithText("No reviewed replies were found for this product and market.").assertExists()
@@ -125,7 +127,6 @@ class CommunityRepliesViewerTest {
         val offline = mutableStateOf(false)
         var cancelled = false
         show(offline = offline) { try { awaitCancellation() } finally { cancelled = true } }
-        click("View shared replies")
         compose.onNodeWithText("Loading replies…").assertExists()
         compose.runOnIdle { offline.value = true }
         compose.onNodeWithText("Go online to share or view community replies.").assertExists()
@@ -166,13 +167,13 @@ class CommunityRepliesViewerTest {
     }
     @Test fun sharingUsesThePrefilledHostedForm() {
         val opened = mutableListOf<String>()
-        show(open = { opened.add(it) }) { fail("Sharing must not fetch replies"); CommunityReplyPage(emptyList(), false) }
+        var requests = 0
+        show(open = { opened.add(it) }) { requests++; CommunityReplyPage(emptyList(), false) }
         click("Share a reply")
-        compose.runOnIdle { assertEquals(listOf(links.submit), opened) }
+        compose.runOnIdle { assertEquals(listOf(links.submit), opened); assertEquals(1, requests) }
     }
     @Test fun blockedRepliesPersistLocallyAndCanBeRestored() {
         show { CommunityReplyPage(listOf(reply), false) }
-        click("View shared replies")
         click("Block this reply")
         compose.onNodeWithText("Maker · Oat drink").assertDoesNotExist()
         compose.runOnIdle {
@@ -183,7 +184,6 @@ class CommunityRepliesViewerTest {
     }
     @Test fun darkViewerWithLargeTextCanReadAndCloseReplies() {
         show(dark = true, fontScale = 2f) { CommunityReplyPage(listOf(reply.copy(evidencePublic = true)), false) }
-        click("View shared replies")
         click("Read reply")
         compose.onNodeWithText(reply.reply).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Download reviewed evidence").performScrollTo().assertIsDisplayed()
@@ -191,4 +191,14 @@ class CommunityRepliesViewerTest {
         click("Hide shared replies")
         compose.onNodeWithText(reply.reply).assertDoesNotExist()
     }
+    @Test fun wholeProductConfirmationChangesTheDisplayedVerdictAndBlockingRestoresIt() {
+        show(displayVerdict = true) { CommunityReplyPage(listOf(reply.copy(scope = "whole_product")),false) }
+        compose.onNodeWithText("Manufacturer says vegan").assertExists()
+        click("Block this reply")
+        compose.onNodeWithText("Manufacturer says vegan").assertDoesNotExist()
+        compose.onNodeWithText("Original verdict").assertExists()
+        click("Restore blocked replies")
+        compose.onNodeWithText("Manufacturer says vegan").assertExists()
+    }
+
 }

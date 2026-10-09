@@ -19,7 +19,7 @@ class ResultPresentationTest {
 
     @Test fun negativeOrConflictingOutcomeTakesPrecedenceOverEvidenceBasis() {
         for (basis in listOf("certified", "manufacturer", "composition", "packaging", "research")) {
-            assertEquals(ResultClassification.NOT_VEGAN, resultClassification("not_vegan", basis))
+            assertEquals(if (basis == "manufacturer") ResultClassification.MANUFACTURER_NOT_VEGAN else ResultClassification.NOT_VEGAN, resultClassification("not_vegan", basis))
             assertEquals(ResultClassification.CONFLICTING, resultClassification("conflicting", basis))
             assertEquals(ResultClassification.UNCERTAIN, resultClassification("uncertain", basis))
         }

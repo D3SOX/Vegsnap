@@ -35,3 +35,5 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .ingredient-status{display:inline-grid;place-items:center;flex-shrink:0;width:28px;height:28px;border-radius:50%;color:#635000;background:#ffeca5}
 .ingredient-status.plant{color:#205b29;background:#d7f5d6}.ingredient-status.animal{color:#922c34;background:#ffdADB}
 @media(prefers-color-scheme:dark){.ingredient-status{color:#e5ce78;background:#443700}.ingredient-status.plant{color:#ace5ab;background:#173e20}.ingredient-status.animal{color:#ffb3b7;background:#641b23}}
+
+.manufacturer-contact .quote{white-space:pre-wrap}

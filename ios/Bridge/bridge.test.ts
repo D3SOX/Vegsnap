@@ -39,6 +39,24 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   };
 }
 describe('iOS JavaScriptCore host contract', () => {
+  test('community lookup and verdicts work through the native runtime without sending scan content', () => {
+    const app = harness();
+    const result: CheckResult = app.call('analyze', {text:'Ingredients: water, mystery',name:'Lemon',brand:'Fun Light',barcode:'4006381333931',market:'SE',category:'drink'});
+    const query = new URLSearchParams(app.call('communityLookup',result.identity));
+    expect(Object.fromEntries(query)).toEqual({market:'SE',barcode:'04006381333931',name:'Lemon',brand:'Fun Light'});
+    const reply = {id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',productName:'Lemon',brand:'Fun Light',barcode:'4006381333931',market:'SE',variant:'',question:'Is it vegan?',reply:'All our products are vegan.',repliedOn:'2026-01-10',claim:'vegan',scope:'whole_product',sourceUrl:'',reviewedAt:'2026-01-11T00:00:00Z',evidencePublic:false};
+    const page = app.call('communityReplies',JSON.stringify({replies:[reply],more:false}));
+    const args = {result,page,locale:'en',hidden:[],confirmed:[]};
+    expect(app.call('communityVerdict',args).basis).toBe('manufacturer');
+    expect(result.outcome).toBe('uncertain');
+    expect(app.call('communityVerdict',{...args,hidden:[reply.id]}).outcome).toBe('uncertain');
+    expect(app.call('communityVerdict',{...args,page:{...page,more:true}}).outcome).toBe('uncertain');
+    const candidate = app.call('communityReplies',JSON.stringify({replies:[],candidates:[reply],more:false}));
+    expect(app.call('communityVerdict',{...args,page:candidate}).outcome).toBe('uncertain');
+    expect(app.call('communityVerdict',{...args,page:candidate,confirmed:[reply.id]}).outcome).toBe('vegan');
+    expect(() => app.call('communityReplies',JSON.stringify({replies:[{...reply,scope:'bad'}],more:false}))).toThrow();
+    expect(app.calls).toHaveLength(0);
+  });
   test('offline search ranks overlapping packs before filtering and pagination', () => {
     const app = harness();
     const products = bundled.products.filter(p => p.source === 'off').slice(0, 21).map(p => ({ ...p, name: 'old', brands: 'overlap-fixture', countries_tags: ['en:germany'], last_modified_t: p.last_modified_t + 1 }));
