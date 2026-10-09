@@ -89,7 +89,7 @@ if (browserSelect) {
   menu.setAttribute('aria-labelledby', 'companion-browser-label');
   menu.hidden = true;
   trigger.setAttribute('aria-controls', menu.id);
-  const iconClasses = { firefox: 'firefox-browser', chromium: 'chrome', chrome: 'chrome' };
+  const iconClasses = { '': 'browser', firefox: 'firefox-browser', chromium: 'chrome', chrome: 'chrome' };
   const items = options.map((option, index) => {
     const item = document.createElement('li');
     item.id = `${menu.id}-${index}`;
@@ -117,7 +117,6 @@ if (browserSelect) {
     for (const prompt of prompts) prompt.hidden = Boolean(browserSelect.value);
     selectedLabel.textContent = options[browserSelect.selectedIndex].textContent;
     selectedIcon.className = `platform-icon icon-${iconClasses[browserSelect.value] || browserSelect.value}`;
-    selectedIcon.hidden = !browserSelect.value;
     for (const item of items) {
       item.setAttribute('aria-selected', String(item.dataset.value === browserSelect.value));
     }
@@ -153,6 +152,10 @@ if (browserSelect) {
   }
 
   trigger.addEventListener('click', () => menu.hidden ? openMenu() : closeMenu());
+  // Options keep combobox focus so focusout cannot hide them before click fires.
+  menu.addEventListener('mousedown', event => {
+    if (event.button === 0) event.preventDefault();
+  });
   menu.addEventListener('click', event => {
     const index = items.indexOf(event.target.closest('[role="option"]'));
     if (index !== -1) {
