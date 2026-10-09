@@ -42,20 +42,37 @@ def destination(browser: str) -> Path:
         if browser == "firefox":
             return home / ".mozilla/native-messaging-hosts"
         config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
-        return config / ("chromium" if browser == "chromium" else "google-chrome") / "NativeMessagingHosts"
+        directory = {
+            "chromium": "chromium",
+            "chrome": "google-chrome",
+            "brave": "BraveSoftware/Brave-Browser",
+            "helium": "net.imput.helium",
+        }[browser]
+        return config / directory / "NativeMessagingHosts"
     if sys.platform == "darwin":
         support = home / "Library/Application Support"
-        return support / {"firefox": "Mozilla/NativeMessagingHosts", "chromium": "Chromium/NativeMessagingHosts", "chrome": "Google/Chrome/NativeMessagingHosts"}[browser]
+        # Brave explicitly looks in Chrome's directory on macOS.
+        directory = {
+            "firefox": "Mozilla",
+            "chromium": "Chromium",
+            "chrome": "Google/Chrome",
+            "brave": "Google/Chrome",
+            "helium": "net.imput.helium",
+        }[browser]
+        return support / directory / "NativeMessagingHosts"
     raise ValueError(f"Unsupported operating system: {sys.platform}")
 
 
 def register_windows(browser: str, path: Path) -> None:
     import winreg
 
+    # Brave and Helium retain Chromium's Chrome registry fallback on Windows.
     key = {
         "firefox": r"Software\Mozilla\NativeMessagingHosts",
         "chrome": r"Software\Google\Chrome\NativeMessagingHosts",
         "chromium": r"Software\Chromium\NativeMessagingHosts",
+        "brave": r"Software\Google\Chrome\NativeMessagingHosts",
+        "helium": r"Software\Google\Chrome\NativeMessagingHosts",
     }[browser] + r"\org.vegsnap.companion"
     with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_SET_VALUE) as registry:
         winreg.SetValueEx(registry, "", 0, winreg.REG_SZ, str(path))
@@ -74,7 +91,7 @@ def install(binary: Path, browser: str, extension_id: str, output: Optional[Path
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--browser", choices=["firefox", "chromium", "chrome"], required=True)
+    parser.add_argument("--browser", choices=["firefox", "chromium", "chrome", "brave", "helium"], required=True)
     parser.add_argument("--extension-id", required=True)
     parser.add_argument("--output", type=Path, help="Write the manifest here instead of registering it")
     args = parser.parse_args()

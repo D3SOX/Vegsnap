@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -30,6 +31,8 @@ class InstallerTest(unittest.TestCase):
             "firefox": r"Software\Mozilla\NativeMessagingHosts\org.vegsnap.companion",
             "chrome": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
             "chromium": r"Software\Chromium\NativeMessagingHosts\org.vegsnap.companion",
+            "brave": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
+            "helium": r"Software\Google\Chrome\NativeMessagingHosts\org.vegsnap.companion",
         }
         paths = []
         with patch.object(sys, "platform", "win32"), patch.object(Path, "home", side_effect=RuntimeError("Home is not required on Windows")), patch.dict(os.environ, {"LOCALAPPDATA": str(self.root)}), patch.dict(sys.modules, {"winreg": self.registry}):
@@ -44,8 +47,9 @@ class InstallerTest(unittest.TestCase):
                 data = json.loads(path.read_text())
                 self.assertEqual(data["path"], str(self.binary))
                 self.assertEqual("allowed_extensions" in data, browser == "firefox")
-                self.assertEqual("allowed_origins" in data, browser != "firefox")
-        self.assertEqual(len(set(paths)), 3)
+                if browser != "firefox":
+                    self.assertEqual(data["allowed_origins"], [f"chrome-extension://{extension_id}/"])
+        self.assertEqual(len(set(paths)), 5)
         self.assertEqual(json.loads(paths[0].read_text())["allowed_extensions"], ["vegsnap@vegsnap.app"])
 
     def test_output_only_writes_requested_manifest_without_registration(self):
@@ -76,6 +80,13 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(installer.destination("firefox"), self.root / ".mozilla/native-messaging-hosts")
             self.assertEqual(installer.destination("chrome"), self.root / "config/google-chrome/NativeMessagingHosts")
             self.assertEqual(installer.destination("chromium"), self.root / "config/chromium/NativeMessagingHosts")
+            self.assertEqual(installer.destination("brave"), self.root / "config/BraveSoftware/Brave-Browser/NativeMessagingHosts")
+            self.assertEqual(installer.destination("helium"), self.root / "config/net.imput.helium/NativeMessagingHosts")
+
+    def test_linux_defaults_to_home_config(self):
+        with patch.object(sys, "platform", "linux"), patch.object(Path, "home", return_value=self.root), patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(installer.destination("brave"), self.root / ".config/BraveSoftware/Brave-Browser/NativeMessagingHosts")
+            self.assertEqual(installer.destination("helium"), self.root / ".config/net.imput.helium/NativeMessagingHosts")
 
     def test_macos_uses_browser_directories(self):
         with patch.object(sys, "platform", "darwin"), patch.object(Path, "home", return_value=self.root):
@@ -83,6 +94,20 @@ class InstallerTest(unittest.TestCase):
             self.assertEqual(installer.destination("firefox"), support / "Mozilla/NativeMessagingHosts")
             self.assertEqual(installer.destination("chrome"), support / "Google/Chrome/NativeMessagingHosts")
             self.assertEqual(installer.destination("chromium"), support / "Chromium/NativeMessagingHosts")
+            self.assertEqual(installer.destination("brave"), support / "Google/Chrome/NativeMessagingHosts")
+            self.assertEqual(installer.destination("helium"), support / "net.imput.helium/NativeMessagingHosts")
+
+    def test_cli_accepts_brave_and_helium(self):
+        for browser in ["brave", "helium"]:
+            with self.subTest(browser=browser):
+                output = self.root / f"{browser}.json"
+                result = subprocess.run([
+                    sys.executable, str(Path(installer.__file__)),
+                    "--binary", str(self.binary), "--browser", browser,
+                    "--extension-id", "a" * 32, "--output", str(output),
+                ], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(output.read_text())["allowed_origins"], [f'chrome-extension://{"a" * 32}/'])
 
 
 if __name__ == "__main__":

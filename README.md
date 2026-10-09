@@ -34,7 +34,7 @@ This is an early release. Device, store and provider compatibility tests are ong
 ## What it does
 
 - On Android, take or import photos, share a product, or enter text. The app has local history and offline text recognition with downloadable language models.
-- In Chromium and Firefox, check selected text or right-click a product image. Enable store integrations if you want database checks while browsing. Background checks never use AI.
+- In Chrome, Chromium, Brave, Helium and Firefox, check selected text or right-click a product image. Enable store integrations if you want database checks while browsing. Background checks never use AI.
 - Use Vegsnap AI for limited free checks without a subscription or API key. You can also connect ChatGPT with a Plus or Pro plan, an OpenAI-compatible API, or a compatible local model. Only ChatGPT sign-in in the extension needs the desktop companion.
 - Look up barcodes in Open Food Facts, Open Beauty Facts and Open Products Facts. Regional packs provide a selection of these records offline.
 - When AI finds a manufacturer contact, draft a question in English, German or Swedish. Copy it or open an email draft to ask about missing product details.
@@ -92,11 +92,11 @@ Google Play and GitHub APKs use different signing keys. To switch between them, 
 
 ## Install the browser extension
 
-Install Vegsnap from the [Chrome Web Store](https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej) in Chrome or a compatible Chromium-based browser. Firefox store approval is still pending; you can install it temporarily using the package below. The Firefox extension requires Firefox 140 or later.
+Install Vegsnap from the [Chrome Web Store](https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej) in Chrome, Chromium, Brave or Helium. Firefox store approval is still pending; you can install it temporarily using the package below. The Firefox extension requires Firefox 140 or later.
 
 Download the browser packages from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest).
 
-- Chromium: extract `vegsnap-chromium.zip`, open `chrome://extensions`, enable developer mode and choose **Load unpacked**. Select the extracted folder. The release also includes `vegsnap-chromium.crx`, but some browsers restrict direct CRX installation. The ZIP works for development installation.
+- Chrome, Chromium, Brave and Helium: extract `vegsnap-chromium.zip`, open `chrome://extensions` (`brave://extensions` in Brave or `helium://extensions` in Helium), enable developer mode and choose **Load unpacked**. Select the extracted folder. The release also includes `vegsnap-chromium.crx`, but some browsers restrict direct CRX installation. The ZIP works for development installation.
 - Firefox: download `vegsnap-firefox.xpi`, open `about:debugging`, choose **This Firefox**, then **Load Temporary Add-on** and select the file. The XPI is currently unsigned, so normal Firefox cannot install it permanently. Temporary add-ons disappear when Firefox closes. Permanent installation needs Mozilla signing.
 
 ## Install the ChatGPT companion
@@ -136,6 +136,22 @@ python3 "$HOME/.local/lib/vegsnap/install.py" \
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
+For Brave:
+
+```sh
+python3 "$HOME/.local/lib/vegsnap/install.py" \
+  --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
+  --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
+For Helium:
+
+```sh
+python3 "$HOME/.local/lib/vegsnap/install.py" \
+  --binary "$HOME/.local/lib/vegsnap/vegsnap-companion" \
+  --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
 Linux needs an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
 
 ### macOS, Apple silicon and Intel
@@ -166,6 +182,22 @@ For Google Chrome:
 python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
   --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
+For Brave:
+
+```sh
+python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
+  --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
+  --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
+For Helium:
+
+```sh
+python3 "$HOME/Library/Application Support/Vegsnap/install.py" \
+  --binary "$HOME/Library/Application Support/Vegsnap/vegsnap-companion" \
+  --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
 The companion uses macOS Keychain. The release is not notarized. If macOS blocks it, review the downloaded executable in System Settings under Privacy & Security.
@@ -199,13 +231,29 @@ py -3 "$vegsnapDirectory\install.py" `
   --browser chrome --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
 ```
 
+For Brave:
+
+```powershell
+py -3 "$vegsnapDirectory\install.py" `
+  --binary "$vegsnapDirectory\vegsnap-companion.exe" `
+  --browser brave --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
+For Helium:
+
+```powershell
+py -3 "$vegsnapDirectory\install.py" `
+  --binary "$vegsnapDirectory\vegsnap-companion.exe" `
+  --browser helium --extension-id pkkfmbgdbdoccbdngnbfpjjhpldmphej
+```
+
 The installer writes a separate manifest for each browser under `%LOCALAPPDATA%\Vegsnap\NativeMessagingHosts` and registers it under `HKEY_CURRENT_USER`. It does not need administrator access. Credentials use Windows Credential Manager.
 
 ### Connect your browser
 
-Run the registration command for each browser you use. The Chrome Web Store version uses `pkkfmbgdbdoccbdngnbfpjjhpldmphej`. Manually installed ZIP and CRX release packages use `bljmddjdbglldnbdhdfdlbilieoheend`. Both IDs stay the same across updates. Firefox uses `vegsnap@vegsnap.app`.
+Run the registration command for each browser you use: Firefox, Chromium, Google Chrome, Brave or Helium. Brave on macOS and Brave and Helium on Windows share Chrome's native-host registration location. The Chrome Web Store version uses `pkkfmbgdbdoccbdngnbfpjjhpldmphej`. Manually installed ZIP and CRX release packages use `bljmddjdbglldnbdhdfdlbilieoheend`. Both IDs stay the same across updates. Firefox uses `vegsnap@vegsnap.app`.
 
-After registration, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
+After registration, restart your browser, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
 
 ## Data licenses
 
