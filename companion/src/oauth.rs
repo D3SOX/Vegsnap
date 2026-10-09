@@ -1408,20 +1408,19 @@ fn research_with_discovered_country(
         return first;
     }
     let mut context = country_context.cloned();
-    if let Some(context) = context.as_mut().filter(|context| context.automatic) {
-        if supplied.is_none() {
-            if let Some(barcode) = discovered {
-                let category = original["category"]
-                    .as_str()
-                    .filter(|category| *category != "other")
-                    .or_else(|| extracted["category"].as_str())
-                    .unwrap_or("other");
-                let Ok(countries) = resolve(&barcode, category) else {
-                    return first;
-                };
-                context.markets.extend(countries);
-            }
-        }
+    if let Some(context) = context.as_mut().filter(|context| context.automatic)
+        && supplied.is_none()
+        && let Some(barcode) = discovered
+    {
+        let category = original["category"]
+            .as_str()
+            .filter(|category| *category != "other")
+            .or_else(|| extracted["category"].as_str())
+            .unwrap_or("other");
+        let Ok(countries) = resolve(&barcode, category) else {
+            return first;
+        };
+        context.markets.extend(countries);
     }
     research_if_needed(first, content, context.as_ref(), follow_up)
 }
