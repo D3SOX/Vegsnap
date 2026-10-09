@@ -98,7 +98,12 @@ struct ResultView: View {
             }
             CommunitySection(store: store, result: result)
             Section {
-                Button(L("Check again"), systemImage: "arrow.clockwise") { store.enqueue(input: saved.input ?? result.retryInput, photos: saved.photos); store.selectedResult = nil; store.selectedTab = "check" }
+                Button(L("Check again"), systemImage: "arrow.clockwise") {
+                    if store.enqueue(input: saved.input ?? result.retryInput, photos: saved.photos) {
+                        store.selectedResult = nil
+                        store.selectedTab = "check"
+                    }
+                }
                 ShareLink(item: result.title + "\n" + result.outcome.label + "\n\n" + result.summary) { Label(L("Share result"), systemImage: "square.and.arrow.up") }
             }
         }.navigationTitle(L("Result")).navigationBarTitleDisplayMode(.inline)
