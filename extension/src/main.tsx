@@ -7,7 +7,7 @@ import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
-import { extractProducts } from './extraction';
+import { extractProducts, validGtin } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { editableInput, historyExport, type HistoryResult } from './history';
 import './style.css';
@@ -157,9 +157,10 @@ export function App() {
   function editResult() {
     if (!result) return;
     const input = editableInput(result);
+    const barcodeInText = input.barcode !== undefined && input.text?.split(/\s+/).some(value => validGtin(value) === input.barcode);
     setEditingResult(result); setResult(undefined); setTab('scan');
     setText(input.text ?? ''); setCategory(input.category ?? 'other'); setComplete(input.complete === true); setImages(input.images ?? []);
-    setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode ? { barcode: input.barcode } : {}), market: input.market, sourceUrl: input.sourceUrl });
+    setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode && !barcodeInText ? { barcode: input.barcode } : {}), market: input.market, sourceUrl: input.sourceUrl });
     setImageUrl(undefined); setError(''); setNotice('');
   }
   function cancelEdit() {
@@ -355,7 +356,7 @@ export function App() {
       </section> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
-        <form onSubmit={event => { event.preventDefault(); void check({ ...scanInput({ text, category, complete, images }), ...inspectedIdentity }); }}>
+        <form onSubmit={event => { event.preventDefault(); const input = scanInput({ text, category, complete, images }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
           <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}

@@ -246,6 +246,22 @@ try {
   assert.equal(roots[0]!.querySelectorAll('.photos img').length, 0, 'Existing photos can be removed from the draft');
   await act(async () => { cancelButton()!.click(); });
   assert(roots[0]!.querySelector('.history-photos img'), 'Cancelling photo edits preserves the checked result');
+  await act(async () => { editButton()!.click(); });
+  await act(async () => {
+    const textarea = roots[0]!.querySelector('textarea')!;
+    textarea.value += ' 5012345678900'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'Correcting a saved barcode produces a new result');
+  assert.equal(checkedInputs.at(-1)?.barcode, '5012345678900', 'A barcode supplied in edited text overrides the saved barcode');
+  await act(async () => { editButton()!.click(); });
+  await act(async () => {
+    const textarea = roots[0]!.querySelector('textarea')!;
+    textarea.value = textarea.value.replace('5012345678900', '').trim(); textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await submitEdit();
+  await until(() => !!roots[0]!.querySelector('.verdict'), 'Removing a text barcode produces a new result');
+  assert.equal(checkedInputs.at(-1)?.barcode, undefined, 'Deleting a barcode from the original text does not restore it from saved identity');
   history = [{ ...fixtureResult, input: { text: 'Ingredients: oats' } }];
   changed(); await tab(roots[0]!, 1);
   await until(() => historyItems(roots[0]!).length === 1, 'A saved result without a barcode is available');
