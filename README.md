@@ -42,7 +42,7 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 Connected AI can also assess a company using searched sources. Its assessment stays separate from reviewed records and can be inconclusive. Neither changes the product's vegan result. A missing record or no concerns found is not an ethical endorsement.
 
-German and English are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/).
+German and English are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/). Releases include `vegsnap-unsigned.ipa`. It must be signed before installation, including the embedded share extension and its App Group entitlement.
 
 ## Screenshots
 

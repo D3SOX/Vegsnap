@@ -111,6 +111,40 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/vegsnap-release.p12" "$RUNNER_TEMP/vegsnap-extension.pem"
 
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - name: Archive and package unsigned iOS app
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 1
+          vegsnap_version="${RELEASE_TAG#v}"
+          # Apple's bundle version must be numeric, including for prerelease tags.
+          vegsnap_version="${vegsnap_version%%-*}"
+          xcodebuild -project ios/Vegsnap.xcodeproj -scheme Vegsnap \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Vegsnap.xcarchive" \
+            MARKETING_VERSION="$vegsnap_version" CURRENT_PROJECT_VERSION="$((GITHUB_RUN_NUMBER + 1))" \
+            CODE_SIGNING_ALLOWED=NO archive
+          mkdir -p "$RUNNER_TEMP/vegsnap-ipa/Payload" release
+          ditto "$RUNNER_TEMP/Vegsnap.xcarchive/Products/Applications/Vegsnap.app" \
+            "$RUNNER_TEMP/vegsnap-ipa/Payload/Vegsnap.app"
+          test -f "$RUNNER_TEMP/vegsnap-ipa/Payload/Vegsnap.app/PlugIns/VegsnapShare.appex/VegsnapShare"
+          ditto -c -k --keepParent "$RUNNER_TEMP/vegsnap-ipa/Payload" release/vegsnap-unsigned.ipa
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vegsnap-release-ios
+          path: release/vegsnap-unsigned.ipa
+          retention-days: 1
+          if-no-files-found: error
+
   companion:
     strategy:
       fail-fast: false
@@ -171,7 +205,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [apps, companion]
+    needs: [apps, ios, companion]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -190,9 +224,11 @@ jobs:
           vegsnap_extension_id=$(python -c 'import json,re; identity=json.load(open("release/extension-artifacts.json"))["chromium"]["id"]; assert re.fullmatch("[a-p]{32}", identity); print(identity)')
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             cat > "$vegsnap_notes" <<EOF
-          Signed Android APK, browser extensions and companions for Linux, Windows and macOS.
+          Signed Android APK, unsigned iOS IPA, browser extensions and companions for Linux, Windows and macOS.
 
           [Installation instructions](https://github.com/$GITHUB_REPOSITORY#install-the-browser-extension) cover the unsigned Firefox XPI and Chromium packages. [Companion registration](https://github.com/$GITHUB_REPOSITORY#install-the-chatgpt-companion) is required for ChatGPT sign-in in the extension.
+
+          The iOS IPA is unsigned and must be signed before installing on an iPhone or iPad. Signing must include the embedded share extension and its App Group entitlement.
 
           Regional packs are available in the [regional product packs release](https://github.com/$GITHUB_REPOSITORY/releases/tag/offline-data).
           EOF
@@ -206,6 +242,7 @@ jobs:
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             release/vegsnap.apk \
             release/vegsnap.aab \
+            release/vegsnap-unsigned.ipa \
             release/vegsnap-chromium.crx \
             release/vegsnap-chromium.zip \
             release/vegsnap-firefox.xpi \
