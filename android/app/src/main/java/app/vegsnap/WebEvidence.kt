@@ -110,6 +110,18 @@ internal fun matchesCatalogueIdentity(extracted: JSONObject, original: JSONObjec
 internal fun retainCatalogueComposition(extracted: JSONObject, catalogue: JSONObject, identity: JSONObject) {
     val url = catalogue.getString("url")
     val text = catalogue.getString("text")
+    // Fetching a composition cannot establish provenance for other model claims.
+    extracted.optJSONArray("webClaims")?.let { claims ->
+        extracted.put("webClaims", JSONArray((0 until claims.length()).map { claims.getJSONObject(it) }.filter { it.getString("url") != url }))
+    }
+    extracted.optJSONObject("contact")?.let { contact ->
+        if (contact.optString("sourceUrl") == url || contact.optString("url") == url) extracted.remove("contact")
+    }
+    extracted.optJSONObject("companyAssessment")?.let { company ->
+        val sources = company.optJSONArray("sources") ?: JSONArray()
+        if (company.optString("ownershipSourceUrl") == url || (0 until sources.length()).any { sources.optJSONObject(it)?.optString("url") == url })
+            extracted.remove("companyAssessment")
+    }
     val items = extracted.optJSONArray("webCompositions") ?: JSONArray()
     val compositions = (0 until items.length()).map { items.getJSONObject(it) }
     val source = JSONObject().put("url", url).put("text", text).put("sourceType", "retailer").put("complete", true)

@@ -409,19 +409,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             if (!matchesCatalogueIdentity(extracted, requireNotNull(researchIdentity))) {
                 return JSONObject(researchIdentity.toString()).also { retainCatalogueComposition(it, catalogue, researchIdentity) }
             }
-            val url = catalogue.getString("url")
             research?.let { extracted.put("research", it) }
             retainCatalogueComposition(extracted, catalogue, requireNotNull(researchIdentity))
             research = extracted.getJSONObject("research")
             extracted.remove("research")
-            val claims = extracted.optJSONArray("webClaims") ?: JSONArray()
-            extracted.put("webClaims", JSONArray((0 until claims.length()).map { claims.getJSONObject(it) }.filter { it.getString("url") != url }))
-            if (extracted.optJSONObject("contact")?.optString("sourceUrl") == url) extracted.remove("contact")
-            extracted.optJSONObject("companyAssessment")?.let { company ->
-                val companySources = company.optJSONArray("sources") ?: JSONArray()
-                if (company.optString("ownershipSourceUrl") == url || (0 until companySources.length()).any { companySources.optJSONObject(it)?.optString("url") == url })
-                    extracted.remove("companyAssessment")
-            }
         }
         if (extracted.has("companyAssessment")) {
             val assessment = safeCompanyAssessment(extracted.optJSONObject("companyAssessment"))

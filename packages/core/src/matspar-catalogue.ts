@@ -134,8 +134,8 @@ export function retainMatsparComposition(extraction: AIExtraction, catalogue: Ma
     sourceType: 'retailer' as const, productName: extraction.name ?? catalogue.productName, brand: extraction.brand ?? catalogue.brand };
   const compositions = [composition, ...(extraction.webCompositions ?? []).filter(item => item.url !== catalogue.url)].slice(0, 3);
   const webClaims = (extraction.webClaims ?? []).filter(item => item.url !== catalogue.url);
-  const contact = extraction.contact?.sourceUrl === catalogue.url ? undefined : extraction.contact;
-  const companyAssessment = extraction.companyAssessment?.sources.some(source => source.url === catalogue.url)
+  const contact = extraction.contact?.sourceUrl === catalogue.url || extraction.contact?.url === catalogue.url ? undefined : extraction.contact;
+  const companyAssessment = extraction.companyAssessment?.ownershipSourceUrl === catalogue.url || extraction.companyAssessment?.sources.some(source => source.url === catalogue.url)
     ? undefined : extraction.companyAssessment;
   return { ...extraction, ...(ingredientAssessments ? { ingredientAssessments } : { ingredientAssessments: undefined }), webClaims, webCompositions: compositions,
     ...(contact ? { contact } : { contact: undefined }), ...(companyAssessment ? { companyAssessment } : { companyAssessment: undefined }),

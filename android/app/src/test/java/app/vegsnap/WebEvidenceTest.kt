@@ -267,6 +267,50 @@ class WebEvidenceTest {
         assertEquals("uncertain", result.getString("outcome"))
         assertTrue(result.getJSONArray("findings").toString().contains("unfamiliar additive"))
     }
+    @Test fun firstPassCatalogueClaimCannotGainProvenanceFromFetchedComposition() = runBlocking {
+        for (failed in listOf(false, true)) MockWebServer().use { server ->
+            val url = "https://www.matspar.se/produkt/hummus-chili-200g-coop"
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
+                .put("name", "Hummus med chili").put("brand", "Coop")
+                .put("webClaims", JSONArray().put(JSONObject().put("url", url).put("quote", "Vegan.").put("claim", "vegan")
+                    .put("sourceType", "manufacturer").put("productName", "Hummus med chili").put("brand", "Coop")))
+            val second = JSONObject(first.toString()).apply { remove("webClaims") }
+            val catalogue = JSONObject().put("url", url).put("productName", "Hummus chili").put("text", "water, unfamiliar additive")
+            server.enqueue(MockResponse().setBody(providerResponse(first.toString()).also { it.getJSONArray("output").remove(0) }.toString()))
+            server.enqueue(if (failed) MockResponse().setResponseCode(503) else MockResponse().setBody(providerResponse(second.toString()).toString()))
+            val repository = CheckRepository(evaluator, "Photo prompt", CheckRepository.defaultHttpClient().newBuilder()
+                .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build(),
+                catalogueLookup = { catalogue })
+            val result = repository.check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+            assertEquals("uncertain", result.getString("outcome"))
+            assertFalse(result.getJSONArray("evidence").toString().contains("web-claim"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("water, unfamiliar additive"))
+        }
+    }
+    @Test fun catalogueCompositionDoesNotSourceContactOrCompanyUrls() {
+        val url = "https://www.matspar.se/produkt/hummus-chili-200g-coop"
+        val independentUrl = "https://maker.example/contact"
+        val identity = JSONObject().put("name", "Hummus chili").put("brand", "Coop")
+        val catalogue = JSONObject().put("url", url).put("productName", "Hummus chili").put("text", "water, salt")
+        for (field in listOf("sourceUrl", "url")) {
+            val extracted = JSONObject(identity.toString()).put("contact", JSONObject().put("sourceUrl", independentUrl).put("url", independentUrl).put(field, url))
+            retainCatalogueComposition(extracted, catalogue, identity)
+            assertFalse(extracted.has("contact"))
+            assertTrue(extracted.has("webCompositions"))
+        }
+        for (ownership in listOf(false, true)) {
+            val company = JSONObject().put("ownershipSourceUrl", if (ownership) url else independentUrl)
+                .put("sources", JSONArray().put(JSONObject().put("url", if (ownership) independentUrl else url)))
+            val extracted = JSONObject(identity.toString()).put("companyAssessment", company)
+            retainCatalogueComposition(extracted, catalogue, identity)
+            assertFalse(extracted.has("companyAssessment"))
+        }
+        val independent = JSONObject(identity.toString()).put("contact", JSONObject().put("sourceUrl", independentUrl).put("url", independentUrl))
+            .put("companyAssessment", JSONObject().put("ownershipSourceUrl", independentUrl).put("sources", JSONArray().put(JSONObject().put("url", independentUrl))))
+        retainCatalogueComposition(independent, catalogue, identity)
+        assertTrue(independent.has("contact"))
+        assertTrue(independent.has("companyAssessment"))
+    }
     @Test fun fetchedCatalogueSurvivesFailedFollowupAndKeepsAnimalGuards() = runBlocking {
         for (failed in listOf(false, true)) MockWebServer().use { server ->
             val first = JSONObject().put("text", "").put("complete", false).put("category", "food")

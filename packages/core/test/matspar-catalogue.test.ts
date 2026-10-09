@@ -20,6 +20,30 @@ function fetcherWith(products: unknown[], full: Record<string, unknown> = listin
 }
 
 describe('Matspar catalogue fallback', () => {
+  test('catalogue provenance supports only composition and preserves independent contact and company evidence', () => {
+    const url = 'https://www.matspar.se/produkt/hummus-chili-200g-coop';
+    const independentUrl = 'https://maker.example/contact';
+    const catalogue = { url, text: ingredients, productName: 'Hummus chili', brand: 'Coop', quantity: '200g' };
+    const original: AIExtraction = { ...extraction,
+      webClaims: [{ url, quote: 'Vegan.', claim: 'vegan', sourceType: 'manufacturer', productName: extraction.name!, brand: 'Coop' }],
+      contact: { productName: extraction.name!, brand: 'Coop', sourceUrl: independentUrl, url: independentUrl },
+      companyAssessment: { brand: 'Coop', company: 'Parent', scope: 'parent', verdict: 'inconclusive', summary: 'Uncertain.',
+        categories: [], sources: [{ url: independentUrl, title: 'Parent', quote: 'Ownership.' }], ownershipSourceUrl: independentUrl },
+    };
+    for (const field of ['sourceUrl', 'url'] as const) {
+      const result = retainMatsparComposition({ ...original, contact: { ...original.contact!, [field]: url } }, catalogue);
+      expect(result.contact).toBeUndefined();
+      expect(result.webClaims).toEqual([]);
+      expect(result.webCompositions?.[0]?.text).toBe(ingredients);
+    }
+    for (const companyAssessment of [
+      { ...original.companyAssessment!, ownershipSourceUrl: url },
+      { ...original.companyAssessment!, sources: [{ url, title: 'Parent', quote: 'Ownership.' }] },
+    ]) expect(retainMatsparComposition({ ...original, companyAssessment }, catalogue).companyAssessment).toBeUndefined();
+    const independent = retainMatsparComposition(original, catalogue);
+    expect(independent.contact).toEqual(original.contact);
+    expect(independent.companyAssessment).toEqual(original.companyAssessment);
+  });
   test('retains the exact 200 g composition and source from a matched full product record', async () => {
     const candidate = listing();
     const split = ['Kikärtor', 'vatten', 'rapsolja', 'SESAMPASTA', 'röd paprika', 'salt', 'E 330', 'chili', 'paprikapulver', 'vitlökspulver', 'E 202'];
