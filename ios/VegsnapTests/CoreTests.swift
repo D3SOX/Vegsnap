@@ -783,7 +783,8 @@ import Security
         Network.testProtocolClasses = [CatalogueProtocol.self]
         CatalogueProtocol.aiCalls = 0; CatalogueProtocol.catalogueCalls = 0
         var settings = Settings(); settings.connection = "api"; settings.baseUrl = "https://api.openai.com/v1"; settings.model = "gpt-4o"; settings.vision = true
-        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(category: .food, images: ["data:image/jpeg;base64,AA=="]), settings: settings, token: "fixture-key")
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(category: .food, images: ["data:image/jpeg;base64,AA=="], autoMarket: true), settings: settings, token: "fixture-key")
+        XCTAssertEqual(result.identity.market, "SE")
         XCTAssertEqual(result.outcome.rawValue, "not_vegan")
         XCTAssertEqual(CatalogueProtocol.catalogueCalls, 2)
         XCTAssertTrue(result.evidence.contains { $0.url == "https://www.matspar.se/produkt/hummus-chili-200g-coop" && $0.excerpt == "Ingredienser: kikärtor, honey, salt" })
