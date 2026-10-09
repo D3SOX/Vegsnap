@@ -112,6 +112,25 @@ import Security
         restored.consumeInbox()
         XCTAssertEqual(restored.draft.text, "second share")
     }
+    func testPackUpdatesCompareInstantsAcrossUTCOffsets() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        func pack(_ date: String) -> Data {
+            Data("""
+            {"schemaVersion":1,"region":"timestamp-fixture","generatedAt":"\(date)","sources":[{"id":"off","url":"https://world.openfoodfacts.org","license":"ODbL-1.0","retrievedAt":"2026-10-09T00:00:00Z"}],"products":[]}
+            """.utf8)
+        }
+        try store.importPack(pack("2026-10-09T12:00:00+02:00"))
+        try store.importPack(pack("2026-10-09T11:00:00Z"))
+        XCTAssertEqual(store.packs.first { $0.region == "timestamp-fixture" }?.generatedAt, "2026-10-09T11:00:00Z")
+        XCTAssertThrowsError(try store.importPack(pack("2026-10-09T12:00:00+02:00")))
+        try store.importPack(pack("2026-10-09T13:00:00+02:00")) // Same instant is allowed.
+        try store.importPack(pack("2026-10-09T11:00:00.500Z"))
+        XCTAssertThrowsError(try store.importPack(pack("2026-10-09T11:00:00Z")))
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.packs.first { $0.region == "timestamp-fixture" }?.generatedAt, "2026-10-09T11:00:00.500Z")
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

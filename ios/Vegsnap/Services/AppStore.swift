@@ -305,7 +305,10 @@ import CryptoKit
         let name = "pack-" + Keychain.account(header.region.lowercased()) + ".json"
         var names: [String] = try files.read("packs.json") ?? []
         guard names.contains(name) || names.count < 12 else { throw AppError(L("Remove an offline pack before adding another.")) }
-        if let old: Header = try files.read(name), old.generatedAt > header.generatedAt { throw AppError(L("The installed pack is newer.")) }
+        if let old: Header = try files.read(name) {
+            guard let oldDate = HistoryTransfer.parseDate(old.generatedAt), let newDate = HistoryTransfer.parseDate(header.generatedAt) else { throw AppError(L("Invalid regional pack catalog.")) }
+            if oldDate > newDate { throw AppError(L("The installed pack is newer.")) }
+        }
         try files.saveData(Data(validated.utf8), name)
         if !names.contains(name) { names.append(name) }; try files.save(names, "packs.json"); try reloadPacks()
     }

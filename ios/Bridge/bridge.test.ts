@@ -45,6 +45,16 @@ describe('iOS JavaScriptCore host contract', () => {
     expect(app.call('offlineSearch', { source: 'off', query: 'wrong market', offset: 0 })).toHaveLength(0);
   });
 
+  test('offline search finds base and localized product names', () => {
+    const app = harness();
+    const product = { ...bundled.products.find(p => p.source === 'off')!, name: 'base-fixture', name_de: 'Beispiel-fixture', name_en: 'Example-fixture', countries_tags: ['en:germany'], last_modified_t: 2_000_000_000 };
+    app.call('snapshots', [{ ...bundled, products: [product] }]);
+    for (const query of ['base-fixture', 'BEISPIEL-fixture', 'example-fixture']) {
+      const results: { code: string }[] = app.call('offlineSearch', { source: 'off', query, offset: 0 });
+      expect(results.map(p => p.code)).toEqual([product.code]);
+    }
+  });
+
   test('exports the engine and evaluates offline without network', async () => {
     const app = harness();
     const result = await app.check({ input: { text: 'Ingredients: oats, honey', category: 'food', locale: 'en' }, offline: true, aiEnabled: false });

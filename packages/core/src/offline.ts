@@ -80,7 +80,7 @@ export class OfflineProductIndex {
   search(source: OfflineSnapshot['products'][number]['source'], query: string, offset = 0, market = 'DE') {
     const matches = [...this.products.values()].flatMap(entries => {
       const entry = rankEntries(entries.filter(item => item.product.source === source), { market })[0];
-      if (!entry || !`${entry.product.name} ${entry.product.brands} ${entry.product.code}`.toLowerCase().includes(query.toLowerCase())) return [];
+      if (!entry || !`${entry.product.name} ${entry.product.name_de ?? ''} ${entry.product.name_en ?? ''} ${entry.product.brands} ${entry.product.code}`.toLowerCase().includes(query.toLowerCase())) return [];
       return [{ ...entry.product, snapshotDate: entry.snapshot.generatedAt }];
     });
     return matches.slice(offset, offset + 20);
