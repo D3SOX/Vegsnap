@@ -38,6 +38,7 @@ data class AppSettings(
     val model: String = "", val vision: Boolean = true,
     val startTab: String = "scan", val lastTab: String = "scan", val offline: Boolean = false,
     val connection: String = "chatgpt", val chatgptModel: String = "", val defaultCategory: String = "other", val parallelChecks: Int = 3,
+    val autoCountry: Boolean = true, val fallbackCountry: String = "DE",
 )
 // Resolve AI availability for each queued check; saved provider fields belong to the user's API.
 internal fun AppSettings.forAnalysis(hostedBaseUrl: String, hostedModel: String, connected: Boolean): AppSettings =
@@ -61,6 +62,8 @@ internal fun appSettingsFromPreferences(p: Preferences, defaults: AppSettings = 
     p[stringPreferencesKey("connection")] ?: defaults.connection, p[stringPreferencesKey("chatgptModel")] ?: "",
     p[stringPreferencesKey("defaultCategory")]?.takeIf { it in setOf("other", "food", "drink", "cosmetics", "household", "clothing", "shoes") } ?: "other",
     (p[androidx.datastore.preferences.core.intPreferencesKey("parallelChecks")] ?: 3).coerceIn(1, 10),
+    p[booleanPreferencesKey("autoCountry")] ?: true,
+    p[stringPreferencesKey("fallbackCountry")]?.takeIf(::validProductMarket) ?: "DE",
 )
 private val Context.settingsDataStore by preferencesDataStore("settings")
 class SettingsStore(private val context: Context) {
@@ -78,6 +81,8 @@ class SettingsStore(private val context: Context) {
         it[stringPreferencesKey("chatgptModel")] = settings.chatgptModel
         it[stringPreferencesKey("defaultCategory")] = settings.defaultCategory
         it[androidx.datastore.preferences.core.intPreferencesKey("parallelChecks")] = settings.parallelChecks.coerceIn(1, 10)
+        it[booleanPreferencesKey("autoCountry")] = settings.autoCountry
+        it[stringPreferencesKey("fallbackCountry")] = settings.fallbackCountry
     } }
 }
 

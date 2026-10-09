@@ -41,6 +41,11 @@ struct CheckView: View {
             Section(L("Product details")) {
                 TextField(L("Product name (optional)"), text: $store.draft.name).focused($editing, equals: "name").accessibilityIdentifier("productName")
                 TextField(L("Brand (optional)"), text: $store.draft.brand).focused($editing, equals: "brand")
+                TextField(L("Product country (e.g. SE)"), text: Binding(get: { store.draft.market }, set: { value in
+                    store.draft.market = String(value.uppercased().filter { $0.isASCII && $0.isLetter }.prefix(2)); store.draft.autoMarket = false
+                })).textInputAutocapitalization(.characters).autocorrectionDisabled().focused($editing, equals: "market")
+                Text(L(store.draft.autoMarket == false || !store.settings.automaticCountry ? "Selected manually" : "Fallback country"))
+                Text(L("Choose the country this product is sold for, not the manufacturer’s location.")).font(.footnote).foregroundStyle(.secondary)
                 Picker(L("Category"), selection: $store.draft.category) { ForEach(Category.allCases) { Text($0.label).tag($0) } }.accessibilityIdentifier("categoryPicker")
                 TextField(L("Barcode (optional)"), text: $store.draft.barcode).keyboardType(.numberPad).focused($editing, equals: "barcode").accessibilityIdentifier("barcode")
             }
@@ -50,7 +55,7 @@ struct CheckView: View {
             } header: { Text(L("Ingredients or materials")) } footer: { Text(L("Only mark a list complete when you have checked the entire label.")) }
             Section {
                 Button { editing = nil; store.enqueue() } label: { Label(L("Check product"), systemImage: "sparkle.magnifyingglass").frame(maxWidth: .infinity, minHeight: 38) }
-                    .buttonStyle(.borderedProminent).disabled(importing || store.draftSubmitted || !store.draft.hasContent && store.draftPhotos.isEmpty).accessibilityIdentifier("checkProduct")
+                    .buttonStyle(.borderedProminent).disabled(importing || store.draftSubmitted || !ProductCountry.isValid(store.draft.market) || !store.draft.hasContent && store.draftPhotos.isEmpty).accessibilityIdentifier("checkProduct")
                 if store.draftSubmitted { Text(L("This draft is already queued. Clear it to start another check.")).font(.footnote) }
                 if store.settings.offline { Label(L("Offline mode — local evidence only"), systemImage: "wifi.slash").font(.footnote).foregroundStyle(.secondary) }
                 else if store.connectionReady(store.settings) { Text(L("Selected text and photos may be sent to your AI provider if local evidence is insufficient.")).font(.footnote).foregroundStyle(.secondary) }

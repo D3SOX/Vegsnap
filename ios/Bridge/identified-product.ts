@@ -1,6 +1,7 @@
-import { analyzeText, DATABASES, normalizeBarcode } from '../../packages/core/src/index';
+import { analyzeText, countryCode, DATABASES, normalizeBarcode } from '../../packages/core/src/index';
 import { applyAIEvidence } from '../../packages/core/src/ai-evidence';
 import { readBoundedText } from '../../packages/core/src/http';
+import { databaseCountryWarning } from '../../packages/core/src/market';
 import type { AIExtraction, CheckInput, CheckResult } from '../../packages/core/src/types';
 
 const lastRequests = new Map<string, number>();
@@ -9,10 +10,9 @@ const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
 function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
-function country(value: string): string | undefined {
-  const key = normalize(value).replace(/^en:/, '').replace(/[^\p{L}\p{N}]/gu, '');
-  return ({ de: 'de', germany: 'de', deutschland: 'de', se: 'se', sweden: 'se', sverige: 'se', fi: 'fi', finland: 'fi', suomi: 'fi',
-    uk: 'uk', gb: 'uk', unitedkingdom: 'uk', us: 'us', usa: 'us', unitedstates: 'us' } as Record<string, string>)[key];
+function countries(product: Record<string, unknown>): string[] {
+  const tags = Array.isArray(product.countries_tags) ? product.countries_tags.filter((value): value is string => typeof value === 'string' && Boolean(value.trim())) : [];
+  return tags.length ? tags : text(product.countries).split(/[,;|]/).map(value => value.trim()).filter(Boolean);
 }
 
 /** Require a unique packaging match; a name match never establishes an exact barcode or complete label. */
@@ -33,8 +33,13 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
   const expectedWords = words(name);
   const query = `${brand} ${stripBrand(name)}`.trim();
   if (!expectedWords.length || query.length < 2 || query.length > 200) return;
-  const expectedCountry = packaging.country ? country(packaging.country) : undefined;
-  if (packaging.country && !expectedCountry) return;
+  const packagingCountry = packaging.country ? countryCode(packaging.country) : undefined;
+  if (packaging.country && !packagingCountry) return;
+  const selectedCountry = input.market ? countryCode(input.market) : undefined;
+  const expectedCountry = packagingCountry ?? selectedCountry;
+  // Recovery must not add another market's composition to a manually selected
+  // country or to a fallback selected because the country clues conflict.
+  if (packagingCountry && selectedCountry && selectedCountry !== packagingCountry) return;
   // Only searches that actually start consume a slot; cancelled waiters reserve nothing.
   while (true) {
     signal?.throwIfAborted();
@@ -63,18 +68,18 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
   const localized = (product: Record<string, unknown>, key: string) => text(product[`${key}_${language}`]) || text(product[key]);
   const candidates = products.map(record).filter((product): product is Record<string, unknown> => {
     if (!product) return false;
-    const markets = Array.isArray(product.countries_tags) ? product.countries_tags.filter((value): value is string => typeof value === 'string') : text(product.countries).split(/[,;|]/);
+    const markets = countries(product);
     return /^\d{4,30}$/.test(text(product.code)) && Boolean(localized(product, 'ingredients_text')) &&
       normalize(text(product.brands)) === normalize(brand) && words(localized(product, 'product_name')).join(' ') === expectedWords.join(' ') &&
       normalize(text(product.quantity)).replace(/\s/g, '') === normalize(packaging.quantity!).replace(/\s/g, '') &&
       words(packaging.variant ?? '').every(word => expectedWords.includes(word)) &&
-      (!expectedCountry || markets.some(market => country(market) === expectedCountry));
+      (!expectedCountry || !packagingCountry && input.autoMarket !== false && !markets.length || markets.some(market => countryCode(market) === expectedCountry));
   });
   if (candidates.length !== 1) return;
   const product = candidates[0]!;
   const composition = localized(product, 'ingredients_text');
   if (composition.length > 20_000) return;
-  const productInput: CheckInput = { name, brand, text: composition, category: extraction.category, complete: false, locale: input.locale };
+  const productInput: CheckInput = { name, brand, text: composition, category: extraction.category, complete: false, locale: input.locale, market: input.market };
   let result = analyzeText(productInput);
   const evidenceID = `${source.id}:${text(product.code)}`;
   result.evidence = [{ id: evidenceID, kind: 'database', title: source.name, excerpt: composition,
@@ -82,6 +87,8 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
   result.findings = result.findings.map(finding => ({ ...finding, evidenceId: evidenceID }));
   result.identity.match = 'unconfirmed';
   result.warnings.push(input.locale === 'de' ? 'Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen.' : 'Community-maintained record; check market, recipe and freshness.');
+  const countryWarning = databaseCountryWarning(result.identity.market, countries(product), input.locale);
+  if (countryWarning) result.warnings.push(countryWarning);
   // Preserve the full database split; partial model parsing cannot remove an ingredient.
   result = applyAIEvidence(result, productInput, { ...extraction, text: composition, ingredients: undefined }, false);
   result.evidence = result.evidence.map(item => item.id === 'ai-assessment' ? { ...item, id: `${evidenceID}-assessment` } : item);

@@ -10,11 +10,24 @@ import org.junit.Test
 
 class MatsparCatalogueTest {
     private fun identity() = JSONObject().put("category", "food").put("name", "Hummus med chili").put("brand", "Coop")
+        .put("market", "SE")
         .put("packaging", JSONObject().put("language", "Swedish").put("quantity", "200 g").put("variant", "med chili"))
     private fun product() = JSONObject().put("name", "Hummus chili").put("brand", "Coop").put("weight_pretty", "200g")
         .put("slug", "produkt/hummus-chili-200g-coop")
         .put("ingredients", "INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster.")
     private fun response(payload: JSONObject, type: String = "category") = JSONObject().put("payload", payload).put("type", type).toString()
+
+    @Test fun selectedCountryMustBeSwedenBeforeAnyCatalogueRequest() = runBlocking {
+        val fallback = selectProductCountry(CheckInput(market = "DE", autoMarket = true), "SE", listOf("en:finland")).first
+        for (input in listOf(identity().put("market", "DE").put("autoMarket", false),
+            identity().put("market", fallback).put("autoMarket", true), identity().apply { remove("market") })) {
+            for (country in listOf(null, "SE")) MockWebServer().use { server ->
+                input.getJSONObject("packaging").put("country", country)
+                assertNull(MatsparCatalogue(endpoint = server.url("/slug")).lookup(input))
+                assertEquals(0, server.requestCount)
+            }
+        }
+    }
 
     @Test fun exactProductIsReadFromCatalogueWithoutWebSearchIndexOrGuessedUrl() = runBlocking {
         MockWebServer().use { server ->

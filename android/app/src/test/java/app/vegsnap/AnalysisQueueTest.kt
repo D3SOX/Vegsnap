@@ -8,25 +8,48 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AnalysisQueueTest {
+    @Test fun `country correction removes inactive history retries but cannot remove publishable work`() = withStore { _, store ->
+        for (status in listOf(AnalysisStatus.FAILED, AnalysisStatus.INTERRUPTED, AnalysisStatus.CANCELLED)) {
+            val job = store.enqueueHistory("history", CheckInput(market = "DE"), AppSettings(), emptyList())
+            assertFalse(store.clearInactiveHistoryRetries("history"))
+            val active = requireNotNull(store.next(false, 1))
+            assertFalse(store.clearInactiveHistoryRetries("history"))
+            when (status) {
+                AnalysisStatus.FAILED -> store.failed(active.id, active.attempt)
+                else -> assertTrue(store.stop(active.id, status))
+            }
+            assertTrue(store.clearInactiveHistoryRetries("history"))
+            assertNull(store.get(job.id))
+            val corrected = store.enqueueHistory("history", CheckInput(market = "SE", autoMarket = false), AppSettings(), emptyList())
+            assertEquals("SE", corrected.input.market)
+            assertTrue(store.remove(corrected.id))
+        }
+        val paused = store.enqueueHistory("history", CheckInput(), AppSettings(), emptyList())
+        store.next(true, 1)
+        assertEquals(AnalysisStatus.PAUSED, store.get(paused.id)?.status)
+        assertFalse(store.clearInactiveHistoryRetries("history"))
+    }
     private fun withStore(test: suspend CoroutineScope.(File, AnalysisQueueStore) -> Unit) = runBlocking {
         val root = Files.createTempDirectory("vegsnap-queue").toFile()
         try { test(root, AnalysisQueueStore(File(root, "queue"))) }
         finally { root.deleteRecursively() }
     }
     @Test fun `enqueue snapshots independent inputs and sanitized files without credentials`() = withStore { root, store ->
-        val input = CheckInput("water, oats", "food", true, locale = "de")
-        val settings = AppSettings(connection = "api", model = "vision-model", baseUrl = "https://api.example/v1")
+        val input = CheckInput("water, oats", "food", true, locale = "de", market = "SE", autoMarket = false)
+        val settings = AppSettings(connection = "api", model = "vision-model", baseUrl = "https://api.example/v1", autoCountry = false, fallbackCountry = "SE")
         val photo = byteArrayOf(1, 2, 3)
         val first = store.enqueue(input, settings, listOf(photo))
         photo[0] = 9
         val second = store.enqueue(input.copy(text = "cotton", category = "clothing", complete = false), settings.copy(model = "another-model"), emptyList())
         val restored = AnalysisQueueStore(File(root, "queue")).apply { initialize() }
         assertEquals(input, restored.get(first.id)?.input)
+        assertEquals(false, restored.get(first.id)?.settings?.autoCountry)
+        assertEquals("SE", restored.get(first.id)?.settings?.fallbackCountry)
         assertEquals(settings.model, restored.get(first.id)?.settings?.model)
         assertEquals("another-model", restored.get(second.id)?.settings?.model)
         assertArrayEquals(byteArrayOf(1, 2, 3), restored.files(first.id).single().readBytes())
         val saved = JSONObject(File(root, "queue/${first.id}/job.json").readText())
-        assertEquals(setOf("aiEnabled", "baseUrl", "model", "vision", "offline", "connection", "chatgptModel"), saved.getJSONObject("settings").keys().asSequence().toSet())
+        assertEquals(setOf("aiEnabled", "baseUrl", "model", "vision", "offline", "connection", "chatgptModel", "autoCountry", "fallbackCountry"), saved.getJSONObject("settings").keys().asSequence().toSet())
         assertFalse(saved.toString().contains("token", ignoreCase = true))
     }
     @Test fun `failed enqueue never publishes a job or damages an existing one`() = withStore { _, store ->

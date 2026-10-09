@@ -100,14 +100,32 @@ class OfflineDatabaseTest {
         assertEquals("uncertain", repository(database).lookupBarcode(CheckInput(barcode = "4006381333931"), true)?.getString("outcome"))
         assertFalse(File(folder, "regions/${offlineRegionId("Sweden")}.json").exists())
     }
-    @Test fun `Swedish regional record keeps exact barcode match while warning about market`() = withDatabase { database, _ ->
+    @Test fun `matching bundled country takes precedence over another regional market`() = withDatabase { database, _ ->
         val pack = document("Sweden", "vatten")
         pack.getJSONArray("products").getJSONObject(0).put("countries_tags", JSONArray().put("en:sweden"))
         database.import(pack.toString().byteInputStream())
         val result = requireNotNull(repository(database).lookupBarcode(CheckInput(barcode = "4006381333931"), true))
         assertEquals("exact_barcode", result.getJSONObject("identity").getString("match"))
-        assertTrue(result.getJSONArray("warnings").toString().contains("other markets"))
+        assertEquals("water", result.getJSONArray("evidence").getJSONObject(0).getString("excerpt"))
+        assertFalse(result.getJSONArray("warnings").toString().contains("other markets"))
         assertFalse(result.getJSONArray("evidence").getJSONObject(0).has("differentMarket"))
+    }
+    @Test fun `offline manual and fallback countries choose matching composition before snapshot recency`() = withDatabase { database, _ ->
+        val swedish = document("Sweden", "water").apply {
+            getJSONArray("products").getJSONObject(0).put("countries_tags", JSONArray().put("en:sweden"))
+        }
+        val german = document("Germany", "milk").put("generatedAt", "2026-10-06T12:00:00Z")
+        database.import(swedish.toString().byteInputStream())
+        database.import(german.toString().byteInputStream())
+        for (automatic in listOf(false, true)) {
+            val result = requireNotNull(repository(database).lookupBarcode(CheckInput(category = "food", barcode = "4006381333931", market = "SE", autoMarket = automatic), true))
+            assertEquals("SE", result.getJSONObject("identity").getString("market"))
+            assertEquals(if (automatic) "fallback" else "manual", result.getJSONObject("identity").getString("marketSource"))
+            assertEquals("water", result.getJSONArray("evidence").getJSONObject(0).getString("excerpt"))
+            assertEquals("uncertain", result.getString("outcome"))
+            assertFalse(result.getJSONArray("warnings").toString().contains("other markets"))
+        }
+        assertNull(repository(database).lookupBarcode(CheckInput(category = "food", barcode = "4006381333931", market = "JP", autoMarket = false), true))
     }
     @Test fun `Barnivore imported draft keeps status separate from composition`() {
         val record = BrowseRecord("fixture", BrowseSource.BARNIVORE, "Example wine", composition = "vegan friendly", description = "Manufacturer response", url = "https://www.barnivore.com/wine/1/")

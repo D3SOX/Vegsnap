@@ -25,10 +25,49 @@ class BarcodePayloadTest {
             JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText()).getString("prompt"), http = http,
             productRequests = OpenFactsProductRequests(now = { clock }, wait = { clock += it }))
     }
-    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product") = MockResponse().setHeader("Content-Type", "application/json")
+    private fun product(ingredients: String? = null, code: String = barcode, name: String = "Test product", market: String = "en:germany") = MockResponse().setHeader("Content-Type", "application/json")
         .setBody(JSONObject().put("product", JSONObject().put("code", code).put("product_name", name)
-            .put("countries_tags", JSONArray().put("en:sweden")).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
+            .put("countries_tags", JSONArray().put(market)).apply { ingredients?.let { put("ingredients_text", it) } }).toString())
 
+    @Test fun canonicalCountryTagsSupportAutomaticAndManualBarcodeLookup() = runBlocking {
+        for ((country, tag) in mapOf("CZ" to "en:czech-republic", "TR" to "en:turkey")) {
+            MockWebServer().use { server ->
+                val repo = repository(server)
+                server.enqueue(product(market = tag))
+                for (automatic in listOf(true, false)) {
+                    val result = requireNotNull(repo.lookupBarcode(CheckInput(category = "food", barcode = barcode, market = if (automatic) "DE" else country, autoMarket = automatic)))
+                    assertEquals(country, result.getJSONObject("identity").getString("market"))
+                    assertEquals(if (automatic) "database" else "manual", result.getJSONObject("identity").getString("marketSource"))
+                    assertFalse(result.getJSONArray("warnings").toString().contains("other markets"))
+                }
+                assertEquals(1, server.requestCount)
+            }
+        }
+    }
+
+    @Test fun exactBarcodeCountryIsDetectedWithoutAi() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(product(market = "en:sweden"))
+            val result = requireNotNull(repository(server).lookupBarcode(CheckInput(category = "food", barcode = barcode, autoMarket = true)))
+            assertEquals("SE", result.getJSONObject("identity").getString("market"))
+            assertEquals("database", result.getJSONObject("identity").getString("marketSource"))
+            assertEquals(1, server.requestCount)
+        }
+    }
+    @Test fun manualBarcodeCountryRejectsKnownMismatchesButRetainsMatchingAndUntaggedRecords() = runBlocking {
+        for (countries in listOf(JSONArray().put("en:germany"), JSONArray().put("en:sweden"), JSONArray())) MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(JSONObject().put("product", JSONObject().put("code", barcode)
+                .put("ingredients_text", "milk").put("countries_tags", countries)).toString()))
+            val result = repository(server).lookupBarcode(CheckInput(category = "food", barcode = barcode, market = "SE", autoMarket = false))
+            if (countries.optString(0) == "en:germany") assertNull(result)
+            else {
+                assertNotNull(result)
+                assertEquals("SE", result!!.getJSONObject("identity").getString("market"))
+                assertEquals("not_vegan", result.getString("outcome"))
+                if (countries.length() == 0) assertTrue(result.getJSONArray("warnings").toString().contains("does not confirm the product country"))
+            }
+        }
+    }
     @Test fun passiveIdentityOnlyMatchRemainsUncertainAndDoesNotInvokeAi() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(product())

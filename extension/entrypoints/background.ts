@@ -1,10 +1,10 @@
 import { browser } from 'wxt/browser';
-import { acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
+import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { hostedCommand, hostedToken } from '../src/hosted';
-import { history } from '../src/history';
+import { history, type HistoryResult } from '../src/history';
 import { offlineLibrary } from '../src/offline';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
@@ -109,12 +109,13 @@ export default defineBackground(() => {
           case 'update-settings': {
             if (!isRecord(message.patch)) throw new Error('Invalid settings.');
             const patch = message.patch;
-            const allowed = ['connection', 'baseUrl', 'model', 'saveHistory'];
+            const allowed = ['connection', 'baseUrl', 'model', 'saveHistory', 'autoCountry', 'fallbackCountry'];
             if (Object.keys(patch).some(key => !allowed.includes(key))) throw new Error('Invalid setting.');
             if (patch.connection !== undefined && (typeof patch.connection !== 'string' || !['chatgpt', 'database', 'hosted', ...Object.keys(PRESETS)].includes(patch.connection)) ||
               patch.baseUrl !== undefined && (typeof patch.baseUrl !== 'string' || patch.baseUrl.length > 2000) ||
               patch.model !== undefined && (typeof patch.model !== 'string' || patch.model.length > 200) ||
-              ['saveHistory'].some(key => patch[key] !== undefined && typeof patch[key] !== 'boolean')) throw new Error('Invalid setting value.');
+              patch.fallbackCountry !== undefined && (typeof patch.fallbackCountry !== 'string' || !countryCode(patch.fallbackCountry)) ||
+              ['saveHistory','autoCountry'].some(key => patch[key] !== undefined && typeof patch[key] !== 'boolean')) throw new Error('Invalid setting value.');
             await changeSettings(async () => {
               const current = await settings();
               const switched = typeof patch.connection === 'string' ? changeConnectionSettings(current, patch.connection as Connection) : current;
@@ -163,7 +164,8 @@ export default defineBackground(() => {
             if (!isCheckInput(message.input)) throw new Error('Invalid product input.');
             if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId))) throw new Error('Invalid check identifier.');
             const requestId = typeof message.requestId === 'string' ? message.requestId : undefined;
-            const input: CheckInput = { ...message.input, locale: config.language, market: typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins)) ? storeMarket(message.input.sourceUrl) : message.input.market || 'DE' };
+            const trustedStore = typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins));
+            const input: CheckInput = { ...message.input, locale: config.language, market: message.input.market ?? (trustedStore ? storeMarket(message.input.sourceUrl!) : config.fallbackCountry), autoMarket: message.input.autoMarket ?? (trustedStore ? false : config.autoCountry) };
             let onlineConsent: CheckReply['onlineConsent'];
             let provider;
             if (config.connection === 'chatgpt' && config.model) {
@@ -206,10 +208,26 @@ export default defineBackground(() => {
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
             if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
+            const inheritedFallback = message.input.autoMarket === undefined && !trustedStore && !config.autoCountry;
+            if (inheritedFallback) result.identity.marketSource = 'fallback';
             const { images, ...savedInput } = input;
+            if (inheritedFallback) delete savedInput.autoMarket;
             const localResult = { ...result, input: savedInput, ...(images?.length ? { photos: images } : {}) };
             if (config.saveHistory) await changeHistory(() => history('save', localResult));
             return { ok: true, result: { ...localResult, ...(onlineConsent ? { onlineConsent } : {}) } };
+          }
+          case 'set-result-market': {
+            if (typeof message.id !== 'string' || typeof message.market !== 'string' || (!/^[A-Z]{2}$/.test(message.market) || !countryCode(message.market))) throw new Error('Invalid product country.');
+            const id = message.id, market = message.market;
+            let updated: HistoryResult | null = null;
+            await changeHistory(async () => {
+              const saved = (await history('list')).find(item => item.id === id);
+              if (!saved) throw new Error('This result is no longer in history.');
+              const corrected = { ...saved, identity: { ...saved.identity, market, marketSource: 'manual' as const }, ...(saved.input ? {input:{...saved.input,market,autoMarket:false}} : {}) };
+              await history('save', corrected);
+              updated = corrected;
+            });
+            return { ok: true, result: updated };
           }
           case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
           case 'hosted': {

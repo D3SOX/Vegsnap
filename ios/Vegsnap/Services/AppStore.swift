@@ -29,6 +29,7 @@ import CryptoKit
     private var packTask: Task<Void, Never>?
     private var chatGPTTask: Task<Void, Never>?
     private var backgroundID: UIBackgroundTaskIdentifier = .invalid
+    private var savedFallbackCountry: String
 
     init(root: URL? = nil, inboxDirectory: URL? = nil) throws {
         self.inboxDirectory = inboxDirectory ?? FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.vegsnap.ios")
@@ -37,11 +38,12 @@ import CryptoKit
         hosted = try HostedAIConnection(configuration: ServiceConfiguration.load("hosted-ai"))
         let loadedSettings: Settings = try files.read("settings.json") ?? Settings()
         settings = loadedSettings
+        savedFallbackCountry = loadedSettings.defaultCountry
         history = try files.read("history.json") ?? []
         jobs = try files.read("queue.json") ?? []
         let saved: Draft? = try files.read("draft.json")
         draftID = saved?.id ?? UUID().uuidString
-        draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, locale: language)
+        draft = saved?.input ?? CheckInput(category: loadedSettings.defaultCategory, market: loadedSettings.defaultCountry, locale: language)
         draftPhotos = saved?.photos ?? []
         selectedTab = loadedSettings.startTab == "last" ? loadedSettings.lastTab : loadedSettings.startTab
         let completedIDs = Set(history.map(\.id))
@@ -57,7 +59,27 @@ import CryptoKit
     }
     var locale: String { settings.language == "system" ? language : settings.language }
     func report(_ error: Error) { if !(error is CancellationError) { self.error = error.localizedDescription } }
-    func saveSettings() { do { try files.save(settings, "settings.json") } catch { report(error) } }
+    func saveSettings() {
+        do {
+            try files.save(settings, "settings.json")
+            if settings.defaultCountry != savedFallbackCountry && draft.autoMarket == nil && !draftSubmitted && draft.market == savedFallbackCountry {
+                draft.market = settings.defaultCountry; saveDraft()
+            }
+            savedFallbackCountry = settings.defaultCountry
+        } catch { report(error) }
+    }
+    func updateProductMarket(_ id: String, market: String) throws {
+        guard ProductCountry.isValid(market) else { throw AppError(L("Enter a two-letter country code.")) }
+        guard !jobs.contains(where: { $0.id == id }), let index = history.firstIndex(where: { $0.id == id }) else { throw AppError(L("This result is unavailable or has a check in progress.")) }
+        var next = history
+        next[index].result.identity.market = market
+        next[index].result.identity.marketSource = "manual"
+        next[index].input?.market = market
+        next[index].input?.autoMarket = false
+        try files.save(next, "history.json")
+        history = next
+        if selectedResult?.id == id { selectedResult = next[index] }
+    }
     func saveDraft() {
         do { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
     }
@@ -88,7 +110,7 @@ import CryptoKit
     }
     func clearDraft() {
         do {
-            try replaceDraft(CheckInput(category: settings.defaultCategory, locale: locale), photos: [], id: UUID().uuidString)
+            try replaceDraft(CheckInput(category: settings.defaultCategory, market: settings.defaultCountry, locale: locale), photos: [], id: UUID().uuidString)
             cleanPhotos(); consumeInbox()
         } catch { report(error) }
     }
@@ -100,6 +122,9 @@ import CryptoKit
             if supplied == nil { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") }
             guard (settings.connection != "chatgpt" || !switchingChatGPT) && (settings.connection != "hosted" || !disconnectingHosted) else { return false }
             var input = supplied ?? draft; input.locale = locale
+            if input.autoMarket == nil && settings.automaticCountry { input.autoMarket = true }
+            if supplied != nil && input.autoMarket != false { input.market = settings.defaultCountry }
+            guard ProductCountry.isValid(input.market) else { throw AppError(L("Enter a two-letter country code.")) }
             let photos = suppliedPhotos ?? draftPhotos
             guard input.hasContent || !photos.isEmpty else { return false }
             guard input.text.utf16.count <= 30_000, input.name.utf16.count <= 300, input.brand.utf16.count <= 300 else { throw AppError(L("Text exceeds the input limit.")) }
@@ -129,6 +154,7 @@ import CryptoKit
             var input = job.input
             let photos = try job.photos.map { try Data(contentsOf: files.url($0)) }
             var config = job.settings
+            input.autoMarket = input.autoMarket ?? config.automaticCountry
             config.offline = config.offline || settings.offline
             guard config.connection != "chatgpt" || job.accountID == chatGPT.selectedAccount else { throw AppError(L("The account changed. Start a new check.")) }
             config.aiEnabled = connectionReady(config)
@@ -169,6 +195,7 @@ import CryptoKit
                     result.warnings.append(L("Local text recognition also failed; earlier evidence has been kept."))
                 }
             }
+            if job.input.autoMarket == nil && !config.automaticCountry { result.identity.marketSource = "fallback" }
             try Task.checkCancellation()
             let name = (result.identity.name ?? job.input.name).trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { result.title = name }

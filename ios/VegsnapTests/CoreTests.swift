@@ -5,6 +5,54 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testProductCountriesExcludeRegionalAndReservedCodes() {
+        for code in ["EU", "UN", "EZ", "AC", "XK", "QO", "ZZ", "001", "419", "de", ""] {
+            XCTAssertFalse(ProductCountry.isValid(code), code)
+            var settings = Settings()
+            settings.fallbackCountry = code
+            XCTAssertEqual(settings.defaultCountry, "DE")
+        }
+        for code in ["DE", "SE", "FI", "CZ", "TR", "GB", "AX", "RE"] {
+            XCTAssertTrue(ProductCountry.isValid(code), code)
+            var settings = Settings()
+            settings.defaultCountry = code
+            XCTAssertEqual(settings.defaultCountry, code)
+        }
+    }
+    func testSettingsPreserveCustomDraftCountryAndUpdateOnlyAnInheritedFallback() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = try FileStore(root: root)
+        try files.save(AppStore.Draft(id: UUID().uuidString, input: CheckInput(text: "water", market: "SE"), photos: []), "draft.json")
+        let store = try AppStore(root: root)
+        store.settings.appearance = "dark"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "SE")
+        store.settings.fallbackCountry = "FI"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "SE")
+        store.clearDraft()
+        XCTAssertEqual(store.draft.market, "FI")
+        store.settings.fallbackCountry = "NO"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "NO")
+        store.draft.autoMarket = false
+        store.settings.fallbackCountry = "DE"
+        store.saveSettings()
+        XCTAssertEqual(store.draft.market, "NO")
+    }
+    func testOldSettingsAndInputsDecodeWithoutDetectionFields() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        var settingsJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(Settings())) as? [String: Any])
+        settingsJSON.removeValue(forKey: "autoCountry"); settingsJSON.removeValue(forKey: "fallbackCountry")
+        let settings = try decoder.decode(Settings.self, from: JSONSerialization.data(withJSONObject: settingsJSON))
+        XCTAssertTrue(settings.automaticCountry); XCTAssertEqual(settings.defaultCountry, "DE")
+        var inputJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(CheckInput(market: "SE"))) as? [String: Any])
+        inputJSON.removeValue(forKey: "autoMarket")
+        let input = try decoder.decode(CheckInput.self, from: JSONSerialization.data(withJSONObject: inputJSON))
+        XCTAssertNil(input.autoMarket); XCTAssertEqual(input.market, "SE")
+    }
     func testPackagingLanguageUsesObservedNamesAndCodes() {
         for language in ["sv", "swe", "Swedish", "svenska"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "sv") }
         for language in ["de", "deu", "German", "Deutsch"] { XCTAssertEqual(CoreEngine.packagingLanguage(language), "de") }
@@ -265,6 +313,62 @@ import Security
         restored.delete(Set(restored.history.map(\.id)))
         XCTAssertTrue(try AppStore(root: root).history.isEmpty)
     }
+    func testProductCountryCorrectionPersistsAndFailedSaveKeepsOriginal() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let original = try analyze("Ingredients: water, mystery")
+        let saved = SavedCheck(id: original.id, result: original, input: CheckInput(text: "Ingredients: water, mystery"), photos: ["photo.jpg"])
+        store.history = [saved]; store.selectedResult = saved
+        try store.files.save(store.history, "history.json")
+        try store.updateProductMarket(saved.id, market: "SE")
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.history[0].result.identity.market, "SE")
+        XCTAssertEqual(restored.history[0].input?.market, "SE")
+        XCTAssertEqual(restored.history[0].result.outcome, original.outcome)
+        XCTAssertEqual(restored.history[0].photos, saved.photos)
+        XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
+        for invalid in ["Sweden", "EU", "UN", "EZ", "AC", "XK"] {
+            XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: invalid))
+            XCTAssertEqual(store.history[0].result.identity.market, "SE")
+            XCTAssertFalse(store.enqueue(input: CheckInput(text: "water", market: invalid, autoMarket: false)))
+            XCTAssertTrue(store.jobs.isEmpty)
+        }
+        FileStore.rejectWrite = { $0.lastPathComponent == "history.json" }
+        XCTAssertThrowsError(try store.updateProductMarket(saved.id, market: "DE"))
+        XCTAssertEqual(store.history[0].result.identity.market, "SE")
+        XCTAssertEqual(store.selectedResult?.result.identity.market, "SE")
+    }
+    func testImportedHistoryRetriesReplaceNonISOCountriesWithTheConfiguredFallback() async throws {
+        for market in ["en:sweden", "SWE"] {
+            for automatic in [false, true] {
+                let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                defer { try? FileManager.default.removeItem(at: root) }
+                let store = try AppStore(root: root)
+                store.settings.offline = true
+                store.settings.defaultCountry = "FI"
+                store.settings.automaticCountry = automatic
+                var imported = try analyze("Ingredients: oats")
+                imported.identity.market = market
+                imported.identity.marketSource = nil
+                try store.importHistory(HistoryDocument(results: [imported]).jsonData())
+                let saved = try XCTUnwrap(store.history.first)
+                XCTAssertNil(saved.input)
+                let input = saved.result.retryInput
+                XCTAssertEqual(input.market, market)
+                XCTAssertNil(input.autoMarket)
+                XCTAssertTrue(store.enqueue(input: input, photos: saved.photos))
+                let queued = try XCTUnwrap(store.jobs.first)
+                XCTAssertEqual(queued.input.market, "FI")
+                XCTAssertEqual(queued.input.autoMarket, automatic ? true : nil)
+                for _ in 0..<100 { if store.jobs.isEmpty { break }; try await Task.sleep(for: .milliseconds(20)) }
+                XCTAssertTrue(store.jobs.isEmpty)
+                let result = try XCTUnwrap(store.history.first { $0.id == queued.id }?.result)
+                XCTAssertEqual(result.identity.market, "FI")
+                XCTAssertEqual(result.identity.marketSource, "fallback")
+            }
+        }
+    }
     func testStoppingNetworkWorkDoesNotRestartHostedRefresh() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root); StalledNetworkProtocol.started = nil }
@@ -362,7 +466,9 @@ import Security
         defer { try? FileManager.default.removeItem(at: root) }
         let store = try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox)
         store.settings.offline = true
-        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food)
+        store.settings.defaultCountry = "SE"
+        store.saveSettings()
+        store.draft = CheckInput(text: "Ingredients: oats, honey", category: .food, market: "FI", autoMarket: false)
         func queueShare(_ text: String) throws {
             let entry = inbox.appendingPathComponent(UUID().uuidString)
             try FileManager.default.createDirectory(at: entry, withIntermediateDirectories: true)
@@ -371,16 +477,22 @@ import Security
         try queueShare("second share")
         store.consumeInbox()
         XCTAssertEqual(store.draft.text, "Ingredients: oats, honey")
+        XCTAssertEqual(store.draft.market, "FI")
         store.enqueue()
         XCTAssertEqual(store.draft.text, "second share")
+        XCTAssertEqual(store.draft.market, "SE")
+        XCTAssertNil(store.draft.autoMarket)
+        XCTAssertEqual(try AppStore(root: root.appendingPathComponent("app"), inboxDirectory: inbox).draft.market, "SE")
         try queueShare("third share")
         store.clearDraft()
         XCTAssertEqual(store.draft.text, "third share")
+        XCTAssertEqual(store.draft.market, "SE")
         for _ in 0..<500 {
             if !store.history.isEmpty { break }
             try await Task.sleep(for: .milliseconds(20))
         }
         XCTAssertEqual(store.history.first?.result.outcome, .notVegan)
+        XCTAssertEqual(store.history.first?.result.identity.market, "FI")
         XCTAssertTrue(store.jobs.isEmpty)
     }
     func testIPv6LoopbackProviderReachesNativeNetworkBridge() async throws {
@@ -671,7 +783,8 @@ import Security
         Network.testProtocolClasses = [CatalogueProtocol.self]
         CatalogueProtocol.aiCalls = 0; CatalogueProtocol.catalogueCalls = 0
         var settings = Settings(); settings.connection = "api"; settings.baseUrl = "https://api.openai.com/v1"; settings.model = "gpt-4o"; settings.vision = true
-        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(category: .food, images: ["data:image/jpeg;base64,AA=="]), settings: settings, token: "fixture-key")
+        let result = try await engine.check(id: UUID().uuidString, input: CheckInput(category: .food, images: ["data:image/jpeg;base64,AA=="], autoMarket: true), settings: settings, token: "fixture-key")
+        XCTAssertEqual(result.identity.market, "SE")
         XCTAssertEqual(result.outcome.rawValue, "not_vegan")
         XCTAssertEqual(CatalogueProtocol.catalogueCalls, 2)
         XCTAssertTrue(result.evidence.contains { $0.url == "https://www.matspar.se/produkt/hummus-chili-200g-coop" && $0.excerpt == "Ingredienser: kikärtor, honey, salt" })

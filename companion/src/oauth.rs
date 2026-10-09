@@ -241,6 +241,89 @@ struct CheckPayload {
     text: String,
     #[serde(default)]
     image_data_urls: Vec<String>,
+    #[serde(default)]
+    country_context: Option<CountryContext>,
+}
+
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CountryContext {
+    automatic: bool,
+    fallback_market: String,
+    markets: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct ProductCountries {
+    codes: Vec<String>,
+    aliases: std::collections::HashMap<String, String>,
+}
+
+fn product_country(value: &str) -> Option<String> {
+    use unicode_normalization::UnicodeNormalization;
+    static COUNTRIES: std::sync::OnceLock<ProductCountries> = std::sync::OnceLock::new();
+    let countries = COUNTRIES.get_or_init(|| {
+        serde_json::from_str(include_str!("../../contracts/product-countries.json"))
+            .expect("bundled product country aliases are valid")
+    });
+    let code = value.trim().to_uppercase();
+    if countries.codes.contains(&code) {
+        return Some(code);
+    }
+    let normalized = value.nfkc().collect::<String>().trim().to_lowercase();
+    let name: String = normalized
+        .strip_prefix("en:")
+        .unwrap_or(&normalized)
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .collect();
+    countries.aliases.get(&name).cloned()
+}
+
+impl CountryContext {
+    fn validate(&self) -> Result<()> {
+        if self.fallback_market.len() > 300
+            || product_country(&self.fallback_market).is_none()
+            || self.markets.len() > 1000
+            || self.markets.iter().any(|market| market.len() > 300)
+        {
+            return Err("Invalid product country context.".into());
+        }
+        Ok(())
+    }
+
+    fn research_market(&self, packaging: Option<&str>) -> String {
+        let fallback = product_country(&self.fallback_market).unwrap_or_else(|| "DE".into());
+        if !self.automatic {
+            return fallback;
+        }
+        let country = packaging.and_then(product_country);
+        let markets: Option<Vec<String>> = self
+            .markets
+            .iter()
+            .map(|value| product_country(value))
+            .collect();
+        let Some(markets) = markets else {
+            return fallback;
+        };
+        if packaging.is_some() && country.is_none()
+            || country
+                .as_ref()
+                .is_some_and(|value| !markets.is_empty() && !markets.contains(value))
+        {
+            return fallback;
+        }
+        if let Some(country) = country {
+            return country;
+        }
+        if let Some(first) = markets
+            .first()
+            .filter(|first| markets.iter().all(|value| value == *first))
+        {
+            return first.clone();
+        }
+        fallback
+    }
 }
 
 fn now() -> u64 {
@@ -900,6 +983,9 @@ fn check_content(payload: CheckPayload) -> Result<(String, Vec<Value>)> {
     {
         return Err("Invalid model or product text length.".into());
     }
+    if let Some(context) = &payload.country_context {
+        context.validate()?;
+    }
     let mut content = vec![json!({"type":"input_text","text":payload.text})];
     for image in payload.image_data_urls {
         let encoded = [
@@ -996,6 +1082,7 @@ fn unresolved_public_ingredients(extracted: &Value, research: &Value) -> Vec<Str
 fn research_content(
     analysis: &crate::stream::AnalysisResponse,
     content: &[Value],
+    country_context: Option<&CountryContext>,
 ) -> Option<Vec<Value>> {
     let extracted = extraction_json(&analysis.text)?;
     let name = extracted["name"]
@@ -1006,10 +1093,18 @@ fn research_content(
         .filter(|value| !value.trim().is_empty() && value.len() <= 1200)?;
     let searched = analysis.research["searched"] == true;
     let unresolved = unresolved_public_ingredients(&extracted, &analysis.research);
+    let unresolved_visible = country_context.is_some_and(|context| context.automatic)
+        && extracted["ingredientAssessments"]
+            .as_array()
+            .is_some_and(|items| {
+                items
+                    .iter()
+                    .any(|item| item["status"] == "ambiguous" || item["status"] == "unknown")
+            });
     if if searched {
         unresolved.is_empty()
     } else {
-        extracted["complete"] != false
+        extracted["complete"] != false && !unresolved_visible
     } {
         return None;
     }
@@ -1052,7 +1147,8 @@ fn research_content(
         .unwrap_or(Value::Null);
     let mut identity = json!({
         "name":name,"brand":brand,"category":extracted["category"],
-        "market":original["market"].as_str().unwrap_or("DE"),
+        "market":country_context.map(|context| context.research_market(extracted["packaging"]["country"].as_str()))
+            .unwrap_or_else(|| original["market"].as_str().unwrap_or("DE").to_owned()),
         "locale":original["locale"].as_str().unwrap_or("en")
     });
     if !unresolved.is_empty() {
@@ -1168,14 +1264,184 @@ fn valid_research_additions(value: &Value) -> bool {
     true
 }
 
+fn valid_product_barcode(value: &str) -> Option<String> {
+    let code: String = value
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-')
+        .collect();
+    if ![8, 12, 13, 14].contains(&code.len()) || !code.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let digits = code.as_bytes();
+    let sum: u32 = digits[..digits.len() - 1]
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(index, digit)| u32::from(digit - b'0') * if index % 2 == 0 { 3 } else { 1 })
+        .sum();
+    ((10 - sum % 10) % 10 == u32::from(digits[digits.len() - 1] - b'0')).then_some(code)
+}
+
+fn product_country_origins(category: &str) -> &'static [&'static str] {
+    match category {
+        "food" | "drink" => &["https://world.openfoodfacts.org"],
+        "cosmetics" => &["https://world.openbeautyfacts.org"],
+        "clothing" | "shoes" | "household" => &["https://world.openproductsfacts.org"],
+        _ => &[
+            "https://world.openfoodfacts.org",
+            "https://world.openbeautyfacts.org",
+            "https://world.openproductsfacts.org",
+        ],
+    }
+}
+
+fn exact_product_countries(barcode: &str, envelope: &Value) -> Result<Option<Vec<String>>> {
+    let Some(product) = envelope.get("product").filter(|value| value.is_object()) else {
+        return if envelope["status"] == 0
+            || envelope["status"] == "failure"
+            || envelope["status"] == "not_found"
+        {
+            Ok(None)
+        } else {
+            Err("Invalid public product record.".into())
+        };
+    };
+    let returned = product["code"]
+        .as_str()
+        .and_then(valid_product_barcode)
+        .ok_or("Invalid public product identifier.")?;
+    if format!("{returned:0>14}") != format!("{barcode:0>14}") {
+        return Err("Public product identifier mismatch.".into());
+    }
+    match product.get("countries_tags") {
+        None => Ok(Some(vec![])),
+        Some(Value::Array(tags)) if tags.len() <= 250 => tags
+            .iter()
+            .map(|tag| {
+                tag.as_str()
+                    .filter(|tag| tag.len() <= 300)
+                    .map(str::to_owned)
+                    .ok_or_else(|| "Invalid public product countries.".to_string())
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(Some),
+        _ => Err("Invalid public product countries.".into()),
+    }
+}
+
+/// This client has no account credentials or cookies and follows no redirects.
+fn lookup_product_countries(
+    barcode: &str,
+    category: &str,
+    deadline: Instant,
+) -> Result<Vec<String>> {
+    let barcode = valid_product_barcode(barcode).ok_or("Invalid product barcode.")?;
+    let client = Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(Duration::from_secs(5))
+        .user_agent("Vegsnap/0.1.0")
+        .build()
+        .map_err(|_| "Cannot initialize public product lookup.")?;
+    for origin in product_country_origins(category) {
+        let remaining = deadline
+            .saturating_duration_since(Instant::now())
+            .min(Duration::from_secs(12));
+        if remaining.is_zero() {
+            return Err("Public product lookup timed out.".into());
+        }
+        let response = client
+            .get(format!("{origin}/api/v3/product/{barcode}.json"))
+            .query(&[("fields", "code,countries_tags"), ("app_name", "Vegsnap")])
+            .header("Accept", "application/json")
+            .timeout(remaining)
+            .send()
+            .map_err(|_| "Public product lookup failed.")?;
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            continue;
+        }
+        if !response.status().is_success() {
+            return Err("Public product lookup failed.".into());
+        }
+        let mut bytes = Vec::new();
+        response
+            .take(1_048_577)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "Cannot read public product record.")?;
+        if bytes.len() > 1_048_576 {
+            return Err("Public product record is too large.".into());
+        }
+        let envelope: Value =
+            serde_json::from_slice(&bytes).map_err(|_| "Invalid public product record.")?;
+        if let Some(countries) = exact_product_countries(&barcode, &envelope)? {
+            return Ok(countries);
+        }
+    }
+    Ok(vec![])
+}
+
+/// Resolve newly observed barcode clues before researching; failure keeps the completed extraction.
+fn research_with_discovered_country(
+    first: crate::stream::AnalysisResponse,
+    content: &[Value],
+    country_context: Option<&CountryContext>,
+    resolve: impl FnOnce(&str, &str) -> Result<Vec<String>>,
+    follow_up: impl FnOnce(Vec<Value>) -> Result<crate::stream::AnalysisResponse>,
+) -> crate::stream::AnalysisResponse {
+    if research_content(&first, content, country_context).is_none() {
+        return first;
+    }
+    let original: Value = content
+        .first()
+        .and_then(|part| part["text"].as_str())
+        .and_then(|text| serde_json::from_str(text).ok())
+        .unwrap_or(Value::Null);
+    let extracted = extraction_json(&first.text).unwrap_or(Value::Null);
+    let supplied = original["barcode"].as_str().and_then(valid_product_barcode);
+    let discovered = extracted["barcode"]
+        .as_str()
+        .and_then(valid_product_barcode);
+    if supplied
+        .as_ref()
+        .zip(discovered.as_ref())
+        .is_some_and(|(known, found)| format!("{known:0>14}") != format!("{found:0>14}"))
+    {
+        return first;
+    }
+    let mut context = country_context.cloned();
+    if let Some(context) = context.as_mut().filter(|context| context.automatic)
+        && supplied.is_none()
+        && let Some(barcode) = discovered
+    {
+        let category = original["category"]
+            .as_str()
+            .filter(|category| *category != "other")
+            .or_else(|| extracted["category"].as_str())
+            .unwrap_or("other");
+        let Ok(countries) = resolve(&barcode, category) else {
+            return first;
+        };
+        context.markets.extend(countries);
+    }
+    research_if_needed(first, content, context.as_ref(), follow_up)
+}
+
 fn research_if_needed(
     first: crate::stream::AnalysisResponse,
     content: &[Value],
+    country_context: Option<&CountryContext>,
     follow_up: impl FnOnce(Vec<Value>) -> Result<crate::stream::AnalysisResponse>,
 ) -> crate::stream::AnalysisResponse {
-    let Some(research_input) = research_content(&first, content) else {
+    let Some(research_input) = research_content(&first, content, country_context) else {
         return first;
     };
+    // Provenance comes from the actual local request, never from model output.
+    let research_market = country_context.and_then(|_| {
+        research_input
+            .first()
+            .and_then(|part| part["text"].as_str())
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+            .and_then(|identity| identity["market"].as_str().and_then(product_country))
+    });
     let Ok(researched) = follow_up(research_input) else {
         return first;
     };
@@ -1266,15 +1532,45 @@ fn research_if_needed(
             original["companyAssessment"] = assessment.clone();
         }
     }
+    let mut research = json!({"searched":true,"sources":sources});
+    if let Some(market) = research_market {
+        research["market"] = json!(market);
+    }
     crate::stream::AnalysisResponse {
         text: original.to_string(),
-        research: json!({"searched":true,"sources":sources}),
+        research,
     }
 }
 
+fn product_request(
+    model: &str,
+    instructions: &str,
+    research_prompt: &str,
+    content: Vec<Value>,
+    required: bool,
+    automatic_country: bool,
+) -> Value {
+    let mut body = json!({"model":model,"store":false,"stream":true,
+        "instructions":if required { format!("{instructions}\n{research_prompt}") } else { instructions.to_string() },
+        "input":[{"role":"user","content":content}]});
+    // Automatic extraction must resolve packaging and barcode clues before web research.
+    if required || !automatic_country {
+        body["tools"] = json!([{"type":"web_search"}]);
+        body["include"] = json!(["web_search_call.action.sources"]);
+    }
+    if required {
+        body["tool_choice"] = json!("required");
+    }
+    body
+}
+
 pub fn check(payload: Value) -> Result<Value> {
-    let payload: CheckPayload =
+    let mut payload: CheckPayload =
         serde_json::from_value(payload).map_err(|_| "Invalid product check request.")?;
+    if let Some(context) = &payload.country_context {
+        context.validate()?;
+    }
+    let country_context = payload.country_context.take();
     let (model, content) = check_content(payload)?;
     let prompt: Value =
         serde_json::from_str(include_str!("../../contracts/ai-extraction-prompt.json"))
@@ -1288,35 +1584,43 @@ pub fn check(payload: Value) -> Result<Value> {
     let client = client()?;
     let session = active_session(&client)?;
     let deadline = Instant::now() + Duration::from_secs(130);
-    let request = |content: Vec<Value>,
-                   required: bool|
-     -> Result<crate::stream::AnalysisResponse> {
-        let timeout = deadline
-            .saturating_duration_since(Instant::now())
-            .min(Duration::from_secs(120));
-        if timeout.is_zero() {
-            return Err("Product research timed out.".into());
-        }
-        let mut body = json!({"model":model,"store":false,"stream":true,
-            "instructions":if required { format!("{instructions}\n{research_prompt}") } else { instructions.to_string() },
-            "tools":[{"type":"web_search"}], "include":["web_search_call.action.sources"],
-            "input":[{"role":"user","content":content}]});
-        if required {
-            body["tool_choice"] = json!("required");
-        }
-        let response = checked(
-            client
-                .post(format!("{RESOURCE}/responses"))
-                .bearer_auth(&session.access_token)
-                .timeout(timeout)
-                .json(&body)
-                .send()
-                .map_err(|_| "The product check could not reach the provider.")?,
-        )?;
-        crate::stream::read_response(BufReader::new(response))
-    };
+    let request =
+        |content: Vec<Value>, required: bool| -> Result<crate::stream::AnalysisResponse> {
+            let timeout = deadline
+                .saturating_duration_since(Instant::now())
+                .min(Duration::from_secs(120));
+            if timeout.is_zero() {
+                return Err("Product research timed out.".into());
+            }
+            let body = product_request(
+                &model,
+                instructions,
+                research_prompt,
+                content,
+                required,
+                country_context
+                    .as_ref()
+                    .is_some_and(|context| context.automatic),
+            );
+            let response = checked(
+                client
+                    .post(format!("{RESOURCE}/responses"))
+                    .bearer_auth(&session.access_token)
+                    .timeout(timeout)
+                    .json(&body)
+                    .send()
+                    .map_err(|_| "The product check could not reach the provider.")?,
+            )?;
+            crate::stream::read_response(BufReader::new(response))
+        };
     let first = request(content.clone(), false)?;
-    let analysis = research_if_needed(first, &content, |identity| request(identity, true));
+    let analysis = research_with_discovered_country(
+        first,
+        &content,
+        country_context.as_ref(),
+        |barcode, category| lookup_product_countries(barcode, category, deadline),
+        |identity| request(identity, true),
+    );
     Ok(json!({"text":analysis.text,"research":analysis.research}))
 }
 
@@ -1324,6 +1628,370 @@ pub fn check(payload: Value) -> Result<Value> {
 mod tests {
     use super::*;
     use jsonwebtoken::{EncodingKey, Header, encode};
+
+    #[test]
+    fn automatic_complete_labels_research_unresolved_origins_but_keep_resolved_checks_local() {
+        let context = CountryContext {
+            automatic: true,
+            fallback_market: "DE".into(),
+            markets: vec![],
+        };
+        let content = vec![json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="})];
+        for status in ["ambiguous", "unknown", "plant", "animal"] {
+            for vegan_label in [false, true] {
+                let mut first = research_fixture(false);
+                let mut extraction = extraction_json(&first.text).unwrap();
+                extraction["text"] = json!("Ingredients: vitamin D");
+                extraction["complete"] = json!(true);
+                extraction["ingredientAssessments"] =
+                    json!([{"term":"vitamin D","status":status,"explanation":"Origin assessment"}]);
+                if vegan_label {
+                    extraction["labelObservations"] =
+                        json!([{"kind":"vegan_claim","text":"vegan"}]);
+                }
+                first.text = extraction.to_string();
+                let expected = ["ambiguous", "unknown"].contains(&status) && !vegan_label;
+                assert_eq!(
+                    research_content(&first, &content, Some(&context)).is_some(),
+                    expected
+                );
+                assert!(research_content(&first, &content, None).is_none());
+                let manual = CountryContext {
+                    automatic: false,
+                    ..context.clone()
+                };
+                assert!(research_content(&first, &content, Some(&manual)).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn automatic_first_request_has_no_web_tools_but_research_and_legacy_requests_do() {
+        for automatic in [false, true] {
+            for required in [false, true] {
+                let body =
+                    product_request("test", "extract", "research", vec![], required, automatic);
+                assert_eq!(body.get("tools").is_some(), required || !automatic);
+                assert_eq!(body.get("include").is_some(), required || !automatic);
+                assert_eq!(body.get("tool_choice").is_some(), required);
+            }
+        }
+    }
+
+    #[test]
+    fn supplied_gtin_mismatches_skip_research_but_zero_padded_equivalents_do_not() {
+        for automatic in [false, true] {
+            for extracted_code in ["012345678905", "04006381333931"] {
+                let context = CountryContext {
+                    automatic,
+                    fallback_market: "DE".into(),
+                    markets: vec![],
+                };
+                let content = vec![
+                    json!({"type":"input_text","text":json!({"barcode":"4006381333931"}).to_string()}),
+                ];
+                let mut first = research_fixture(false);
+                let mut extraction = extraction_json(&first.text).unwrap();
+                extraction["barcode"] = json!(extracted_code);
+                first.text = extraction.to_string();
+                let called = std::cell::Cell::new(false);
+                let result = research_with_discovered_country(
+                    first,
+                    &content,
+                    Some(&context),
+                    |_, _| panic!("Supplied GTIN must not be resolved again"),
+                    |_| {
+                        called.set(true);
+                        Ok(research_fixture(true))
+                    },
+                );
+                assert_eq!(called.get(), extracted_code == "04006381333931");
+                assert_eq!(result.research["searched"], called.get());
+            }
+        }
+    }
+
+    #[test]
+    fn discovered_barcode_countries_are_resolved_before_research() {
+        for (countries, packaging, prior, expected) in [
+            (vec!["en:sweden"], None, vec![], "SE"),
+            (vec!["en:sweden", "en:norway"], None, vec![], "DE"),
+            (vec!["en:sweden"], Some("Finland"), vec![], "DE"),
+            (vec!["en:sweden", "en:norway"], Some("Sweden"), vec![], "SE"),
+            (vec!["en:sweden"], None, vec!["en:finland"], "DE"),
+            (vec!["unknown"], Some("Sweden"), vec![], "DE"),
+            (vec![], None, vec![], "DE"),
+        ] {
+            let mut first = research_fixture(false);
+            let mut extraction = extraction_json(&first.text).unwrap();
+            extraction["barcode"] = json!("4006381333931");
+            if let Some(country) = packaging {
+                extraction["packaging"] = json!({"country":country});
+            }
+            first.text = extraction.to_string();
+            let context = CountryContext {
+                automatic: true,
+                fallback_market: "DE".into(),
+                markets: prior.iter().map(|value| value.to_string()).collect(),
+            };
+            let content = vec![
+                json!({"type":"input_text","text":json!({"market":"DE","category":"drink"}).to_string()}),
+            ];
+            let resolved = std::cell::Cell::new(false);
+            let result = research_with_discovered_country(
+                first,
+                &content,
+                Some(&context),
+                |barcode, category| {
+                    assert_eq!(barcode, "4006381333931");
+                    assert_eq!(category, "drink");
+                    resolved.set(true);
+                    Ok(countries.iter().map(|value| value.to_string()).collect())
+                },
+                |input| {
+                    assert!(resolved.get());
+                    let identity: Value =
+                        serde_json::from_str(input[0]["text"].as_str().unwrap()).unwrap();
+                    assert_eq!(identity["market"], expected);
+                    assert!(identity.get("markets").is_none());
+                    Ok(research_fixture(true))
+                },
+            );
+            assert!(resolved.get());
+            assert_eq!(result.research["market"], expected);
+            assert_eq!(
+                extraction_json(&result.text).unwrap()["barcode"],
+                "4006381333931"
+            );
+        }
+    }
+
+    #[test]
+    fn failed_discovered_country_lookup_keeps_extraction_and_manual_or_known_codes_do_not_lookup() {
+        let mut first = research_fixture(false);
+        let mut extraction = extraction_json(&first.text).unwrap();
+        extraction["barcode"] = json!("4006381333931");
+        first.text = extraction.to_string();
+        let original_text = first.text.clone();
+        let context = CountryContext {
+            automatic: true,
+            fallback_market: "DE".into(),
+            markets: vec![],
+        };
+        let result = research_with_discovered_country(
+            first,
+            &[],
+            Some(&context),
+            |_, _| Err("offline".into()),
+            |_| panic!("Failed country lookup must not research"),
+        );
+        assert_eq!(result.text, original_text);
+        assert_eq!(result.research["searched"], false);
+        assert!(result.research.get("market").is_none());
+        for (automatic, supplied, discovered) in [
+            (false, None, "4006381333931"),
+            (true, Some("4006381333931"), "4006381333931"),
+            (true, None, "4006381333932"),
+        ] {
+            let mut first = research_fixture(false);
+            let mut extraction = extraction_json(&first.text).unwrap();
+            extraction["barcode"] = json!(discovered);
+            first.text = extraction.to_string();
+            let content = vec![
+                json!({"type":"input_text","text":json!({"market":"DE","barcode":supplied}).to_string()}),
+            ];
+            let context = CountryContext {
+                automatic,
+                fallback_market: "DE".into(),
+                markets: vec![],
+            };
+            research_with_discovered_country(
+                first,
+                &content,
+                Some(&context),
+                |_, _| panic!("Unexpected barcode lookup"),
+                |_| Ok(research_fixture(true)),
+            );
+        }
+        research_with_discovered_country(
+            research_fixture(false),
+            &[],
+            None,
+            |_, _| panic!("Legacy request must not look up"),
+            |_| Ok(research_fixture(true)),
+        );
+    }
+
+    #[test]
+    fn research_country_metadata_is_local_and_only_attached_to_completed_contextual_research() {
+        let context = CountryContext {
+            automatic: false,
+            fallback_market: "SE".into(),
+            markets: vec![],
+        };
+        for contextual in [false, true] {
+            let result = research_if_needed(
+                research_fixture(false),
+                &[],
+                contextual.then_some(&context),
+                |_| {
+                    let mut response = research_fixture(true);
+                    response.research["market"] = json!("US");
+                    Ok(response)
+                },
+            );
+            if contextual {
+                assert_eq!(result.research["market"], "SE");
+            } else {
+                assert!(result.research.get("market").is_none());
+            }
+        }
+        for failure in [true, false] {
+            let result = research_if_needed(research_fixture(false), &[], Some(&context), |_| {
+                if failure {
+                    Err("failed".into())
+                } else {
+                    Ok(research_fixture(false))
+                }
+            });
+            assert!(result.research.get("market").is_none());
+        }
+    }
+
+    #[test]
+    fn discovered_country_records_require_exact_valid_gtins_and_category_eligible_origins() {
+        assert!(valid_product_barcode("4006381333932").is_none());
+        assert!(valid_product_barcode("https://example.invalid").is_none());
+        assert_eq!(
+            valid_product_barcode("4006-381333931").as_deref(),
+            Some("4006381333931")
+        );
+        let record = json!({"product":{"code":"04006381333931","countries_tags":["en:sweden"]}});
+        assert_eq!(
+            exact_product_countries("4006381333931", &record).unwrap(),
+            Some(vec!["en:sweden".into()])
+        );
+        for code in ["4006381333932", "012345678905"] {
+            assert!(
+                exact_product_countries("4006381333931", &json!({"product":{"code":code}}))
+                    .is_err()
+            );
+        }
+        assert_eq!(
+            exact_product_countries("4006381333931", &json!({"status":0})).unwrap(),
+            None
+        );
+        assert!(
+            exact_product_countries(
+                "4006381333931",
+                &json!({"product":{"code":"4006381333931","countries_tags":[42]}})
+            )
+            .is_err()
+        );
+        for category in ["food", "drink"] {
+            assert_eq!(
+                product_country_origins(category),
+                ["https://world.openfoodfacts.org"]
+            );
+        }
+        assert_eq!(
+            product_country_origins("cosmetics"),
+            ["https://world.openbeautyfacts.org"]
+        );
+        for category in ["clothing", "shoes", "household"] {
+            assert_eq!(
+                product_country_origins(category),
+                ["https://world.openproductsfacts.org"]
+            );
+        }
+        assert_eq!(product_country_origins("other").len(), 3);
+    }
+
+    #[test]
+    fn research_country_uses_local_clues_without_sending_them_upstream() {
+        for (automatic, markets, packaging, initial, expected) in [
+            (true, vec![], Some("Sweden"), "DE", "SE"),
+            (false, vec![], Some("Sweden"), "DE", "DE"),
+            (true, vec!["en:sweden"], None, "SE", "SE"),
+            (true, vec!["en:sweden"], Some("Finland"), "SE", "DE"),
+            (
+                true,
+                vec!["en:sweden", "en:norway"],
+                Some("Sweden"),
+                "DE",
+                "SE",
+            ),
+            (
+                true,
+                vec!["en:sweden", "en:norway"],
+                Some("Finland"),
+                "DE",
+                "DE",
+            ),
+            (
+                true,
+                vec!["en:sweden", "unknown"],
+                Some("Sweden"),
+                "DE",
+                "DE",
+            ),
+        ] {
+            let public_input = json!({"market":initial,"locale":"en"}).to_string();
+            let mut payload: CheckPayload = serde_json::from_value(json!({
+                "model":"test","text":public_input,
+                "countryContext":{"automatic":automatic,"fallbackMarket":"DE","markets":markets}
+            }))
+            .unwrap();
+            let context = payload.country_context.take().unwrap();
+            context.validate().unwrap();
+            let (_, content) = check_content(payload).unwrap();
+            assert_eq!(content[0]["text"], public_input);
+            let mut first = research_fixture(false);
+            let mut extracted = extraction_json(&first.text).unwrap();
+            if let Some(country) = packaging {
+                extracted["packaging"] = json!({"country":country});
+            }
+            first.text = extracted.to_string();
+            let followup = research_content(&first, &content, Some(&context)).unwrap();
+            let identity: Value =
+                serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
+            assert_eq!(identity["market"], expected);
+            for field in [
+                "countryContext",
+                "fallbackMarket",
+                "markets",
+                "automatic",
+                "autoMarket",
+            ] {
+                assert!(identity.get(field).is_none(), "{field} leaked to provider");
+            }
+        }
+    }
+
+    #[test]
+    fn local_country_context_is_optional_bounded_and_uses_shared_aliases() {
+        let legacy: CheckPayload =
+            serde_json::from_value(json!({"model":"test","text":"label"})).unwrap();
+        assert!(legacy.country_context.is_none());
+        assert!(check_content(legacy).is_ok());
+        for country in ["Sweden", "en:sweden", "sverige", "Ｓｗｅｄｅｎ"] {
+            assert_eq!(product_country(country).as_deref(), Some("SE"));
+        }
+        for country in ["constructor", "EU", "Made in Sweden"] {
+            assert!(product_country(country).is_none());
+        }
+        for context in [
+            json!({"automatic":true,"fallbackMarket":"EU","markets":[]}),
+            json!({"automatic":true,"fallbackMarket":"DE","markets":["x".repeat(301)]}),
+            json!({"automatic":true,"fallbackMarket":"DE","markets":vec!["SE"; 1001]}),
+        ] {
+            let payload = serde_json::from_value(
+                json!({"model":"test","text":"label","countryContext":context}),
+            )
+            .unwrap();
+            assert!(check_content(payload).is_err());
+        }
+    }
 
     #[test]
     fn http_plan_errors_share_safe_stream_recovery_messages() {
@@ -1410,7 +2078,7 @@ mod tests {
     fn research_followup_preserves_contact_with_actual_source_provenance() {
         let contact = json!({"email":"care@maker.example","sourceUrl":"https://maker.example/contact","productName":"Granola Kakao & Hallon","brand":"Paulúns"});
         for searched in [false, true] {
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(searched);
                 let mut extracted = extraction_json(&next.text).unwrap();
                 extracted["contact"] = contact.clone();
@@ -1433,7 +2101,7 @@ mod tests {
     fn research_followup_preserves_company_assessment_with_tool_sources() {
         let assessment = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The consulted policy does not resolve animal-testing practices.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Company policy","quote":"Our policy"}]});
         for searched in [false, true] {
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(searched);
                 let mut extracted = extraction_json(&next.text).unwrap();
                 extracted["companyAssessment"] = assessment.clone();
@@ -1464,7 +2132,7 @@ mod tests {
         first.text = extracted.to_string();
         first.research["sources"] =
             json!([{"url":"https://maker.example/policy","title":"Policy"}]);
-        let result = research_if_needed(first, &[], |_| {
+        let result = research_if_needed(first, &[], None, |_| {
             let mut next = research_fixture(true);
             let mut extracted = extraction_json(&next.text).unwrap();
             let mut unsupported = assessment.clone();
@@ -1481,7 +2149,7 @@ mod tests {
 
     #[test]
     fn malformed_optional_contact_does_not_discard_other_research() {
-        let result = research_if_needed(research_fixture(false), &[], |_| {
+        let result = research_if_needed(research_fixture(false), &[], None, |_| {
             let mut next = research_fixture(true);
             let mut extracted = extraction_json(&next.text).unwrap();
             extracted["contact"] = json!("malformed");
@@ -1502,7 +2170,7 @@ mod tests {
             json!({"type":"input_text","text":json!({"text":"private supplied text", "market":"SE","locale":"en"}).to_string()}),
             json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="}),
         ];
-        let result = research_if_needed(research_fixture(false), &content, |followup| {
+        let result = research_if_needed(research_fixture(false), &content, None, |followup| {
             assert_eq!(followup.len(), 1);
             let serialized = serde_json::to_string(&followup).unwrap();
             assert!(!serialized.contains("private supplied text"));
@@ -1541,7 +2209,7 @@ mod tests {
             json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="}),
         ];
         let mut calls = 0;
-        let result = research_if_needed(first, &content, |input| {
+        let result = research_if_needed(first, &content, None, |input| {
             calls += 1;
             let public_input = input[0]["text"].as_str().unwrap();
             assert!(!public_input.contains("private note"));
@@ -1579,7 +2247,7 @@ mod tests {
         let metadata = json!({"searched":true,"sources":[{"url":"https://maker.example/granola","title":"Product"}]});
         first.text = value.to_string();
         first.research = metadata.clone();
-        let input = research_content(&first, &[]).unwrap();
+        let input = research_content(&first, &[], None).unwrap();
         let identity: Value = serde_json::from_str(input[0]["text"].as_str().unwrap()).unwrap();
         assert_eq!(identity["unresolvedIngredients"], json!(["vitamin D"]));
         for mode in ["not_consulted", "wrong_variant", "private_only", "resolved"] {
@@ -1597,7 +2265,7 @@ mod tests {
                 _ => unreachable!(),
             }
             first.text = data.to_string();
-            assert!(research_content(&first, &[]).is_none(), "{mode}");
+            assert!(research_content(&first, &[], None).is_none(), "{mode}");
         }
     }
 
@@ -1625,7 +2293,7 @@ mod tests {
                 first.text = original.to_string();
                 let saved_text = first.text.clone();
                 let saved_research = first.research.clone();
-                let result = research_if_needed(first, &[], |_| {
+                let result = research_if_needed(first, &[], None, |_| {
                     let mut next = research_fixture(true);
                     let mut value = extraction_json(&next.text).unwrap();
                     let addition = public_entry(limit);
@@ -1656,7 +2324,7 @@ mod tests {
 
     #[test]
     fn valid_research_display_translation_preserves_source_term() {
-        let result = research_if_needed(research_fixture(false), &[], |_| {
+        let result = research_if_needed(research_fixture(false), &[], None, |_| {
             let mut next = research_fixture(true);
             let mut value = extraction_json(&next.text).unwrap();
             value["ingredientAssessments"] = json!([{"term":"naturlig arom","translatedTerm":"natural flavouring","status":"ambiguous","explanation":"Origin depends on the product."}]);
@@ -1726,7 +2394,7 @@ mod tests {
         }
         for (field, invalid) in cases {
             let original = research_fixture(false);
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 let mut next = research_fixture(true);
                 let mut value = extraction_json(&next.text).unwrap();
                 value[field] = invalid.clone();
@@ -1745,7 +2413,7 @@ mod tests {
         original["ingredientAssessments"] = json!([{"term":"mystery ingredient","status":"plant","explanation":"Initial assessment"}]);
         first.text = original.to_string();
         let actual_research = json!({"searched":true,"sources":[{"url":"https://maker.example/granola","title":"Product"}]});
-        let result = research_if_needed(first, &[], |_| {
+        let result = research_if_needed(first, &[], None, |_| {
             let mut next = research_fixture(true);
             let mut value = extraction_json(&next.text).unwrap();
             value["ingredientAssessments"] = json!([{"term":"mystery ingredient","status":"animal","explanation":"Conflicting assessment"}]);
@@ -1776,7 +2444,7 @@ mod tests {
             first.text = value.to_string();
             let original_text = first.text.clone();
             let original_research = first.research.clone();
-            let result = research_if_needed(first, &[], |_| {
+            let result = research_if_needed(first, &[], None, |_| {
                 let mut next = research_fixture(true);
                 let mut value = extraction_json(&next.text).unwrap();
                 value["ingredientAssessments"] = json!([{"term":"unfamiliar ingredient","status":"animal","explanation":"Conflicting origin"}]);
@@ -1814,9 +2482,11 @@ mod tests {
                 extracted[key] = value.clone();
             }
             first.text = extracted.to_string();
-            research_if_needed(first, &content, |_| panic!("No research request expected"));
+            research_if_needed(first, &content, None, |_| {
+                panic!("No research request expected")
+            });
         }
-        research_if_needed(research_fixture(true), &content, |_| {
+        research_if_needed(research_fixture(true), &content, None, |_| {
             panic!("Search was already used")
         });
     }
@@ -1825,7 +2495,7 @@ mod tests {
     fn failed_or_mismatched_research_keeps_completed_photo_extraction() {
         for mode in ["failure", "not_searched", "wrong_variant"] {
             let original = research_fixture(false).text;
-            let result = research_if_needed(research_fixture(false), &[], |_| {
+            let result = research_if_needed(research_fixture(false), &[], None, |_| {
                 if mode == "failure" {
                     return Err("Search failed".into());
                 }
@@ -2447,6 +3117,7 @@ mod tests {
             model: "vision".into(),
             text: "label".into(),
             image_data_urls: photos,
+            country_context: None,
         })
         .unwrap();
         assert_eq!(content.len(), 4);
@@ -2460,7 +3131,8 @@ mod tests {
                 check_content(CheckPayload {
                     model: "vision".into(),
                     text: String::new(),
-                    image_data_urls: photos
+                    image_data_urls: photos,
+                    country_context: None,
                 })
                 .is_err()
             );
@@ -2469,7 +3141,8 @@ mod tests {
             check_content(CheckPayload {
                 model: " ".into(),
                 text: String::new(),
-                image_data_urls: vec![]
+                image_data_urls: vec![],
+                country_context: None,
             })
             .is_err()
         );

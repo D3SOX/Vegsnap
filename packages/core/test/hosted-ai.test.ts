@@ -7,11 +7,23 @@ test('hosted adapter sends product data to its fixed origin and preserves valida
     received = new Request(url, init);
     return Response.json({ text: '', category: 'other', complete: false, research: { searched: true, sources: [{ url: 'https://maker.example/product', title: 'Product' }] } });
   }, { preconnect: globalThis.fetch.preconnect });
-  const result = await createHostedAIProvider('a'.repeat(64), fetcher).extract({ name: 'Product', images: ['data:image/jpeg;base64,AA=='] });
+  const result = await createHostedAIProvider('a'.repeat(64), fetcher).extract({ name: 'Product', market: 'SE', autoMarket: true, images: ['data:image/jpeg;base64,AA=='] }, undefined,
+    { fallbackMarket: 'DE', markets: ['en:sweden', 'Sweden', 'unrecognized country'] });
   expect(received?.url).toBe(`${HOSTED_AI.baseUrl}/api/check`);
   expect(received?.headers.get('Authorization')).toBe(`Bearer ${'a'.repeat(64)}`);
-  expect(await received?.json()).toEqual({ name: 'Product', images: ['data:image/jpeg;base64,AA=='] });
+  expect(await received?.json()).toEqual({ name: 'Product', market: 'SE', images: ['data:image/jpeg;base64,AA=='],
+    countryContext: { fallbackMarket: 'DE', markets: ['SE', 'unknown'] } });
   expect(result.research?.searched).toBe(true);
+});
+test('manual and legacy hosted checks retain the original product-only request', async () => {
+  const bodies: unknown[] = [];
+  const fetcher = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Response.json({ text: '', category: 'other', complete: false });
+  }, { preconnect: globalThis.fetch.preconnect });
+  for (const autoMarket of [false, undefined]) await createHostedAIProvider('a'.repeat(64), fetcher)
+    .extract({ name: 'Product', market: 'SE', autoMarket });
+  expect(bodies).toEqual([{ name: 'Product', market: 'SE' }, { name: 'Product', market: 'SE' }]);
 });
 test('missing hosted session prevents network access', async () => {
   let calls = 0;

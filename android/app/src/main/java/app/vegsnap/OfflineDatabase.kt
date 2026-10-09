@@ -97,23 +97,27 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
         if (!validGtin(input.barcode)) return@withContext null
         val allowed = when (input.category) { "food", "drink" -> setOf("off"); "cosmetics" -> setOf("obf"); "clothing", "shoes", "household" -> setOf("opf"); else -> offlineSources.keys }
         lock.withLock {
-            for (pack in orderedPacks()) {
-                val product = pack.products.firstOrNull { it.getString("source") in allowed && it.getString("code").padStart(14, '0') == input.barcode.padStart(14, '0') } ?: continue
+            // Conflicting snapshots of the same GTIN use the fallback. The chosen
+            // composition retains its own country tags for the final warning.
+            val candidates = orderedPacks().flatMap { pack -> pack.products.filter { it.getString("source") in allowed && it.getString("code").padStart(14, '0') == input.barcode.padStart(14, '0') }.map { pack to it } }
+            val countryTags = candidates.flatMap { it.second.getJSONArray("countries_tags").stringValues() }
+            val market = selectProductCountry(input, markets = countryTags).first
+            fun matchesMarket(product: JSONObject) = product.getJSONArray("countries_tags").stringValues().any { productCountryCode(it) == market }
+            for ((pack, product) in candidates.filter { input.autoMarket != false || it.second.getJSONArray("countries_tags").length() == 0 || matchesMarket(it.second) }.sortedByDescending { matchesMarket(it.second) }) {
                 val id = product.getString("source")
                 val source = offlineSources.getValue(id)
                 val text = localized(product, "ingredients", input.locale)
                 val name = localized(product, "name", input.locale)
                 val category = if (input.category != "other") input.category else when (id) { "off" -> "food"; "obf" -> "cosmetics"; else -> "other" }
                 val markets = product.getJSONArray("countries_tags")
-                val differentMarket = markets.length() > 0 && (0 until markets.length()).none { markets.getString(it) == "en:germany" }
                 val evidence = JSONObject().put("id", "offline:$id:${product.getString("code")}").put("kind", "database")
                     .put("title", source.title + if (input.locale == "de") " · Offline-Datenstand" else " · Offline snapshot")
                     .put("url", source.root + "product/" + product.getString("code")).put("excerpt", text)
                     .put("retrievedAt", pack.sources.getValue(id).getString("retrievedAt")).put("license", "ODbL-1.0")
-                    .put("offlineSnapshotDate", pack.info.generatedAt).put("differentMarket", differentMarket)
-                    .put("databaseBrand", product.getString("brands"))
+                    .put("offlineSnapshotDate", pack.info.generatedAt).put("compositionMarkets", markets)
+                    .put("databaseBrand", product.getString("brands")).put("productMarkets", JSONArray(countryTags))
                 if (product.getLong("last_modified_t") > 0) evidence.put("sourceDate", Instant.ofEpochSecond(product.getLong("last_modified_t")).toString())
-                return@withLock input.copy(text = text, name = name, complete = false, category = category) to evidence
+                return@withLock input.copy(market = market, text = text, name = name, complete = false, category = category) to evidence
             }
             null
         }

@@ -12,6 +12,11 @@ enum Outcome: String, Codable, CaseIterable {
     var icon: String { [.vegan: "leaf.fill", .notVegan: "xmark.circle.fill", .uncertain: "questionmark.circle.fill", .conflicting: "exclamationmark.triangle.fill"][self]! }
     var color: Color { [.vegan: Color("AccentColor"), .notVegan: .red, .uncertain: Color("WarningColor"), .conflicting: .purple][self]! }
 }
+/// ISO 3166-1 alpha-2 countries; keep aligned with packages/core/src/market.ts.
+enum ProductCountry {
+    static let codes = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW".split(separator: " ").map(String.init)
+    static func isValid(_ value: String) -> Bool { codes.contains(value) }
+}
 struct CheckInput: Codable, Equatable {
     var text = ""
     var barcode = ""
@@ -23,10 +28,11 @@ struct CheckInput: Codable, Equatable {
     var locale = "en"
     var sourceUrl: String? = nil
     var images: [String]? = nil
+    var autoMarket: Bool? = nil
     var hasContent: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !barcode.isEmpty || !name.isEmpty || !(images ?? []).isEmpty }
 }
 struct Identity: Codable, Equatable {
-    var name: String?; var brand: String?; var barcode: String?; var market: String; var match: String
+    var name: String?; var brand: String?; var barcode: String?; var market: String; var match: String; var marketSource: String? = nil
 }
 struct Finding: Codable { var term: String; var displayTerm: String?; var displayLocale: String?; var status: String; var ruleId: String?; var explanation: String; var evidenceId: String }
 struct Evidence: Codable, Identifiable { var id: String; var kind: String; var title: String; var excerpt: String; var url: String?; var retrievedAt: String; var sourceDate: String?; var license: String?; var claim: String?; var verification: String? }
@@ -64,7 +70,7 @@ struct CheckResult: Codable, Identifiable {
     }
     var outcomeIcon: String { basis == "manufacturer" ? "building.2.fill" : outcome.icon }
     var retryInput: CheckInput {
-        CheckInput(text: evidence.filter { ["user_text", "ocr"].contains($0.kind) }.map(\.excerpt).joined(separator: "\n"), barcode: identity.barcode ?? "", name: identity.name ?? "", brand: identity.brand ?? "", category: category, complete: false, market: identity.market, locale: language)
+        CheckInput(text: evidence.filter { ["user_text", "ocr"].contains($0.kind) }.map(\.excerpt).joined(separator: "\n"), barcode: identity.barcode ?? "", name: identity.name ?? "", brand: identity.brand ?? "", category: category, complete: false, market: identity.market, locale: language, autoMarket: identity.marketSource == "manual" ? false : nil)
     }
 }
 struct Settings: Codable, Equatable {
@@ -82,6 +88,13 @@ struct Settings: Codable, Equatable {
     var appearance = "system"
     var language = "system"
     var ocrLanguages = ["en-US", "de-DE"]
+    var autoCountry: Bool? = nil
+    var fallbackCountry: String? = nil
+    var automaticCountry: Bool { get { autoCountry ?? true } set { autoCountry = newValue } }
+    var defaultCountry: String {
+        get { if let fallbackCountry, ProductCountry.isValid(fallbackCountry) { return fallbackCountry }; return "DE" }
+        set { fallbackCountry = ProductCountry.isValid(newValue) ? newValue : "DE" }
+    }
     var catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
 }
 struct HistoryDocument: Codable { var schemaVersion = 1; var exportedAt = ISO8601DateFormatter().string(from: Date()); var results: [CheckResult] }

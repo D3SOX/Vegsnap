@@ -283,7 +283,10 @@ private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTou
         HorizontalDivider()
         OcrLanguageSettings(model, settings.offline)
         HorizontalDivider()
-        Text(stringResource(R.string.market))
+        ToggleRow(stringResource(R.string.auto_product_country), settings.autoCountry, { enabled -> model.updateSettings { it.copy(autoCountry = enabled) } })
+        Text(stringResource(R.string.fallback_product_country))
+        ProductMarketButton(settings.fallbackCountry) { country -> model.updateSettings { it.copy(fallbackCountry = country) }.join(); true }
+        Text(stringResource(R.string.auto_product_country_hint), style = MaterialTheme.typography.bodySmall)
         var categoryMenu by remember { mutableStateOf(false) }
         // Intrinsic widths let translated labels and larger system text determine
         // when the second control wraps, rather than relying on a screen breakpoint.
@@ -658,6 +661,8 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         ResultStatusLabel(resultClassification(result.getString("outcome"), result.optString("basis")), prominent = true)
                         Text(result.getString("title"), style = MaterialTheme.typography.titleLarge)
+                        ProductMarketButton(result.getJSONObject("identity").getString("market"),
+                            enabled = failedRetry == null, source = result.getJSONObject("identity").optString("marketSource").takeIf { it.isNotBlank() }) { model.updateProductMarket(resultId, it) }
                         HistoryPhotoStrip(result.getString("id"), model)
                         Text(result.getString("summary"))
                         val aiStatus = result.optString("aiStatus")
@@ -741,7 +746,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                         }
                         result.optJSONArray("warnings")?.strings()?.distinct()?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                         ManufacturerContactSection(result)
-                        CommunityRepliesSection(localizedResult, settings.offline, communityState)
+                        CommunityRepliesSection(localizedResult, settings.offline, communityState) { model.updateProductMarket(resultId, it) }
                     }
                 }
                 item(key = "sources-heading") {

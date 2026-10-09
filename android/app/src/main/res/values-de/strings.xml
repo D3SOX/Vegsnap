@@ -84,7 +84,10 @@
     <string name="last_tab">Letztem Tab</string>
     <string name="history_notice">Exportierte Prüfungen enthalten Produktbelege und Text, aber keine Fotos oder Zugangsdaten.</string>
     <string name="invalid_settings">Verwende HTTPS (oder HTTP localhost), einen Modellnamen und eine gültige API-URL.</string>
-    <string name="market">Markt: Deutschland / EU</string>
+    <string name="market">Produktvorgaben</string>
+    <string name="product_country">Produktland</string>
+    <string name="product_country_hint">Wähle das Land, für das dieses Produkt verkauft wird (z. B. SE für Schweden). Gemeint ist nicht der Herstellerstandort. Eine gespeicherte Korrektur aktualisiert die Community-Antworten; prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.</string>
+    <string name="save_product_country">Land speichern</string>
     <string name="private_model">Für lokales Ollama bezeichnet localhost dieses Android-Gerät. Nutze HTTPS für einen Server auf einem anderen Gerät.</string>
     <string name="recheck">Erneut prüfen</string>
     <string name="api_connection">API-Schlüssel</string>
@@ -181,4 +184,11 @@
     <string name="community_view">Geteilte Antworten ansehen</string>
     <string name="community_notice">Beim Öffnen eines Produkts werden geprüfte Herstellerantworten gesucht. Bestätigungen für das ganze Produkt können das Ergebnis ändern. Verlauf und Fotos bleiben auf diesem Gerät.</string>
     <string name="community_offline">Gehe online, um Antworten zu teilen oder anzusehen.</string>
+    <string name="auto_product_country">Produktland automatisch erkennen</string>
+    <string name="fallback_product_country">Land bei unklaren Angaben</string>
+    <string name="auto_product_country_hint">Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.</string>
+    <string name="country_from_packaging">Aus Verpackung erkannt (KI — Etikett prüfen)</string>
+    <string name="country_from_database">Aus Datenbank erkannt</string>
+    <string name="country_manual">Manuell ausgewählt</string>
+    <string name="country_fallback">Land bei unklaren Angaben</string>
 </resources>

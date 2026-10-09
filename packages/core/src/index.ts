@@ -1,4 +1,5 @@
 export * from './types';
+export { countryCode, selectProductCountry } from './market';
 export { analyzeText, parseSourceIngredients, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
 export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';

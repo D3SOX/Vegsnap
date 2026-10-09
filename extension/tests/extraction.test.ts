@@ -103,5 +103,7 @@ describe('privacy boundaries', () => {
     expect(isCheckInput({ images: Array(4).fill('data:image/jpeg;base64,YQ==') })).toBe(false);
     expect(isCheckInput({ complete: 'true' })).toBe(false);
     expect(isCheckInput({ category: 'definitely-vegan' })).toBe(false);
+    expect(isCheckInput({ market: 'ZZ' })).toBe(false);
+    expect(isCheckInput({ market: 'SE', autoMarket: false })).toBe(true);
   });
 });

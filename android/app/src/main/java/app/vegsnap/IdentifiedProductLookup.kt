@@ -1,6 +1,7 @@
 package app.vegsnap
 
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 
@@ -45,7 +46,8 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
                 nameWords(stripBrandPrefix(record.name, brand), ignored) == identityWords &&
                 identityNormalize(record.quantity).replace(Regex("\\s+"), "") == quantity.replace(Regex("\\s+"), "") &&
                 variantWords.all { it in nameWords(record.name, ignored) } &&
-                marketMatches(packaging.optString("country"), record.markets)
+                marketMatches(packaging.optString("country").ifBlank { identity.optString("market") }, record.countries,
+                    allowUnknown = packaging.optString("country").isBlank() && identity.optBoolean("autoMarket"))
         }
         candidateRecords.singleOrNull()
     }
@@ -63,20 +65,11 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
         .filter { it.isNotBlank() && (ignored.isBlank() || it != ignored) }
         .sorted()
 
-    private fun marketMatches(country: String, markets: String): Boolean {
+    private fun marketMatches(country: String, markets: List<String>, allowUnknown: Boolean): Boolean {
         if (country.isBlank()) return true
-        if (markets.isBlank()) return false
-        val expected = canonicalCountry(country) ?: return false
-        return markets.split(Regex("[,;|]")).any { canonicalCountry(it) == expected }
-    }
-
-    private fun canonicalCountry(country: String): String? = when (identityNormalize(country).replace(Regex("[^\\p{L}\\p{N}]+"), "")) {
-        "de", "germany", "deutschland" -> "de"
-        "se", "sweden", "sverige" -> "se"
-        "fi", "finland", "suomi" -> "fi"
-        "uk", "gb", "unitedkingdom" -> "uk"
-        "us", "usa", "unitedstates" -> "us"
-        else -> null
+        if (markets.isEmpty()) return allowUnknown
+        val expected = productCountryCode(country) ?: return false
+        return markets.any { productCountryCode(it) == expected }
     }
 }
 
@@ -86,7 +79,8 @@ internal fun identifiedDatabaseRecord(record: BrowseRecord, identity: JSONObject
         name = identity.getString("name"), locale = identity.optString("locale", "en"))
     val evidence = JSONObject().put("id", "${record.source.name.lowercase()}:${record.id}").put("kind", "database")
         .put("title", record.source.title).put("url", record.url).put("excerpt", record.composition)
-        .put("databaseBrand", record.brand).put("retrievedAt", java.time.Instant.now().toString()).put("license", record.source.license)
+        .put("databaseBrand", record.brand).put("compositionMarkets", JSONArray(record.countries))
+        .put("retrievedAt", java.time.Instant.now().toString()).put("license", record.source.license)
     if (record.updated.isNotBlank()) evidence.put("sourceDate", record.updated + "T00:00:00Z")
     return input to evidence
 }

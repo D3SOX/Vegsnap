@@ -7,6 +7,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CommunityRepliesTest {
+    @Test fun countryCorrectionRequiresTheSameProductAndFreshEvidence() {
+        val original = CommunityLookup(name = "Drink", brand = "Maker", barcode = "", market = "DE")
+        val state = CommunityRepliesState(original)
+        state.lookup = original.copy(market = "SE")
+        assertEquals("SE", state.marketCorrection())
+        state.submitted = state.lookup
+        assertTrue(state.appliedReplies().isEmpty())
+        state.lookup = state.lookup.copy(name = "Another drink")
+        assertNull(state.marketCorrection())
+        state.lookup = original.copy(market = "ZZ")
+        assertNull(state.marketCorrection())
+    }
     @Test fun prefillIncludesOnlyIdentityAndLanguageWithoutChangingHistory() {
         val result = JSONObject().put("identity", JSONObject().put("name", "Oat & drink").put("brand", "Maker")
             .put("barcode", "3017620422003").put("market", "SE"))

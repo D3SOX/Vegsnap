@@ -2,6 +2,7 @@ export type Category = 'food' | 'drink' | 'cosmetics' | 'household' | 'clothing'
 export type Outcome = 'vegan' | 'not_vegan' | 'uncertain' | 'conflicting';
 export type Basis = 'certified' | 'manufacturer' | 'research' | 'composition' | 'packaging' | 'insufficient';
 export type Locale = 'en' | 'de';
+export type MarketSource = 'manual' | 'fallback' | 'packaging' | 'database';
 export interface CheckInput {
   text?: string;
   barcode?: string;
@@ -11,6 +12,8 @@ export interface CheckInput {
   /** Only true when the user/source explicitly supplies the whole composition list. */
   complete?: boolean;
   market?: string;
+  /** Local preference; never sent to an AI service. Explicit false keeps a manual override. */
+  autoMarket?: boolean;
   locale?: Locale;
   sourceUrl?: string;
   /** Already resized and stripped of metadata by the client. Never a remote URL. */
@@ -79,7 +82,7 @@ export interface CheckResult {
   title: string;
   summary: string;
   category: Category;
-  identity: { name?: string; brand?: string; barcode?: string; market: string; match: 'exact_barcode' | 'unconfirmed' };
+  identity: { name?: string; brand?: string; barcode?: string; market: string; marketSource?: MarketSource; match: 'exact_barcode' | 'unconfirmed' };
   findings: Finding[];
   evidence: Evidence[];
   questions: string[];
@@ -115,11 +118,15 @@ export interface AIExtraction {
   contact?: ManufacturerContact;
   companyAssessment?: AICompanyAssessment;
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */
-  research?: { searched: boolean; sources: { url: string; title: string }[] };
+  research?: { searched: boolean; sources: { url: string; title: string }[]; market?: string };
 }
 export interface ProviderAdapter {
   supportsWebSearch?: boolean;
-  extract(input: CheckInput, signal?: AbortSignal): Promise<AIExtraction>;
+  extract(input: CheckInput, signal?: AbortSignal, countryContext?: {
+    fallbackMarket: string;
+    markets: readonly string[];
+    resolveBarcode?: (code: string) => Promise<readonly string[] | undefined>;
+  }): Promise<AIExtraction>;
 }
 export interface ProviderConfig {
   baseUrl: string;
@@ -130,7 +137,7 @@ export interface ProviderConfig {
 export type CheckStage = 'database' | 'ai' | 'evaluating';
 export interface CheckOptions {
   /** Validated on-device product snapshots, checked before public network databases. */
-  offlineProducts?: { lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market'>): DatabaseProduct | null };
+  offlineProducts?: { lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market' | 'autoMarket'>): DatabaseProduct | null };
   /** Reports real work boundaries without estimating completion percentages. */
   onProgress?: (stage: CheckStage) => void;
   mode: 'explicit' | 'background';
@@ -142,6 +149,9 @@ export interface CheckOptions {
   now?: () => Date;
 }
 export interface DatabaseProduct {
+  /** Countries of the chosen composition when detection combines multiple snapshots. */
+  evidenceMarkets?: string[];
+  markets?: string[];
   warnings?: string[];
   input: CheckInput;
   evidence: Evidence;

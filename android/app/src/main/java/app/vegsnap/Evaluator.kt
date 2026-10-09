@@ -8,7 +8,8 @@ import java.util.Locale
 import java.util.UUID
 
 data class CheckInput(val text: String = "", val category: String = "other", val complete: Boolean? = null,
-    val name: String = "", val barcode: String = "", val locale: String = "en", val truncated: Boolean = false)
+    val name: String = "", val barcode: String = "", val locale: String = "en", val truncated: Boolean = false,
+    val market: String = "DE", val autoMarket: Boolean? = null)
 
 internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:\\s*", RegexOption.IGNORE_CASE)
 internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von)\\b", RegexOption.IGNORE_CASE)
@@ -118,7 +119,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
             .put("basis", if (outcome == "uncertain") "insufficient" else "composition")
             .put("title", input.name.ifBlank { input.text.take(80).ifBlank { if (de) "Produktprüfung" else "Product check" } })
             .put("summary", summary).put("category", input.category)
-            .put("identity", JSONObject().put("name", input.name).put("barcode", input.barcode).put("market", "DE").put("match", "unconfirmed"))
+            .put("identity", JSONObject().put("name", input.name).put("barcode", input.barcode).put("market", input.market).put("match", "unconfirmed"))
             .put("findings", findings).put("evidence", JSONArray().put(JSONObject().put("id", "input").put("kind", "user_text")
                 .put("title", if (de) "Übermittelter Text" else "Supplied text").put("excerpt", input.text).put("retrievedAt", now)))
             .put("questions", questions).put("warnings", JSONArray().apply {

@@ -1,4 +1,4 @@
-import { createOpenAIProvider, HOSTED_AI, type CheckInput } from '@vegsnap/core';
+import { countryCode, createOpenAIProvider, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
 import { readBoundedText } from '../../core/src/http';
 
 export interface Env {
@@ -39,8 +39,8 @@ async function hashToken(request: Request): Promise<string> {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, 'Connect to Vegsnap AI in settings.');
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), byte => byte.toString(16).padStart(2, '0')).join('');
 }
-function product(value: unknown): CheckInput {
-  const fields = ['text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images'];
+function product(value: unknown): { input: CheckInput; countryContext: Parameters<ProviderAdapter['extract']>[2] } {
+  const fields = ['text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext'];
   if (!record(value) || Object.keys(value).some(key => !fields.includes(key))) throw new HttpError(400, 'Invalid product input.');
   for (const [key, maximum] of [['text', 30_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
     if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > maximum)) throw new HttpError(400, `Invalid ${key}.`);
@@ -51,7 +51,16 @@ function product(value: unknown): CheckInput {
   if (value.images !== undefined && (!Array.isArray(value.images) || value.images.length > 3 || value.images.some(image =>
       typeof image !== 'string' || image.length > 4_000_000 || !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(image)))) throw new HttpError(400, 'Invalid product photos.');
   if (!value.text && !value.name && !(Array.isArray(value.images) && value.images.length)) throw new HttpError(400, 'Add product text or a photo.');
-  return value as CheckInput;
+  const { countryContext, ...input } = value;
+  if (countryContext !== undefined && (!record(countryContext) ||
+      Object.keys(countryContext).some(key => !['fallbackMarket', 'markets'].includes(key)) ||
+      typeof countryContext.fallbackMarket !== 'string' || countryCode(countryContext.fallbackMarket) !== countryContext.fallbackMarket ||
+      !Array.isArray(countryContext.markets) || countryContext.markets.length > 250 ||
+      countryContext.markets.some(tag => typeof tag !== 'string' || tag !== 'unknown' && countryCode(tag) !== tag))) {
+    throw new HttpError(400, 'Invalid product country context.');
+  }
+  return { input: { ...input, ...(countryContext ? { autoMarket: true } : {}) } as CheckInput,
+    countryContext: countryContext as Parameters<ProviderAdapter['extract']>[2] };
 }
 async function route(request: Request, env: Env): Promise<Response> {
   const path = new URL(request.url).pathname;
@@ -126,7 +135,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     return json({ connected: true });
   }
   if (!await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 1 AND expires_at > ?').bind(tokenHash, now()).first()) throw new HttpError(401, 'Connect to Vegsnap AI in settings.');
-  const input = product(await body(request, 12_100_000));
+  const { input, countryContext } = product(await body(request, 12_100_000));
   const results = await env.DB.batch([
     env.DB.prepare('INSERT INTO installation_usage(installation_hash, day) SELECT installation_hash, ? FROM sessions WHERE token_hash = ? ON CONFLICT DO NOTHING').bind(today, tokenHash),
     env.DB.prepare('INSERT INTO daily_budget(day) VALUES (?) ON CONFLICT DO NOTHING').bind(today),
@@ -161,7 +170,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   };
   try {
     // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
-    return json(await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal));
+    return json(await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal, countryContext));
   } catch { throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.'); }
 }
 export default {

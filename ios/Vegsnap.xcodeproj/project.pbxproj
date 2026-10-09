@@ -384,6 +384,7 @@
 				"$(SRCROOT)/../packages/core/src/index.ts",
 				"$(SRCROOT)/../packages/core/src/ingredient-display.ts",
 				"$(SRCROOT)/../packages/core/src/manufacturer-contact.ts",
+				"$(SRCROOT)/../packages/core/src/market.ts",
 				"$(SRCROOT)/../packages/core/src/matspar-catalogue.ts",
 				"$(SRCROOT)/../packages/core/src/merge-results.ts",
 				"$(SRCROOT)/../packages/core/src/model-capabilities.ts",
@@ -401,6 +402,7 @@
 				"$(SRCROOT)/../contracts/ai-extraction-prompt.json",
 				"$(SRCROOT)/../contracts/ai-extraction.schema.json",
 				"$(SRCROOT)/../contracts/history.schema.json",
+				"$(SRCROOT)/../contracts/product-countries.json",
 				"$(SRCROOT)/../contracts/result.schema.json",
 			);
 			"outputPaths" = (

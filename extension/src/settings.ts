@@ -1,3 +1,4 @@
+import { countryCode } from '@vegsnap/core';
 import HOSTED_AI from '../../data/hosted-ai.json';
 
 // Explicit marketplace allowlist; never grant arbitrary *.amazon.* domains.
@@ -36,10 +37,12 @@ export interface Settings {
   model: string;
   stores: string[];
   saveHistory: boolean;
+  autoCountry: boolean;
+  fallbackCountry: string;
   api?: { connection: keyof typeof PRESETS; baseUrl: string; model: string };
   chatgptModel?: string;
 }
-export const defaultSettings: Settings = { language: 'en', connection: 'hosted', baseUrl: HOSTED_AI.baseUrl, model: HOSTED_AI.model, stores: [], saveHistory: true };
+export const defaultSettings: Settings = { language: 'en', connection: 'hosted', baseUrl: HOSTED_AI.baseUrl, model: HOSTED_AI.model, stores: [], saveHistory: true, autoCountry: true, fallbackCountry: 'DE' };
 export function endpointOrigin(endpoint: string): string {
   const url = new URL(endpoint);
   if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) throw new Error('Use HTTPS, or HTTP on localhost, without credentials or query parameters.');
@@ -64,7 +67,7 @@ export function parseSettings(value: unknown, locale = 'en'): Settings {
   if (!value || typeof value !== 'object') return { ...defaultSettings, language: preferredLanguage(locale) };
   const v = value as Record<string, unknown>;
   const connection = typeof v.connection === 'string' && ['chatgpt', 'database', 'hosted', ...Object.keys(PRESETS)].includes(v.connection) ? v.connection as Connection : defaultSettings.connection;
-  const settings: Settings = { language: v.language === 'en' || v.language === 'de' ? v.language : preferredLanguage(locale), connection, baseUrl: typeof v.baseUrl === 'string' ? v.baseUrl : connection === 'hosted' ? HOSTED_AI.baseUrl : PRESETS.openai, model: typeof v.model === 'string' ? v.model.slice(0, 200) : connection === 'hosted' ? HOSTED_AI.model : '', stores: Array.isArray(v.stores) ? v.stores.filter((s): s is string => typeof s === 'string' && STORES.some(store => store.id === s)) : [], saveHistory: v.saveHistory !== false };
+  const settings: Settings = { language: v.language === 'en' || v.language === 'de' ? v.language : preferredLanguage(locale), connection, baseUrl: typeof v.baseUrl === 'string' ? v.baseUrl : connection === 'hosted' ? HOSTED_AI.baseUrl : PRESETS.openai, model: typeof v.model === 'string' ? v.model.slice(0, 200) : connection === 'hosted' ? HOSTED_AI.model : '', stores: Array.isArray(v.stores) ? v.stores.filter((s): s is string => typeof s === 'string' && STORES.some(store => store.id === s)) : [], saveHistory: v.saveHistory !== false, autoCountry: v.autoCountry !== false, fallbackCountry: typeof v.fallbackCountry === 'string' ? countryCode(v.fallbackCountry) ?? 'DE' : 'DE' };
   const api = v.api;
   if (connection === 'chatgpt') settings.chatgptModel = settings.model;
   else if (typeof v.chatgptModel === 'string') settings.chatgptModel = v.chatgptModel.slice(0, 200);

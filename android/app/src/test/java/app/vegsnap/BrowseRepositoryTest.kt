@@ -65,6 +65,7 @@ class BrowseRepositoryTest {
                 assertEquals("Haferdrink", record.name)
                 assertEquals("water, oats", record.composition)
                 assertEquals("germany", record.markets)
+                assertEquals(listOf("en:germany"), record.countryTags)
                 assertEquals("Brand", record.brand)
                 assertEquals(source.root + "product/4006381333931", record.url)
                 assertEquals(1, page.next)

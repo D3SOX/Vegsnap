@@ -16,7 +16,8 @@ data class ScanState(val text: String = "", val photos: List<Uri> = emptyList(),
     val result: String? = null, val message: Int? = null, val textTruncated: Boolean = false,
     val checkStage: CheckStage? = null, val checkStartedAt: Long? = null,
     val focusedJob: String? = null, val notificationRequest: Int = 0,
-    val name: String = "", val barcode: String = "", val cameraBarcode: String = "", val photoBarcode: String = "", val barcodeLookingUp: Boolean = false) {
+    val name: String = "", val barcode: String = "", val cameraBarcode: String = "", val photoBarcode: String = "", val barcodeLookingUp: Boolean = false,
+    val market: String = "DE", val autoMarket: Boolean? = null) {
     fun forCheck(photosOnly: Boolean): ScanState = if (photosOnly) copy(text = "", name = "", barcode = photoBarcode, complete = false, textTruncated = false) else copy(barcode = barcode.ifBlank { photoBarcode })
     fun withText(value: String, replace: Boolean = false): ScanState {
         val bounded = boundedProductText(value)
@@ -113,7 +114,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             withContext(Dispatchers.IO) { queueStore.initialize() }
             val loaded = preferences.flow.first()
             mutableSettings.value = withDetectedVision(loaded)
-            update { it.copy(category = loaded.defaultCategory) }
+            update { it.copy(category = loaded.defaultCategory, market = loaded.fallbackCountry) }
             mutableApiToken.value = withContext(Dispatchers.IO) { credentials.read(loaded.baseUrl) }
             mutableHostedToken.value = withContext(Dispatchers.IO) { hostedCredentials.read(hostedAI.baseUrl) }
             if (!hasSharedInput) mutableTab.value = if (loaded.startTab == "last") loaded.lastTab else loaded.startTab
@@ -152,10 +153,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         update { it.copy(cameraBarcode = observation.barcode, barcodeLookingUp = observation.lookup) }
         if (!observation.lookup) return
         val input = CheckInput(category = state.value.category, barcode = observation.barcode,
-            locale = appLocale())
+            locale = appLocale(), market = state.value.market, autoMarket = state.value.autoMarket)
         barcodeJob = viewModelScope.launch {
             try {
-                val result = withTimeout(60_000) { barcodeRepository.lookupBarcode(input, offline = settings.value.offline) }
+                val result = withTimeout(60_000) { barcodeRepository.lookupBarcode(input, offline = settings.value.offline, autoCountry = settings.value.autoCountry) }
                 if (result == null || !barcodeCoordinator.accepts(observation) || state.value.capturing || state.value.photos.isNotEmpty()) return@launch
                 val json = result.toString()
                 val savedInput = input.copy(name = result.getJSONObject("identity").optString("name"), category = result.getString("category"))
@@ -173,6 +174,11 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     internal fun clearCameraBarcode() {
         barcodeJob?.cancel(); barcodeCoordinator.clear()
         update { it.copy(cameraBarcode = "", photoBarcode = "", barcodeLookingUp = false) }
+    }
+    internal fun setProductMarket(market: String) {
+        if (!validProductMarket(market)) return
+        barcodeJob?.cancel(); barcodeCoordinator.clear()
+        update { it.copy(market = market, autoMarket = false, cameraBarcode = "", barcodeLookingUp = false) }
     }
     fun selectTab(tab: String) { mutableTab.value = tab; updateSettings { it.copy(lastTab = tab) } }
     fun update(transform: (ScanState) -> ScanState) { mutableState.update(transform) }
@@ -204,6 +210,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         val value = withDetectedVision(transform(previous))
         if (value == previous) return@launch
         mutableSettings.value = value
+        if (value.fallbackCountry != previous.fallbackCountry || value.autoCountry != previous.autoCountry) {
+            barcodeJob?.cancel(); barcodeCoordinator.clear()
+            update { it.copy(market = if (it.autoMarket == null) value.fallbackCountry else it.market, cameraBarcode = "", barcodeLookingUp = false) }
+        }
         if (value.defaultCategory != previous.defaultCategory) update {
             if (it.text.isBlank() && it.name.isBlank() && it.barcode.isBlank() && it.photos.isEmpty()) it.copy(category = value.defaultCategory) else it
         }
@@ -442,7 +452,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val photos = withContext(Dispatchers.IO) { snapshot.photos.map { ensureActive(); processor.prepare(it) } }
                 val input = CheckInput(snapshot.text, snapshot.category, snapshot.complete.takeIf { it },
                     name = snapshot.name, barcode = snapshot.barcode,
-                    locale = appLocale(), truncated = snapshot.textTruncated)
+                    locale = appLocale(), truncated = snapshot.textTruncated, market = snapshot.market, autoMarket = snapshot.autoMarket)
                 ensureActive()
                 withContext(NonCancellable) {
                     val job = withContext(Dispatchers.IO) { queueStore.enqueue(input, connection, photos.map { it.jpeg }) }
@@ -450,7 +460,8 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                     update { it.copy(photos = it.photos - snapshot.photos.toSet(), category = settings.value.defaultCategory,
                         text = if (photosOnly) it.text else "", name = if (photosOnly) it.name else "",
                         barcode = if (photosOnly) it.barcode else "", cameraBarcode = "", photoBarcode = "", barcodeLookingUp = false, complete = if (photosOnly) it.complete else false,
-                        textTruncated = if (photosOnly) it.textTruncated else false, focusedJob = job.id) }
+                        textTruncated = if (photosOnly) it.textTruncated else false, focusedJob = job.id,
+                        market = if (photosOnly) it.market else settings.value.fallbackCountry, autoMarket = if (photosOnly) it.autoMarket else null) }
                     snapshot.photos.forEach(::deleteTemporaryPhoto)
                     startQueue()
                 }
@@ -558,7 +569,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                             (disconnectingChatGPT || chatGPTState.value.busy || accountId != chatGPTState.value.selectedAccount)) null
                         else if (database.history().find(id) == null) null
                         else {
-                            val input = historyPhotos.input(id) ?: recheckInput(result)
+                            val input = restoreCheckInput(result, historyPhotos.input(id), settings.value.fallbackCountry)
                             queueStore.enqueueHistory(id, input, connection, historyPhotos.files(id).map { it.readBytes() })
                         }
                     }
@@ -576,20 +587,35 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 val id = result.getString("id")
-                val restored = recheckInput(result)
                 val original = withContext(Dispatchers.IO) { historyPhotos.input(id) }
-                val input = original?.copy(name = original.name.ifBlank { restored.name },
-                    barcode = original.barcode.ifBlank { restored.barcode }) ?: restored
+                val input = restoreCheckInput(result, original, settings.value.fallbackCountry)
                 val photos = savedPhotos(id)
                 if (state.value.busy || state.value.capturing) return@launch
                 clearPhotos()
                 update { it.copy(text = input.text, name = input.name, barcode = input.barcode, photos = photos,
                     category = input.category, complete = input.complete == true, result = null,
-                    textTruncated = input.truncated, focusedJob = null) }
+                    textTruncated = input.truncated, focusedJob = null, market = input.market, autoMarket = input.autoMarket) }
                 selectTab("manual")
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { update { it.copy(message = R.string.history_error) } }
         }
+    }
+    internal suspend fun updateProductMarket(id: String, market: String): Boolean {
+        if (!validProductMarket(market)) return false
+        return try {
+            val entry = withContext(Dispatchers.IO) {
+                queueStore.withHistoryMutation {
+                    check(queueStore.clearInactiveHistoryRetries(id))
+                    val saved = database.history().find(id) ?: return@withHistoryMutation null
+                    val result = JSONObject(saved.json)
+                    result.getJSONObject("identity").put("market", market).put("marketSource", "manual")
+                    saved.copy(json = result.toString()).also { database.history().save(it) }
+                }
+            } ?: return false
+            update { if (it.result?.let { json -> JSONObject(json).optString("id") } == id) it.copy(result = entry.json) else it }
+            true
+        } catch (error: CancellationException) { throw error }
+        catch (_: Exception) { update { it.copy(message = R.string.history_error) }; false }
     }
     fun delete(id: String) = historyOperation {
         queueStore.deleteHistoryRetries(setOf(id), { ApplicationAnalysisQueue.cancelRunning?.invoke(it) }) {

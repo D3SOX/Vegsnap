@@ -125,6 +125,13 @@
 "Covered countries" = "Geltungsbereich: Länder";
 "More replies exist. The original verdict is kept because this lookup is incomplete." = "Es gibt weitere Antworten. Das ursprüngliche Ergebnis bleibt bestehen, weil diese Abfrage unvollständig ist.";
 "Market" = "Markt";
+"Product country" = "Produktland";
+"Product country (e.g. SE)" = "Produktland (z. B. SE)";
+"Choose the country this product is sold for, not the manufacturer’s location." = "Wähle das Land, für das dieses Produkt verkauft wird, nicht den Herstellerstandort.";
+"Saving a correction refreshes community replies. Check again to refresh the original analysis." = "Eine gespeicherte Korrektur aktualisiert die Community-Antworten. Prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.";
+"Save country" = "Land speichern";
+"Enter a two-letter country code." = "Gib einen zweistelligen Ländercode ein.";
+"This result is unavailable or has a check in progress." = "Dieses Ergebnis ist nicht verfügbar oder wird gerade erneut geprüft.";
 "Message language" = "Nachrichtensprache";
 "Model ID" = "Modell-ID";
 "No account required. No ads. No telemetry." = "Kein Konto erforderlich. Keine Werbung. Keine Telemetrie.";
@@ -313,3 +320,10 @@
 "Download reviewed evidence" = "Geprüften Nachweis herunterladen";
 
 "Evidence reviewed privately." = "Nachweis wurde privat geprüft.";
+
+"Detect product country automatically" = "Produktland automatisch erkennen";
+"Fallback country" = "Land bei unklaren Angaben";
+"Selected manually" = "Manuell ausgewählt";
+"Detected from database" = "Aus Datenbank erkannt";
+"Detected from packaging (AI — check the label)" = "Aus Verpackung erkannt (KI — Etikett prüfen)";
+"Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence." = "Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.";

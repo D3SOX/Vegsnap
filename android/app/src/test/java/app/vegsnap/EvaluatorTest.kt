@@ -9,6 +9,9 @@ import java.io.File
 class EvaluatorTest {
     private val root = File(requireNotNull(System.getProperty("vegsnap.repo")))
     private val evaluator = Evaluator(JSONObject(File(root, "data/rules.json").readText()))
+    @Test fun selectedMarketIsUsedByTheResultIdentity() {
+        assertEquals("SE", evaluator.evaluate(CheckInput("water, salt", market = "SE")).getJSONObject("identity").getString("market"))
+    }
     @Test fun footwearRolesAndBlendsIdentifyLeatherWithoutTreatingThePageTitleAsMaterial() {
         val title = "adidas originals aspyre - trainers - cloud white/grey one/white - zalando"
         val result = evaluator.evaluate(CheckInput("$title\nObermaterial: Leder/Synthetik\nInnenmaterial: Textil\nInnensohle: Kunststoff", "shoes"))

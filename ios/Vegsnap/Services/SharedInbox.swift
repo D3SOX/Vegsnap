@@ -19,7 +19,7 @@ extension AppStore {
                     importedPhotos.append(name)
                     try files.saveData(clean, name)
                 }
-                let nextDraft = CheckInput(text: input.text, category: settings.defaultCategory, locale: locale)
+                let nextDraft = CheckInput(text: input.text, category: settings.defaultCategory, market: settings.defaultCountry, locale: locale)
                 let nextID = UUID().uuidString
                 try files.save(Draft(id: nextID, input: nextDraft, photos: importedPhotos), "draft.json")
                 draftID = nextID; draft = nextDraft; draftPhotos = importedPhotos; selectedTab = "check"

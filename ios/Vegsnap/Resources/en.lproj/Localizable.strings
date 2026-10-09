@@ -125,6 +125,13 @@
 "Covered countries" = "Covered countries";
 "More replies exist. The original verdict is kept because this lookup is incomplete." = "More replies exist. The original verdict is kept because this lookup is incomplete.";
 "Market" = "Market";
+"Product country" = "Product country";
+"Product country (e.g. SE)" = "Product country (e.g. SE)";
+"Choose the country this product is sold for, not the manufacturer’s location." = "Choose the country this product is sold for, not the manufacturer’s location.";
+"Saving a correction refreshes community replies. Check again to refresh the original analysis." = "Saving a correction refreshes community replies. Check again to refresh the original analysis.";
+"Save country" = "Save country";
+"Enter a two-letter country code." = "Enter a two-letter country code.";
+"This result is unavailable or has a check in progress." = "This result is unavailable or has a check in progress.";
 "Message language" = "Message language";
 "Model ID" = "Model ID";
 "No account required. No ads. No telemetry." = "No account required. No ads. No telemetry.";
@@ -313,3 +320,10 @@
 "Download reviewed evidence" = "Download reviewed evidence";
 
 "Evidence reviewed privately." = "Evidence reviewed privately.";
+
+"Detect product country automatically" = "Detect product country automatically";
+"Fallback country" = "Fallback country";
+"Selected manually" = "Selected manually";
+"Detected from database" = "Detected from database";
+"Detected from packaging (AI — check the label)" = "Detected from packaging (AI — check the label)";
+"Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence." = "Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.";

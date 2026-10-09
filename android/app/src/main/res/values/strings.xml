@@ -84,7 +84,10 @@
     <string name="last_tab">Last tab</string>
     <string name="history_notice">Exported checks contain product evidence and text, but no photos or credentials.</string>
     <string name="invalid_settings">Use HTTPS (or HTTP localhost), a model name, and a valid API URL.</string>
-    <string name="market">Market: Germany / EU</string>
+    <string name="market">Product defaults</string>
+    <string name="product_country">Product country</string>
+    <string name="product_country_hint">Choose the country this product is sold for (e.g. SE for Sweden). This is not the manufacturer’s location. Saving a correction refreshes community replies; check again to refresh the original analysis.</string>
+    <string name="save_product_country">Save country</string>
     <string name="private_model">For local Ollama, localhost means this Android device. Use HTTPS for a server on another device.</string>
     <string name="recheck">Check again</string>
     <string name="api_connection">API key</string>
@@ -181,4 +184,11 @@
     <string name="community_view">View shared replies</string>
     <string name="community_notice">Opening a product checks reviewed manufacturer replies. Whole-product confirmations can update the verdict. Your history and photos stay on this device.</string>
     <string name="community_offline">Go online to share or view community replies.</string>
+    <string name="auto_product_country">Detect product country automatically</string>
+    <string name="fallback_product_country">Fallback country</string>
+    <string name="auto_product_country_hint">Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.</string>
+    <string name="country_from_packaging">Detected from packaging (AI — check the label)</string>
+    <string name="country_from_database">Detected from database</string>
+    <string name="country_manual">Selected manually</string>
+    <string name="country_fallback">Fallback country</string>
 </resources>

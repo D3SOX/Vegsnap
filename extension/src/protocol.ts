@@ -1,9 +1,10 @@
 import type { CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
+import { countryCode } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
 import type { AccountOptions, CompanionCommand } from './companion-state';
 import { validGtin } from './extraction';
-export function scanInput(input: { text: string; category: CheckInput['category']; complete: boolean; images: string[] }): CheckInput {
+export function scanInput(input: { text: string; category: CheckInput['category']; complete: boolean; images: string[]; market?: string; autoMarket?: boolean }): CheckInput {
   return { ...input, barcode: input.text.split(/\s+/).map(validGtin).find(Boolean), complete: input.complete ? true : undefined };
 }
 /** Page titles and structured product names provide identity, not ingredients. Selected text remains user composition. */
@@ -26,6 +27,7 @@ export type Request =
   | { type: 'open-check'; barcode?: string; name?: string; brand?: string; sourceUrl?: string }
   | { type: 'pending'; id: string }
   | { type: 'delete'; id?: string }
+  | { type: 'set-result-market'; id: string; market: string }
   | { type: 'hosted'; command: 'connect' | 'status' | 'disconnect' }
   | ({ type: 'companion'; command: CompanionCommand } & AccountOptions);
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }
@@ -50,8 +52,10 @@ export function isBackgroundRequest(value: unknown): value is Extract<Request, {
 }
 export function isCheckInput(v: unknown): v is CheckInput {
   if (!isRecord(v)) return false;
+  if (v.autoMarket !== undefined && typeof v.autoMarket !== 'boolean') return false;
   const strings = ['text', 'barcode', 'name', 'brand', 'market', 'sourceUrl'];
   if (!strings.every(key => v[key] === undefined || (typeof v[key] === 'string' && v[key].length <= 30_000))) return false;
+  if (v.market !== undefined && (typeof v.market !== 'string' || !/^[A-Z]{2}$/.test(v.market) || !countryCode(v.market))) return false;
   if (v.category !== undefined && !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(String(v.category))) return false;
   if (v.locale !== undefined && !['en', 'de'].includes(String(v.locale))) return false;
   if (v.complete !== undefined && typeof v.complete !== 'boolean') return false;

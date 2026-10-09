@@ -1,9 +1,10 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
+import { countryCode, imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
+import { ProductMarket } from './product-market';
 import { messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
@@ -47,6 +48,9 @@ export function App() {
   const result = storedResult && community?.key === communityKey ? { ...storedResult, ...applyCommunityReplies(storedResult, community.replies, config.language) } : storedResult;
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
+  const [market, setMarket] = useState('DE');
+  const marketOverride = useRef(false);
+  useEffect(()=>{ if (!marketOverride.current) setMarket(config.fallbackCountry); },[config.fallbackCountry]);
   const [offlinePacks, setOfflinePacks] = useState<OfflinePackInfo[]>([]);
   const [inspectedIdentity, setInspectedIdentity] = useState<Pick<CheckInput, 'name' | 'brand' | 'barcode' | 'market' | 'sourceUrl'>>();
   const [category, setCategory] = useState<Category>('other');
@@ -101,6 +105,10 @@ export function App() {
         credentialRevision.current++; setToken('');
       }
       configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks);
+      setResult(current=>{
+        const saved = current && state.history.find(item=>item.id === current.id);
+        return saved && (saved.identity.market !== current?.identity.market || saved.identity.marketSource !== current?.identity.marketSource) ? saved : current;
+      });
       const hostedStatus = shared.hostedStatus;
       setHosted(isRecord(hostedStatus) && ['pending', 'connected'].includes(String(hostedStatus.state)) ? hostedStatus as unknown as HostedStatus : { state: 'signedout' });
       const connection = shared.chatGPTConnection;
@@ -155,21 +163,29 @@ export function App() {
   async function check(input: CheckInput) {
     await act(async () => {
       await settingsWrites.current;
-      const checked = await runCheck(input); setResult(checked); setEditingResult(undefined); setImages([]); setImageUrl(undefined); await refresh(); });
+      const checked = await runCheck(input); newScan(); setResult(checked); await refresh(); });
   }
   function editResult() {
     if (!storedResult) return;
     const input = editableInput(storedResult);
     const barcodeInText = input.barcode !== undefined && input.text?.split(/\s+/).some(value => validGtin(value) === input.barcode);
     setEditingResult(storedResult); setResult(undefined); setTab('scan');
+    marketOverride.current = input.autoMarket !== true && storedResult.identity.marketSource !== 'fallback';
+    setMarket(marketOverride.current ? input.market ?? configRef.current.fallbackCountry : configRef.current.fallbackCountry);
     setText(input.text ?? ''); setCategory(input.category ?? 'other'); setComplete(input.complete === true); setImages(input.images ?? []);
-    setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode && !barcodeInText ? { barcode: input.barcode } : {}), market: input.market, sourceUrl: input.sourceUrl });
+    setInspectedIdentity({ name: input.name, brand: input.brand, ...(input.barcode && !barcodeInText ? { barcode: input.barcode } : {}), sourceUrl: input.sourceUrl });
     setImageUrl(undefined); setError(''); setNotice('');
   }
   function cancelEdit() {
     setResult(editingResult); setEditingResult(undefined);
+    marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
     setText(''); setCategory('other'); setComplete(false); setImages([]); setInspectedIdentity(undefined);
     setError(''); setNotice('');
+  }
+  function newScan() {
+    marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
+    setResult(undefined); setEditingResult(undefined); setInspectedIdentity(undefined);
+    setText(''); setCategory('other'); setComplete(false); setImages([]); setImageUrl(undefined);
   }
   function allowOnlineCheck() {
     if (!onlineCheck) return;
@@ -212,6 +228,8 @@ export function App() {
       const id = new URLSearchParams(location.search).get('pending');
       if (!id) return;
       const pending = await request<Pending>({ type: 'pending', id });
+      marketOverride.current = Boolean(pending.market);
+      setMarket(pending.market ?? configRef.current.fallbackCountry);
       window.history.replaceState(null, '', location.pathname);
       if (pending.imageUrl) { setImageUrl(pending.imageUrl); setText(pending.text ?? ''); }
       else { setText(pending.text ?? pending.barcode ?? ''); const checked = await runCheck(pendingInput(pending)); setResult(checked); await refresh(); }
@@ -336,13 +354,13 @@ export function App() {
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
       {busy && (ready || showStartupLoading) && <div class="check-progress"><p role="status" class="working"><span class="spinner" aria-hidden="true"/>{!ready ? t.loadingApp : checkProgress?.stage === 'database' ? t.progressDatabase : checkProgress?.stage === 'ai' ? t.progressAI : checkProgress ? t.progressEvaluating : t.checking}</p>{checkProgress && <><progress aria-label={t.checking}/><span class="hint">{elapsedSeconds}s</span></>}</div>}
       {result ? <section class="result">
-        <button class="text-button" onClick={() => setResult(undefined)}>← {t.back}</button>
+        <button class="text-button" onClick={newScan}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
         <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
@@ -354,6 +372,15 @@ export function App() {
         {[[t.questions, localizeResult(result, config.language).questions], [t.warnings, result.warnings], [t.crossContact, result.crossContact]].map(([title, values]) => Array.isArray(values) && values.length > 0 && <section><h2>{String(title)}</h2><ul>{values.map(value => <li>{value}</li>)}</ul></section>)}
         <section><h2>{t.evidence}</h2>{result.evidence.map(item => <article class="evidence" key={item.id}><strong>{item.title}</strong><p>{item.excerpt}</p><small>{safeLink(item.url) && <a href={safeLink(item.url)} target="_blank" rel="noreferrer">{t.source} ↗</a>} {item.license} · {new Date(item.retrievedAt).toLocaleDateString(config.language)}{item.verification && ` · ${item.verification}`}</small></article>)}</section>
         <ManufacturerContactSection key={result.id} result={result} locale={config.language}/>
+        <ProductMarket market={storedResult!.identity.market} source={storedResult!.identity.marketSource} locale={config.language} disabled={busy} onSave={country=>act(async ()=>{
+          const original = storedResult!;
+          const corrected = savedHistory.some(item=>item.id === original.id)
+            ? await request<HistoryResult>({type:'set-result-market',id:original.id,market:country})
+            : {...original,identity:{...original.identity,market:country,marketSource:'manual' as const}};
+          setOnlineCheck(undefined);
+          setResult(current=>current?.id === original.id ? corrected : current);
+          await refresh();
+        })}/>
         <CommunityRepliesSection key={communityKey} result={storedResult!} locale={config.language} fetchReplies={contentFetch}
           canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
           onReplies={replies=>setCommunity({key:communityKey,replies})}/>
@@ -361,9 +388,10 @@ export function App() {
       </section> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
-        <form onSubmit={event => { event.preventDefault(); const input = scanInput({ text, category, complete, images }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
+        <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(config.language === 'de' ? 'Einen gültigen Ländercode eingeben.' : 'Enter a valid country code.'); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
           <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
+          <label>{config.language === 'de' ? 'Produktland' : 'Product country'}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{config.language === 'de' ? 'Land, für das das Produkt verkauft wird, z. B. SE für Schweden.' : 'Country this product is sold for, e.g. SE for Sweden.'}</small></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
           <label class="checkbox"><input type="checkbox" checked={complete} onChange={event => setComplete(event.currentTarget.checked)}/><span>{t.complete}<small>{t.completeHint}</small></span></label>
@@ -383,6 +411,9 @@ export function App() {
         <h1>{t.settings}</h1>
         <section aria-labelledby="store-heading"><h2 id="store-heading">{t.storeHeading}</h2><p class="hint">{t.storeHint}</p>{STORES.map(store => <div class="store" key={store.id}><div><strong>{store.name}</strong><small>{config.stores.includes(store.id) ? t.storeEnabled : t.storeOff}</small></div><div class="actions">{config.stores.includes(store.id) && storeAccess[store.id] === false && <button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store, true))}>{t.enableAllSites}</button>}<button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store))}>{config.stores.includes(store.id) ? t.disable : t.enable}</button></div></div>)}</section>
         <form onSubmit={event => event.preventDefault()}>
+          <label class="check"><input type="checkbox" checked={config.autoCountry} disabled={!ready || busy} onChange={event=>update('autoCountry',event.currentTarget.checked)}/>{config.language === 'de' ? 'Produktland automatisch erkennen' : 'Detect product country automatically'}</label>
+          <ProductMarket market={config.fallbackCountry} locale={config.language} disabled={!ready || busy} fallback onSave={country=>act(async ()=>{ update('fallbackCountry',country); await settingsWrites.current; })}/>
+          <p class="hint">{config.language === 'de' ? 'Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.' : 'Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.'}</p>
           <label>{t.language}<select disabled={!ready || languageSaving || busy} value={config.language} onChange={event => void changeLanguage(event.currentTarget.value as 'de' | 'en')}><option value="de">Deutsch</option><option value="en">English</option></select></label>
           <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="hosted">{t.hosted}</option><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : 'Custom'}</option>)}</select></label>
           {config.connection === 'chatgpt' ? <section class="connection" aria-label={t.chatgpt} aria-busy={Boolean(connectionTask)}>

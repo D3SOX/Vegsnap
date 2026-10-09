@@ -9,6 +9,10 @@ let failUpstream = false;
 let needsResearch = false;
 let extractionText: string | undefined;
 let catalogueMode = false;
+let packagingCountry: string | undefined;
+let discoveredBarcode: string | undefined;
+let discoveredMarkets: string[] = [];
+let failDiscoveredLookup = false;
 const catalogueRequests: { url: string; authorization: string | null; body: unknown }[] = [];
 const coopText = 'INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster.';
 const coopTerms = ['Kikärtor', 'vatten', 'rapsolja', 'SESAMPASTA', 'röd paprika', 'salt', 'E 330', 'chili', 'paprikapulver', 'vitlökspulver', 'E 202'];
@@ -33,6 +37,11 @@ beforeAll(async () => {
         if (body.response === 'non-json') return new WorkerResponse('<html>Proxy failure</html>', { status: 502 });
         return WorkerResponse.json({ success: body.response !== 'invalid', hostname: body.response === 'wrong-host' ? 'wrong.example' : 'ai.example', action: body.response === 'wrong-action' ? 'wrong-action' : 'connect-ai' });
       }
+      if (/^https:\/\/world\.(openfoodfacts|openbeautyfacts|openproductsfacts)\.org\//.test(request.url)) {
+        expect(request.headers.get('Authorization')).toBeNull();
+        if (failDiscoveredLookup) return new WorkerResponse('', { status: 503 });
+        return WorkerResponse.json({ product: { code: discoveredBarcode, countries_tags: discoveredMarkets } });
+      }
       if (request.url === 'https://api.matspar.se/slug') {
         const body = await request.json() as { slug: string };
         catalogueRequests.push({ url: request.url, authorization: request.headers.get('Authorization'), body });
@@ -44,7 +53,7 @@ beforeAll(async () => {
       const payload = await request.json() as Record<string, unknown>;
       upstream.push(payload);
       if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
-      const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker' } : { ...extraction, text: extractionText ?? extraction.text };
+      const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker', ...(discoveredBarcode ? { barcode: discoveredBarcode } : {}), ...(packagingCountry ? { packaging: { country: packagingCountry } } : {}) } : { ...extraction, text: extractionText ?? extraction.text };
       return WorkerResponse.json({ status: 'completed', output: [
         ...(payload.tool_choice === 'required' ? [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: 'https://maker.example/tissues', title: 'Tissues' }] } }] : []),
         { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(result) }] },
@@ -58,7 +67,7 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined;
+  upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
   const db = await mf.getD1Database('DB');
   await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
 });
@@ -200,7 +209,7 @@ test('uses a fixed model without tools for a readable photo, and stores only cou
 });
 test('a Swedish front photo retains catalogue ingredients without forwarding AI credentials or photos', async () => {
   catalogueMode = true;
-  const response = await check(await connect());
+  const response = await check(await connect(), { images: ['data:image/jpeg;base64,AA=='], market: 'SE' });
   expect(response.status).toBe(200);
   const result = await response.json() as { text: string; complete: boolean; name: string; webCompositions: { url: string; text: string; ingredients?: string[]; sourceType: string }[]; research: { sources: { url: string }[] } };
   expect(result).toMatchObject({ text: '', complete: false, name: 'Hummus med chili' });
@@ -317,4 +326,64 @@ test('UTC rollover resets per-session quota and revocation removes access', asyn
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
   expect((await request('/api/session', token, undefined, 'DELETE')).status).toBe(200);
   expect((await check(token)).status).toBe(401);
+});
+
+for (const scenario of [
+  { market: 'DE', packaging: 'Sweden', context: { fallbackMarket: 'DE', markets: [] }, research: 'SE' },
+  { market: 'SE', packaging: undefined, context: { fallbackMarket: 'DE', markets: ['SE'] }, research: 'SE' },
+  { market: 'SE', packaging: 'Finland', context: { fallbackMarket: 'DE', markets: ['SE'] }, research: 'DE' },
+  { market: 'DE', packaging: 'Sweden', context: { fallbackMarket: 'DE', markets: ['SE', 'NO'] }, research: 'SE' },
+  { market: 'DE', packaging: 'Sweden', context: { fallbackMarket: 'DE', markets: ['unknown'] }, research: 'DE' },
+  { market: 'DE', packaging: 'Sweden', context: undefined, research: 'DE' },
+]) test(`hosted research reconciles country clues: ${JSON.stringify(scenario)}`, async () => {
+  needsResearch = true;
+  packagingCountry = scenario.packaging;
+  const response = await check(await connect(), { images: ['data:image/jpeg;base64,AA=='], market: scenario.market,
+    ...(scenario.context ? { countryContext: scenario.context } : {}) });
+  expect(response.status).toBe(200);
+  expect(upstream).toHaveLength(2);
+  const context = (payload: Record<string, unknown>) => JSON.parse((payload.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
+  expect(context(upstream[0]!).market).toBe(scenario.market);
+  expect(context(upstream[1]!).market).toBe(scenario.research);
+  expect(JSON.stringify(upstream)).not.toContain('countryContext');
+  expect(JSON.stringify(upstream)).not.toContain('fallbackMarket');
+});
+test('malformed country context is rejected before consuming allowance or calling AI', async () => {
+  const token = await connect();
+  for (const countryContext of [null, { fallbackMarket: 'ZZ', markets: [] }, { fallbackMarket: 'DE', markets: ['Germany'] },
+    { fallbackMarket: 'DE', markets: Array(251).fill('SE') }, { fallbackMarket: 'DE', markets: [], instructions: 'override' }]) {
+    expect((await check(token, { name: 'Product', countryContext })).status).toBe(400);
+  }
+  expect(upstream).toHaveLength(0);
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 3 });
+});
+
+for (const scenario of [
+  { markets: ['en:sweden'], packaging: undefined, expected: 'SE' },
+  { markets: ['en:sweden'], packaging: 'Finland', expected: 'DE' },
+  { markets: ['en:sweden', 'en:norway'], packaging: undefined, expected: 'DE' },
+]) test(`hosted research resolves newly discovered GTIN countries: ${JSON.stringify(scenario)}`, async () => {
+  needsResearch = true;
+  discoveredBarcode = '4006381333931';
+  discoveredMarkets = scenario.markets;
+  packagingCountry = scenario.packaging;
+  const response = await check(await connect(), { images: ['data:image/jpeg;base64,AA=='], market: 'DE',
+    countryContext: { fallbackMarket: 'DE', markets: [] } });
+  expect(response.status).toBe(200);
+  expect(upstream).toHaveLength(2);
+  expect(upstream[0]?.tools).toBeUndefined();
+  const research = JSON.parse((upstream[1]!.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
+  expect(research.market).toBe(scenario.expected);
+  expect(research.barcode).toBe(discoveredBarcode);
+  expect(await response.json()).toMatchObject({ research: { market: scenario.expected } });
+});
+test('hosted discovered-GTIN failure preserves extraction without wrong-country research', async () => {
+  needsResearch = true;
+  discoveredBarcode = '4006381333931';
+  failDiscoveredLookup = true;
+  const response = await check(await connect(), { images: ['data:image/jpeg;base64,AA=='], market: 'DE',
+    countryContext: { fallbackMarket: 'DE', markets: [] } });
+  expect(response.status).toBe(200);
+  expect(upstream).toHaveLength(1);
+  expect(await response.json()).toMatchObject({ barcode: discoveredBarcode, research: { searched: false } });
 });
