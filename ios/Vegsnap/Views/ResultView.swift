@@ -146,6 +146,9 @@ struct CommunitySection: View {
                 LabeledContent(L("Claim"), value: L(["vegan": "Manufacturer says vegan", "not_vegan": "Manufacturer says not vegan", "inconclusive": "Inconclusive"][reply.claim] ?? "Inconclusive"))
                 LabeledContent(L("Scope"), value: L(["whole_product": "Whole product", "ingredients": "Ingredients", "processing": "Processing"][reply.scope] ?? "Unknown"))
                 Text(L("Reviewed") + ": " + reply.reviewedAt.prefix(10))
+                if reply.evidencePublic {
+                    if let url = links?.evidenceURL(for: reply.id) { Link(L("Download reviewed evidence"), destination: url).disabled(store.settings.offline) }
+                } else { Text(L("Evidence reviewed privately.")).font(.footnote).foregroundStyle(.secondary) }
                 if let url = safeURL(reply.sourceUrl) { Link(L("Source"), destination: url) }
             } }
             if !store.hiddenReplies.isEmpty { Text(L("Hidden replies stay hidden on this device.")).font(.footnote) }

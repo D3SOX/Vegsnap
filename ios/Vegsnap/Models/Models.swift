@@ -95,7 +95,14 @@ struct PackInfo: Codable, Identifiable { var region: String; var generatedAt: St
 struct PackDescriptor: Codable, Identifiable { var id: String; var region: String; var url: String; var bytes: Int; var sha256: String; var generatedAt: String; var products: Int }
 struct PackCatalog: Codable { var schemaVersion: Int; var packs: [PackDescriptor] }
 struct ManufacturerMessage: Codable { var subject: String; var body: String; var mailto: String? }
-struct CommunityLinks: Codable { var submit: String; var replies: String }
+struct CommunityLinks: Codable {
+    var submit: String; var replies: String
+    func evidenceURL(for id: String) -> URL? {
+        guard UUID(uuidString: id) != nil, let base = safeURL(replies), var url = URLComponents(url: base, resolvingAgainstBaseURL: false) else { return nil }
+        url.path = "/api/evidence/" + id; url.query = nil; url.fragment = nil
+        return url.url
+    }
+}
 
 var language: String { Locale.preferredLanguages.first?.hasPrefix("de") == true ? "de" : "en" }
 func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }

@@ -213,6 +213,12 @@ import Security
             XCTAssertEqual(record.name, "Example drink"); XCTAssertTrue(record.barcode.isEmpty)
         }
     }
+    func testCommunityEvidenceLinkUsesServiceOriginAndReplyID() {
+        let id = UUID().uuidString.lowercased()
+        let links = CommunityLinks(submit: "https://fixture.invalid/submit", replies: "https://fixture.invalid/replies?locale=de#name=Example")
+        XCTAssertEqual(links.evidenceURL(for: id)?.absoluteString, "https://fixture.invalid/api/evidence/" + id)
+        XCTAssertNil(links.evidenceURL(for: "../private"))
+    }
     func testDraftQueueAndDeletionPersistence() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

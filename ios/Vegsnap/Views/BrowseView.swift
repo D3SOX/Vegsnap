@@ -82,7 +82,7 @@ struct BrowseDetail: View {
             Section { Button(L("Check this product")) {
                 do {
                     let barcode: String? = try store.engine.call("barcode", record.barcode)
-                    if store.enqueue(input: CheckInput(barcode: barcode ?? "", name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: []) {
+                    if store.enqueue(input: CheckInput(text: record.composition, barcode: barcode ?? "", name: record.name, brand: record.brand, category: source.category, complete: false, locale: store.locale), photos: []) {
                         store.selectedTab = "check"
                     }
                 } catch { store.report(error) }
