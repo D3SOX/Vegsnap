@@ -267,8 +267,8 @@ class ProviderFlowTest {
     private fun product(text: String, market: String = "en:germany") = MockResponse().setBody(JSONObject().put("product",
         JSONObject().put("code", "4006381333931").put("ingredients_text", text).put("product_name", "Test product")
             .put("countries_tags", JSONArray().put(market))).toString())
-    @Test fun manualCountryConstrainsNameRecoveryAndItsEffectOnTheVerdict() = runBlocking {
-        for (country in listOf("en:germany", "en:sweden", "")) MockWebServer().use { server ->
+    @Test fun selectedCountryConstrainsNameRecoveryAndItsEffectOnTheVerdict() = runBlocking {
+        for (automatic in listOf(false, true)) for (country in listOf("en:germany", "en:sweden", "")) MockWebServer().use { server ->
             MockWebServer().use { browseServer ->
                 server.enqueue(response("""{"text":"","complete":false,"category":"food","name":"Hummus","brand":"Maker","packaging":{"language":"English","quantity":"200g"}}"""))
                 val candidate = JSONObject().put("code", "4006381333931").put("product_name", "Hummus").put("brands", "Maker")
@@ -280,16 +280,19 @@ class ProviderFlowTest {
                     identifiedDatabaseLookup = { identity ->
                         lookups++
                         assertEquals("SE", identity.getString("market"))
+                        assertEquals(automatic, identity.getBoolean("autoMarket"))
                         lookup.lookup(identity)?.let { identifiedDatabaseRecord(it, identity) }
                     })
-                val result = repo.check(CheckInput(category = "food", market = "SE", autoMarket = false), listOf(PreparedPhoto(byteArrayOf(1))),
+                val result = repo.check(CheckInput(category = "food", market = "SE", autoMarket = automatic), listOf(PreparedPhoto(byteArrayOf(1))),
                     AppSettings(connection = "api", baseUrl = server.url("/v1").toString(), model = "test"), "")
                 assertEquals(1, lookups)
                 assertEquals("SE", result.getJSONObject("identity").getString("market"))
-                assertEquals("manual", result.getJSONObject("identity").getString("marketSource"))
-                assertEquals(if (country == "en:sweden") "not_vegan" else "uncertain", result.getString("outcome"))
+                val accepted = country == "en:sweden" || automatic && country.isBlank()
+                assertEquals(if (automatic) "fallback" else "manual", result.getJSONObject("identity").getString("marketSource"))
+                assertEquals(if (accepted) "not_vegan" else "uncertain", result.getString("outcome"))
                 val evidence = result.getJSONArray("evidence")
-                assertEquals(country == "en:sweden", (0 until evidence.length()).any { evidence.getJSONObject(it).optString("kind") == "database" })
+                assertEquals(accepted, (0 until evidence.length()).any { evidence.getJSONObject(it).optString("kind") == "database" })
+                if (automatic && country.isBlank()) assertTrue(result.getJSONArray("warnings").toString().contains("does not confirm the product country"))
             }
         }
     }

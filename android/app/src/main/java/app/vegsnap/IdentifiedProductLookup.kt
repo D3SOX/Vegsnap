@@ -45,7 +45,8 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
                 nameWords(stripBrandPrefix(record.name, brand), ignored) == identityWords &&
                 identityNormalize(record.quantity).replace(Regex("\\s+"), "") == quantity.replace(Regex("\\s+"), "") &&
                 variantWords.all { it in nameWords(record.name, ignored) } &&
-                marketMatches(packaging.optString("country").ifBlank { identity.optString("market") }, record.markets)
+                marketMatches(packaging.optString("country").ifBlank { identity.optString("market") }, record.markets,
+                    allowUnknown = packaging.optString("country").isBlank() && identity.optBoolean("autoMarket"))
         }
         candidateRecords.singleOrNull()
     }
@@ -63,9 +64,9 @@ internal class IdentifiedProductLookup(private val browse: BrowseRepository = Br
         .filter { it.isNotBlank() && (ignored.isBlank() || it != ignored) }
         .sorted()
 
-    private fun marketMatches(country: String, markets: String): Boolean {
+    private fun marketMatches(country: String, markets: String, allowUnknown: Boolean): Boolean {
         if (country.isBlank()) return true
-        if (markets.isBlank()) return false
+        if (markets.isBlank()) return allowUnknown
         val expected = productCountryCode(country) ?: return false
         return markets.split(Regex("[,;|]")).any { productCountryCode(it) == expected }
     }
