@@ -1,5 +1,6 @@
 import type { CheckInput, CheckResult } from '@vegsnap/core';
-export interface HistoryResult extends CheckResult { photos?: string[]; input?: Omit<CheckInput, 'images'>; }
+import { withoutCommunityHistory, type CommunityOriginal } from './community-history';
+export interface HistoryResult extends CheckResult { photos?: string[]; input?: Omit<CheckInput, 'images'>; communityOriginal?: CommunityOriginal; }
 /** Older checks only retain supplied text, not the full original input. */
 export function editableInput(result: HistoryResult): CheckInput {
   return {
@@ -13,7 +14,10 @@ export function editableInput(result: HistoryResult): CheckInput {
   };
 }
 export function historyExport(results: HistoryResult[]): CheckResult[] {
-  return results.map(({ photos: _photos, input: _input, ...result }) => result);
+  return results.map(saved => {
+    const { photos: _photos, input: _input, communityOriginal: _community, ...result } = withoutCommunityHistory(saved);
+    return result;
+  });
 }
 const DB_NAME = 'vegsnap';
 function database(): Promise<IDBDatabase> {

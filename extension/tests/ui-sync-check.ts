@@ -42,6 +42,16 @@ let grantConsent = false;
 let hostedVerified = false;
 let hostedEnabled = true;
 let hostedConnects = 0;
+let communityReplyPage: { replies: unknown[]; more: boolean } = { replies: [], more: false };
+let failCommunityLookup = false;
+const originalFetch = globalThis.fetch;
+globalThis.fetch = Object.assign(async (url: RequestInfo | URL, options?: RequestInit) => {
+  if (String(url).includes('/api/replies?')) {
+    if (failCommunityLookup) throw new Error('Fixture offline');
+    return new Response(JSON.stringify(communityReplyPage));
+  }
+  return originalFetch(url, options);
+}, { preconnect: originalFetch.preconnect }) as typeof fetch;
 const changed = (senderId = 'vegsnap') => { for (const listener of messageListeners) listener({ type: 'state-changed' }, { id: senderId }); };
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
@@ -61,6 +71,12 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
+        case 'cache-community-result': {
+          const index = history.findIndex(item => item.id === message.result.id);
+          if (index < 0 || JSON.stringify(history[index]) !== message.expected) return { ok: true, result: null };
+          history[index] = structuredClone(message.result); changed();
+          return { ok: true, result: message.result };
+        }
         case 'set-result-market': {
           history = history.map(item=>item.id === message.id ? {...item,identity:{...item.identity,market:message.market,marketSource:'manual' as const}} : item);
           changed();
@@ -446,7 +462,36 @@ try {
   await tab(roots[1]!, 2);
   await until(() => roots[1]!.querySelectorAll('.account-select').length === 1, 'Saved accounts remain available after reopening Settings');
   console.log('Actual account-management UI: hidden emails, shared switching/add/remove, gesture consent, confirmation, reopening, translations and Luna selection verified');
+
+  settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local');
+  const original: HistoryResult = { ...fixtureResult, id: 'community-cache', outcome: 'uncertain', basis: 'insufficient', title: 'More information needed',
+    identity: { ...fixtureResult.identity, brand: 'Fixture Maker' }, photos: ['private-photo'], input: { text: 'Original label' } };
+  history = [original]; changed();
+  communityReplyPage = { more: false, replies: [{ id: '12345678-1234-4234-8234-123456789abc', productName: original.identity.name,
+    brand: 'Fixture Maker', barcode: '', market: 'DE', variant: '', question: 'Is it vegan?', reply: 'Our drink is vegan.', repliedOn: '2026-01-10',
+    claim: 'vegan', scope: 'whole_product', sourceUrl: '', reviewedAt: '2026-01-11T00:00:00Z', evidencePublic: false, match: 'name' }] };
+  await tab(roots[0]!, 1); await tab(roots[1]!, 1);
+  await until(() => historyItems(roots[0]!).length === 1, 'The community fixture appears in history');
+  await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.history-item')!.click(); });
+  await until(() => history[0]?.basis === 'manufacturer' && roots[1]!.textContent?.includes('Manufacturer says vegan') === true, 'Opening a shared reply persists the verdict and refreshes the other window’s history');
+  assert.deepEqual(history[0]?.photos, original.photos); assert.deepEqual(history[0]?.input, original.input);
+  failCommunityLookup = true;
+  await tab(roots[0]!, 1);
+  await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.history-item')!.click(); });
+  await until(() => roots[0]!.textContent?.includes('Could not load replies') === true, 'A failed refresh is visible');
+  assert(roots[0]!.querySelector('.verdict')?.textContent?.includes('Manufacturer says vegan'), 'The cached verdict survives a failed lookup');
+  const refreshReplies = async () => { await act(async () => { [...roots[0]!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Refresh replies')!.click(); }); };
+  failCommunityLookup = false; communityReplyPage = { replies: [], more: true };
+  await refreshReplies();
+  await until(() => roots[0]!.textContent?.includes('More than 50 replies match') === true, 'Incomplete evidence is visible');
+  assert.equal(history[0]?.basis, 'manufacturer', 'Partial replies do not erase the cached verdict');
+  communityReplyPage = { replies: [], more: false };
+  await refreshReplies();
+  await until(() => history[0]?.outcome === 'uncertain' && roots[1]!.textContent?.includes('More information needed') === true, 'A complete empty lookup restores the original verdict in both histories');
+  assert.equal(history[0]?.communityOriginal, undefined);
+  console.log('Community cache UI: persistence, shared history, failed/partial refreshes, withdrawal and private local inputs verified');
 } finally {
+  globalThis.fetch = originalFetch;
   await act(async () => { roots.forEach(root => render(null, root)); });
   assert.equal(messageListeners.size, 0, 'Unmount removes runtime listeners');
   assert.equal(storageListeners.size, 0, 'Unmount removes storage listeners');

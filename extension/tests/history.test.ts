@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { editableInput, historyExport, type HistoryResult } from '../src/history';
+import { applyCommunityHistory, withoutCommunityHistory } from '../src/community-history';
+import type { CommunityReply } from '@vegsnap/core';
 
 function result(photos?: string[]): HistoryResult {
   return {
@@ -80,4 +82,21 @@ test('editing detected countries preserves the fallback while manual corrections
   const manual: HistoryResult = {...detected,identity:{...detected.identity,market:'FI',marketSource:'manual'}};
   expect(editableInput(manual).market).toBe('FI');
   expect(editableInput(manual).autoMarket).toBe(false);
+});
+
+test('cached replies retain local input and photos, refresh from the original analysis, and stay out of exports', () => {
+  const original = { ...result(['private-photo']), input: { text: 'Original label' } };
+  const reply: CommunityReply = { id: '12345678-1234-4234-8234-123456789abc', productName: 'Example', brand: 'Maker', barcode: '',
+    market: 'DE', variant: '', question: 'Is it vegan?', reply: 'Our product is vegan.', repliedOn: '2026-01-10', claim: 'vegan',
+    scope: 'whole_product', sourceUrl: '', reviewedAt: '2026-01-11T00:00:00Z', evidencePublic: false, match: 'name' };
+  const now = new Date('2026-01-12T00:00:00Z');
+  const cached = applyCommunityHistory(original, [reply], 'en', now);
+  expect(cached.outcome).toBe('vegan'); expect(cached.basis).toBe('manufacturer');
+  expect(cached.photos).toEqual(original.photos); expect(cached.input).toEqual(original.input);
+  expect(cached.checkedAt).toBe(original.checkedAt);
+  expect(applyCommunityHistory(cached, [reply], 'en', now)).toEqual(cached);
+  expect(applyCommunityHistory(cached, [{ ...reply, claim: 'not_vegan' }], 'en', now).outcome).toBe('not_vegan');
+  expect(applyCommunityHistory(cached, [], 'en', now)).toEqual(original);
+  expect(withoutCommunityHistory(cached)).toEqual(original);
+  expect(historyExport([cached])).toEqual(historyExport([original]));
 });

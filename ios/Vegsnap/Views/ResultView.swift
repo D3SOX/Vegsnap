@@ -5,7 +5,7 @@ struct ResultView: View {
     @State private var community = CommunityRepliesState()
     @State private var communityRefresh = 0
     var currentSaved: SavedCheck { store.history.first(where: { $0.id == saved.id }) ?? saved }
-    var result: CheckResult { community.displayResult(currentSaved.result, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
+    var result: CheckResult { community.displayResult(currentSaved, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
     @State private var market = ""
     @State private var findingFilter = "all"
     @State private var query = ""
@@ -126,6 +126,9 @@ struct ResultView: View {
             .onChange(of: saved.result.identity.market) { _, value in market = value }
             .task(id: CommunityRequestKey(id: saved.id, identity: saved.result.identity, offline: store.settings.offline, refresh: communityRefresh, locale: store.locale)) {
                 await community.load(saved.result, engine: store.engine, locale: store.locale, offline: store.settings.offline)
+            }
+            .task(id: try? result.communityCacheKey()) {
+                do { try store.cacheCommunityResult(saved, result: result) } catch { store.report(error) }
             }
             .sheet(isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { if let message { MessageView(message: message) } }
             .sheet(isPresented: Binding(get: { photo != nil }, set: { if !$0 { photo = nil } })) { if let photo { PhotoReview(store: store, name: photo) } }

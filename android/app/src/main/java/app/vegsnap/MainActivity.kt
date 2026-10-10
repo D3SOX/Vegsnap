@@ -626,10 +626,16 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
     val settings by model.settings.collectAsState()
     val sendToAI = canSendBarcodeToAI(originalResult)
     val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
-    val localizedResult = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
-    val communityState = rememberCommunityReplies(localizedResult, settings.offline)
+    val communityState = rememberCommunityReplies(originalResult, settings.offline)
     val communityBaseUrl = remember(context) { JSONObject(context.assets.open("community-service.json").bufferedReader().use { it.readText() }).optString("baseUrl") }
-    val result = if (settings.offline || communityState == null) localizedResult else applyCommunityReplies(localizedResult, communityState.appliedReplies(), locale, communityBaseUrl)
+    val cachedResult = cachedCommunityResult(originalResult, communityState?.hidden ?: HiddenCommunityReplies(context).ids())
+    val communityResult = if (settings.offline || communityState?.page == null || communityState.page?.more == true) cachedResult else
+        applyCommunityReplies(originalResult, communityState.appliedReplies(), locale, communityBaseUrl, communityState.retrievedAt)
+    LaunchedEffect(originalResult.toString(), communityResult.toString()) {
+        if (communityResult.toString() != originalResult.toString()) model.cacheCommunityResult(originalResult, communityResult)
+    }
+    val localizedResult = remember(originalResult.toString(), locale) { localizeResultTerms(context, originalResult, locale) }
+    val result = remember(communityResult.toString(), locale) { localizeResultTerms(context, communityResult, locale) }
     val resultId = result.getString("id")
     val scroll = remember(resultId) { LazyListState() }
     val scope = rememberCoroutineScope()

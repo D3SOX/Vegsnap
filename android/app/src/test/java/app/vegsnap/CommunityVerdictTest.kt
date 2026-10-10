@@ -24,6 +24,27 @@ class CommunityVerdictTest {
         for (item in listOf(reply.copy(scope="ingredients"),reply.copy(scope="processing"),reply.copy(claim="inconclusive"),reply.copy(match="candidate")))
             assertSame(original,applyCommunityReplies(original,listOf(item),"en","https://community.example"))
     }
+    @Test fun cachedReplyCanBeRefreshedWithoutKeepingWithdrawnEvidence() {
+        val original = result().put("id", "saved-check").put("checkedAt", "2026-01-01T00:00:00Z")
+        val cached = JSONObject(applyCommunityReplies(original, listOf(reply), "en", "https://community.example").toString())
+        assertEquals("Manufacturer says vegan", cached.getString("title"))
+        val restored = applyCommunityReplies(cached, emptyList(), "en", "https://community.example")
+        assertEquals("uncertain", restored.getString("outcome"))
+        assertEquals(original.toString(), restored.toString())
+        val refreshed = applyCommunityReplies(cached, listOf(reply), "en", "https://community.example")
+        assertEquals(1, refreshed.getJSONArray("evidence").length())
+        assertEquals(1, refreshed.getJSONArray("warnings").length())
+        val negative = applyCommunityReplies(cached, listOf(reply.copy(claim = "not_vegan")), "en", "https://community.example")
+        assertEquals("not_vegan", negative.getString("outcome"))
+    }
+    @Test fun blockingAReplyAlsoInvalidatesOtherCachedScansWithoutANetworkLookup() {
+        val cached = applyCommunityReplies(result(), listOf(reply), "en", "https://community.example")
+        val restored = cachedCommunityResult(JSONObject(cached.toString()), setOf(reply.id))
+        assertEquals("uncertain", restored.getString("outcome"))
+        assertEquals(0, restored.getJSONArray("evidence").length())
+        assertSame(cached, cachedCommunityResult(cached, emptySet()))
+        assertSame(cached, cachedCommunityResult(cached, setOf("unrelated-reply")))
+    }
     @Test fun negativeAndOpposingClaimsAreVisible() {
         val negative = reply.copy(claim="not_vegan")
         assertEquals("Manufacturer says not vegan",applyCommunityReplies(result(),listOf(negative),"en","https://community.example").getString("title"))

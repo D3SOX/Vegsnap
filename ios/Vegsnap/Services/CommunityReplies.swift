@@ -20,13 +20,23 @@ struct CommunityRequestKey: Equatable { var id: String; var identity: Identity; 
     var loading = false
     var failure: String?
     var confirmed: Set<String> = []
+    private var retrievedAt = ISO8601DateFormatter().string(from: Date())
     private var identity: Identity?
     private var requestID = UUID()
 
     func displayResult(_ original: CheckResult, engine: CoreEngine, locale: String, hidden: Set<String>) -> CheckResult {
         guard identity == original.identity, let page else { return original }
-        struct Arguments: Encodable { var result: CheckResult; var page: CommunityReplyPage; var locale: String; var hidden: Set<String>; var confirmed: Set<String> }
-        return (try? engine.call("communityVerdict", Arguments(result: original, page: page, locale: locale, hidden: hidden, confirmed: confirmed))) ?? original
+        struct Arguments: Encodable { var result: CheckResult; var page: CommunityReplyPage; var locale: String; var hidden: Set<String>; var confirmed: Set<String>; var retrievedAt: String }
+        return (try? engine.call("communityVerdict", Arguments(result: original, page: page, locale: locale, hidden: hidden, confirmed: confirmed, retrievedAt: retrievedAt))) ?? original
+    }
+
+    func displayResult(_ saved: SavedCheck, engine: CoreEngine, locale: String, hidden: Set<String>) -> CheckResult {
+        let blocked = saved.communityOriginal != nil && saved.result.evidence.contains { evidence in
+            evidence.id.hasPrefix("community-") && hidden.contains(String(evidence.id.dropFirst("community-".count)))
+        }
+        let cached = blocked ? saved.originalAnalysis : saved.result
+        guard identity == saved.result.identity, let page, !page.more else { return cached }
+        return displayResult(saved.originalAnalysis, engine: engine, locale: locale, hidden: hidden)
     }
 
     func load(_ original: CheckResult, engine: CoreEngine, locale: String, offline: Bool) async {
@@ -44,7 +54,9 @@ struct CommunityRequestKey: Equatable { var id: String; var identity: Identity; 
             let data = try await Network.get(target, limit: 4_000_000)
             try Task.checkCancellation()
             guard requestID == request else { return }
-            page = try engine.call("communityReplies", String(decoding: data, as: UTF8.self))
+            let loaded: CommunityReplyPage = try engine.call("communityReplies", String(decoding: data, as: UTF8.self))
+            retrievedAt = ISO8601DateFormatter().string(from: Date())
+            page = loaded
         } catch { if !Task.isCancelled, requestID == request { failure = error.localizedDescription } }
     }
 }
