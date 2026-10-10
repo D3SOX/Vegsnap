@@ -607,7 +607,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 queueStore.withHistoryMutation {
                     check(queueStore.clearInactiveHistoryRetries(id))
                     val saved = database.history().find(id) ?: return@withHistoryMutation null
-                    val result = JSONObject(saved.json)
+                    val result = withoutCommunityReplies(JSONObject(saved.json))
                     result.getJSONObject("identity").put("market", market).put("marketSource", "manual")
                     saved.copy(json = result.toString()).also { database.history().save(it) }
                 }
@@ -616,6 +616,15 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             true
         } catch (error: CancellationException) { throw error }
         catch (_: Exception) { update { it.copy(message = R.string.history_error) }; false }
+    }
+    internal suspend fun cacheCommunityResult(source: JSONObject, result: JSONObject) {
+        try {
+            val entry = withContext(Dispatchers.IO) { database.history().cacheCommunityResult(source, result) } ?: return
+            update {
+                if (it.result == source.toString()) it.copy(result = entry.json) else it
+            }
+        } catch (error: CancellationException) { throw error }
+        catch (_: Exception) { update { it.copy(message = R.string.history_error) } }
     }
     fun delete(id: String) = historyOperation {
         queueStore.deleteHistoryRetries(setOf(id), { ApplicationAnalysisQueue.cancelRunning?.invoke(it) }) {

@@ -4,12 +4,41 @@ import java.time.Instant
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Current community evidence applies to a display copy, leaving saved scans untouched. */
+private val communityVerdictFields = listOf("outcome", "basis", "title", "summary", "questions", "evidence", "warnings")
+
+/** Keep the original analysis so refreshed or blocked replies can replace cached evidence. */
+internal fun withoutCommunityReplies(source: JSONObject): JSONObject {
+    val original = source.optJSONObject("communityOriginal") ?: return source
+    return JSONObject(source.toString()).apply {
+        remove("communityOriginal")
+        for (field in communityVerdictFields) {
+            remove(field)
+            if (original.has(field)) put(field, original.get(field))
+        }
+    }
+}
+
+/** Globally blocking a reply invalidates its cache on every scan, even without a fresh lookup. */
+internal fun cachedCommunityResult(source: JSONObject, hidden: Set<String>): JSONObject {
+    if (!source.has("communityOriginal")) return source
+    val evidence = source.optJSONArray("evidence") ?: return source
+    val blocked = (0 until evidence.length()).any { index ->
+        val id = evidence.getJSONObject(index).optString("id")
+        id.startsWith("community-") && id.removePrefix("community-") in hidden
+    }
+    return if (blocked) withoutCommunityReplies(source) else source
+}
+
+/** Current community evidence can be saved locally without replacing the original analysis. */
 internal fun applyCommunityReplies(source: JSONObject, replies: List<CommunityReply>, locale: String, baseUrl: String,
     now: Instant = Instant.now()): JSONObject {
+    val original = withoutCommunityReplies(source)
     val eligible = replies.filter { it.scope == "whole_product" && it.claim in setOf("vegan", "not_vegan") && it.match != "candidate" }
-    if (eligible.isEmpty()) return source
-    val result = JSONObject(source.toString())
+    if (eligible.isEmpty()) return original
+    val result = JSONObject(original.toString())
+    result.put("communityOriginal", JSONObject().apply {
+        for (field in communityVerdictFields) if (original.has(field)) put(field, original.get(field))
+    })
     val positive = eligible.any { it.claim == "vegan" }
     val negative = eligible.any { it.claim == "not_vegan" }
     val findings = result.optJSONArray("findings") ?: JSONArray()

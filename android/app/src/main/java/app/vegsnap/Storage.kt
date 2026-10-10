@@ -26,6 +26,8 @@ interface HistoryDao {
     @Query("SELECT id FROM checks") suspend fun ids(): List<String>
     @Query("SELECT * FROM checks WHERE id = :id") suspend fun find(id: String): HistoryEntry?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun save(entry: HistoryEntry)
+    @Query("UPDATE checks SET json = :json WHERE id = :id AND json = :expectedJson")
+    suspend fun updateCommunityResult(id: String, json: String, expectedJson: String): Int
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveAll(entries: List<HistoryEntry>)
     @Query("DELETE FROM checks WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM checks") suspend fun clear()
@@ -126,7 +128,7 @@ class CredentialStore(context: Context, namespace: String = "api") {
 object HistoryTransfer {
     fun export(entries: List<HistoryEntry>, locale: String = "en"): String = JSONObject().put("schemaVersion", 1)
         .put("exportedAt", java.time.Instant.now().toString())
-        .put("results", JSONArray(entries.map { publicResult(JSONObject(it.json), locale) })).toString(2)
+        .put("results", JSONArray(entries.map { publicResult(withoutCommunityReplies(JSONObject(it.json)), locale) })).toString(2)
     private fun publicResult(result: JSONObject, locale: String): JSONObject {
         val clean = JSONObject()
         listOf("schemaVersion", "id", "outcome", "basis", "title", "summary", "category", "identity", "findings", "evidence", "questions", "warnings", "crossContact", "companyConcerns", "checkedAt", "usedAI", "aiStatus", "webSearchStatus")

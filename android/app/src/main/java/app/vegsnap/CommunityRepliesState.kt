@@ -14,6 +14,7 @@ internal class CommunityRepliesState(val original: CommunityLookup) {
     var request by mutableIntStateOf(1)
     var loading by mutableStateOf(false)
     var page by mutableStateOf<CommunityReplyPage?>(null)
+    var retrievedAt by mutableStateOf(java.time.Instant.now())
     var error by mutableStateOf<Int?>(null)
     var hidden by mutableStateOf<Set<String>>(emptySet())
     var confirmed by mutableStateOf<Set<String>>(emptySet())
@@ -51,7 +52,11 @@ internal fun rememberCommunityRepliesState(result: JSONObject, offline: Boolean,
             state.editing = true; state.error = R.string.community_invalid_lookup; return@LaunchedEffect
         }
         state.loading = true
-        try { state.page = loadReplies(state.submitted) }
+        try {
+            val page = loadReplies(state.submitted)
+            state.retrievedAt = java.time.Instant.now()
+            state.page = page
+        }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { state.error = R.string.community_load_failed }
         finally { state.loading = false }
