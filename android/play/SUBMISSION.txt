@@ -4,7 +4,7 @@ Prepared application ID: app.vegsnap (keep this existing ID).
 Listing: listing.json contains English and German descriptions and release notes.
 Graphics: website/images/store/android/icon.png (512×512), feature-graphic.png
 (1024×500), and three portrait screenshots. Dark variants are included.
-Public support email: gplay@d3sox.me (confirmed by the owner).
+Public support contact: https://vegsnap.app/#play-test (protected email link).
 Price/category proposal: free / Shopping. The owner confirms audience and regions.
 
 AUTOMATED RELEASE UPDATES
