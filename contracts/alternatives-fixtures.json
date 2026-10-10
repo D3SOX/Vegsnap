@@ -1,0 +1,37 @@
+{
+  "input": { "query": "chocolate", "store": "REWE", "category": "food", "market": "DE", "locale": "en", "excludeBarcode": "4006381333931" },
+  "document": { "products": [
+    { "code": "12345678", "product_name": "Oat chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "Other shop", "ingredients_text": "oats, cocoa" },
+    { "code": "23456789", "product_name": "Dark chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "REWE, dm", "ingredients_text": "cocoa, sugar" },
+    { "code": "23456789", "product_name": "Dark chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "REWE" },
+    { "code": "34567890", "product_name": "Milk chocolate", "brands": "Dairy", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "ingredients_text": "milk, cocoa" },
+    { "code": "45678901", "product_name": "Foreign chocolate", "labels_tags": ["en:vegan"], "countries_tags": ["en:sweden"] },
+    { "code": "56789012", "product_name": "Plant chocolate", "labels_tags": ["en:vegetarian"], "countries_tags": ["en:germany"] },
+    { "code": "67890123", "product_name": "Conflicting chocolate", "labels_tags": ["en:vegan"], "ingredients_analysis_tags": ["en:non-vegan"] },
+    { "code": "4006381333931", "product_name": "Original chocolate", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"] },
+    { "code": "78901234", "product_name": "Unknown-country chocolate", "labels_tags": ["en:vegan"], "stores": "REWE City" }
+  ] },
+  "expectedCodes": ["23456789", "12345678", "78901234"],
+  "veganEvidence": [
+    {"quote": "This chocolate is vegan.", "accepted": true},
+    {"quote": "Suitable for a vegan diet.", "accepted": true},
+    {"quote": "Vegane Schokolade mit Haferdrink.", "accepted": true},
+    {"quote": "Für eine vegane Ernährung geeignet.", "accepted": true},
+    {"quote": "This is vegan and does not contain dairy.", "accepted": true},
+    {"quote": "This chocolate isn't vegan.", "accepted": false},
+    {"quote": "This chocolate isn’t vegan.", "accepted": false},
+    {"quote": "This chocolate doesn't qualify as vegan.", "accepted": false},
+    {"quote": "This chocolate is not considered vegan.", "accepted": false},
+    {"quote": "Not suitable for vegans.", "accepted": false},
+    {"quote": "Not suitable for a vegan diet.", "accepted": false},
+    {"quote": "Cannot be described as vegan.", "accepted": false},
+    {"quote": "This is never suitable for a vegan diet.", "accepted": false},
+    {"quote": "Nicht für eine vegane Ernährung geeignet.", "accepted": false},
+    {"quote": "Kein geeigneter veganer Ersatz.", "accepted": false},
+    {"quote": "Non-vegan chocolate.", "accepted": false},
+    {"quote": "Vegan: no.", "accepted": false},
+    {"quote": "Vegan? Nein.", "accepted": false},
+    {"quote": "Vegan = false.", "accepted": false},
+    {"quote": "Plant-based chocolate.", "accepted": false}
+  ]
+}

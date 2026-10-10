@@ -55,7 +55,7 @@ internal class BrowseRequests(private val now: () -> Long = { System.nanoTime() 
         JSONObject(result.toString())
     }
 }
-private val browseRequests = BrowseRequests()
+internal val browseRequests = BrowseRequests()
 
 internal class BrowseRepository(
     private val http: OkHttpClient = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
@@ -64,6 +64,20 @@ internal class BrowseRepository(
     private val endpoint: (BrowseSource) -> HttpUrl = { it.root.toHttpUrl() },
     private val offlineDatabase: OfflineDatabase? = null,
 ) {
+    internal suspend fun alternatives(input: AlternativeQuery, evaluator: Evaluator): List<VeganAlternative> = withContext(Dispatchers.IO) {
+        validateAlternativeQuery(input)
+        val source = alternativeSource(input.category)
+        val items = mutableListOf<VeganAlternative>()
+        for (storeOnly in if (input.store.isNotBlank()) listOf(true, false) else listOf(false)) {
+            val url = alternativeUrl(input, endpoint(source), storeOnly)
+            try {
+                val document = requests.search(url.toString()) { request(url) }
+                items += parsePublicAlternatives(document, input, evaluator)
+            } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) { if (!storeOnly && items.isEmpty()) throw error }
+        }
+        rankAlternatives(items, input)
+    }
     suspend fun search(source: BrowseSource, query: String, cursor: Int = 0, locale: String = "en", offline: Boolean = false): BrowsePage = withContext(Dispatchers.IO) {
         val term = query.trim()
         require(term.length in 2..200 && cursor in 0..10_000)

@@ -671,6 +671,10 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                             enabled = failedRetry == null, source = result.getJSONObject("identity").optString("marketSource").takeIf { it.isNotBlank() }) { model.updateProductMarket(resultId, it) }
                         HistoryPhotoStrip(result.getString("id"), model)
                         Text(result.getString("summary"))
+                        if (result.optString("outcome") == "not_vegan") AlternativeSearchButton(model,
+                            initialQuery = alternativeQueryForProduct(result.getJSONObject("identity").optString("name"), result.getJSONObject("identity").optString("brand"),
+                                (0 until findings.length()).map { findings.getJSONObject(it) }.filter { it.optString("status") == "animal" }.map { it.optString("term") }), category = result.optString("category", "food"),
+                            market = result.getJSONObject("identity").getString("market"), barcode = result.getJSONObject("identity").optString("barcode"))
                         val aiStatus = result.optString("aiStatus")
                         val aiStatusText = when (aiStatus) {
                             "not_needed" -> R.string.ai_status_not_needed

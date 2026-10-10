@@ -327,3 +327,23 @@
 "Detected from database" = "Detected from database";
 "Detected from packaging (AI — check the label)" = "Detected from packaging (AI — check the label)";
 "Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence." = "Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.";
+
+"Vegan alternatives" = "Vegan alternatives";
+"Product or product type" = "Product or product type";
+"Store name (optional)" = "Store name (optional)";
+"Find alternatives" = "Find alternatives";
+"Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there." = "Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there.";
+"Searching public records…" = "Searching public records…";
+"AI is researching alternatives…" = "AI is researching alternatives…";
+"Product search failed. Check your connection and try again." = "Product search failed. Check your connection and try again.";
+"AI research unavailable. Public matches have been kept." = "AI research unavailable. Public matches have been kept.";
+"No supported alternatives found. Try a broader product type or another store." = "No supported alternatives found. Try a broader product type or another store.";
+"Alternative search needs an internet connection. Turn off offline mode to search." = "Alternative search needs an internet connection. Turn off offline mode to search.";
+"Store availability unknown" = "Store availability unknown";
+"AI research — review the source" = "AI research — review the source";
+"Product country unconfirmed" = "Product country unconfirmed";
+"Open product source" = "Open product source";
+"Vegan evidence" = "Vegan evidence";
+"Community records can be outdated. Check the current package and your branch’s stock. AI research uses your connected provider and allowance; providers without web search keep public results." = "Community records can be outdated. Check the current package and your branch’s stock. AI research uses your connected provider and allowance; providers without web search keep public results.";
+"Listed at %@ — likely available" = "Listed at %@ — likely available";
+"Vegan according to database label" = "Vegan according to database label";

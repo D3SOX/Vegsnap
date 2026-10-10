@@ -26,7 +26,7 @@ function validIngredientList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= 100 && value.every(term => typeof term === 'string' && Boolean(term.trim()) && term.length <= 300);
 }
 export function validateAIExtraction(value: unknown, options: { allowResearch?: boolean } = {}): AIExtraction {
-  const keys = ['text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'packaging', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
+  const keys = ['alternatives', 'text', 'ingredients', 'complete', 'category', 'name', 'brand', 'barcode', 'packaging', 'ingredientAssessments', 'labelObservations', 'webClaims', 'webCompositions', 'contact', 'companyAssessment', ...(options.allowResearch ? ['research'] : [])];
   if (!object(value) || Object.keys(value).some(key => !keys.includes(key)) ||
     typeof value.text !== 'string' || value.text.length > 30_000 || typeof value.complete !== 'boolean' ||
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
@@ -40,6 +40,12 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
     throw new Error('AI returned invalid packaging clues.');
   }
   if (value.ingredients !== undefined && !validIngredientList(value.ingredients)) throw new Error('AI returned invalid parsed ingredients.');
+  if (value.alternatives !== undefined && (!Array.isArray(value.alternatives) || value.alternatives.length > 5 || value.alternatives.some(item =>
+    !object(item) || Object.keys(item).some(key => !['name', 'brand', 'url', 'quote', 'store', 'storeUrl', 'storeQuote'].includes(key)) ||
+    ['name', 'brand', 'url', 'quote'].some(key => typeof item[key] !== 'string' || !item[key].trim()) ||
+    Object.entries(item).some(([key, field]) => typeof field !== 'string' || field.length > (key.endsWith('Url') || key === 'url' ? 2000 : key.toLowerCase().endsWith('quote') ? 1000 : 300))))) {
+    throw new Error('AI returned invalid alternatives.');
+  }
   if (!value.text.trim() && value.complete) throw new Error('AI marked an empty composition as complete.');
   if (value.ingredientAssessments !== undefined && (!Array.isArray(value.ingredientAssessments) || value.ingredientAssessments.length > 100 ||
     value.ingredientAssessments.some(item => !object(item) || Object.keys(item).some(key => !['term', 'translatedTerm', 'status', 'explanation'].includes(key)) ||
@@ -197,12 +203,13 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       }
       if ((input.text?.length ?? 0) > 30_000) throw new Error('Selected text exceeds 30,000 characters.');
       const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
-        { type: 'text', text: JSON.stringify({ text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
+        { type: 'text', text: JSON.stringify({ alternativeSearch: input.alternativeSearch, text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
         ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
       ];
       const requestBody = supportsWebSearch ? {
         model: config.model, stream: false, store: false, instructions: EXTRACTION_PROMPT, max_output_tokens: 6000,
         tools: input.autoMarket ? undefined : [{ type: 'web_search' }],
+        ...(input.alternativeSearch ? { tool_choice: 'required' } : {}),
         max_tool_calls: input.autoMarket ? undefined : 3, include: input.autoMarket ? undefined : ['web_search_call.action.sources'],
         input: [{ role: 'user', content: content.map(part => part.type === 'text'
           ? { type: 'input_text', text: part.text } : { type: 'input_image', image_url: part.image_url.url }) }],
@@ -222,6 +229,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       const body = await send(requestBody);
       if (supportsWebSearch) {
         const extracted = parseResponsesExtraction(body);
+        if (input.alternativeSearch) return extracted;
         const suppliedCode = normalizeBarcode(input.barcode ?? '');
         const extractedCode = normalizeBarcode(extracted.barcode ?? '');
         if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {

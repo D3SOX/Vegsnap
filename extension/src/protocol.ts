@@ -1,4 +1,4 @@
-import type { CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
+import type { AlternativeSearch, CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
 import { countryCode } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
@@ -23,6 +23,8 @@ export type Request =
   | { type: 'set-api-token'; endpoint: string; token: string }
   | { type: 'set-store'; store: string; enabled: boolean }
   | { type: 'check'; input: CheckInput; requestId?: string }
+  | { type: 'research-alternatives'; input: AlternativeSearch; requestId: string }
+  | { type: 'cancel-alternative-research'; requestId: string }
   | { type: 'background-check'; barcode: string }
   | { type: 'open-check'; barcode?: string; name?: string; brand?: string; sourceUrl?: string }
   | { type: 'pending'; id: string }

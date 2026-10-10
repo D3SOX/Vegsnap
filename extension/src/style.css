@@ -37,3 +37,5 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 @media(prefers-color-scheme:dark){.ingredient-status{color:#e5ce78;background:#443700}.ingredient-status.plant{color:#ace5ab;background:#173e20}.ingredient-status.animal{color:#ffb3b7;background:#641b23}}
 
 .manufacturer-contact .quote{white-space:pre-wrap}
+
+.alternative-source{display:inline-flex;align-items:center;min-height:44px}

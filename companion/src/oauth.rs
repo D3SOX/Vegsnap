@@ -1550,16 +1550,24 @@ fn product_request(
     required: bool,
     automatic_country: bool,
 ) -> Value {
+    let alternatives = content
+        .first()
+        .and_then(|part| part["text"].as_str())
+        .and_then(|text| serde_json::from_str::<Value>(text).ok())
+        .is_some_and(|input| input["alternativeSearch"].is_object());
     let mut body = json!({"model":model,"store":false,"stream":true,
         "instructions":if required { format!("{instructions}\n{research_prompt}") } else { instructions.to_string() },
         "input":[{"role":"user","content":content}]});
     // Automatic extraction must resolve packaging and barcode clues before web research.
-    if required || !automatic_country {
+    if required || alternatives || !automatic_country {
         body["tools"] = json!([{"type":"web_search"}]);
         body["include"] = json!(["web_search_call.action.sources"]);
     }
-    if required {
+    if required || alternatives {
         body["tool_choice"] = json!("required");
+    }
+    if alternatives {
+        body["max_tool_calls"] = json!(3);
     }
     body
 }

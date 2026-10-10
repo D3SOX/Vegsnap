@@ -11,11 +11,12 @@ struct BrowseView: View {
     @State private var busy = false
     @State private var failure: String?
     @State private var searchTask: Task<Void, Never>?
-    @State private var service = BrowseService()
+    @State private var service = BrowseService.shared
     var body: some View {
         List {
             Section {
                 Picker(L("Source"), selection: $source) { ForEach(BrowseSource.allCases) { Text($0.name).tag($0) } }
+                NavigationLink(L("Vegan alternatives")) { AlternativesView(store: store) }
                 TextField(L("Product or company"), text: $query).submitLabel(.search).onSubmit { search() }.accessibilityIdentifier("browseQuery")
                 Button { search() } label: { Label(L("Search"), systemImage: "magnifyingglass") }.disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || busy)
             } footer: { Text(store.settings.offline ? L("Searching the partial offline snapshot. Missing records do not establish a product’s vegan status.") : L("Searches use public databases, never AI. Review the original source and market.")) }

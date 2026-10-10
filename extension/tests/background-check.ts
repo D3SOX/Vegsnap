@@ -3,6 +3,7 @@ import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
 import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
 import hostedConfig from '../../data/hosted-ai.json';
+import { researchVeganAlternatives, validateAlternativeSearch } from '../../packages/core/src/alternatives';
 import { countryCode } from '../../packages/core/src/market';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
@@ -24,6 +25,9 @@ const calls: CheckOptions[] = [];
 const offlineIndex: NonNullable<CheckOptions['offlineProducts']> = { lookup: () => null };
 let useRealEvaluator = false;
 let providerExtractions = 0;
+const providerInputs: CheckInput[] = [];
+let holdAlternative = false;
+let pendingAlternativeSignal: AbortSignal | undefined;
 const offlineImports: string[] = [];
 mock.module('../src/offline', () => ({ offlineLibrary: () => ({ index: async () => offlineIndex, info: async () => [],
   import: async (text: string) => { offlineImports.push(text); }, remove: async () => {} }) }));
@@ -112,9 +116,13 @@ mock.module('@vegsnap/core', () => ({
     if (hostedExtractionFails) throw new Error('Hosted attempt failed');
     return { text: 'oats', complete: true, category: 'food' };
   } }; },
-  acceptsImages,
+  acceptsImages, researchVeganAlternatives, validateAlternativeSearch,
   checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return evaluateProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
-  createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { extract: async () => { providerExtractions++; return { text: 'test', complete: false, category: 'other' }; } }; },
+  createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { supportsWebSearch: true, extract: async (input: CheckInput, signal?: AbortSignal) => { providerInputs.push(input); providerExtractions++;
+    if (holdAlternative) {
+      pendingAlternativeSignal = signal; signal?.throwIfAborted();
+      await new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true }));
+    } return { text: 'test', complete: false, category: 'other' }; } }; },
   validateAIExtraction: (value: unknown) => value,
   parseAIExtraction: () => ({ text: '', complete: false, category: 'other' }),
 }));
@@ -799,3 +807,35 @@ assert(lateCacheReply.ok); assert.equal(lateCacheReply.result, null, 'Late repli
 saved.splice(0);
 const deletedCacheReply = await listener!(cacheMessage, firefoxTrusted);
 assert(deletedCacheReply.ok); assert.equal(deletedCacheReply.result, null, 'Late replies cannot recreate deleted history');
+
+// Alternatives use the existing trusted AI boundary without adding search activity to history.
+local.settings = { ...defaultSettings, connection: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'test-model' };
+dataAllowed = true; deniedOrigins.clear();
+const alternativeInput = { query: 'chocolate', store: 'REWE', category: 'food', market: 'DE', locale: 'en' };
+const historyBeforeAlternatives = saved.length;
+assert.equal((await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, page)).ok, false);
+const alternatives = await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted);
+assert.equal(alternatives.ok, true);
+assert.deepEqual(alternatives.result, [], 'Unsupported AI claims are omitted');
+assert.deepEqual(providerInputs.at(-1), { name: 'chocolate', category: 'food', market: 'DE', locale: 'en', alternativeSearch: { query: 'chocolate', store: 'REWE' } });
+assert.equal(saved.length, historyBeforeAlternatives);
+assert.equal((await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: { ...alternativeInput, query: 'x' } }, firefoxTrusted)).ok, false);
+holdAlternative = true;
+const cancellationId = crypto.randomUUID();
+const ongoingResearch = listener!({ type: 'research-alternatives', requestId: cancellationId, input: alternativeInput }, firefoxTrusted);
+for (let tries = 0; tries < 50 && !pendingAlternativeSignal; tries++) await new Promise(resolve => setTimeout(resolve, 0));
+assert(pendingAlternativeSignal, 'The provider receives a cancellation signal');
+assert.equal((await listener!({ type: 'cancel-alternative-research', requestId: cancellationId }, page)).ok, false);
+assert.equal((await listener!({ type: 'cancel-alternative-research', requestId: cancellationId }, firefoxTrusted)).ok, true);
+assert.equal(pendingAlternativeSignal.aborted, true);
+assert.equal((await ongoingResearch).ok, false);
+pendingAlternativeSignal = undefined;
+const revokedResearch = listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted);
+for (let tries = 0; tries < 50 && !pendingAlternativeSignal; tries++) await new Promise(resolve => setTimeout(resolve, 0));
+assert(pendingAlternativeSignal);
+dataAllowed = false; permissionsRemovedListener!();
+assert.equal((pendingAlternativeSignal as AbortSignal).aborted, true, 'Permission revocation aborts background research even without an open UI');
+assert.equal((await revokedResearch).ok, false);
+holdAlternative = false;
+assert.equal((await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted)).ok, false, 'AI research checks revoked sharing at the network boundary');
+console.log('Alternative background: trusted routing, bounded public input, no history writes and revoked sharing verified');

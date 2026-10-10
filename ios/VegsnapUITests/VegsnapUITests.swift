@@ -50,6 +50,31 @@ import UIKit
         app.terminate(); launch(reset: false)
         selectTab("History"); XCTAssertTrue(app.staticTexts["Honey granola"].waitForExistence(timeout: 10))
     }
+    func testAlternativeSearchIsAvailableFromBrowseAndNonVeganResultsOffline() {
+        launch()
+        selectTab("Browse")
+        app.buttons["Vegan alternatives"].tap()
+        XCTAssertTrue(app.textFields["alternativeQuery"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.textFields["alternativeStore"].exists)
+        XCTAssertFalse(app.buttons["findAlternatives"].isEnabled)
+        XCTAssertTrue(app.staticTexts["Alternative search needs an internet connection. Turn off offline mode to search."].exists)
+        capture("alternatives-light")
+        rotate(.landscapeLeft); capture("alternatives-landscape"); rotate(.portrait)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        selectTab("Check")
+        app.textFields["productName"].tap(); app.textFields["productName"].typeText("Honey granola")
+        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        let text = app.descendants(matching: .any).matching(identifier: "ingredients").firstMatch
+        reveal(text, forTap: true); text.tap(); text.typeText("Ingredients: oats, honey, salt")
+        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        reveal(app.buttons["checkProduct"], forTap: true); app.buttons["checkProduct"].tap()
+        XCTAssertTrue(app.staticTexts["Not vegan"].waitForExistence(timeout: 20))
+        app.buttons["Vegan alternatives"].tap()
+        XCTAssertTrue(app.textFields["alternativeQuery"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.textFields["alternativeQuery"].value as? String, "granola")
+        XCTAssertFalse(app.buttons["findAlternatives"].isEnabled)
+        capture("alternatives-from-result")
+    }
     func testDraftPersistsAndBarcodeValidation() {
         launch()
         let barcode = app.textFields["barcode"]

@@ -117,7 +117,7 @@ mock.module('wxt/browser', () => ({ browser: {
     session: { async get(keys: string | string[]) { return structuredClone(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, session[key]]))); } },
     onChanged: { addListener: (listener: StorageListener) => storageListeners.add(listener), removeListener: (listener: StorageListener) => storageListeners.delete(listener) },
   },
-  permissions: { async contains() { return true; }, async request() { permissionRequests++; return grantConsent; }, async remove() { return true; } },
+  permissions: { onRemoved: { addListener() {}, removeListener() {} }, async contains() { return true; }, async request() { permissionRequests++; return grantConsent; }, async remove() { return true; } },
   tabs: { async create() {}, async query() { return []; } },
 } }));
 const { App } = await import('../src/main');
@@ -128,7 +128,7 @@ async function until(test: () => boolean, description: string) {
   for (let count = 0; count < 30; count++) { await flush(); if (test()) return; }
   assert(test(), description);
 }
-async function tab(root: HTMLElement, index: number) { const button = root.querySelectorAll<HTMLButtonElement>('nav button')[index]; assert(button); await act(async () => { button.click(); }); await flush(); }
+async function tab(root: HTMLElement, name: 'scan' | 'history' | 'settings') { const button = root.querySelector<HTMLButtonElement>(`nav button[data-tab="${name}"]`); assert(button); await act(async () => { button.click(); }); await flush(); }
 const emailButton = (root: HTMLElement) => root.querySelector<HTMLButtonElement>('.account-email');
 const historyItems = (root: HTMLElement) => root.querySelectorAll('.history-item');
 const fixtureResult: HistoryResult = {
@@ -155,7 +155,7 @@ try {
   await act(async () => { roots.forEach(root => render(h(App, {}), root)); });
   await until(() => roots.every(root => root.querySelector('nav')), 'Both real Apps mounted');
   assert(roots.every(root => !root.querySelector('.spinner')), 'Fast startup needs no loading indicator');
-  await tab(roots[0]!, 1); await tab(roots[1]!, 1);
+  await tab(roots[0]!, 'history'); await tab(roots[1]!, 'history');
   assert(roots.every(root => historyItems(root).length === 0));
   history = [fixtureResult];
   changed('unrelated-extension');
@@ -169,7 +169,7 @@ try {
   await until(() => roots.every(root => historyItems(root).length === 0 && !root.querySelector('nav .count')), 'Deletion in one window updates both histories and counts');
   assert(!roots[0]!.querySelector('.verdict'), 'Trash click does not open the result');
 
-  await tab(roots[0]!, 2); await tab(roots[1]!, 2);
+  await tab(roots[0]!, 'settings'); await tab(roots[1]!, 'settings');
   const offlineSection = (root: HTMLElement) => root.querySelector('section[aria-labelledby="offline-heading"]');
   assert(roots.every(root => offlineSection(root)?.textContent?.includes('987')));
   assert(roots.every(root => offlineSection(root)?.querySelectorAll('button').length === 1), 'Only optional regional packs can be removed');
@@ -184,7 +184,7 @@ try {
   await act(async () => { emailButton(roots[0]!)!.click(); });
   assert(!roots[0]!.innerHTML.includes(email));
   await act(async () => { emailButton(roots[0]!)!.click(); });
-  await tab(roots[0]!, 0); await tab(roots[0]!, 2);
+  await tab(roots[0]!, 'scan'); await tab(roots[0]!, 'settings');
   assert.equal(emailButton(roots[0]!)?.getAttribute('aria-pressed'), 'false', 'Leaving Settings clears reveal state');
   await act(async () => { emailButton(roots[0]!)!.click(); window.dispatchEvent(new window.Event('blur')); });
   assert(!roots[0]!.innerHTML.includes(email), 'Window blur hides a revealed email');
@@ -210,7 +210,7 @@ try {
     { term: 'unidentified ingredient', status: 'unknown', explanation: 'Origin has not been established.', evidenceId: 'source' },
   ], questions: ['Confirm the origin of: naturlig arom.'], evidence: [{ id: 'source', kind: 'user_text', title: 'Original ingredients', excerpt: 'naturlig arom', retrievedAt: fixtureResult.checkedAt }] }];
   changed();
-  await tab(roots[0]!, 1);
+  await tab(roots[0]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'Saved AI-translated result arrives');
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
   await until(() => roots[0]!.querySelector('.finding strong')?.textContent === 'natural flavouring', 'Saved AI ingredient translation appears in the actual result UI');
@@ -224,7 +224,7 @@ try {
   await until(() => ingredientLabels()[0] === 'Herkunft der Zutat unklar', 'Ingredient indicator labels follow the selected language');
   assert.deepEqual(ingredientLabels(), ['Herkunft der Zutat unklar', 'Vegane Zutat', 'Zutat tierischen Ursprungs', 'Herkunft der Zutat unbekannt']);
   console.log('Actual result UI: translated name/question and secondary original name preserve source evidence');
-  await tab(roots[1]!, 1);
+  await tab(roots[1]!, 'history');
   await until(()=>historyItems(roots[1]!).length === 1,'Country correction fixture is available in the second window');
   await act(async()=>{(historyItems(roots[1]!)[0] as HTMLButtonElement).click();});
   const countryInput = (root:HTMLElement)=>root.querySelector<HTMLInputElement>('.product-country input');
@@ -243,7 +243,7 @@ try {
 
   settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
   // The two fixtures share a document; real extension windows have independent focus.
-  await tab(roots[1]!, 1);
+  await tab(roots[1]!, 'history');
   const editButton = () => roots[0]!.querySelector<HTMLButtonElement>('.edit-details');
   const beforeEdit = checkRequests;
   await act(async () => { editButton()!.click(); });
@@ -259,7 +259,7 @@ try {
   const originalPhoto = 'data:image/jpeg;base64,YQ==';
   history = [{ ...fixtureResult, identity: { ...fixtureResult.identity, brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE' },
     input: { text: 'Ingredients: oats', category: 'drink', complete: true, sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, photos: [originalPhoto] }];
-  changed(); await tab(roots[0]!, 1);
+  changed(); await tab(roots[0]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'Editable saved check is available');
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
   await act(async () => { editButton()!.click(); });
@@ -302,7 +302,7 @@ try {
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Removing a text barcode produces a new result');
   assert.equal(checkedInputs.at(-1)?.barcode, undefined, 'Deleting a barcode from the original text does not restore it from saved identity');
   history = [{ ...fixtureResult, input: { text: 'Ingredients: oats' } }];
-  changed(); await tab(roots[0]!, 1);
+  changed(); await tab(roots[0]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'A saved result without a barcode is available');
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
   await act(async () => { editButton()!.click(); });
@@ -315,7 +315,7 @@ try {
   assert.equal(checkedInputs.at(-1)?.barcode, '4006381333931', 'Editing a barcode-less result preserves the newly supplied barcode for lookup');
   console.log('Actual editing UI: saved and fresh results, original input/photos, identity, focus, cancel and failed-check retry verified');
 
-  await tab(roots[0]!, 0);
+  await tab(roots[0]!, 'scan');
   const scanCountry = () => roots[0]!.querySelector<HTMLInputElement>('form input[maxLength="2"]')!;
   assert.equal(scanCountry().value, settings.fallbackCountry, 'A fresh scan after a manual result uses the fallback');
   await act(async () => {
@@ -341,7 +341,7 @@ try {
   extensionScheme = 'moz-extension:';
   settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); await flush();
   async function submitCheck() {
-    await tab(roots[0]!, 0);
+    await tab(roots[0]!, 'scan');
     const textarea = roots[0]!.querySelector('textarea'); assert(textarea);
     await act(async () => { textarea.value = 'Ingredients: oats'; textarea.dispatchEvent(new Event('input', { bubbles: true })); });
     await act(async () => { roots[0]!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
@@ -372,7 +372,7 @@ try {
   await act(async () => { onlineButton()!.click(); });
   await until(() => checkRequests === beforeConsentCheck + 1 && !onlineButton(), 'Granting access reruns the same input and clears the consent action');
   console.log('Actual check UI: local-first results, gesture-bound permission prompts, denial preservation and granted retry verified');
-  await tab(roots[0]!, 2); await tab(roots[1]!, 2);
+  await tab(roots[0]!, 'settings'); await tab(roots[1]!, 'settings');
   const connections = roots[0]!.querySelectorAll<HTMLSelectElement>('select');
   const connectionSelect = [...connections].find(select => [...select.options].some(option => option.value === 'hosted')); assert(connectionSelect);
   await act(async () => { connectionSelect.value = 'hosted'; connectionSelect.dispatchEvent(new Event('change', { bubbles: true })); });
@@ -404,7 +404,7 @@ try {
   await until(() => roots.every(root => hostedSection(root)?.textContent?.includes('Free checks remaining today: 3')), 'Re-enabled service restores access without reconnecting');
   session.hostedStatus = { state: 'pending' };
   await act(async () => { render(null, roots[1]!); render(h(App, {}), roots[1]!); });
-  await tab(roots[1]!, 2);
+  await tab(roots[1]!, 'settings');
   await until(() => hostedSection(roots[1]!)?.textContent?.includes('Free checks remaining today: 3') === true, 'Reopening the extension refreshes a saved pending session');
   const disconnectHosted = [...hostedSection(roots[0]!)!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Disconnect'); assert(disconnectHosted);
   await act(async () => { disconnectHosted.click(); });
@@ -414,7 +414,7 @@ try {
   uiSavedAccounts = [{ id: 'first', email }, { id: 'second', email: 'second@example.invalid' }];
   uiSelectedAccount = 'first'; nativeConnected = true;
   settings = { ...settings, connection: 'chatgpt', model: 'gpt-6-luna' }; storageChanged(['settings'], 'local');
-  await tab(roots[0]!, 2); await tab(roots[1]!, 2);
+  await tab(roots[0]!, 'settings'); await tab(roots[1]!, 'settings');
   await until(() => roots.every(root => root.querySelectorAll('.account-select').length === 2), 'Saved accounts reach both Settings windows');
   assert(roots.every(root => !root.innerHTML.includes(email) && !root.innerHTML.includes('second@example.invalid')), 'Saved emails are hidden in text and accessible labels');
   assert.equal(roots[0]!.querySelector<HTMLSelectElement>('.connection label select')?.value, 'gpt-6-luna', 'Default model is shown in the picker');
@@ -459,7 +459,7 @@ try {
   settings = { ...settings, language: 'de' }; storageChanged(['settings'], 'local');
   await until(() => roots.every(root => root.querySelector('.saved-accounts summary')?.textContent?.startsWith('Konto wechseln')), 'Account management follows the UI language');
   await act(async () => { render(null, roots[1]!); render(h(App, {}), roots[1]!); });
-  await tab(roots[1]!, 2);
+  await tab(roots[1]!, 'settings');
   await until(() => roots[1]!.querySelectorAll('.account-select').length === 1, 'Saved accounts remain available after reopening Settings');
   console.log('Actual account-management UI: hidden emails, shared switching/add/remove, gesture consent, confirmation, reopening, translations and Luna selection verified');
 
@@ -470,13 +470,13 @@ try {
   communityReplyPage = { more: false, replies: [{ id: '12345678-1234-4234-8234-123456789abc', productName: original.identity.name,
     brand: 'Fixture Maker', barcode: '', market: 'DE', variant: '', question: 'Is it vegan?', reply: 'Our drink is vegan.', repliedOn: '2026-01-10',
     claim: 'vegan', scope: 'whole_product', sourceUrl: '', reviewedAt: '2026-01-11T00:00:00Z', evidencePublic: false, match: 'name' }] };
-  await tab(roots[0]!, 1); await tab(roots[1]!, 1);
+  await tab(roots[0]!, 'history'); await tab(roots[1]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'The community fixture appears in history');
   await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.history-item')!.click(); });
   await until(() => history[0]?.basis === 'manufacturer' && roots[1]!.textContent?.includes('Manufacturer says vegan') === true, 'Opening a shared reply persists the verdict and refreshes the other window’s history');
   assert.deepEqual(history[0]?.photos, original.photos); assert.deepEqual(history[0]?.input, original.input);
   failCommunityLookup = true;
-  await tab(roots[0]!, 1);
+  await tab(roots[0]!, 'history');
   await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.history-item')!.click(); });
   await until(() => roots[0]!.textContent?.includes('Could not load replies') === true, 'A failed refresh is visible');
   assert(roots[0]!.querySelector('.verdict')?.textContent?.includes('Manufacturer says vegan'), 'The cached verdict survives a failed lookup');

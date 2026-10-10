@@ -14,6 +14,10 @@ const operations = new Map<string, AbortController>();
 export function call(operation: string, json: string): string {
   const args = JSON.parse(json);
   switch (operation) {
+    case 'alternativeQuery': return JSON.stringify(core.alternativeQueryForProduct(args.name, args.brand, args.animalTerms));
+    case 'alternativeUrl': return JSON.stringify(core.alternativeSearchUrl(args.input, args.storeOnly));
+    case 'publicAlternatives': return JSON.stringify(core.parsePublicAlternatives(args.document, args.input));
+    case 'rankAlternatives': return JSON.stringify(core.rankAlternatives(args.items, args.input));
     case 'analyze': return JSON.stringify(core.attachCompanyConcerns(core.analyzeText(args), args.locale));
     case 'merge': return JSON.stringify(mergeResults(args.original, args.additional));
     case 'barcode': return JSON.stringify(core.normalizeBarcode(args) ?? null);
@@ -89,4 +93,17 @@ export function check(id: string, json: string) {
   })();
 }
 
-Object.assign(globalThis, { VegsnapCore: { call, check, cancel } });
+export function alternatives(id: string, json: string) {
+  const args = JSON.parse(json);
+  const controller = new AbortController(); operations.set(id, controller);
+  void (async () => {
+    try {
+      const provider = args.hostedToken ? core.createHostedAIProvider(args.hostedToken) : args.provider ? core.createOpenAIProvider(args.provider,
+        args.chatGPT ? (globalThis as typeof globalThis & { chatGPTFetch: typeof fetch }).chatGPTFetch : undefined) : undefined;
+      const items = provider ? await core.researchVeganAlternatives(args.input, provider, controller.signal) : [];
+      if (operations.get(id) === controller) host.nativeComplete(id, JSON.stringify(items), '');
+    } catch (error) { if (operations.get(id) === controller) host.nativeComplete(id, '', error instanceof Error ? error.message : 'Alternative research failed'); }
+    finally { if (operations.get(id) === controller) operations.delete(id); }
+  })();
+}
+Object.assign(globalThis, { VegsnapCore: { call, check, alternatives, cancel } });

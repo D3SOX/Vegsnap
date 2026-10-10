@@ -191,4 +191,24 @@
     <string name="country_from_database">Detected from database</string>
     <string name="country_manual">Selected manually</string>
     <string name="country_fallback">Fallback country</string>
+    <string name="alternatives_title">Vegan alternatives</string>
+    <string name="alternatives_query">Product or product type</string>
+    <string name="alternatives_store">Store name (optional)</string>
+    <string name="alternatives_search">Find alternatives</string>
+    <string name="alternatives_hint">Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there.</string>
+    <string name="alternatives_loading">Searching public records…</string>
+    <string name="alternatives_ai_loading">AI is researching alternatives…</string>
+    <string name="alternatives_failed">Product search failed. Check your connection and try again.</string>
+    <string name="alternatives_ai_failed">AI research unavailable. Public matches have been kept.</string>
+    <string name="alternatives_empty">No supported alternatives found. Try a broader product type or another store.</string>
+    <string name="alternatives_offline">Alternative search needs an internet connection. Turn off offline mode to search.</string>
+    <string name="alternatives_country">Product country: %1$s</string>
+    <string name="alternatives_store_match">Listed at %1$s — likely available</string>
+    <string name="alternatives_store_unknown">Store availability unknown</string>
+    <string name="alternatives_ai_source">AI research — review the source</string>
+    <string name="alternatives_database_label">%1$s · ODbL-1.0 · Vegan according to database label</string>
+    <string name="alternatives_country_unknown">Product country unconfirmed</string>
+    <string name="alternatives_source">Open product source</string>
+    <string name="alternatives_vegan_evidence">Vegan evidence</string>
+    <string name="alternatives_disclaimer">Community records can be outdated. Check the current package and your branch’s stock. AI research uses your connected provider and allowance; providers without web search keep public results.</string>
 </resources>

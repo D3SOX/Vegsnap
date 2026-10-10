@@ -7,7 +7,7 @@
   "scripts": {
     "prepare": "wxt prepare",
     "typecheck": "wxt prepare && tsc --noEmit",
-    "test": "bun test tests && bun tests/data-consent-check.ts && bun tests/background-check.ts && bun tests/store-content-check.ts && bun tests/ui-sync-check.ts && bun tests/companion-errors-check.ts && bun tests/companion-native-check.ts",
+    "test": "bun test tests && bun tests/data-consent-check.ts && bun tests/background-check.ts && bun tests/store-content-check.ts && bun tests/ui-sync-check.ts && bun tests/alternatives-check.ts && bun tests/companion-errors-check.ts && bun tests/companion-native-check.ts",
     "test:package": "bun tests/package-check.ts",
     "build:chromium": "bun ../scripts/offline-snapshot.ts && wxt build -b chrome",
     "build:firefox": "bun ../scripts/offline-snapshot.ts && wxt build -b firefox"

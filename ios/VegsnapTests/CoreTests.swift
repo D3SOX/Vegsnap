@@ -5,6 +5,19 @@ import Security
 @testable import Vegsnap
 
 @MainActor final class CoreTests: XCTestCase {
+    func testAlternativeSearchDecodesEvidenceAndStoreMatchesThroughNativeEngine() throws {
+        let engine = try CoreEngine()
+        let input = AlternativeQuery(query: "chocolate", store: "REWE", category: .food, market: "DE", locale: "en")
+        let json = "{\"input\":" + (try input.jsonString()) + ",\"document\":{\"products\":[{\"code\":\"12345678\",\"product_name\":\"Oat chocolate\",\"brands\":\"Plant\",\"labels_tags\":[\"en:vegan\"],\"countries_tags\":[\"en:germany\"],\"stores\":\"REWE\",\"ingredients_text\":\"oats, cocoa\"}]}}"
+        let parsed = try engine.callRaw("publicAlternatives", json: json)
+        let items = try JSONDecoder().decode([VeganAlternative].self, from: Data(parsed.utf8))
+        XCTAssertEqual(items.count, 1)
+        XCTAssertTrue(items[0].storeMatch)
+        XCTAssertTrue(items[0].marketListed)
+        struct Query: Encodable { var name = "Maker Honey granola"; var brand = "Maker"; var animalTerms = ["honey"] }
+        let query: String = try engine.call("alternativeQuery", Query())
+        XCTAssertEqual(query, "granola")
+    }
     func testProductCountriesExcludeRegionalAndReservedCodes() {
         for code in ["EU", "UN", "EZ", "AC", "XK", "QO", "ZZ", "001", "419", "de", ""] {
             XCTAssertFalse(ProductCountry.isValid(code), code)
