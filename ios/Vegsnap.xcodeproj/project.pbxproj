@@ -392,6 +392,7 @@
 				"$(SRCROOT)/../packages/core/src/database.ts",
 				"$(SRCROOT)/../packages/core/src/hosted-ai.ts",
 				"$(SRCROOT)/../packages/core/src/http.ts",
+				"$(SRCROOT)/../packages/core/src/i18n.ts",
 				"$(SRCROOT)/../packages/core/src/index.ts",
 				"$(SRCROOT)/../packages/core/src/ingredient-display.ts",
 				"$(SRCROOT)/../packages/core/src/manufacturer-contact.ts",
