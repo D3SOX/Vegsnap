@@ -74,6 +74,71 @@ import XCTest
         task.cancel(); await task.value
         XCTAssertNil(state.page)
     }
+    func testCachedReplySurvivesReopeningOfflineAndIncompleteRefreshButCanBeWithdrawn() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let baseline = try original()
+        let saved = SavedCheck(id: baseline.id, result: baseline, input: CheckInput(text: "private scan"), photos: ["private.jpg"])
+        store.history = [saved]; store.selectedResult = saved
+        let state = CommunityRepliesState()
+        CommunityFixtureProtocol.body = response()
+        await state.load(baseline, engine: engine, locale: "en", offline: false)
+        let updated = state.displayResult(saved, engine: engine, locale: "en", hidden: [])
+        XCTAssertEqual(try updated.communityCacheKey(), try state.displayResult(saved, engine: engine, locale: "en", hidden: []).communityCacheKey())
+        try store.cacheCommunityResult(saved, result: updated)
+        let restored = try AppStore(root: root)
+        let cached = try XCTUnwrap(restored.history.first)
+        XCTAssertEqual(cached.result.outcome, .vegan)
+        XCTAssertEqual(cached.result.basis, "manufacturer")
+        XCTAssertEqual(cached.photos, saved.photos); XCTAssertEqual(cached.input?.text, "private scan")
+        XCTAssertEqual(store.selectedResult?.result.outcome, .vegan)
+        XCTAssertEqual(try HistoryTransfer.parse(restored.exportHistory()).first?.outcome, .uncertain)
+        await state.load(cached.result, engine: engine, locale: "en", offline: true)
+        XCTAssertEqual(state.displayResult(cached, engine: engine, locale: "en", hidden: []).outcome, .vegan)
+        XCTAssertEqual(state.displayResult(cached, engine: engine, locale: "en", hidden: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"]).outcome, .uncertain)
+        CommunityFixtureProtocol.body = "invalid"
+        await state.load(cached.result, engine: engine, locale: "en", offline: false)
+        XCTAssertNotNil(state.failure)
+        XCTAssertEqual(state.displayResult(cached, engine: engine, locale: "en", hidden: []).outcome, .vegan)
+        CommunityFixtureProtocol.body = response(more: true)
+        await state.load(cached.result, engine: engine, locale: "en", offline: false)
+        XCTAssertEqual(state.displayResult(cached, engine: engine, locale: "en", hidden: []).outcome, .vegan)
+        CommunityFixtureProtocol.body = #"{"replies":[],"more":false}"#
+        await state.load(cached.result, engine: engine, locale: "en", offline: false)
+        try restored.cacheCommunityResult(cached, result: state.displayResult(cached, engine: engine, locale: "en", hidden: []))
+        let withdrawn = try XCTUnwrap(try AppStore(root: root).history.first)
+        XCTAssertEqual(withdrawn.result.outcome, .uncertain); XCTAssertNil(withdrawn.communityOriginal)
+        XCTAssertEqual(withdrawn.photos, saved.photos)
+    }
+    func testCachingCannotOverwriteCountryCorrectionDeletionOrFailedSave() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { FileStore.rejectWrite = nil; try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let baseline = try original()
+        let saved = SavedCheck(id: baseline.id, result: baseline, input: CheckInput(text: "private scan"), photos: [])
+        store.history = [saved]; store.selectedResult = saved
+        let state = CommunityRepliesState()
+        CommunityFixtureProtocol.body = response()
+        await state.load(baseline, engine: engine, locale: "en", offline: false)
+        let updated = state.displayResult(saved, engine: engine, locale: "en", hidden: [])
+        FileStore.rejectWrite = { $0.lastPathComponent == "history.json" }
+        XCTAssertThrowsError(try store.cacheCommunityResult(saved, result: updated))
+        XCTAssertEqual(store.history.first?.result.outcome, .uncertain)
+        XCTAssertEqual(store.selectedResult?.result.outcome, .uncertain)
+        FileStore.rejectWrite = nil
+        try store.cacheCommunityResult(saved, result: updated)
+        let cached = try XCTUnwrap(store.history.first)
+        try store.updateProductMarket(saved.id, market: "DE")
+        try store.cacheCommunityResult(cached, result: updated)
+        XCTAssertEqual(store.history.first?.result.identity.market, "DE")
+        XCTAssertEqual(store.history.first?.result.outcome, .uncertain)
+        XCTAssertNil(store.history.first?.communityOriginal)
+        store.delete([saved.id])
+        try store.cacheCommunityResult(cached, result: updated)
+        XCTAssertTrue(store.history.isEmpty)
+        XCTAssertTrue(try AppStore(root: root).history.isEmpty)
+    }
 }
 
 private final class CommunityFixtureProtocol: URLProtocol, @unchecked Sendable {

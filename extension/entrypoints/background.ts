@@ -5,6 +5,7 @@ import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { hostedCommand, hostedToken } from '../src/hosted';
 import { history, type HistoryResult } from '../src/history';
+import { withoutCommunityHistory } from '../src/community-history';
 import { offlineLibrary } from '../src/offline';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
@@ -223,9 +224,21 @@ export default defineBackground(() => {
             await changeHistory(async () => {
               const saved = (await history('list')).find(item => item.id === id);
               if (!saved) throw new Error('This result is no longer in history.');
-              const corrected = { ...saved, identity: { ...saved.identity, market, marketSource: 'manual' as const }, ...(saved.input ? {input:{...saved.input,market,autoMarket:false}} : {}) };
+              const corrected = { ...withoutCommunityHistory(saved), identity: { ...saved.identity, market, marketSource: 'manual' as const }, ...(saved.input ? {input:{...saved.input,market,autoMarket:false}} : {}) };
               await history('save', corrected);
               updated = corrected;
+            });
+            return { ok: true, result: updated };
+          }
+          case 'cache-community-result': {
+            if (typeof message.expected !== 'string' || !isRecord(message.result) || typeof message.result.id !== 'string') throw new Error('Invalid community cache update.');
+            const expected = message.expected, result = message.result as unknown as HistoryResult;
+            let updated: HistoryResult | null = null;
+            await changeHistory(async () => {
+              const saved = (await history('list')).find(item => item.id === result.id);
+              if (!saved || JSON.stringify(saved) !== expected || JSON.stringify(result) === expected) return;
+              await history('save', result);
+              updated = result;
             });
             return { ok: true, result: updated };
           }

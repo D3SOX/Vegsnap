@@ -1,6 +1,6 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { countryCode, imageSupport, localizeResult, applyCommunityReplies, type CommunityReply } from '@vegsnap/core';
+import { countryCode, imageSupport, localizeResult, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
@@ -17,6 +17,7 @@ import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
+import { applyCommunityHistory } from './community-history';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, hasDataConsent, requestDataConsent } from './data-consent';
 import { accountDetails, type AccountOptions, type CompanionCommand, type CompanionSnapshot } from './companion-state';
 
@@ -43,9 +44,17 @@ export function App() {
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
   const [editingResult, setEditingResult] = useState<HistoryResult>();
-  const [community, setCommunity] = useState<{ key: string; replies: CommunityReply[] }>();
+  const [community, setCommunity] = useState<{ key: string; source: string; replies?: CommunityReply[]; retrievedAt: string }>();
   const communityKey = storedResult ? `${storedResult.id}:${JSON.stringify(storedResult.identity)}` : '';
-  const result = storedResult && community?.key === communityKey ? { ...storedResult, ...applyCommunityReplies(storedResult, community.replies, config.language) } : storedResult;
+  const result = storedResult && community?.key === communityKey && community.source === JSON.stringify(storedResult) && community.replies
+    ? applyCommunityHistory(storedResult, community.replies, config.language, new Date(community.retrievedAt)) : storedResult;
+  const storedJSON = JSON.stringify(storedResult), resultJSON = JSON.stringify(result);
+  useEffect(() => {
+    if (!storedResult || !result || storedJSON === resultJSON) return;
+    void request<HistoryResult | null>({type:'cache-community-result',expected:storedJSON!,result}).then(saved=>{
+      if (saved) setResult(current=>JSON.stringify(current) === storedJSON ? saved : current);
+    }).catch(cause=>setError(cause instanceof Error ? cause.message : 'Could not update local history.'));
+  },[storedJSON,resultJSON]);
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
   const [market, setMarket] = useState('DE');
@@ -107,7 +116,7 @@ export function App() {
       configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks);
       setResult(current=>{
         const saved = current && state.history.find(item=>item.id === current.id);
-        return saved && (saved.identity.market !== current?.identity.market || saved.identity.marketSource !== current?.identity.marketSource) ? saved : current;
+        return saved && JSON.stringify(saved) !== JSON.stringify(current) ? saved : current;
       });
       const hostedStatus = shared.hostedStatus;
       setHosted(isRecord(hostedStatus) && ['pending', 'connected'].includes(String(hostedStatus.state)) ? hostedStatus as unknown as HostedStatus : { state: 'signedout' });
@@ -383,7 +392,7 @@ export function App() {
         })}/>
         <CommunityRepliesSection key={communityKey} result={storedResult!} locale={config.language} fetchReplies={contentFetch}
           canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
-          onReplies={replies=>setCommunity({key:communityKey,replies})}/>
+          onReplies={(replies,complete)=>setCommunity({key:communityKey,source:JSON.stringify(storedResult),...(complete ? {replies} : {}),retrievedAt:new Date().toISOString()})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
       </section> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>

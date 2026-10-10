@@ -72,6 +72,8 @@ import CryptoKit
         guard ProductCountry.isValid(market) else { throw AppError(L("Enter a two-letter country code.")) }
         guard !jobs.contains(where: { $0.id == id }), let index = history.firstIndex(where: { $0.id == id }) else { throw AppError(L("This result is unavailable or has a check in progress.")) }
         var next = history
+        next[index].result = next[index].originalAnalysis
+        next[index].communityOriginal = nil
         next[index].result.identity.market = market
         next[index].result.identity.marketSource = "manual"
         next[index].input?.market = market
@@ -79,6 +81,18 @@ import CryptoKit
         try files.save(next, "history.json")
         history = next
         if selectedResult?.id == id { selectedResult = next[index] }
+    }
+    func cacheCommunityResult(_ source: SavedCheck, result: CheckResult) throws {
+        guard let index = history.firstIndex(where: { $0.id == source.id }),
+              try history[index].communityCacheKey() == source.communityCacheKey() else { return }
+        var next = history
+        next[index].result = result
+        next[index].communityOriginal = source.originalAnalysis
+        if try result.communityCacheKey() == source.originalAnalysis.communityCacheKey() { next[index].communityOriginal = nil }
+        guard try next[index].communityCacheKey() != source.communityCacheKey() else { return }
+        try files.save(next, "history.json")
+        history = next
+        if selectedResult?.id == source.id { selectedResult = next[index] }
     }
     func saveDraft() {
         do { try files.save(Draft(id: draftID, input: draft, photos: draftPhotos), "draft.json") } catch { report(error) }
@@ -265,7 +279,7 @@ import CryptoKit
     func exportHistory() throws -> Data {
         let tooLarge = AppError(L("History is too large to export (maximum 1,000 results and 5 MB). No file was created."))
         guard history.count <= HistoryTransfer.resultLimit else { throw tooLarge }
-        let data = try HistoryDocument(results: history.map(\.result)).jsonData()
+        let data = try HistoryDocument(results: history.map(\.originalAnalysis)).jsonData()
         guard data.count <= HistoryTransfer.byteLimit else { throw tooLarge }
         return data
     }

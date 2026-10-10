@@ -8,7 +8,7 @@ const messages = {
 };
 const alwaysAllowed = async () => true;
 export function CommunityRepliesSection({result,locale,baseUrl,offline = false,onReplies,fetchReplies = fetch,canLookup = alwaysAllowed,allowLookup}: {
-  result:CheckResult; locale:Locale; baseUrl?:string; offline?:boolean; onReplies?:(replies:CommunityReply[])=>void;
+  result:CheckResult; locale:Locale; baseUrl?:string; offline?:boolean; onReplies?:(replies:CommunityReply[], complete:boolean)=>void;
   fetchReplies?:typeof fetch; canLookup?:()=>Promise<boolean>; allowLookup?:()=>Promise<boolean>;
 }) {
   const [networkOffline,setNetworkOffline] = useState(navigator.onLine === false);
@@ -28,7 +28,7 @@ export function CommunityRepliesSection({result,locale,baseUrl,offline = false,o
   },[]);
   useEffect(() => {
     const controller = new AbortController();
-    setPage(undefined); setConfirmed([]); notify.current?.([]);
+    setPage(undefined); setConfirmed([]); notify.current?.([],false);
     if (!origin || disabled) return () => controller.abort();
     let params: URLSearchParams;
     try { params = communityLookupParams(result.identity); }
@@ -42,11 +42,11 @@ export function CommunityRepliesSection({result,locale,baseUrl,offline = false,o
         if (!response.ok) throw new Error('Community lookup failed.');
         const text = await response.text(); if (text.length > 4_000_000) throw new Error('Community response too large.');
         const loaded = parseCommunityReplyPage(JSON.parse(text) as unknown);
-        if (!controller.signal.aborted) { setPage(loaded); setStatus('ready'); notify.current?.(loaded.more ? [] : loaded.replies); }
-      } catch { if (!controller.signal.aborted) { setStatus('failed'); notify.current?.([]); } }
+        if (!controller.signal.aborted) { setPage(loaded); setStatus('ready'); notify.current?.(loaded.more ? [] : loaded.replies,!loaded.more); }
+      } catch { if (!controller.signal.aborted) { setStatus('failed'); notify.current?.([],false); } }
     })();
     return () => controller.abort();
-  },[result.id,identityKey,origin,disabled,revision,fetchReplies]);
+  },[result.id,identityKey,origin,disabled,revision,fetchReplies,locale]);
   if (!links) return null;
   const t = messages[locale];
   return <section class="manufacturer-contact">
@@ -68,7 +68,7 @@ export function CommunityRepliesSection({result,locale,baseUrl,offline = false,o
         <p class="hint">{reply.repliedOn} · {reply.coverage?.markets.join(', ') ?? reply.market} · {t.scope}: {t[reply.scope]}</p>
         {reply.match === 'candidate' && !confirmed.includes(reply.id) && <><p>{t.candidate}</p><button type="button" onClick={()=>{
           const next = [...confirmed,reply.id]; setConfirmed(next);
-          notify.current?.(page.more ? [] : [...page.replies,...page.candidates.filter(item=>next.includes(item.id)).map(item=>({...item,match:'name' as const}))]);
+          notify.current?.(page.more ? [] : [...page.replies,...page.candidates.filter(item=>next.includes(item.id)).map(item=>({...item,match:'name' as const}))],!page.more);
         }}>{t.confirm}</button></>}
         <details><summary>{reply.claim === 'vegan' ? 'Vegan' : reply.claim === 'not_vegan' ? (locale === 'de' ? 'Nicht vegan' : 'Not vegan') : (locale === 'de' ? 'Weiterhin unklar' : 'Still inconclusive')}</summary>
           <p>{reply.question}</p><p class="quote">{reply.reply}</p><p class="hint">{t.reviewed}</p>

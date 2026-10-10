@@ -98,7 +98,11 @@ struct Settings: Codable, Equatable {
     var catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
 }
 struct HistoryDocument: Codable { var schemaVersion = 1; var exportedAt = ISO8601DateFormatter().string(from: Date()); var results: [CheckResult] }
-struct SavedCheck: Codable, Identifiable { var id: String; var result: CheckResult; var input: CheckInput?; var photos: [String] }
+struct SavedCheck: Codable, Identifiable {
+    var id: String; var result: CheckResult; var input: CheckInput?; var photos: [String]
+    var communityOriginal: CheckResult? = nil
+    var originalAnalysis: CheckResult { communityOriginal ?? result }
+}
 struct CheckJob: Codable, Identifiable {
     var id = UUID().uuidString
     var input: CheckInput
@@ -129,6 +133,10 @@ func safeURL(_ value: String?) -> URL? {
     return c.url
 }
 extension Encodable {
+    func communityCacheKey() throws -> Data {
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        return try encoder.encode(self)
+    }
     func jsonData() throws -> Data { try JSONEncoder().encode(self) }
     func jsonString() throws -> String { String(decoding: try jsonData(), as: UTF8.self) }
 }

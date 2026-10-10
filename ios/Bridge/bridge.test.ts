@@ -48,6 +48,9 @@ describe('iOS JavaScriptCore host contract', () => {
     const page = app.call('communityReplies',JSON.stringify({replies:[reply],more:false}));
     const args = {result,page,locale:'en',hidden:[],confirmed:[]};
     expect(app.call('communityVerdict',args).basis).toBe('manufacturer');
+    const cachedArgs = { ...args, retrievedAt: '2026-01-12T00:00:00Z' };
+    expect(app.call('communityVerdict', cachedArgs)).toEqual(app.call('communityVerdict', cachedArgs));
+    expect(app.call('communityVerdict', cachedArgs).evidence.at(-1).retrievedAt).toBe('2026-01-12T00:00:00.000Z');
     expect(result.outcome).toBe('uncertain');
     expect(app.call('communityVerdict',{...args,hidden:[reply.id]}).outcome).toBe('uncertain');
     expect(app.call('communityVerdict',{...args,page:{...page,more:true}}).outcome).toBe('uncertain');

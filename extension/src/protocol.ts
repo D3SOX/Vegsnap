@@ -28,6 +28,7 @@ export type Request =
   | { type: 'pending'; id: string }
   | { type: 'delete'; id?: string }
   | { type: 'set-result-market'; id: string; market: string }
+  | { type: 'cache-community-result'; expected: string; result: HistoryResult }
   | { type: 'hosted'; command: 'connect' | 'status' | 'disconnect' }
   | ({ type: 'companion'; command: CompanionCommand } & AccountOptions);
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }

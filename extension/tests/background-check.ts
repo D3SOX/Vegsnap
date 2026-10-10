@@ -6,6 +6,7 @@ import hostedConfig from '../../data/hosted-ai.json';
 import { countryCode } from '../../packages/core/src/market';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
+import { applyCommunityReplies } from '../../packages/core/src/community';
 import { defaultSettings, STORES } from '../src/settings';
 import type { CheckReply, Pending, Reply } from '../src/protocol';
 type Sender = { id: string; url: string; tab?: { id: number } };
@@ -104,6 +105,7 @@ mock.module('../src/history', () => ({ history: async (operation: string, value:
 const evaluateProduct = realCheckProduct;
 const parseCountry = countryCode;
 mock.module('@vegsnap/core', () => ({
+  applyCommunityReplies,
   countryCode: parseCountry, HOSTED_AI: hostedConfig,
   createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => {
     hostedRemaining = Math.max(0, hostedRemaining - 1);
@@ -783,3 +785,17 @@ const manualCountryCheck = await listener!({ type: 'check', input: { name: 'Unkn
 assert(manualCountryCheck.ok);
 assert.equal(checkInputs.at(-1)?.autoMarket, false);
 assert.equal((manualCountryCheck.result as { input: CheckInput }).input.autoMarket, false, 'An explicit country remains a manual override');
+
+const cacheSource = { ...(manualCountryCheck.result as CheckReply), id: 'community-cache-routing' };
+saved.splice(0, saved.length, cacheSource);
+const cacheResult = { ...cacheSource, outcome: 'vegan', basis: 'manufacturer', title: 'Manufacturer says vegan' };
+const cacheMessage = { type: 'cache-community-result', expected: JSON.stringify(cacheSource), result: cacheResult };
+assert.equal((await listener!(cacheMessage, page)).ok, false, 'Content scripts cannot change cached history');
+const cacheReply = await listener!(cacheMessage, firefoxTrusted);
+assert(cacheReply.ok); assert.deepEqual(cacheReply.result, cacheResult);
+saved.splice(0, saved.length, cacheResult);
+const lateCacheReply = await listener!(cacheMessage, firefoxTrusted);
+assert(lateCacheReply.ok); assert.equal(lateCacheReply.result, null, 'Late replies cannot overwrite changed results');
+saved.splice(0);
+const deletedCacheReply = await listener!(cacheMessage, firefoxTrusted);
+assert(deletedCacheReply.ok); assert.equal(deletedCacheReply.result, null, 'Late replies cannot recreate deleted history');

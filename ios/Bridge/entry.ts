@@ -27,7 +27,7 @@ export function call(operation: string, json: string): string {
       const confirmed = new Set<string>(args.confirmed);
       const replies = page.more ? [] : [...page.replies, ...page.candidates.filter(reply => confirmed.has(reply.id)).map(reply => ({ ...reply, match: 'name' as const }))]
         .filter(reply => !hidden.has(reply.id));
-      return JSON.stringify(core.applyCommunityReplies(args.result, replies, args.locale));
+      return JSON.stringify(core.applyCommunityReplies(args.result, replies, args.locale, undefined, args.retrievedAt ? new Date(args.retrievedAt) : undefined));
     }
     case 'acceptsImages': return JSON.stringify(core.acceptsImages(args.model, args.metadata));
     case 'provider': core.validateProviderConfig(args); return 'true';
