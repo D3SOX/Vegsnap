@@ -110,9 +110,9 @@ internal fun ScanScreen(state: ScanState, model: VegsnapViewModel) {
         FlowRow(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(16.dp).onSizeChanged { controlsHeight = it.height },
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CategorySelector(state.category, !state.busy && !state.capturing, { value -> model.update { it.copy(category = value) } })
-            Surface(shape = MaterialTheme.shapes.medium) {
-                ProductMarketButton(state.market, !state.busy && !state.capturing) { model.setProductMarket(it); true }
-            }
+            ProductMarketButton(state.market, !state.busy && !state.capturing,
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface)) { model.setProductMarket(it); true }
         }
         if (state.cameraBarcode.isNotBlank()) Surface(Modifier.align(Alignment.TopEnd).padding(top = controlsBottom, start = 16.dp, end = 16.dp).widthIn(max = 300.dp), shape = RoundedCornerShape(16.dp)) {
             Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {

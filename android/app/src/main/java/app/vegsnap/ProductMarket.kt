@@ -57,14 +57,14 @@ internal fun databaseCountryWarning(market: String, markets: List<String>, local
 
 @Composable
 internal fun ProductMarketButton(market: String, enabled: Boolean = true, modifier: Modifier = Modifier,
-    source: String? = null, onSave: suspend (String) -> Boolean) {
+    source: String? = null, colors: ButtonColors = ButtonDefaults.outlinedButtonColors(), onSave: suspend (String) -> Boolean) {
     var editing by remember { mutableStateOf(false) }
     var value by remember(market) { mutableStateOf(productCountryCode(market) ?: market) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0]
     val country = productCountryName(market, locale)
-    OutlinedButton(onClick = { value = productCountryCode(market) ?: market; editing = true }, enabled = enabled, modifier = modifier) {
+    OutlinedButton(onClick = { value = productCountryCode(market) ?: market; editing = true }, enabled = enabled, modifier = modifier, colors = colors) {
         Column {
             Text(stringResource(R.string.product_country) + ": " + country + " (" + market + ")")
             source?.let { Text(stringResource(when (it) { "packaging" -> R.string.country_from_packaging; "database" -> R.string.country_from_database; "manual" -> R.string.country_manual; else -> R.string.country_fallback }), style = MaterialTheme.typography.labelSmall) }
