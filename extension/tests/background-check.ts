@@ -829,7 +829,13 @@ assert.equal((await listener!({ type: 'cancel-alternative-research', requestId: 
 assert.equal((await listener!({ type: 'cancel-alternative-research', requestId: cancellationId }, firefoxTrusted)).ok, true);
 assert.equal(pendingAlternativeSignal.aborted, true);
 assert.equal((await ongoingResearch).ok, false);
+pendingAlternativeSignal = undefined;
+const revokedResearch = listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted);
+for (let tries = 0; tries < 50 && !pendingAlternativeSignal; tries++) await new Promise(resolve => setTimeout(resolve, 0));
+assert(pendingAlternativeSignal);
+dataAllowed = false; permissionsRemovedListener!();
+assert.equal((pendingAlternativeSignal as AbortSignal).aborted, true, 'Permission revocation aborts background research even without an open UI');
+assert.equal((await revokedResearch).ok, false);
 holdAlternative = false;
-dataAllowed = false;
 assert.equal((await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted)).ok, false, 'AI research checks revoked sharing at the network boundary');
 console.log('Alternative background: trusted routing, bounded public input, no history writes and revoked sharing verified');

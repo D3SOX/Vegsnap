@@ -12,15 +12,20 @@ const window = new Window({ url: 'https://vegsnap.test' });
 const document = window.document as unknown as Document;
 Object.assign(globalThis, { window, document, location: window.location, navigator: window.navigator, Event: window.Event });
 let consent = true, consentRequests = 0;
+const permissionListeners = new Set<() => void>();
 mock.module('wxt/browser', () => ({ browser: { runtime: { getURL: () => 'moz-extension://fixture/' },
-  permissions: { contains: async () => true, request: async () => { consentRequests++; return consent; } } } }));
+  permissions: { onRemoved: { addListener: (fn: () => void) => permissionListeners.add(fn), removeListener: (fn: () => void) => permissionListeners.delete(fn) }, contains: async () => true, request: async () => { consentRequests++; return consent; } } } }));
 const originalFetch = globalThis.fetch;
 const now = Date.now;
 let clock = now(), failPublic = false;
 Date.now = () => clock += 7000; // Submitted-search pacing is covered separately; no wall-clock waits here.
 const urls: URL[] = [];
-globalThis.fetch = Object.assign(async (url: string | URL | Request) => {
+let holdPublic = false;
+let publicSignal: AbortSignal | undefined;
+let completePublic: ((response: Response) => void) | undefined;
+globalThis.fetch = Object.assign(async (url: string | URL | Request, init?: RequestInit) => {
   urls.push(new URL(String(url)));
+  if (holdPublic) { publicSignal = init?.signal ?? undefined; return new Promise<Response>(resolve => { completePublic = resolve; }); }
   if (failPublic) throw new Error('Fixture public outage');
   return Response.json(fixtures.document);
 }, { preconnect: originalFetch.preconnect });
@@ -69,6 +74,13 @@ try {
   assert.equal(activeAISignal?.aborted, true, 'Cancellation reaches AI research');
   await act(async () => { completeAI!([{ id: 'late', name: 'Stale AI result', brand: 'Plant', url: 'https://example.invalid', source: 'AI', evidence: 'vegan', storeMatch: false, stores: [], marketListed: false }]); });
   await flush(); assert(!root.textContent?.includes('Stale AI result'));
+  completeAI = undefined;
+  await submit(); await until(() => !!completeAI);
+  assert.equal(permissionListeners.size, 1);
+  await act(async () => { for (const listener of permissionListeners) listener(); });
+  assert.equal(activeAISignal?.aborted, true, 'Revocation aborts active AI research');
+  await act(async () => { completeAI!([{ id: 'revoked', name: 'Revoked AI result', brand: 'Plant', url: 'https://example.invalid', source: 'AI', evidence: 'vegan', storeMatch: false, stores: [], marketListed: false }]); });
+  await flush(); assert(!root.textContent?.includes('Revoked AI result'));
   await act(async () => { render(h(Alternatives, { config: { ...defaultSettings, connection: 'database' }, market: 'SE', excludeBarcode: fixtures.input.excludeBarcode, initialQuery: 'chocolate', research }), root); });
   await flush(); assert.equal(root.querySelectorAll('.evidence').length, 0, 'Changing country clears old alternatives');
   const before = calls;
@@ -76,7 +88,15 @@ try {
   await act(async () => { query.value = 'uncached query'; query.dispatchEvent(new Event('input', { bubbles: true })); });
   failPublic = true; await submit(); await until(() => root.textContent?.includes('Fixture public outage') === true);
   assert.equal(calls, before, 'Database-only search never calls AI');
+  failPublic = false; holdPublic = true;
+  await act(async () => { query.value = 'revocation fixture'; query.dispatchEvent(new Event('input', { bubbles: true })); });
+  await submit(); await until(() => !!completePublic);
+  await act(async () => { for (const listener of permissionListeners) listener(); });
+  assert.equal(publicSignal?.aborted, true, 'Revocation aborts active public fetching');
+  await act(async () => { completePublic!(Response.json(fixtures.document)); });
+  await flush(); assert.equal(root.querySelectorAll('.evidence').length, 0, 'Revoked public completion stays stale');
+  assert.equal(root.querySelector('section')?.getAttribute('aria-busy'), 'false');
   console.log('Alternative UI: optional-store query, public-first ranking, AI failure preservation, cancellation and country reset verified');
 } finally {
-  render(null, root); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
+  render(null, root); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
 }

@@ -117,7 +117,7 @@ mock.module('wxt/browser', () => ({ browser: {
     session: { async get(keys: string | string[]) { return structuredClone(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).map(key => [key, session[key]]))); } },
     onChanged: { addListener: (listener: StorageListener) => storageListeners.add(listener), removeListener: (listener: StorageListener) => storageListeners.delete(listener) },
   },
-  permissions: { async contains() { return true; }, async request() { permissionRequests++; return grantConsent; }, async remove() { return true; } },
+  permissions: { onRemoved: { addListener() {}, removeListener() {} }, async contains() { return true; }, async request() { permissionRequests++; return grantConsent; }, async remove() { return true; } },
   tabs: { async create() {}, async query() { return []; } },
 } }));
 const { App } = await import('../src/main');

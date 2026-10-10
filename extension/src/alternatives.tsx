@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { searchPublicAlternatives, rankAlternatives, type AlternativeSearch, type VeganAlternative } from '@vegsnap/core';
 import { CONTENT_DATA, ACCOUNT_DATA, AI_DATA, contentFetch, hasDataConsent, requestDataConsent } from './data-consent';
@@ -22,7 +23,12 @@ export function Alternatives({ config, initialQuery = '', category = 'food', mar
   const cancel = () => { generation.current++; abort.current?.abort(); setBusy(false); };
   useEffect(() => {
     cancel(); setItems([]); setSearched(false); setError('');
-    return () => { generation.current++; abort.current?.abort(); };
+    const permissionRemoved = () => cancel();
+    browser.permissions.onRemoved.addListener(permissionRemoved);
+    return () => {
+      browser.permissions.onRemoved.removeListener(permissionRemoved);
+      generation.current++; abort.current?.abort();
+    };
   }, [market, config.language, config.connection, config.model, config.baseUrl, researchEnabled]);
   async function search(consent: Promise<boolean>, aiConsent: Promise<boolean>) {
     cancel(); const id = ++generation.current, controller = new AbortController(); abort.current = controller;

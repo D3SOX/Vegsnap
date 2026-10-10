@@ -337,7 +337,10 @@ export default defineBackground(() => {
     return scriptsQueue;
   }
   browser.runtime.onStartup.addListener(() => { void syncScripts(); });
-  browser.permissions.onRemoved.addListener(() => { void syncScripts(); });
+  browser.permissions.onRemoved.addListener(() => {
+    for (const controller of alternativeRequests.values()) controller.abort();
+    void syncScripts();
+  });
   // Extension reloads do not emit browser.onStartup. Restore saved opt-ins on every background start.
   void syncScripts();
 });
