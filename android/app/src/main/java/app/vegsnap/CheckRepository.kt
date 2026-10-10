@@ -72,7 +72,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         if (photos.isNotEmpty() && original.text.isBlank()) {
             result.put("evidence", JSONArray())
             if (localText.isNotBlank()) {
-                val evidence = JSONObject().put("id", "photo-ocr").put("kind", "ocr").put("title", if (input.locale == "de") "Texterkennung auf dem Gerät — am Etikett prüfen" else "On-device text recognition — verify against the label")
+                val evidence = JSONObject().put("id", "photo-ocr").put("kind", "ocr").put("title", ResultStrings.ocrTitle(input.locale == "de"))
                     .put("excerpt", localText).put("retrievedAt", result.getString("checkedAt"))
                 result.getJSONArray("evidence").put(evidence)
                 val findings = result.getJSONArray("findings")
@@ -84,7 +84,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         var aiError: JSONObject? = null
         var contactExtraction: JSONObject? = null
         val warnings = JSONArray()
-        if (truncated) warnings.put(if (input.locale == "de") "Langer Text wurde gekürzt und wird als unvollständig behandelt." else "Long text was shortened and is treated as incomplete.")
+        if (truncated) warnings.put(ResultStrings.textTruncated(input.locale == "de"))
         if (validGtin(barcode)) {
             try {
                 onProgress(CheckStage.DATABASE)
@@ -99,9 +99,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                         category = if (input.category == "other") database.first.category else input.category,
                         text = if (useDatabaseText) database.first.text.take(30_000) else input.text,
                         complete = if (useDatabaseText) false else input.complete)
-                } else if (settings.offline) warnings.put(if (input.locale == "de") "Nicht im begrenzten Offline-Datenstand gefunden. Das sagt nichts über Existenz oder vegane Eigenschaften des Produkts aus." else "Not found in the limited offline snapshot. This does not establish whether the product exists or is vegan.")
+                } else if (settings.offline) warnings.put(ResultStrings.offlineMissingCaution(input.locale == "de"))
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
-            catch (error: Exception) { warnings.put(if (input.locale == "de") "Datenbank nicht erreichbar; lokale Analyse verwendet." else "Database unavailable; using local analysis.") }
+            catch (error: Exception) { warnings.put(ResultStrings.databaseFailedWithLocal(input.locale == "de")) }
         }
         if (result.getString("outcome") == "uncertain") {
             aiStatus = when {
@@ -129,7 +129,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val researchedMarket = extracted.optJSONObject("research")?.optString("market")?.takeIf { it.isNotBlank() }
                 if (researchedMarket != null && researchedMarket != selectProductCountry(input, packagingCountry, observedMarkets).first) {
                     for (field in listOf("ingredientAssessments", "webClaims", "webCompositions", "contact")) extracted.remove(field)
-                    warnings.put(if (input.locale == "de") "Die Webrecherche verwendete ein anderes Produktland. Prüfe das Land und prüfe das Produkt erneut." else "Web research used a different product country. Confirm the country and check the product again.")
+                    warnings.put(ResultStrings.researchCountryMismatch(input.locale == "de"))
                 }
                 val authoritativeText = when {
                     original.complete == true && original.text.isNotBlank() -> original.text.take(30_000)
@@ -144,7 +144,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val ai = evaluator.evaluate(aiInput, ingredients).put("usedAI", true)
                 extracted.optString("brand").takeIf { it.isNotBlank() }?.let { ai.getJSONObject("identity").put("brand", it) }
                 val evidence = ai.getJSONArray("evidence").getJSONObject(0)
-                evidence.put("id", "ai-extraction").put("kind", "ai_extraction").put("title", if (input.locale == "de") "KI-extrahierter Text — am Etikett prüfen" else "AI-extracted text — verify against the label")
+                evidence.put("id", "ai-extraction").put("kind", "ai_extraction").put("title", ResultStrings.aiTranscriptionTitle(input.locale == "de"))
                 val aiFindings = ai.getJSONArray("findings")
                 for (index in 0 until aiFindings.length()) aiFindings.getJSONObject(index).put("evidenceId", "ai-extraction")
                 if (evidence.getString("excerpt").isBlank()) ai.put("evidence", JSONArray())
@@ -152,13 +152,13 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 result = applyWebEvidence(applyWebCompositions(applyAIEvidence(mergeResults(if (parsed != null) withoutCompositionFindings(result, aiInput.text) else result, ai), aiInput, extracted, complete, photos.isNotEmpty() && settings.vision), identifiedInput, extracted, evaluator), identifiedInput, extracted)
                 if (result.getJSONObject("identity").optString("brand").isBlank()) extracted.optString("brand").takeIf { it.isNotBlank() }
                     ?.let { result.getJSONObject("identity").put("brand", it) }
-                if (extracted.optJSONObject("research")?.optBoolean("searched") != true && needsResearch(input, extracted, photos.isNotEmpty() && settings.vision, settings)) warnings.put(if (input.locale == "de") "Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege bleiben erhalten." else "Web research did not complete; the available photo or text evidence was kept.")
+                if (extracted.optJSONObject("research")?.optBoolean("searched") != true && needsResearch(input, extracted, photos.isNotEmpty() && settings.vision, settings)) warnings.put(ResultStrings.webResearchFailed(input.locale == "de"))
                 aiStatus = if (photos.isNotEmpty()) { if (settings.vision) "images" else "vision_disabled" } else "text"
                 extraction.exactDatabase?.let { database ->
                     compositionMarkets += (database.second.optJSONArray("compositionMarkets") ?: database.second.optJSONArray("productMarkets")).stringValues()
                     result = mergeResults(result, databaseResult(database, recognizedBarcode, warnCountry = false))
                 }
-                if (extraction.databaseLookupFailed) warnings.put(if (input.locale == "de") "Datenbank nicht erreichbar; KI-Belege bleiben erhalten." else "Database unavailable; AI evidence has been kept.")
+                if (extraction.databaseLookupFailed) warnings.put(ResultStrings.databaseFailedWithAI(input.locale == "de"))
                 extraction.database?.let { database ->
                     compositionMarkets += database.second.optJSONArray("compositionMarkets").stringValues()
                     val sourceId = database.second.getString("id")
@@ -169,7 +169,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                     if (result.has("webSearchStatus")) combined.put("webSearchStatus", result.get("webSearchStatus"))
                     result = combined
                 }
-                if (extracted.getString("text").isNotBlank()) warnings.put(if (input.locale == "de") "KI kann Etiketten falsch lesen. Extraktion ist kein Zertifizierungsnachweis." else "AI may misread labels. Extraction is not certification evidence.")
+                if (extracted.getString("text").isNotBlank()) warnings.put(ResultStrings.aiTranscriptionCaution(input.locale == "de"))
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: Exception) { aiStatus = "failed"; aiError = aiFailure(error, input.locale, hosted = settings.connection == "hosted") }
         }
@@ -182,19 +182,19 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val rawText = recognized.joinToString("\n") { it.text }
                 val ocrText = recognized.mapNotNull { photo -> compositionHeading.find(photo.text)?.let { photo.text.substring(it.range.first) } }
                     .joinToString("\n").take(30_000)
-                warnings.put(if (input.locale == "de") "Texterkennung auf dem Gerät als Ersatz für die KI-Bildanalyse verwendet." else "On-device text recognition was used as a fallback for AI image analysis.")
-                if (recognized.any { it.truncated } || rawText.length > 30_000) warnings.put(if (input.locale == "de") "Langer OCR-Text wurde gekürzt und wird als unvollständig behandelt." else "Long OCR text was shortened and is treated as incomplete.")
+                warnings.put(ResultStrings.ocrFallbackNotice(input.locale == "de"))
+                if (recognized.any { it.truncated } || rawText.length > 30_000) warnings.put(ResultStrings.ocrTruncated(input.locale == "de"))
                 if (ocrText.isNotBlank()) {
                     val fallback = evaluator.evaluate(input.copy(text = ocrText, complete = false,
                         category = result.getString("category"), name = result.getJSONObject("identity").optString("name")))
                     fallback.getJSONArray("evidence").getJSONObject(0).put("id", "photo-ocr").put("kind", "ocr")
-                        .put("title", if (input.locale == "de") "Texterkennung auf dem Gerät — am Etikett prüfen" else "On-device text recognition — verify against the label")
+                        .put("title", ResultStrings.ocrTitle(input.locale == "de"))
                     val findings = fallback.getJSONArray("findings")
                     for (index in 0 until findings.length()) findings.getJSONObject(index).put("evidenceId", "photo-ocr")
                     result = mergeResults(result, fallback)
                 }
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
-            catch (error: Exception) { warnings.put(if (input.locale == "de") "Auch die lokale Texterkennung ist fehlgeschlagen; bisherige Belege bleiben erhalten." else "Local text recognition also failed; earlier evidence has been kept.") }
+            catch (error: Exception) { warnings.put(ResultStrings.ocrFallbackFailed(input.locale == "de")) }
         }
         val allWarnings = result.getJSONArray("warnings")
         for (index in 0 until warnings.length()) allWarnings.put(warnings.getString(index))
@@ -235,9 +235,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         if (database.second.has("offlineSnapshotDate")) {
             val date = database.second.getString("offlineSnapshotDate").take(10)
             database.second.remove("offlineSnapshotDate")
-            result.getJSONArray("warnings").put(if (database.first.locale == "de") "Begrenzter Offline-Datenstand vom $date. Gemeinschaftliche Angaben können veraltet oder unvollständig sein." else "Limited offline snapshot from $date. Community records may be outdated or incomplete.")
+            result.getJSONArray("warnings").put(ResultStrings.offlineSnapshotCaution(database.first.locale == "de").replace("{date}", date))
         }
-        result.getJSONArray("warnings").put(if (database.first.locale == "de") "Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen." else "Community-maintained record; check market, recipe and freshness.")
+        result.getJSONArray("warnings").put(ResultStrings.communityRecordCaution(database.first.locale == "de"))
         return companyConcerns.attach(result, database.first.locale)
     }
     private suspend fun lookup(barcode: String, input: CheckInput, offline: Boolean = false): Pair<CheckInput, JSONObject>? {
@@ -540,7 +540,7 @@ fun mergeResults(current: JSONObject, next: JSONObject): JSONObject {
         else -> preferred.getJSONObject("identity")
     })
     if (contradictory) result.put("outcome", "conflicting").put("basis", "insufficient")
-        .put("summary", "The supplied composition and another source disagree. Check the product variant and source dates.")
+        .put("summary", ResultStrings.compositionConflictSummary(false))
     val databaseSources = listOf(current, next).flatMap { source -> source.getJSONArray("evidence").let { items ->
         (0 until items.length()).map { items.getJSONObject(it) }.filter { it.optString("kind") == "database" }.map { it.getString("id") }
     } }.toSet()
@@ -599,7 +599,7 @@ internal fun reconcileOriginQuestions(questions: JSONArray, findings: JSONArray,
         val question = questions.getString(index)
         if (!originQuestion.containsMatchIn(question)) question else {
             val de = if (locale != null) locale == "de" else question.startsWith("Die Herkunft")
-            if (unresolved.isEmpty()) null else (if (de) "Die Herkunft dieser Zutaten klären: " else "Confirm the origin of: ") + unresolved.joinToString(", ") + "."
+            if (unresolved.isEmpty()) null else (ResultStrings.originQuestionPrefix(de)) + unresolved.joinToString(", ") + "."
         }
     })
 }

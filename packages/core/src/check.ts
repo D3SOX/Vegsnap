@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import { analyzeText, parseSourceIngredients } from './analyze';
 import { lookupProduct, normalizeBarcode } from './database';
 import { validateAIExtraction } from './provider';
@@ -11,20 +12,22 @@ import { databaseCountryWarning, selectProductCountry } from './market';
 import type { CheckInput, CheckOptions, CheckResult, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
+  const t = resultMessages[input.locale ?? 'en'];
   const result = analyzeText({ ...product.input, locale: input.locale, category: input.category && input.category !== 'other' ? input.category : product.input.category }, now);
   result.evidence = [product.evidence];
   result.findings = result.findings.map(finding => ({ ...finding, evidenceId: product.evidence.id }));
   result.identity.match = 'exact_barcode';
-  result.warnings.push(input.locale === 'de' ? 'Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen.' : 'Community-maintained record; check market, recipe and freshness.');
+  result.warnings.push(t.communityRecordCaution);
   // Country warnings are evaluated after packaging and database clues are combined.
   result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:)/.test(warning)));
   // Database label tags are community assertions, not independently verified registry claims.
-  if (product.labels.length) result.warnings.push(`Database labels (unverified): ${product.labels.join(', ')}`);
+  if (product.labels.length) result.warnings.push(`${t.databaseLabelsPrefix}${product.labels.join(', ')}`);
   return result;
 }
 
 /** One bounded AI workflow (with an optional identity-only research follow-up); no AI request can run in background or offline mode. */
 export async function checkProduct(input: CheckInput, options: CheckOptions): Promise<CheckResult> {
+  const t = resultMessages[input.locale ?? 'en'];
   options.signal?.throwIfAborted();
   options.onProgress?.('evaluating');
   let result = analyzeText(input, options.now);
@@ -50,17 +53,17 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
       const local = options.offlineProducts?.lookup(code, input);
       if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return true; }
       if (options.offline) {
-        result.warnings.push(input.locale === 'de' ? 'Kein passender Eintrag im teilweisen Offline-Datenbestand.' : 'No exact record in the partial offline database.');
+        result.warnings.push(t.offlineMissing);
         return;
       }
       const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
         category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
       if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
-      else result.warnings.push(input.locale === 'de' ? 'Kein passender Datenbankeintrag gefunden.' : 'No exact product record was found.');
+      else result.warnings.push(t.databaseMissing);
       return true;
     } catch (error) {
       if (options.signal?.aborted) throw error;
-      result.warnings.push(error instanceof Error ? error.message : 'Database lookup failed.');
+      result.warnings.push(error instanceof Error ? error.message : t.databaseLookupFailed);
     }
   }
   await lookup(input.barcode);
@@ -69,9 +72,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   if (options.mode !== 'explicit' || result.outcome !== 'uncertain' || !(input.text?.trim() || input.images?.length || input.name?.trim())) return finish();
   if (options.offline || !options.provider) {
     result.aiStatus = options.offline ? 'offline' : 'unconfigured';
-    if (input.images?.length) result.warnings.push(input.locale === 'de'
-      ? options.offline ? 'Die KI hat dieses Foto nicht analysiert: Der Offline-Modus ist aktiv.' : 'Die KI hat dieses Foto nicht analysiert: Ein Modell in den Einstellungen auswählen.'
-      : options.offline ? 'AI did not analyze this photo: offline mode is enabled.' : 'AI did not analyze this photo: choose a model in Settings.');
+    if (input.images?.length) result.warnings.push(options.offline ? t.photoOfflineNotice : t.photoUnconfiguredNotice);
     return finish();
   }
   options.signal?.throwIfAborted();
@@ -99,9 +100,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (extracted.research?.market && extracted.research.market !== selectProductCountry(input, packagingCountry, markets).market) {
       // Hosted/native research may use a newer public record than the client's offline snapshot.
       for (const field of ['ingredientAssessments', 'webClaims', 'webCompositions', 'contact'] as const) delete extracted[field];
-      result.warnings.push(input.locale === 'de'
-        ? 'Die Länderhinweise haben sich nach der Recherche geändert. Webbelege wurden nicht verwendet; prüfe das Produkt erneut.'
-        : 'Country clues changed after research. Web evidence was not used; recheck the product.');
+      result.warnings.push(t.researchCountryChanged);
     }
     // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
     const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
@@ -123,20 +122,20 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     extractedResult.evidence = extracted.text ? [{ id: 'ai-extraction', kind: 'ai_extraction', title: 'AI transcription — check against the original',
       excerpt: extracted.text, retrievedAt: result.checkedAt }] : [];
     extractedResult.findings = extractedResult.findings.map(finding => ({ ...finding, evidenceId: 'ai-extraction' }));
-    if (extracted.text) extractedResult.warnings.push(input.locale === 'de' ? 'KI-Abschrift am Original prüfen; keine Zertifizierungsprüfung.' : 'Verify the AI transcription against the original; no certification was checked.');
+    if (extracted.text) extractedResult.warnings.push(t.aiTranscriptionUnverified);
     result = mergeResults(parsed ? withoutCompositionFindings(result, authoritativeText) : result, extractedResult);
     result.aiStatus = input.images?.length ? 'images' : 'text';
     result.webSearchStatus = extracted.research?.searched ? 'searched' : options.provider.supportsWebSearch === false ? 'unsupported' : 'not_used';
     result = applyAIEvidence(result, aiInput, extracted, completeForEvaluation);
     result = applyWebEvidence(result, input, extracted);
     if (result.outcome === 'uncertain' && options.provider.supportsWebSearch && extracted.name && extracted.brand && !extracted.complete && !extracted.research?.searched) {
-      result.warnings.push(input.locale === 'de' ? 'Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege wurden beibehalten.' : 'Web research did not complete; the available photo or text evidence was kept.');
+      result.warnings.push(t.webResearchFailedCore);
     }
     result = applyManufacturerContact(result, input, extracted);
     result = applyCompanyAssessment(result, input, extracted);
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    result.warnings.push(error instanceof Error ? error.message : 'AI could not complete this check.');
+    result.warnings.push(error instanceof Error ? error.message : t.aiCheckFailed);
     result.aiStatus = error instanceof Error && /vision-capable/.test(error.message) ? 'vision_disabled' : 'failed';
   }
   return finish();

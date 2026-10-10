@@ -124,7 +124,7 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     fun register(term: String, item: JSONObject) {
         val previous = assessments[term]
         assessments[term] = if (previous != null && previous.getString("status") != item.getString("status")) {
-            JSONObject().put("status", "ambiguous").put("explanation", if (de) "Die KI macht widersprüchliche Angaben zur Herkunft." else "The AI gave conflicting ingredient origins.")
+            JSONObject().put("status", "ambiguous").put("explanation", ResultStrings.aiOriginConflict(de))
         } else item
     }
     val composition = normalizeCompositionTerm(input.text)
@@ -148,7 +148,7 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
         val assessment = assessments[term]
         if (assessment == null) {
             if (term in parsedTerms.orEmpty() && finding.getString("status") == "unknown" && finding.optString("evidenceId") in sourceIds) finding.put("explanation",
-                if (de) "Die KI konnte die Herkunft dieser Zutat nicht feststellen." else "The AI did not establish the origin of this ingredient.")
+                ResultStrings.aiUnknownOrigin(de))
             continue
         }
         val translated = assessment.opt("translatedTerm") as? String
@@ -157,27 +157,27 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
         }
         if (finding.getString("status") != "unknown") continue
         finding.put("status", assessment.getString("status")).put("evidenceId", assessmentEvidenceId)
-            .put("explanation", (if (de) "KI-Einschätzung: " else "AI assessment: ") + assessment.getString("explanation"))
+            .put("explanation", (ResultStrings.aiAssessmentPrefix(de)) + assessment.getString("explanation"))
         assessed += finding
     }
     val values = (0 until findings.length()).map { findings.getJSONObject(it) }
     val animal = values.any { it.getString("status") == "animal" }
     if (assessed.isNotEmpty()) {
         result.getJSONArray("evidence").put(JSONObject().put("id", assessmentEvidenceId).put("kind", "ai_extraction")
-            .put("title", if (de) "KI-Einschätzung der Zutaten" else "AI ingredient assessment")
+            .put("title", ResultStrings.aiIngredientAssessment(de))
             .put("excerpt", assessed.joinToString("\n") { "${it.getString("term")}: ${it.getString("explanation")}" })
             .put("retrievedAt", result.getString("checkedAt")).put("verification", "unverified"))
-        result.getJSONArray("warnings").put(if (de) "KI-Einschätzungen zur Herkunft sind keine Herstellerbestätigung." else "AI ingredient assessments are not manufacturer confirmation.")
+        result.getJSONArray("warnings").put(ResultStrings.aiIngredientCaution(de))
         if (animal && result.getString("outcome") != "conflicting") result.put("outcome", if (result.getString("outcome") == "vegan") "conflicting" else "not_vegan").put("basis", "composition").put("questions", JSONArray())
-            .put("summary", if (de) "Die Zutatenbewertung weist auf tierische Bestandteile hin. Die KI-Einschätzung ist gekennzeichnet." else "The ingredient assessment identifies animal-derived content. AI assessments are marked.")
+            .put("summary", ResultStrings.aiAnimalCompositionSummary(de))
         else if (result.getString("outcome") == "uncertain" && complete && values.isNotEmpty() && values.all { it.getString("status") == "plant" } && input.category in setOf("food", "drink", "cosmetics", "household") && !needsProcessingEvidence(input)) {
             result.put("outcome", "vegan").put("basis", "composition").put("questions", JSONArray())
-                .put("summary", if (de) "In der vollständigen Zutatenliste wurden mit KI-Unterstützung keine tierischen Bestandteile erkannt." else "No animal-derived ingredients were identified in the complete list, with AI assistance.")
+                .put("summary", ResultStrings.aiVeganCompositionSummary(de))
         }
     }
     if (result.getString("outcome") == "uncertain" && complete) {
         val unresolved = values.filter { it.getString("status") in setOf("unknown", "ambiguous") }.map { it.getString("term") }
-        if (unresolved.isNotEmpty()) result.put("questions", JSONArray().put((if (de) "Die Herkunft dieser Zutaten klären: " else "Confirm the origin of: ") + unresolved.joinToString(", ") + "."))
+        if (unresolved.isNotEmpty()) result.put("questions", JSONArray().put((ResultStrings.originQuestionPrefix(de)) + unresolved.joinToString(", ") + "."))
     }
     if (!imagesSent) return result
     val labels = extracted.optJSONArray("labelObservations") ?: JSONArray()
@@ -191,17 +191,17 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val conflict = animal || result.getString("outcome") in setOf("not_vegan", "conflicting")
     result.put("outcome", if (conflict) "conflicting" else "vegan").put("basis", if (conflict) "insufficient" else "packaging")
         .put("summary", if (conflict) {
-            if (de) "Das sichtbare Vegan-Label widerspricht der Zutatenbewertung. Produktvariante und Belege prüfen." else "The visible vegan label conflicts with the ingredient assessment. Check the product variant and evidence."
+            ResultStrings.aiLabelConflictSummary(de)
         } else {
-            if (de) "Die KI erkennt eine vegane Kennzeichnung auf dem bereitgestellten Produktfoto. Die Kennzeichnung am Original prüfen." else "The AI identified a vegan label on the supplied product photo. Verify the label against the original."
+            ResultStrings.aiLabelSummary(de)
         })
     if (!conflict) result.put("questions", JSONArray())
     observations.forEachIndexed { index, item ->
         result.getJSONArray("evidence").put(JSONObject().put("id", "ai-label-$index").put("kind", "ai_extraction")
-            .put("title", (if (de) "Sichtbare Kennzeichnung (KI): " else "Visible packaging label (AI): ") + item.getString("name"))
+            .put("title", (ResultStrings.aiLabelTitlePrefix(de)) + item.getString("name"))
             .put("excerpt", item.getString("text")).put("retrievedAt", result.getString("checkedAt"))
             .put("claim", "vegan").put("verification", "unverified"))
     }
-    result.getJSONArray("warnings").put(if (de) "Kennzeichnung von KI abgelesen; Echtheit und Zertifizierungsregister wurden nicht geprüft." else "Label read by AI; authenticity and certification registry were not checked.")
+    result.getJSONArray("warnings").put(ResultStrings.aiLabelCaution(de))
     return result
 }

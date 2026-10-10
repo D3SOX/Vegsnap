@@ -1,8 +1,9 @@
-"Saved to Vegsnap" = "Saved to Vegsnap";
-"Check with Vegsnap" = "Check with Vegsnap";
-"Open Vegsnap to review and check this product." = "Open Vegsnap to review and check this product.";
-"The selected text and photos will be saved on this device. Review them in Vegsnap before checking." = "The selected text and photos will be saved on this device. Review them in Vegsnap before checking.";
-"Done" = "Done";
-"Save product" = "Save product";
+/* Generated from localization/strings.json by bun run strings:generate. Do not edit. */
 "Cancel" = "Cancel";
+"Check with Vegsnap" = "Check with Vegsnap";
+"Done" = "Done";
+"Open Vegsnap to review and check this product." = "Open Vegsnap to review and check this product.";
+"Save product" = "Save product";
+"Saved to Vegsnap" = "Saved to Vegsnap";
+"The selected text and photos will be saved on this device. Review them in Vegsnap before checking." = "The selected text and photos will be saved on this device. Review them in Vegsnap before checking.";
 "The shared container is unavailable." = "The shared container is unavailable.";

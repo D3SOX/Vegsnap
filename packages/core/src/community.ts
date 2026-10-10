@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import service from '../../../data/community-service.json';
 import { normalizeBarcode } from './barcode';
 import { safeContactUrl } from './manufacturer-contact';
@@ -145,17 +146,18 @@ export function applyCommunityReplies(result: CheckResult, replies: CommunityRep
   const eligible = replies.filter(reply => reply.scope === 'whole_product' && reply.claim !== 'inconclusive' && reply.match !== 'candidate');
   if (!eligible.length) return result;
   const de = locale === 'de';
+  const t = resultMessages[de ? 'de' : 'en'];
   const positive = eligible.some(reply => reply.claim === 'vegan'), negative = eligible.some(reply => reply.claim === 'not_vegan');
   const conflict = result.outcome === 'conflicting' || positive && (negative || result.outcome === 'not_vegan' || result.findings.some(item => item.status === 'animal')) || negative && result.outcome === 'vegan';
   const links = communityLinks(result, locale, baseUrl);
   return { ...result, outcome: conflict ? 'conflicting' : positive ? 'vegan' : 'not_vegan', basis: conflict ? 'insufficient' : 'manufacturer',
-    title: conflict ? (de ? 'Widersprüchliche Belege' : 'Conflicting evidence') : positive ? (de ? 'Hersteller bezeichnet es als vegan' : 'Manufacturer says vegan') : (de ? 'Hersteller bezeichnet es als nicht vegan' : 'Manufacturer says not vegan'),
-    summary: conflict ? (de ? 'Die geprüfte Herstellerantwort widerspricht anderen Belegen. Produktvariante, Datum und Originalantwort prüfen.' : 'The reviewed manufacturer reply conflicts with other evidence. Check the variant, date and original reply.') : (de ? 'Eine geprüfte Community-Einreichung enthält eine Herstellerbestätigung für dieses Produkt. Antwortdatum und Geltungsbereich prüfen.' : 'A reviewed community contribution contains manufacturer confirmation for this product. Check the response date and coverage.'),
+    title: conflict ? t.conflictingEvidence : positive ? t.manufacturerSaysVegan : t.manufacturerSaysNotVegan,
+    summary: conflict ? t.communityConflictSummary : t.communityConfirmationSummary,
     questions: conflict ? result.questions : [],
     evidence: [...result.evidence, ...eligible.map(reply => ({ id: `community-${reply.id}`, kind: 'manufacturer' as const,
-      title: `${de ? 'Geprüfte Herstellerantwort' : 'Reviewed manufacturer reply'}: ${reply.brand}`, excerpt: reply.reply,
+      title: `${t.reviewedManufacturerReply}: ${reply.brand}`, excerpt: reply.reply,
       ...(links ? { url: links.replies } : {}), retrievedAt: now.toISOString(), sourceDate: `${reply.repliedOn}T00:00:00Z`, claim: reply.claim as 'vegan' | 'not_vegan', verification: 'unverified' as const }))],
-    warnings: [...result.warnings, de ? 'Von der Community eingereicht und moderiert; Absender nicht unabhängig authentifiziert. Rezepturen können sich ändern.' : 'Submitted by the community and reviewed by a moderator; the sender was not independently authenticated. Recipes can change.'],
+    warnings: [...result.warnings, t.communityReplyCaution],
   };
 }
 

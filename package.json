@@ -20,7 +20,9 @@
     "test:screenshots": "python3 -m unittest discover -s scripts/screenshots -p \"test_*.py\" && bun x tsc -p scripts/screenshots/tsconfig.json",
     "ios:prepare": "bun ios/prepare.ts",
     "test:ios-bridge": "bun test ios/Bridge",
-    "check:ios-types": "bun x tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --resolveJsonModule --allowSyntheticDefaultImports --lib ES2022,DOM --types bun ios/Bridge/entry.ts ios/Bridge/bridge.test.ts ios/prepare.ts"
+    "check:ios-types": "bun x tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --resolveJsonModule --allowSyntheticDefaultImports --lib ES2022,DOM --types bun ios/Bridge/entry.ts ios/Bridge/bridge.test.ts ios/prepare.ts",
+    "strings:generate": "bun scripts/localization.ts",
+    "strings:check": "bun scripts/localization.ts --check"
   },
   "devDependencies": {
     "@types/bun": "latest",

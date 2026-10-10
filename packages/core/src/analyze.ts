@@ -1,3 +1,4 @@
+import { analysisMessages, resultMessages } from './i18n';
 import rulesData from '../../../data/rules.json';
 import { normalizeBarcode } from './database';
 import type { CheckInput, CheckResult, Evidence, Finding, Locale } from './types';
@@ -66,44 +67,16 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
 const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i;
 const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von)\b/i;
-const strings = {
-  en: {
-    animal: 'Animal-derived content found', vegan: 'Composition appears vegan', uncertain: 'More information needed',
-    unknown: 'This term is not covered by the bundled rules.',
-    incomplete: 'Provide the complete ingredients or materials list.',
-    origin: 'Confirm the source of the ambiguous or unrecognized ingredients/materials.',
-    shoes: 'Ask the manufacturer about lining, glue, coatings, and trims.',
-    drink: 'Confirm processing and fining aids with the manufacturer.',
-    other: 'Identify the product category and its complete composition.',
-    caveat: 'Composition alone does not verify manufacturing aids or certification.',
-    animalSummary: 'The supplied composition includes animal-derived content. See the matched terms and evidence.',
-    veganSummary: 'All terms in the supplied complete list are covered without identified animal content. This is not a certification.',
-    uncertainSummary: 'The available composition does not establish whether the product is vegan.',
-  },
-  de: {
-    animal: 'Tierische Bestandteile gefunden', vegan: 'Zusammensetzung erscheint vegan', uncertain: 'Weitere Informationen nötig',
-    unknown: 'Dieser Begriff ist in den enthaltenen Regeln nicht erfasst.',
-    incomplete: 'Bitte die vollständige Zutaten- oder Materialliste angeben.',
-    origin: 'Die Herkunft unklarer oder unbekannter Zutaten/Materialien muss bestätigt werden.',
-    shoes: 'Den Hersteller nach Futter, Klebstoffen, Beschichtungen und Besatz fragen.',
-    drink: 'Verarbeitungs- und Schönungsmittel beim Hersteller bestätigen lassen.',
-    other: 'Produktkategorie und vollständige Zusammensetzung angeben.',
-    caveat: 'Die Zusammensetzung bestätigt keine Verarbeitungshilfsmittel oder Zertifizierung.',
-    animalSummary: 'Die angegebene Zusammensetzung enthält tierische Bestandteile. Die Treffer und Belege stehen unten.',
-    veganSummary: 'Alle Begriffe der vollständigen Liste sind ohne erkannte tierische Bestandteile erfasst. Dies ist keine Zertifizierung.',
-    uncertainSummary: 'Die vorhandene Zusammensetzung belegt nicht, ob das Produkt vegan ist.',
-  },
-} satisfies Record<Locale, Record<string, string>>;
-
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';
-  const message = strings[locale];
+  const message = analysisMessages[locale];
+  const t = resultMessages[locale];
   const text = (input.text ?? '').slice(0, 20_000);
   const checkedAt = now().toISOString();
   const sourceId = 'composition';
   const evidence: Evidence[] = text ? [{
-    id: sourceId, kind: 'user_text', title: locale === 'de' ? 'Angegebene Zusammensetzung' : 'Supplied composition',
+    id: sourceId, kind: 'user_text', title: t.suppliedComposition,
     excerpt: text, retrievedAt: checkedAt,
     ...(safeSourceUrl(input.sourceUrl) ? { url: safeSourceUrl(input.sourceUrl) } : {}),
   }] : [];
@@ -151,9 +124,7 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
     category, identity: { name: input.name, brand: input.brand, barcode: input.barcode, market: input.market ?? 'DE', match: 'unconfirmed' },
     findings, evidence, questions, warnings: [message.caveat], crossContact,
     companyConcerns: [], checkedAt, usedAI: false,
-    ...(parsedIngredients !== undefined && text.trim() && !parsed ? { warnings: [message.caveat, locale === 'de'
-      ? 'Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet.'
-      : 'The AI ingredient list could not be matched to the original composition; local splitting was used.'] } : {}),
+    ...(parsedIngredients !== undefined && text.trim() && !parsed ? { warnings: [message.caveat, t.aiIngredientsMismatch] } : {}),
   };
 }
 
@@ -167,6 +138,7 @@ export function safeSourceUrl(value?: string): string | undefined {
 
 /** Compose already verified product-specific evidence. Never pass model-authored claims here. */
 export function applyVerifiedEvidence(result: CheckResult, evidence: Evidence[]): CheckResult {
+  const t = resultMessages.en;
   const usable = evidence.filter(item => Boolean(safeSourceUrl(item.url)) && (
     item.kind === 'certification' && (item.verification === 'registry' || item.verification === 'packaging') ||
     item.kind === 'manufacturer' && item.verification === 'source'
@@ -174,14 +146,14 @@ export function applyVerifiedEvidence(result: CheckResult, evidence: Evidence[])
   const supports = usable.some(item => item.claim === 'vegan');
   const opposes = usable.some(item => item.claim === 'not_vegan');
   if (result.outcome === 'conflicting' || supports && (opposes || result.outcome === 'not_vegan') || opposes && result.outcome === 'vegan') {
-    return { ...result, outcome: 'conflicting', basis: 'insufficient', title: 'Conflicting evidence',
-      summary: 'Product-specific sources disagree. Review the evidence and the product variant.', evidence: [...result.evidence, ...usable] };
+    return { ...result, outcome: 'conflicting', basis: 'insufficient', title: t.conflictingEvidence,
+      summary: t.verificationConflictSummary, evidence: [...result.evidence, ...usable] };
   }
   if (supports || opposes) {
     const basis = usable.some(item => item.kind === 'certification' && item.claim === 'vegan') ? 'certified' : 'manufacturer';
     return { ...result, outcome: supports ? 'vegan' : 'not_vegan', basis,
-      title: opposes ? 'Not vegan' : basis === 'certified' ? 'Vegan certified' : 'Manufacturer says vegan',
-      summary: 'See the product-specific source and its verification method.', questions: [], evidence: [...result.evidence, ...usable] };
+      title: opposes ? t.notVegan : basis === 'certified' ? t.veganCertified : t.manufacturerSaysVegan,
+      summary: t.verificationSummary, questions: [], evidence: [...result.evidence, ...usable] };
   }
   return result;
 }

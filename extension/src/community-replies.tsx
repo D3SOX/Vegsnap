@@ -1,11 +1,8 @@
 /** @jsxImportSource preact */
 import { communityLinks, communityLookupParams, parseCommunityReplyPage, type CheckResult, type CommunityReply, type CommunityReplyPage, type Locale } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { communityMessages as messages } from './i18n';
 
-const messages = {
-  en: { title:'Community manufacturer replies', share:'Share a reply', view:'View shared replies', notice:'Opening a product checks reviewed replies using its barcode, name, brand and country. Whole-product confirmations can update the verdict. Your history and photos stay on this device.', offline:'Go online to share or view community replies.', loading:'Checking manufacturer replies…', failed:'Could not load replies. Retry to check current manufacturer evidence.', missing:'Add the product name and brand or barcode, and country, to find replies.', empty:'No reviewed replies found.', retry:'Refresh replies', candidate:'Possible product range. Confirm that your product belongs to it.', confirm:'This is my product range', reviewed:'Reviewed community contribution; the sender was not independently authenticated.', scope:'Response covers', whole_product:'The whole product', ingredients:'Specific ingredients or materials', processing:'Processing aids / production', permission:'Allow community lookup', permissionHint:'Browser permission is needed before product details can be sent to the community service.', more:'More than 50 replies match. The verdict stays unchanged until all relevant evidence can be checked.' },
-  de: { title:'Herstellerantworten aus der Community', share:'Antwort teilen', view:'Geteilte Antworten ansehen', notice:'Beim Öffnen eines Produkts werden geprüfte Antworten anhand von Barcode, Name, Marke und Land gesucht. Bestätigungen für das ganze Produkt können das Ergebnis ändern. Verlauf und Fotos bleiben auf diesem Gerät.', offline:'Gehe online, um Antworten zu teilen oder anzusehen.', loading:'Herstellerantworten werden geprüft…', failed:'Antworten konnten nicht geladen werden. Erneut versuchen, um aktuelle Herstellerbelege zu prüfen.', missing:'Produktname und Marke oder Barcode sowie Land ergänzen, um Antworten zu finden.', empty:'Keine geprüften Antworten gefunden.', retry:'Antworten aktualisieren', candidate:'Mögliche Produktreihe. Bestätige, dass dein Produkt dazugehört.', confirm:'Das ist meine Produktreihe', reviewed:'Geprüfter Community-Beitrag; Absender nicht unabhängig authentifiziert.', scope:'Die Antwort betrifft', whole_product:'Das gesamte Produkt', ingredients:'Bestimmte Zutaten oder Materialien', processing:'Verarbeitungshilfsmittel / Herstellung', permission:'Community-Suche erlauben', permissionHint:'Eine Browserberechtigung ist erforderlich, bevor Produktdetails an den Community-Dienst gesendet werden.', more:'Mehr als 50 Antworten passen. Das Ergebnis bleibt unverändert, bis alle relevanten Belege geprüft werden können.' },
-};
 const alwaysAllowed = async () => true;
 export function CommunityRepliesSection({result,locale,baseUrl,offline = false,onReplies,fetchReplies = fetch,canLookup = alwaysAllowed,allowLookup}: {
   result:CheckResult; locale:Locale; baseUrl?:string; offline?:boolean; onReplies?:(replies:CommunityReply[], complete:boolean)=>void;
@@ -70,10 +67,10 @@ export function CommunityRepliesSection({result,locale,baseUrl,offline = false,o
           const next = [...confirmed,reply.id]; setConfirmed(next);
           notify.current?.(page.more ? [] : [...page.replies,...page.candidates.filter(item=>next.includes(item.id)).map(item=>({...item,match:'name' as const}))],!page.more);
         }}>{t.confirm}</button></>}
-        <details><summary>{reply.claim === 'vegan' ? 'Vegan' : reply.claim === 'not_vegan' ? (locale === 'de' ? 'Nicht vegan' : 'Not vegan') : (locale === 'de' ? 'Weiterhin unklar' : 'Still inconclusive')}</summary>
+        <details><summary>{reply.claim === 'vegan' ? t.claimVegan : reply.claim === 'not_vegan' ? t.claimNotVegan : t.claimInconclusive}</summary>
           <p>{reply.question}</p><p class="quote">{reply.reply}</p><p class="hint">{t.reviewed}</p>
-          {reply.sourceUrl && <a href={reply.sourceUrl} target="_blank" rel="noopener noreferrer">{locale === 'de' ? 'Herstellerquelle' : 'Manufacturer source'}</a>}
-          {reply.evidencePublic && <a href={`${origin}/api/evidence/${reply.id}`} target="_blank" rel="noopener noreferrer">{locale === 'de' ? 'Geprüften Nachweis herunterladen' : 'Download reviewed evidence'}</a>}
+          {reply.sourceUrl && <a href={reply.sourceUrl} target="_blank" rel="noopener noreferrer">{t.manufacturerSource}</a>}
+          {reply.evidencePublic && <a href={`${origin}/api/evidence/${reply.id}`} target="_blank" rel="noopener noreferrer">{t.downloadEvidence}</a>}
         </details>
       </article>)}
     </>}

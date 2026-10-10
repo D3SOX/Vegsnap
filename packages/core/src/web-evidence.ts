@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import { analyzeText, safeSourceUrl } from './analyze';
 import { applyAIEvidence } from './ai-evidence';
 import { mergeResults } from './merge-results';
@@ -10,11 +11,12 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
   if (!extracted.research?.searched) return result;
   const sources = new Map(extracted.research.sources.map(source => [source.url, source]));
   const de = input.locale === 'de';
+  const t = resultMessages[de ? 'de' : 'en'];
   const consultedOnly = (): CheckResult => ({ ...result, evidence: [...result.evidence,
     ...[...sources.values()].filter(source => safeSourceUrl(source.url)).slice(0, 3).map((source, index): Evidence => ({
       id: `web-consulted-${index}`, kind: 'ai_extraction',
-      title: `${de ? 'Bei der Webrecherche konsultiert' : 'Consulted during web research'}: ${source.title || new URL(source.url).hostname}`,
-      excerpt: de ? 'Bei der Webrecherche konsultiert; keine passende produktspezifische Aussage bestätigt.' : 'Consulted during web research; no matching product-specific claim was established.',
+      title: `${t.consultedDuringWebResearch}: ${source.title || new URL(source.url).hostname}`,
+      excerpt: t.webConsultedNotice,
       url: source.url, retrievedAt: result.checkedAt, verification: 'unverified',
     })),
   ] });
@@ -34,11 +36,11 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
       category: extracted.category, ingredients: composition.ingredients, ingredientAssessments: extracted.ingredientAssessments }, composition.complete);
     evaluated.usedAI = true;
     evaluated.evidence = [{ id: evidenceId, kind: composition.sourceType === 'manufacturer' ? 'manufacturer' : 'ai_extraction',
-      title: composition.sourceType === 'manufacturer' ? (de ? 'Zusammensetzung laut Hersteller (KI)' : 'Manufacturer composition (AI)') : (de ? 'Zusammensetzung laut Händler (KI)' : 'Retailer composition (AI)'),
+      title: composition.sourceType === 'manufacturer' ? t.manufacturerCompositionAi : t.retailerCompositionAi,
       excerpt: composition.text, url: composition.url, retrievedAt: result.checkedAt, verification: 'unverified' },
       ...evaluated.evidence.filter(item => item.id === 'ai-assessment').map(item => ({ ...item, id: `${evidenceId}-assessment` }))];
     evaluated.findings = evaluated.findings.map(finding => ({ ...finding, evidenceId: finding.evidenceId === 'ai-assessment' ? `${evidenceId}-assessment` : evidenceId }));
-    evaluated.warnings.push(de ? 'Zusammensetzung von KI aus einer Webquelle gelesen; Produktvariante und aktuelle Packung prüfen.' : 'Composition read by AI from a web source; verify the product variant and current packaging.');
+    evaluated.warnings.push(t.webCompositionCaution);
     result = mergeResults(result, evaluated);
   }
   const claims = (extracted.webClaims ?? []).filter(claim => sources.has(claim.url) && safeSourceUrl(claim.url) &&
@@ -50,14 +52,14 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
   const manufacturer = claims.some(claim => claim.sourceType === 'manufacturer');
   const evidence: Evidence[] = claims.map((claim, index) => ({
     id: `web-claim-${index}`, kind: claim.sourceType === 'manufacturer' ? 'manufacturer' : 'certification',
-    title: sources.get(claim.url)?.title || (claim.sourceType === 'manufacturer' ? claim.brand : de ? 'Zertifizierungsquelle' : 'Certification source'),
+    title: sources.get(claim.url)?.title || (claim.sourceType === 'manufacturer' ? claim.brand : t.certificationSource),
     excerpt: claim.quote, url: claim.url, retrievedAt: result.checkedAt, claim: claim.claim, verification: 'unverified',
   }));
   return { ...result, outcome: conflict ? 'conflicting' : positive ? 'vegan' : 'not_vegan',
     basis: conflict ? 'insufficient' : manufacturer ? 'manufacturer' : 'research',
-    title: conflict ? (de ? 'Widersprüchliche Belege' : 'Conflicting evidence') : negative ? (de ? 'Laut Quelle nicht vegan' : 'Source says not vegan') : manufacturer ? (de ? 'Hersteller bezeichnet es als vegan' : 'Manufacturer says vegan') : (de ? 'Zertifizierungsquelle bezeichnet es als vegan' : 'Certification source says vegan'),
-    summary: conflict ? (de ? 'Die recherchierte Quelle widerspricht anderen Belegen. Produktvariante und Originalquelle prüfen.' : 'The researched source conflicts with other evidence. Check the product variant and original source.') : (de ? 'Die KI hat eine produktspezifische Aussage in einer tatsächlich recherchierten Quelle gefunden. Die verlinkte Quelle prüfen.' : 'The AI found a product-specific statement in a source returned by web research. Review the linked source.'),
+    title: conflict ? t.conflictingEvidence : negative ? t.sourceSaysNotVegan : manufacturer ? t.manufacturerSaysVegan : t.certificationSourceSaysVegan,
+    summary: conflict ? t.webResearchConflictSummary : t.webClaimSummary,
     questions: conflict ? result.questions : [], evidence: [...result.evidence, ...evidence],
-    warnings: [...result.warnings, de ? 'Quelle von KI ausgewertet; Produktzuordnung und Aussage am Original prüfen. Keine unabhängige Registerprüfung.' : 'Source interpreted by AI; verify the product match and statement against the original. No independent registry verification.'],
+    warnings: [...result.warnings, t.webSourceCaution],
   };
 }

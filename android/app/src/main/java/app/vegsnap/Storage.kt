@@ -192,9 +192,7 @@ object HistoryTransfer {
             java.time.Instant.parse(result.getString("checkedAt"))
             val clean = publicResult(result, locale)
             if (clean.has("companyAssessment")) {
-                val notice = if (locale == "de")
-                    "Importierte Unternehmensbewertung: Quellen und Zitate wurden von dieser App nicht überprüft."
-                else "Imported company assessment: this app has not verified its sources or quotations."
+                val notice = ResultStrings.importedAssessmentNotice(locale == "de")
                 val warnings = clean.getJSONArray("warnings")
                 val retained = (0 until warnings.length()).map { warnings.getString(it) }.filter { it != notice }.take(99)
                 clean.put("warnings", JSONArray(retained + notice))

@@ -111,7 +111,7 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
                 val category = if (input.category != "other") input.category else when (id) { "off" -> "food"; "obf" -> "cosmetics"; else -> "other" }
                 val markets = product.getJSONArray("countries_tags")
                 val evidence = JSONObject().put("id", "offline:$id:${product.getString("code")}").put("kind", "database")
-                    .put("title", source.title + if (input.locale == "de") " · Offline-Datenstand" else " · Offline snapshot")
+                    .put("title", source.title + ResultStrings.offlineSnapshotSuffix(input.locale == "de"))
                     .put("url", source.root + "product/" + product.getString("code")).put("excerpt", text)
                     .put("retrievedAt", pack.sources.getValue(id).getString("retrievedAt")).put("license", "ODbL-1.0")
                     .put("offlineSnapshotDate", pack.info.generatedAt).put("compositionMarkets", markets)

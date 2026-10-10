@@ -1,5 +1,6 @@
 import type { CheckInput, MarketSource } from './types';
 import countries from '../../../contracts/product-countries.json';
+import { resultMessages } from './i18n';
 // Shared with the desktop companion so local research uses identical country clues.
 const countryCodes = new Set<string>(countries.codes);
 const aliases: Readonly<Record<string, string>> = countries.aliases;
@@ -16,12 +17,9 @@ export function singleProductCountry(markets: readonly string[]): string | undef
 }
 /** Composition stays attributed to its record, even when the displayed country changes. */
 export function databaseCountryWarning(market: string, markets: readonly string[], locale?: string): string | undefined {
-  if (!markets.length) return locale === 'de'
-    ? 'Dieser Datensatz bestätigt das Produktland nicht. Vergleiche die Rezeptur mit deiner Packung.'
-    : 'This record does not confirm the product country. Compare its composition with your package.';
-  if (!markets.some(tag => countryCode(tag) === market)) return locale === 'de'
-    ? `Dieser Datensatz nennt andere Märkte als ${market}. Vergleiche die Rezeptur mit deiner Packung.`
-    : `This record lists other markets than ${market}. Compare its composition with your package.`;
+  const t = resultMessages[locale === 'de' ? 'de' : 'en'];
+  if (!markets.length) return t.countryUnknownWarning;
+  if (!markets.some(tag => countryCode(tag) === market)) return t.countryMismatchWarning.replace('{market}', market);
 }
 /** Packaging can disambiguate a multi-country record; conflicting or unknown clues use the fallback. */
 export function selectProductCountry(

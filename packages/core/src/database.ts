@@ -3,6 +3,7 @@ export { normalizeBarcode } from './barcode';
 import type { Category, CheckInput, CheckOptions, DatabaseProduct } from './types';
 import { readBoundedText } from './http';
 import { countryCode, selectProductCountry } from './market';
+import { resultMessages } from './i18n';
 
 export const DATABASES = [
   { id: 'off', name: 'Open Food Facts', origin: 'https://world.openfoodfacts.org', category: 'food' },
@@ -76,9 +77,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       const modified = typeof product.last_modified_t === 'number' && Number.isFinite(product.last_modified_t) ? new Date(product.last_modified_t * 1000) : undefined;
       const value: DatabaseProduct = {
         markets,
-        warnings: differentMarket ? [options.locale === 'de'
-          ? `Dieser Datensatz nennt andere Märkte als ${requestedMarket}. Vergleiche die Rezeptur mit deiner Packung.`
-          : `This record lists other markets than ${requestedMarket}. Compare its composition with your package.`] : [],
+        warnings: differentMarket ? [resultMessages[options.locale ?? 'en'].countryMismatchWarning.replace('{market}', requestedMarket)] : [],
         input: { barcode: code, name, brand: string(product.brands), text, complete: false,
           category: options.category && options.category !== 'other' ? options.category : db.category,
           locale: options.locale, market: requestedMarket, sourceUrl: `${db.origin}/product/${code}` },

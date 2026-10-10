@@ -166,13 +166,13 @@ internal fun applyWebCompositions(initial: JSONObject, input: CheckInput, extrac
         val id = "web-composition-$index"
         val de = input.locale == "de"
         composition.put("evidence", JSONArray().put(JSONObject().put("id", id).put("kind", "ai_extraction")
-            .put("title", if (item.getString("sourceType") == "manufacturer") { if (de) "Zusammensetzung laut Hersteller (KI)" else "Manufacturer composition (AI)" }
-                else { if (de) "Zusammensetzung laut Händler (KI)" else "Retailer composition (AI)" })
+            .put("title", if (item.getString("sourceType") == "manufacturer") { ResultStrings.manufacturerCompositionAi(de) }
+                else { ResultStrings.retailerCompositionAi(de) })
             .put("excerpt", item.getString("text")).put("url", url).put("verification", "unverified")
             .put("retrievedAt", composition.getString("checkedAt"))))
         val findings = composition.getJSONArray("findings")
         for (i in 0 until findings.length()) findings.getJSONObject(i).put("evidenceId", id)
-        composition.getJSONArray("warnings").put(if (de) "Zutaten von KI aus einer Webquelle gelesen; Produktvariante, Markt und aktuelle Rezeptur am Original prüfen." else "Ingredients read from a web source by AI; check the product variant, market and current recipe against the original.")
+        composition.getJSONArray("warnings").put(ResultStrings.webIngredientsCaution(de))
         val sourceExtraction = JSONObject(extracted.toString()).apply {
             remove("ingredients")
             item.optJSONArray("ingredients")?.let { put("ingredients", it) }
@@ -210,8 +210,8 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
             val source = sources.getJSONObject(index)
             val url = publicEvidenceUrl(source.optString("url")) ?: continue
             result.getJSONArray("evidence").put(JSONObject().put("id", "web-consulted-$index").put("kind", "ai_extraction")
-                .put("title", if (input.locale == "de") "Bei der Webrecherche konsultiert" else "Consulted during web research")
-                .put("excerpt", if (input.locale == "de") "Keine passende produktspezifische Aussage bestätigt." else "No matching product-specific claim was established.")
+                .put("title", ResultStrings.consultedDuringWebResearch(input.locale == "de"))
+                .put("excerpt", ResultStrings.webClaimMissing(input.locale == "de"))
                 .put("url", url).put("verification", "unverified").put("retrievedAt", result.getString("checkedAt")))
         }
         return result
@@ -234,18 +234,18 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
         result.put("outcome", if (conflict) "conflicting" else if (claim == "vegan") "vegan" else "not_vegan")
             .put("basis", if (conflict) "insufficient" else if (certification) "research" else "manufacturer")
             .put("summary", if (conflict) {
-                if (de) "Die Produktquellen widersprechen sich. Produktvariante und Belege prüfen." else "The product sources disagree. Check the product variant and evidence."
+                ResultStrings.webConflictSummary(de)
             } else if (claim == "vegan") {
-                if (de) "Eine bei der Websuche gelesene Produktquelle bezeichnet das Produkt als vegan. Die KI-Zuordnung und das Zitat prüfen." else "A product source read during web search describes this product as vegan. Check the AI's product match and quoted source."
+                ResultStrings.webVeganSummary(de)
             } else {
-                if (de) "Eine bei der Websuche gelesene Produktquelle bezeichnet das Produkt als nicht vegan. Die KI-Zuordnung und das Zitat prüfen." else "A product source read during web search describes this product as not vegan. Check the AI's product match and quoted source."
+                ResultStrings.webNotVeganSummary(de)
             })
         if (!conflict) result.put("questions", JSONArray())
         result.getJSONArray("evidence").put(JSONObject().put("id", "web-claim-$index").put("kind", if (certification) "certification" else "manufacturer")
-            .put("title", if (de) "Produktquelle — von KI ausgewertet" else "Product source — interpreted by AI")
+            .put("title", ResultStrings.productSourceInterpretedByAi(de))
             .put("excerpt", item.getString("quote")).put("url", url).put("claim", claim).put("verification", "unverified")
             .put("retrievedAt", result.getString("checkedAt")))
-        result.getJSONArray("warnings").put(if (de) "Webquelle von KI gelesen; Produktzuordnung und Aussage wurden nicht unabhängig geprüft." else "Web source read by AI; the product match and claim have not been independently verified.")
+        result.getJSONArray("warnings").put(ResultStrings.webClaimCaution(de))
     }
     return if (accepted) result else consultedOnly()
 }

@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import type { CheckResult, Evidence, Finding, Locale } from './types';
 import { normalizeTerm } from './analyze';
 
@@ -17,8 +18,8 @@ export function mergeResults(current: CheckResult, next: CheckResult): CheckResu
   return {
     ...preferred, id: current.id,
     identity: current.identity.match === 'exact_barcode' ? current.identity : next.identity.match === 'exact_barcode' ? next.identity : preferred.identity,
-    ...(contradictory ? { outcome: 'conflicting' as const, basis: 'insufficient' as const, title: 'Conflicting evidence',
-      summary: 'The supplied composition and another source disagree. Check the product variant and source dates.' } : {}),
+    ...(contradictory ? { outcome: 'conflicting' as const, basis: 'insufficient' as const, title: resultMessages.en.conflictingEvidence,
+      summary: resultMessages.en.compositionConflictSummary } : {}),
     evidence,
     findings: filtered,
     questions: filtered.length < findings.size ? reconcileOriginQuestions(preferred.questions, filtered) : preferred.questions,
@@ -49,7 +50,8 @@ export function reconcileOriginQuestions(questions: string[], findings: Finding[
   return questions.flatMap(question => {
     if (!originQuestion.test(question)) return [question];
     const de = locale ? locale === 'de' : question.startsWith('Die Herkunft');
-    return unresolved.length ? [`${de ? 'Die Herkunft dieser Zutaten klären: ' : 'Confirm the origin of: '}${unresolved.join(', ')}.`] : [];
+    const t = resultMessages[de ? 'de' : 'en'];
+    return unresolved.length ? [`${t.originQuestionPrefix}${unresolved.join(', ')}.`] : [];
   });
 }
 

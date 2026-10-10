@@ -459,6 +459,14 @@ Run the registration command for each browser you use: Firefox, Zen, LibreWolf, 
 
 After registration, restart your browser, open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Keep the companion in its registered location. If you move it, run the installer again with the new path.
 
+## Application strings
+
+Edit `localization/strings.json` for Android, iOS, the iOS share extension, and the browser extension, including fixed result explanations and warnings. Each message contains English and German translations and the platform keys that use it. Identical wording shares one entry; platform-specific instructions keep separate entries. iOS keys remain the existing English lookup keys, and Android keeps its existing resource names.
+
+Run `bun run strings:generate` after editing the catalog. It generates Android `strings.xml` (including plurals), iOS `Localizable.strings`, and typed extension/core dictionaries. Android's result engine gets generated `ResultStrings` functions, which also work in plain JVM tests. Messages marked `savedResult` generate `data/result-translations.json` for displaying saved results in another language. Use the usual `R.string` / `stringResource`, `L(...)`, and generated dictionary lookups in application code. Generated files are checked in so native builds do not need an extra generation tool.
+
+`bun run strings:check` verifies translations, formatting arguments, duplicate keys, and generated-file freshness; CI runs it as well. Add new interface and fixed result copy to the catalog instead of defining another bilingual dictionary or language branch. Ingredient rules, source evidence, and manufacturer-message templates remain in their existing shared data files.
+
 ## Data licenses
 
 The application code uses AGPL-3.0-only. Open Food Facts, Open Beauty Facts and Open Products Facts databases use ODbL-1.0, with individual contents under DBCL-1.0. Regional packs retain source URLs and dates. These data licenses are separate from the application license.

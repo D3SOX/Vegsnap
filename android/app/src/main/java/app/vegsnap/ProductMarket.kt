@@ -50,8 +50,8 @@ internal fun selectProductCountry(input: CheckInput, packagingCountry: String? =
     return if (unique != null) unique to "database" else input.market to "fallback"
 }
 internal fun databaseCountryWarning(market: String, markets: List<String>, locale: String): String? = when {
-    markets.isEmpty() -> if (locale == "de") "Dieser Datensatz bestätigt das Produktland nicht. Vergleiche die Rezeptur mit deiner Packung." else "This record does not confirm the product country. Compare its composition with your package."
-    markets.none { productCountryCode(it) == market } -> if (locale == "de") "Dieser Datensatz nennt andere Märkte als $market. Vergleiche die Rezeptur mit deiner Packung." else "This record lists other markets than $market. Compare its composition with your package."
+    markets.isEmpty() -> ResultStrings.countryUnknownWarning(locale == "de")
+    markets.none { productCountryCode(it) == market } -> ResultStrings.countryMismatchWarning(locale == "de").replace("{market}", market)
     else -> null
 }
 
