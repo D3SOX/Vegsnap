@@ -29,6 +29,16 @@ class VeganAlternativesTest {
         assertEquals("A&B", url.queryParameter("tag_1"))
         assertEquals("vegan", url.queryParameter("tag_0"))
     }
+    @Test fun veganEvidenceHandlesContractedAndNonAdjacentNegations() {
+        val cases = JSONObject(File(root, "contracts/alternatives-fixtures.json").readText()).getJSONArray("veganEvidence")
+        val extraction = JSONObject("""{"alternatives":[{"name":"Chocolate","brand":"Plant","url":"https://maker.example/product","quote":""}],"research":{"searched":true,"sources":[{"url":"https://maker.example/product"}]}}""")
+        for (index in 0 until cases.length()) {
+            val case = cases.getJSONObject(index)
+            val quote = case.getString("quote")
+            extraction.getJSONArray("alternatives").getJSONObject(0).put("quote", quote)
+            assertEquals(quote, if (case.getBoolean("accepted")) 1 else 0, parseAIAlternatives(extraction, input).size)
+        }
+    }
     @Test fun aiRequiresIndependentSearchAndStoreProvenance() {
         val extraction = JSONObject("""{"alternatives":[{"name":"Chocolate","brand":"Plant","url":"https://maker.example/product","quote":"Our chocolate is vegan.","store":"REWE","storeUrl":"https://store.example/product","storeQuote":"Plant chocolate at REWE"}],"research":{"searched":true,"sources":[{"url":"https://maker.example/product"}]}}""")
         assertFalse(parseAIAlternatives(extraction, input).first().storeMatch)

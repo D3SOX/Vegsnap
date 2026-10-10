@@ -16,6 +16,9 @@ const key = (value: string) => value.normalize('NFKD').replace(/\p{M}/gu, '').to
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 100) : [];
 const text = (value: unknown, maximum = 300) => typeof value === 'string' ? value.trim().slice(0, maximum) : '';
+// Keep negation within a clause; contradictory evidence is not a recommendation.
+const veganClaim = /\bvegan(?:e[nmrs]?)?\b/i;
+const negatedVeganClaim = /\b(?:not|non|never|cannot|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?)?\b|\bvegan(?:e[nmrs]?)?\b\s*[:?=-]\s*(?:no|false|nein)\b/i;
 const veganLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
 /** Start with the product type rather than requiring the substitute to share its brand/animal ingredient. */
 export function alternativeQueryForProduct(name: string, brand = '', animalTerms: string[] = []): string {
@@ -88,7 +91,7 @@ export function parseAIAlternatives(extraction: AIExtraction, raw: AlternativeSe
   const consulted = new Set(extraction.research.sources.map(source => safeSourceUrl(source.url)));
   const supported = (url: string | undefined) => !!url && url.startsWith('https://') && !!safeSourceUrl(url) && consulted.has(safeSourceUrl(url));
   return (extraction.alternatives ?? []).slice(0, 5).flatMap(item => {
-    if (!supported(item.url) || !/\bvegan(?:e[nmrs]?)?\b/i.test(item.quote) || /\b(?:not|non|nicht|kein\w*)[\s-]+vegan(?:e[nmrs]?)?\b/i.test(item.quote)) return [];
+    if (!supported(item.url) || !veganClaim.test(item.quote) || negatedVeganClaim.test(item.quote)) return [];
     const storeMatch = !!input.store && key(item.store ?? '') === key(input.store) && supported(item.storeUrl) && !!item.storeQuote?.trim();
     return [{ id: item.url, name: item.name, brand: item.brand, url: item.url, source: 'AI', evidence: item.quote,
       storeMatch, stores: storeMatch ? [input.store!] : [], ...(storeMatch ? { storeUrl: item.storeUrl } : {}), marketListed: false }];

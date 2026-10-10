@@ -68,6 +68,11 @@ describe('vegan alternatives', () => {
     expect(() => validateAIExtraction(modelExtraction)).not.toThrow();
     expect(() => validateAIExtraction({ ...extraction, research: undefined, alternatives: [{ name: 42 }] })).toThrow();
   });
+  test('source evidence accepts positive claims and rejects contracted or non-adjacent negations', () => {
+    for (const { quote, accepted } of fixtures.veganEvidence) {
+      expect(parseAIAlternatives({ ...extraction, alternatives: [{ ...extraction.alternatives![0]!, quote }] }, input).length, quote).toBe(accepted ? 1 : 0);
+    }
+  });
   test('research sends only public query, retailer, category and country; unsupported providers are skipped', async () => {
     let called = false;
     expect(await researchVeganAlternatives(input, { supportsWebSearch: false, async extract() { called = true; return extraction; } })).toEqual([]);

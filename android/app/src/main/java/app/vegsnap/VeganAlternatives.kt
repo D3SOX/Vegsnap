@@ -60,6 +60,8 @@ internal fun rankAlternatives(items: List<VeganAlternative>, input: AlternativeQ
     return items.sortedWith(compareByDescending<VeganAlternative> { score(it) }.thenBy { it.name })
         .distinctBy { it.barcode.takeIf { code -> code.isNotBlank() }?.padStart(14, '0') ?: "${alternativeKey(it.brand)}:${alternativeKey(it.name)}" }.take(20)
 }
+private val veganClaim = Regex("\\bvegan(?:e[nmrs]?)?\\b", RegexOption.IGNORE_CASE)
+private val negatedVeganClaim = Regex("\\b(?:not|non|never|cannot|nicht|kein\\w*|\\w+n['’]t)\\b[^.!?;\\n]*\\bvegan(?:e[nmrs]?)?\\b|\\bvegan(?:e[nmrs]?)?\\b\\s*[:?=-]\\s*(?:no|false|nein)\\b", RegexOption.IGNORE_CASE)
 internal fun parseAIAlternatives(extraction: JSONObject, input: AlternativeQuery): List<VeganAlternative> {
     val research = extraction.optJSONObject("research") ?: return emptyList()
     if (!research.optBoolean("searched")) return emptyList()
@@ -71,8 +73,8 @@ internal fun parseAIAlternatives(extraction: JSONObject, input: AlternativeQuery
         val item = alternatives.optJSONObject(index) ?: return@mapNotNull null
         val name = item.optString("name"); val brand = item.optString("brand"); val url = item.optString("url"); val quote = item.optString("quote")
         if (name.isBlank() || name.length > 300 || brand.isBlank() || brand.length > 300 || url.length > 2000 || quote.length > 1000 ||
-            !supported(url) || !Regex("\\bvegan(?:e[nmrs]?)?\\b", RegexOption.IGNORE_CASE).containsMatchIn(quote) ||
-            Regex("\\b(?:not|non|nicht|kein\\w*)[\\s-]+vegan(?:e[nmrs]?)?\\b", RegexOption.IGNORE_CASE).containsMatchIn(quote)) return@mapNotNull null
+            !supported(url) || !veganClaim.containsMatchIn(quote) ||
+            negatedVeganClaim.containsMatchIn(quote)) return@mapNotNull null
         val storeUrl = item.optString("storeUrl")
         val storeMatch = input.store.isNotBlank() && alternativeKey(item.optString("store")) == alternativeKey(input.store) && supported(storeUrl) && item.optString("storeQuote").isNotBlank()
         VeganAlternative(url, name, brand, url, "AI", quote, storeMatch, if (storeMatch) listOf(input.store) else emptyList(), false, storeUrl = if (storeMatch) storeUrl else "")
