@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { storeMessages } from '../src/i18n';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import type { CheckResult } from '@vegsnap/core';
 import { discoverStoreProducts, isCurrentProductBinding, type ProductBinding } from '../src/store-products';
@@ -15,8 +16,8 @@ export default defineContentScript({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let queue = Promise.resolve();
     const badges = new Map<HTMLElement, ProductBinding>();
-    const german = /^de/i.test(browser.i18n.getUILanguage());
-    const checkLabel = german ? 'Vegsnap · Prüfen' : 'Vegsnap · Check';
+    const t = storeMessages[/^de/i.test(browser.i18n.getUILanguage()) ? 'de' : 'en'];
+    const checkLabel = t.check;
     const current = (host: HTMLElement, binding: ProductBinding) => active && host.isConnected && badges.get(host) === binding && isCurrentProductBinding(binding, location.href);
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) if (entry.isIntersecting) {
@@ -27,12 +28,12 @@ export default defineContentScript({
         queue = queue.then(async () => {
           if (!current(host, binding)) return;
           const label = host.shadowRoot?.querySelector('span');
-          if (label) label.textContent = german ? 'Vegsnap · Datenbank prüfen…' : 'Vegsnap · Checking database…';
+          if (label) label.textContent = t.checking;
           try {
             const response = await browser.runtime.sendMessage({ type: 'background-check', barcode: binding.product.barcode }) as Reply<CheckResult>;
             if (!current(host, binding)) return;
             if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : checkLabel;
-            host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : (german ? 'Keine eindeutige Datenbankantwort. Für eine vollständige Prüfung anklicken.' : 'No conclusive database answer. Click for a full check.');
+            host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
           } catch { if (label && current(host, binding)) label.textContent = checkLabel; }
           await new Promise(resolve => setTimeout(resolve, 1600));
         }).catch(() => {});

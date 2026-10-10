@@ -47,25 +47,22 @@ internal fun applyCommunityReplies(source: JSONObject, replies: List<CommunityRe
     val de = locale == "de"
     result.put("outcome", if (conflict) "conflicting" else if (positive) "vegan" else "not_vegan")
         .put("basis", if (conflict) "insufficient" else "manufacturer")
-        .put("title", if (conflict) { if (de) "Widersprüchliche Belege" else "Conflicting evidence" }
-            else if (positive) { if (de) "Hersteller bezeichnet es als vegan" else "Manufacturer says vegan" }
-            else { if (de) "Hersteller bezeichnet es als nicht vegan" else "Manufacturer says not vegan" })
+        .put("title", if (conflict) { ResultStrings.conflictingEvidence(de) }
+            else if (positive) { ResultStrings.manufacturerSaysVegan(de) }
+            else { ResultStrings.manufacturerSaysNotVegan(de) })
         .put("summary", if (conflict) {
-            if (de) "Die geprüfte Herstellerantwort widerspricht anderen Belegen. Produktvariante, Datum und Originalantwort prüfen."
-            else "The reviewed manufacturer reply conflicts with other evidence. Check the variant, date and original reply."
+            ResultStrings.communityConflictSummary(de)
         } else {
-            if (de) "Eine geprüfte Community-Einreichung enthält eine Herstellerbestätigung für dieses Produkt. Antwortdatum und Geltungsbereich prüfen."
-            else "A reviewed community contribution contains manufacturer confirmation for this product. Check the response date and coverage."
+            ResultStrings.communityConfirmationSummary(de)
         })
     if (!conflict) result.put("questions", JSONArray())
     val evidence = result.optJSONArray("evidence") ?: JSONArray().also { result.put("evidence", it) }
     val links = communityLinks(result, locale, baseUrl)
     for (reply in eligible) evidence.put(JSONObject().put("id", "community-${reply.id}").put("kind", "manufacturer")
-        .put("title", "${if (de) "Geprüfte Herstellerantwort" else "Reviewed manufacturer reply"}: ${reply.brand}")
+        .put("title", "${ResultStrings.reviewedManufacturerReply(de)}: ${reply.brand}")
         .put("excerpt", reply.reply).put("retrievedAt", now.toString()).put("sourceDate", "${reply.repliedOn}T00:00:00Z")
         .put("claim", reply.claim).put("verification", "unverified").apply { if (links != null) put("url", links.replies) })
     val warnings = result.optJSONArray("warnings") ?: JSONArray().also { result.put("warnings", it) }
-    warnings.put(if (de) "Von der Community eingereicht und moderiert; Absender nicht unabhängig authentifiziert. Rezepturen können sich ändern."
-        else "Submitted by the community and reviewed by a moderator; the sender was not independently authenticated. Recipes can change.")
+    warnings.put(ResultStrings.communityReplyCaution(de))
     return result
 }

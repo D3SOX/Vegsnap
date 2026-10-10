@@ -85,7 +85,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
             findings.put(JSONObject().put("term", term).put("status", rule?.getString("status") ?: "unknown")
                 .put("ruleId", rule?.getString("id"))
                 .put("explanation", rule?.getJSONObject("explanation")?.optString(input.locale)
-                    ?: if (input.locale == "de") "Herkunft nicht durch die lokalen Regeln geklärt." else "Origin is not established by the bundled rules.")
+                    ?: ResultStrings.unknownOrigin(input.locale == "de"))
                 .put("evidenceId", "input"))
         }
         val statuses = (0 until findings.length()).map { findings.getJSONObject(it).getString("status") }
@@ -97,34 +97,30 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         val de = input.locale == "de"
         val summary = when (outcome) {
-            "not_vegan" -> if (de) "Die vorliegende Liste enthält tierische Zutaten oder Materialien." else "The supplied list contains animal-derived ingredients or materials."
-            "vegan" -> if (de) "Die vorliegende Liste erscheint vegan. Herstellung und nicht genannte Hilfsstoffe sind nicht bestätigt." else "The supplied composition appears vegan. Production and undisclosed processing aids are not verified."
-            else -> if (de) "Die vorhandenen Belege reichen für eine sichere Aussage nicht aus." else "The available evidence is insufficient for a reliable conclusion."
+            "not_vegan" -> ResultStrings.animalCompositionSummary(de)
+            "vegan" -> ResultStrings.veganCompositionSummary(de)
+            else -> ResultStrings.uncertainCompositionSummary(de)
         }
         val questions = JSONArray()
         if (outcome == "uncertain") {
             val unresolved = (0 until findings.length()).map { findings.getJSONObject(it) }
                 .filter { it.getString("status") in setOf("unknown", "ambiguous") }.map { it.getString("term") }
             questions.put(when {
-                input.category in setOf("shoes", "clothing") || needsProcessingEvidence(input) -> if (de)
-                    "Gibt es eine produktspezifische Vegan-Erklärung des Herstellers (einschließlich Hilfsstoffen, Klebstoffen und Beschichtungen)?"
-                    else "Is there a product-specific manufacturer vegan declaration covering processing aids, adhesives, and finishes?"
-                !complete || findings.length() == 0 -> if (de) "Zeige die vollständige Zutaten- oder Materialliste." else "Show the complete ingredients or materials label."
-                unresolved.isNotEmpty() -> (if (de) "Die Herkunft dieser Zutaten klären: " else "Confirm the origin of: ") + unresolved.joinToString(", ") + "."
-                else -> if (de) "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten."
-                    else "Identify the product category to assess its ingredients and production requirements."
+                input.category in setOf("shoes", "clothing") || needsProcessingEvidence(input) -> ResultStrings.manufacturerDeclarationQuestion(de)
+                !complete || findings.length() == 0 -> ResultStrings.completeLabelQuestion(de)
+                unresolved.isNotEmpty() -> (ResultStrings.originQuestionPrefix(de)) + unresolved.joinToString(", ") + "."
+                else -> ResultStrings.categoryQuestion(de)
             })
         }
         return JSONObject().put("schemaVersion", 1).put("id", UUID.randomUUID().toString()).put("outcome", outcome)
             .put("basis", if (outcome == "uncertain") "insufficient" else "composition")
-            .put("title", input.name.ifBlank { input.text.take(80).ifBlank { if (de) "Produktprüfung" else "Product check" } })
+            .put("title", input.name.ifBlank { input.text.take(80).ifBlank { ResultStrings.productCheck(de) } })
             .put("summary", summary).put("category", input.category)
             .put("identity", JSONObject().put("name", input.name).put("barcode", input.barcode).put("market", input.market).put("match", "unconfirmed"))
             .put("findings", findings).put("evidence", JSONArray().put(JSONObject().put("id", "input").put("kind", "user_text")
-                .put("title", if (de) "Übermittelter Text" else "Supplied text").put("excerpt", input.text).put("retrievedAt", now)))
+                .put("title", ResultStrings.suppliedText(de)).put("excerpt", input.text).put("retrievedAt", now)))
             .put("questions", questions).put("warnings", JSONArray().apply {
-                if (parsedIngredients != null && parsed == null && input.text.isNotBlank()) put(if (de) "Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet."
-                    else "The AI ingredient list could not be matched to the original composition; local splitting was used.")
+                if (parsedIngredients != null && parsed == null && input.text.isNotBlank()) put(ResultStrings.aiIngredientsMismatch(de))
             }).put("crossContact", crossContact)
             .put("companyConcerns", JSONArray()).put("checkedAt", now).put("usedAI", false)
     }

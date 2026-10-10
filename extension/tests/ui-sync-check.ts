@@ -36,6 +36,8 @@ let checkConsent: CheckReply['onlineConsent'];
 let permissionRequests = 0, checkRequests = 0;
 let startupWait: Promise<void> | undefined;
 let checkWait: Promise<void> | undefined;
+let cacheWait: Promise<void> | undefined;
+let cacheRequests = 0;
 let checkError = false;
 const checkedInputs: CheckInput[] = [];
 let grantConsent = false;
@@ -72,6 +74,7 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
         case 'delete': history = message.id ? history.filter(item => item.id !== message.id) : []; changed(); break;
         case 'cache-community-result': {
+          cacheRequests++; await cacheWait;
           const index = history.findIndex(item => item.id === message.result.id);
           if (index < 0 || JSON.stringify(history[index]) !== message.expected) return { ok: true, result: null };
           history[index] = structuredClone(message.result); changed();
@@ -467,9 +470,10 @@ try {
   const original: HistoryResult = { ...fixtureResult, id: 'community-cache', outcome: 'uncertain', basis: 'insufficient', title: 'More information needed',
     identity: { ...fixtureResult.identity, brand: 'Fixture Maker' }, photos: ['private-photo'], input: { text: 'Original label' } };
   history = [original]; changed();
-  communityReplyPage = { more: false, replies: [{ id: '12345678-1234-4234-8234-123456789abc', productName: original.identity.name,
+  const positiveReplyPage = { more: false, replies: [{ id: '12345678-1234-4234-8234-123456789abc', productName: original.identity.name,
     brand: 'Fixture Maker', barcode: '', market: 'DE', variant: '', question: 'Is it vegan?', reply: 'Our drink is vegan.', repliedOn: '2026-01-10',
     claim: 'vegan', scope: 'whole_product', sourceUrl: '', reviewedAt: '2026-01-11T00:00:00Z', evidencePublic: false, match: 'name' }] };
+  communityReplyPage = positiveReplyPage;
   await tab(roots[0]!, 'history'); await tab(roots[1]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'The community fixture appears in history');
   await act(async () => { roots[0]!.querySelector<HTMLButtonElement>('.history-item')!.click(); });
@@ -490,6 +494,18 @@ try {
   await until(() => history[0]?.outcome === 'uncertain' && roots[1]!.textContent?.includes('More information needed') === true, 'A complete empty lookup restores the original verdict in both histories');
   assert.equal(history[0]?.communityOriginal, undefined);
   console.log('Community cache UI: persistence, shared history, failed/partial refreshes, withdrawal and private local inputs verified');
+  let rejectCache!: (cause: unknown) => void;
+  cacheWait = new Promise((_, reject) => { rejectCache = reject; });
+  const previousCacheRequests = cacheRequests;
+  communityReplyPage = positiveReplyPage;
+  await refreshReplies();
+  await until(() => cacheRequests > previousCacheRequests, 'The English cache write is pending');
+  cacheWait = undefined;
+  settings = { ...settings, language: 'de' }; storageChanged(['settings'], 'local');
+  await until(() => roots.every(root => root.querySelector('nav button[data-tab="settings"]')?.textContent === 'Einstellungen'), 'Both windows switch to German while the write is pending');
+  await act(async () => { rejectCache({ fixture: 'cache failure' }); });
+  await until(() => roots[0]!.querySelector('.alert.error p')?.textContent === 'Der lokale Verlauf konnte nicht aktualisiert werden.', 'A delayed cache failure uses the current German language');
+  console.log('Community cache failure UI: a pending English write reports its fallback in the current German language');
 } finally {
   globalThis.fetch = originalFetch;
   await act(async () => { roots.forEach(root => render(null, root)); });

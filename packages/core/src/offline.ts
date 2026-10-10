@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import { DATABASES, normalizeBarcode } from './database';
 import type { CheckInput, DatabaseProduct } from './types';
 import { countryCode, selectProductCountry } from './market';
@@ -82,6 +83,7 @@ export class OfflineProductIndex {
     return matches.slice(offset, offset + 20);
   }
   lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market' | 'autoMarket'> = {}): DatabaseProduct | null {
+    const t = resultMessages[input.locale ?? 'en'];
     const code = normalizeBarcode(barcode);
     if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
     const allowed = input.category === 'food' || input.category === 'drink' ? ['off'] : input.category === 'cosmetics' ? ['obf'] : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? ['opf'] : DATABASES.map(db => db.id);
@@ -102,14 +104,12 @@ export class OfflineProductIndex {
       evidenceMarkets: product.countries_tags,
       input: { barcode: code, name, brand: product.brands, text, complete: false, locale: input.locale, market,
         category: input.category && input.category !== 'other' ? input.category : db.category, sourceUrl: `${db.origin}/product/${product.code}` },
-      evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${input.locale === 'de' ? 'Offline-Auszug' : 'offline snapshot'} (${snapshot.region})`,
+      evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${t.offlineSnapshot} (${snapshot.region})`,
         excerpt: text || name || code, url: `${db.origin}/product/${product.code}`, retrievedAt: source.retrievedAt,
         sourceDate: new Date(product.last_modified_t * 1000).toISOString(), license: `${source.license} (database); DBCL-1.0 (contents)` },
       labels: [],
-      warnings: [input.locale === 'de' ? `Teilweiser Offline-Datenbestand vom ${snapshot.generatedAt.slice(0, 10)}; Produktänderungen seit dem Abruf sind nicht enthalten.` : `Partial offline coverage dated ${snapshot.generatedAt.slice(0, 10)}; product changes since retrieval are not included.`,
-        ...(product.countries_tags.length && !matchesMarket(product) ? [input.locale === 'de'
-          ? `Abweichender Markt: Dieser Offline-Eintrag nennt ${product.countries_tags.join(', ')} statt ${market}. Markt und Rezeptur am Produkt prüfen.`
-          : `Different market: this offline record lists ${product.countries_tags.join(', ')}, not ${market}. Confirm the product's market and recipe.`] : []),
+      warnings: [t.offlineSnapshotCoverage.replace('{date}', snapshot.generatedAt.slice(0, 10)),
+        ...(product.countries_tags.length && !matchesMarket(product) ? [t.offlineMarketMismatch.replace('{markets}', product.countries_tags.join(', ')).replace('{market}', market)] : []),
       ],
     };
   }

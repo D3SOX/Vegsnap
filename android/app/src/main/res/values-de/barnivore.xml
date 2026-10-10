@@ -1,5 +1,0 @@
-<resources>
-    <string name="barnivore_notice">Getränkeinformationen von Barnivore, kopiert am angezeigten Datum. Vegsnap ist unabhängig von Barnivore. Prüfe das genaue Getränk, das Land und die datierte Firmenantwort im Originaleintrag; dies ist keine Zertifizierung.</string>
-    <string name="barnivore_copied">Von der Quelle kopiert</string>
-    <string name="barnivore_status">Status laut Barnivore</string>
-</resources>

@@ -1,3 +1,4 @@
+import { backgroundMessages } from '../src/i18n';
 import { browser } from 'wxt/browser';
 import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
 import { researchVeganAlternatives, validateAlternativeSearch, type AlternativeSearch } from '@vegsnap/core';
@@ -39,7 +40,7 @@ export default defineBackground(() => {
   let menuQueue = Promise.resolve();
   function syncContextMenu() {
     const next = menuQueue.catch(() => {}).then(async () => {
-      const title = (await settings()).language === 'de' ? 'Mit Vegsnap prüfen' : 'Check with Vegsnap';
+      const title = backgroundMessages[(await settings()).language].title;
       try { await browser.contextMenus.update('vegsnap-check', { title }); }
       catch { browser.contextMenus.create({ id: 'vegsnap-check', title, contexts: ['selection', 'image'] }); }
     });

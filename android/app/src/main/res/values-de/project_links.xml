@@ -1,8 +1,0 @@
-<resources>
-    <string name="privacy_policy">Datenschutzerklärung</string>
-    <string name="project_website">Webseite</string>
-    <string name="database_contents">Inhalte von Open Food / Beauty / Products Facts</string>
-    <string name="source_terms">Nutzungsbedingungen und Weiterverwendung</string>
-    <string name="tesseract_models">Tesseract-Sprachmodelle</string>
-    <string name="external_link_failed">Link konnte nicht geöffnet werden. Installiere oder aktiviere einen Browser und versuche es erneut.</string>
-</resources>

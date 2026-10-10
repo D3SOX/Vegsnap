@@ -1,104 +1,12 @@
 {
   "terms": [
     {
-      "en": "The AI did not establish the origin of this ingredient.",
-      "de": "Die KI konnte die Herkunft dieser Zutat nicht feststellen."
-    },
-    {
-      "en": "The AI ingredient list could not be matched to the original composition; local splitting was used.",
-      "de": "Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet."
-    },
-    {
-      "en": "Origin is not established by the bundled rules.",
-      "de": "Herkunft nicht durch die lokalen Regeln geklärt."
-    },
-    {
-      "en": "The supplied list contains animal-derived ingredients or materials.",
-      "de": "Die vorliegende Liste enthält tierische Zutaten oder Materialien."
-    },
-    {
-      "en": "The supplied composition appears vegan. Production and undisclosed processing aids are not verified.",
-      "de": "Die vorliegende Liste erscheint vegan. Herstellung und nicht genannte Hilfsstoffe sind nicht bestätigt."
-    },
-    {
-      "en": "The available evidence is insufficient for a reliable conclusion.",
-      "de": "Die vorhandenen Belege reichen für eine sichere Aussage nicht aus."
-    },
-    {
-      "en": "Is there a product-specific manufacturer vegan declaration covering processing aids, adhesives, and finishes?",
-      "de": "Gibt es eine produktspezifische Vegan-Erklärung des Herstellers (einschließlich Hilfsstoffen, Klebstoffen und Beschichtungen)?"
-    },
-    {
-      "en": "Show the complete ingredients or materials label.",
-      "de": "Zeige die vollständige Zutaten- oder Materialliste."
-    },
-    {
-      "en": "Confirm the origin of: ",
-      "de": "Die Herkunft dieser Zutaten klären: "
-    },
-    {
-      "en": "Identify the product category to assess its ingredients and production requirements.",
-      "de": "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten."
-    },
-    {
-      "en": "Product check",
-      "de": "Produktprüfung"
-    },
-    {
-      "en": "Supplied text",
-      "de": "Übermittelter Text"
-    },
-    {
-      "en": "On-device text recognition — verify against the label",
-      "de": "Texterkennung auf dem Gerät — am Etikett prüfen"
-    },
-    {
-      "en": "Long text was shortened and is treated as incomplete.",
-      "de": "Langer Text wurde gekürzt und wird als unvollständig behandelt."
-    },
-    {
-      "en": "Database unavailable; using local analysis.",
-      "de": "Datenbank nicht erreichbar; lokale Analyse verwendet."
-    },
-    {
-      "en": "AI-extracted text — verify against the label",
-      "de": "KI-extrahierter Text — am Etikett prüfen"
-    },
-    {
-      "en": "Web research did not complete; the available photo or text evidence was kept.",
-      "de": "Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege bleiben erhalten."
-    },
-    {
-      "en": "Database unavailable; AI evidence has been kept.",
-      "de": "Datenbank nicht erreichbar; KI-Belege bleiben erhalten."
-    },
-    {
-      "en": "AI may misread labels. Extraction is not certification evidence.",
-      "de": "KI kann Etiketten falsch lesen. Extraktion ist kein Zertifizierungsnachweis."
-    },
-    {
-      "en": "On-device text recognition was used as a fallback for AI image analysis.",
-      "de": "Texterkennung auf dem Gerät als Ersatz für die KI-Bildanalyse verwendet."
-    },
-    {
-      "en": "Long OCR text was shortened and is treated as incomplete.",
-      "de": "Langer OCR-Text wurde gekürzt und wird als unvollständig behandelt."
-    },
-    {
       "en": "Local text recognition also failed; earlier evidence has been kept.",
       "de": "Auch die lokale Texterkennung ist fehlgeschlagen; bisherige Belege bleiben erhalten."
     },
     {
-      "en": "This record lists other markets. Compare its composition with your package.",
-      "de": "Dieser Datensatz nennt andere Märkte. Vergleiche die Rezeptur mit deiner Packung."
-    },
-    {
-      "en": "Community-maintained record; check market, recipe and freshness.",
-      "de": "Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen."
-    },
-    {
-      "en": "The AI gave conflicting ingredient origins.",
-      "de": "Die KI macht widersprüchliche Angaben zur Herkunft."
+      "en": "The ingredient assessment identifies animal-derived content. AI assessments are marked.",
+      "de": "Die Zutatenbewertung weist auf tierische Bestandteile hin. Die KI-Einschätzung ist gekennzeichnet."
     },
     {
       "en": "AI assessment: ",
@@ -113,12 +21,12 @@
       "de": "KI-Einschätzungen zur Herkunft sind keine Herstellerbestätigung."
     },
     {
-      "en": "The ingredient assessment identifies animal-derived content. AI assessments are marked.",
-      "de": "Die Zutatenbewertung weist auf tierische Bestandteile hin. Die KI-Einschätzung ist gekennzeichnet."
+      "en": "The AI ingredient list could not be matched to the original composition; local splitting was used.",
+      "de": "Die KI-Zutatenliste stimmt nicht mit der Originalzusammensetzung überein; die lokale Aufteilung wurde verwendet."
     },
     {
-      "en": "No animal-derived ingredients were identified in the complete list, with AI assistance.",
-      "de": "In der vollständigen Zutatenliste wurden mit KI-Unterstützung keine tierischen Bestandteile erkannt."
+      "en": "Label read by AI; authenticity and certification registry were not checked.",
+      "de": "Kennzeichnung von KI abgelesen; Echtheit und Zertifizierungsregister wurden nicht geprüft."
     },
     {
       "en": "The visible vegan label conflicts with the ingredient assessment. Check the product variant and evidence.",
@@ -133,24 +41,120 @@
       "de": "Sichtbare Kennzeichnung (KI): "
     },
     {
-      "en": "Label read by AI; authenticity and certification registry were not checked.",
-      "de": "Kennzeichnung von KI abgelesen; Echtheit und Zertifizierungsregister wurden nicht geprüft."
+      "en": "The AI gave conflicting ingredient origins.",
+      "de": "Die KI macht widersprüchliche Angaben zur Herkunft."
+    },
+    {
+      "en": "AI may misread labels. Extraction is not certification evidence.",
+      "de": "KI kann Etiketten falsch lesen. Extraktion ist kein Zertifizierungsnachweis."
+    },
+    {
+      "en": "AI-extracted text — verify against the label",
+      "de": "KI-extrahierter Text — am Etikett prüfen"
+    },
+    {
+      "en": "The AI did not establish the origin of this ingredient.",
+      "de": "Die KI konnte die Herkunft dieser Zutat nicht feststellen."
+    },
+    {
+      "en": "No animal-derived ingredients were identified in the complete list, with AI assistance.",
+      "de": "In der vollständigen Zutatenliste wurden mit KI-Unterstützung keine tierischen Bestandteile erkannt."
+    },
+    {
+      "en": "The supplied list contains animal-derived ingredients or materials.",
+      "de": "Die vorliegende Liste enthält tierische Zutaten oder Materialien."
+    },
+    {
+      "en": "Identify the product category to assess its ingredients and production requirements.",
+      "de": "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten."
+    },
+    {
+      "en": "Community-maintained record; check market, recipe and freshness.",
+      "de": "Gemeinschaftlich gepflegter Datensatz; Markt, Rezeptur und Aktualität prüfen."
+    },
+    {
+      "en": "Show the complete ingredients or materials label.",
+      "de": "Zeige die vollständige Zutaten- oder Materialliste."
+    },
+    {
+      "en": "The supplied composition and another source disagree. Check the product variant and source dates.",
+      "de": "Die angegebene Zusammensetzung widerspricht einer anderen Quelle. Prüfe die Produktvariante und das Datum der Quellen."
+    },
+    {
+      "en": "Consulted during web research",
+      "de": "Bei der Webrecherche konsultiert"
+    },
+    {
+      "en": "Database unavailable; AI evidence has been kept.",
+      "de": "Datenbank nicht erreichbar; KI-Belege bleiben erhalten."
+    },
+    {
+      "en": "Database unavailable; using local analysis.",
+      "de": "Datenbank nicht erreichbar; lokale Analyse verwendet."
     },
     {
       "en": "Manufacturer composition (AI)",
       "de": "Zusammensetzung laut Hersteller (KI)"
     },
     {
+      "en": "Is there a product-specific manufacturer vegan declaration covering processing aids, adhesives, and finishes?",
+      "de": "Gibt es eine produktspezifische Vegan-Erklärung des Herstellers (einschließlich Hilfsstoffen, Klebstoffen und Beschichtungen)?"
+    },
+    {
+      "en": "This record lists other markets. Compare its composition with your package.",
+      "de": "Dieser Datensatz nennt andere Märkte. Vergleiche die Rezeptur mit deiner Packung."
+    },
+    {
+      "en": "On-device text recognition was used as a fallback for AI image analysis.",
+      "de": "Texterkennung auf dem Gerät als Ersatz für die KI-Bildanalyse verwendet."
+    },
+    {
+      "en": "On-device text recognition — verify against the label",
+      "de": "Texterkennung auf dem Gerät — am Etikett prüfen"
+    },
+    {
+      "en": "Long OCR text was shortened and is treated as incomplete.",
+      "de": "Langer OCR-Text wurde gekürzt und wird als unvollständig behandelt."
+    },
+    {
+      "en": "Confirm the origin of: ",
+      "de": "Die Herkunft dieser Zutaten klären: "
+    },
+    {
+      "en": "Product check",
+      "de": "Produktprüfung"
+    },
+    {
+      "en": "Product source — interpreted by AI",
+      "de": "Produktquelle — von KI ausgewertet"
+    },
+    {
       "en": "Retailer composition (AI)",
       "de": "Zusammensetzung laut Händler (KI)"
     },
     {
-      "en": "Ingredients read from a web source by AI; check the product variant, market and current recipe against the original.",
-      "de": "Zutaten von KI aus einer Webquelle gelesen; Produktvariante, Markt und aktuelle Rezeptur am Original prüfen."
+      "en": "Supplied text",
+      "de": "Übermittelter Text"
     },
     {
-      "en": "Consulted during web research",
-      "de": "Bei der Webrecherche konsultiert"
+      "en": "Long text was shortened and is treated as incomplete.",
+      "de": "Langer Text wurde gekürzt und wird als unvollständig behandelt."
+    },
+    {
+      "en": "The available evidence is insufficient for a reliable conclusion.",
+      "de": "Die vorhandenen Belege reichen für eine sichere Aussage nicht aus."
+    },
+    {
+      "en": "Origin is not established by the bundled rules.",
+      "de": "Herkunft nicht durch die lokalen Regeln geklärt."
+    },
+    {
+      "en": "The supplied composition appears vegan. Production and undisclosed processing aids are not verified.",
+      "de": "Die vorliegende Liste erscheint vegan. Herstellung und nicht genannte Hilfsstoffe sind nicht bestätigt."
+    },
+    {
+      "en": "Web source read by AI; the product match and claim have not been independently verified.",
+      "de": "Webquelle von KI gelesen; Produktzuordnung und Aussage wurden nicht unabhängig geprüft."
     },
     {
       "en": "No matching product-specific claim was established.",
@@ -161,24 +165,20 @@
       "de": "Die Produktquellen widersprechen sich. Produktvariante und Belege prüfen."
     },
     {
-      "en": "A product source read during web search describes this product as vegan. Check the AI's product match and quoted source.",
-      "de": "Eine bei der Websuche gelesene Produktquelle bezeichnet das Produkt als vegan. Die KI-Zuordnung und das Zitat prüfen."
+      "en": "Ingredients read from a web source by AI; check the product variant, market and current recipe against the original.",
+      "de": "Zutaten von KI aus einer Webquelle gelesen; Produktvariante, Markt und aktuelle Rezeptur am Original prüfen."
     },
     {
       "en": "A product source read during web search describes this product as not vegan. Check the AI's product match and quoted source.",
       "de": "Eine bei der Websuche gelesene Produktquelle bezeichnet das Produkt als nicht vegan. Die KI-Zuordnung und das Zitat prüfen."
     },
     {
-      "en": "Product source — interpreted by AI",
-      "de": "Produktquelle — von KI ausgewertet"
+      "en": "Web research did not complete; the available photo or text evidence was kept.",
+      "de": "Die Webrecherche wurde nicht abgeschlossen; die verfügbaren Foto- oder Textbelege bleiben erhalten."
     },
     {
-      "en": "Web source read by AI; the product match and claim have not been independently verified.",
-      "de": "Webquelle von KI gelesen; Produktzuordnung und Aussage wurden nicht unabhängig geprüft."
-    },
-    {
-      "en": "The supplied composition and another source disagree. Check the product variant and source dates.",
-      "de": "Die angegebene Zusammensetzung widerspricht einer anderen Quelle. Prüfe die Produktvariante und das Datum der Quellen."
+      "en": "A product source read during web search describes this product as vegan. Check the AI's product match and quoted source.",
+      "de": "Eine bei der Websuche gelesene Produktquelle bezeichnet das Produkt als vegan. Die KI-Zuordnung und das Zitat prüfen."
     }
   ]
 }

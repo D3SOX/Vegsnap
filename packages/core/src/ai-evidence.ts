@@ -1,3 +1,4 @@
+import { resultMessages } from './i18n';
 import { analyzeText, parseSourceIngredients, compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
 import { mergeResults, withoutCompositionFindings } from './merge-results';
 import type { AIExtraction, CheckInput, CheckResult, Finding } from './types';
@@ -7,6 +8,7 @@ const veganCertifications = new Set(['v-label', 'v label', 'v-label vegan', 'v l
 /** Model evidence stays explicitly attributed and cannot rewrite a known local ingredient rule. */
 export function applyAIEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction, complete: boolean): CheckResult {
   const de = input.locale === 'de';
+  const t = resultMessages[de ? 'de' : 'en'];
   const sourceText = input.complete === true && input.text?.trim() ? input.text : extracted.text || input.text || '';
   const parsed = parseSourceIngredients(sourceText, extracted.ingredients);
   let compositionEvidenceId = 'composition';
@@ -41,7 +43,7 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
       // A contradictory model assessment is not sufficient evidence to resolve an ingredient.
       const previous = assessments.get(matchedKey);
       assessments.set(matchedKey, previous && previous.status !== assessment.status
-        ? { term: matchedKey, status: 'ambiguous', explanation: de ? 'Die KI macht widersprüchliche Angaben zur Herkunft.' : 'The AI gave conflicting ingredient origins.' }
+        ? { term: matchedKey, status: 'ambiguous', explanation: t.aiOriginConflict }
         : assessment);
     }
   }
@@ -51,36 +53,36 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
       ? { ...finding, displayTerm: assessment.translatedTerm, displayLocale: input.locale ?? 'en' as const } : finding;
     if (finding.status !== 'unknown' || !assessment) {
       return parsed?.includes(normalizeTerm(finding.term)) && finding.status === 'unknown' && !assessment && finding.evidenceId === compositionEvidenceId
-        ? { ...display, explanation: de ? 'Die KI konnte die Herkunft dieser Zutat nicht feststellen.' : 'The AI did not establish the origin of this ingredient.' }
+        ? { ...display, explanation: t.aiUnknownOrigin }
         : display;
     }
     return { ...display, status: assessment.status, evidenceId: 'ai-assessment',
-      explanation: `${de ? 'KI-Einschätzung' : 'AI assessment'}: ${assessment.explanation}` };
+      explanation: `${t.aiAssessment}: ${assessment.explanation}` };
   });
   const assessed = findings.filter(finding => finding.evidenceId === 'ai-assessment');
   let next: CheckResult = { ...result, findings };
   if (assessed.length) {
     next.evidence = [...next.evidence, { id: 'ai-assessment', kind: 'ai_extraction',
-      title: de ? 'KI-Einschätzung der Zutaten' : 'AI ingredient assessment',
+      title: t.aiIngredientAssessment,
       excerpt: assessed.map(item => `${item.term}: ${item.explanation}`).join('\n'),
       retrievedAt: next.checkedAt, verification: 'unverified' }];
-    next.warnings = [...next.warnings, de ? 'KI-Einschätzungen zur Herkunft sind keine Herstellerbestätigung.' : 'AI ingredient assessments are not manufacturer confirmation.'];
+    next.warnings = [...next.warnings, t.aiIngredientCaution];
     const animal = findings.some(item => item.status === 'animal');
     const allPlant = findings.length > 0 && findings.every(item => item.status === 'plant');
     if (next.outcome !== 'conflicting' && animal) {
       next = { ...next, outcome: next.outcome === 'vegan' ? 'conflicting' : 'not_vegan', basis: 'composition',
-        title: de ? 'Tierische Bestandteile gefunden' : 'Animal-derived content found',
-        summary: de ? 'Die Zutatenbewertung weist auf tierische Bestandteile hin. Die KI-Einschätzung ist gekennzeichnet.' : 'The ingredient assessment identifies animal-derived content. AI assessments are marked.', questions: [] };
+        title: t.animalDerivedContentFound,
+        summary: t.aiAnimalCompositionSummary, questions: [] };
     } else if (next.outcome === 'uncertain' && complete && allPlant && !['clothing', 'shoes', 'other'].includes(next.category) && !needsProcessingEvidence({ ...input, category: next.category, name: extracted.name ?? input.name })) {
-      next = { ...next, outcome: 'vegan', basis: 'composition', title: de ? 'Zusammensetzung erscheint vegan' : 'Composition appears vegan',
-        summary: de ? 'In der vollständigen Zutatenliste wurden mit KI-Unterstützung keine tierischen Bestandteile erkannt.' : 'No animal-derived ingredients were identified in the complete list, with AI assistance.', questions: [] };
+      next = { ...next, outcome: 'vegan', basis: 'composition', title: t.compositionAppearsVegan,
+        summary: t.aiVeganCompositionSummary, questions: [] };
     }
   }
   if (next.outcome === 'uncertain') {
     const unresolved = findings.filter(item => item.status === 'unknown' || item.status === 'ambiguous').map(item => item.term);
     const generic = /^(?:Confirm the source of the ambiguous|Die Herkunft unklarer)/;
     next.questions = next.questions.filter(question => !generic.test(question));
-    if (unresolved.length) next.questions.push(de ? `Die Herkunft dieser Zutaten klären: ${unresolved.join(', ')}.` : `Confirm the origin of: ${unresolved.join(', ')}.`);
+    if (unresolved.length) next.questions.push(`${t.originQuestionPrefix}${unresolved.join(', ')}.`);
   }
   if (!input.images?.length) return next;
   const observations = (extracted.labelObservations ?? []).filter(label => /\bvegan\b/i.test(label.text) &&
@@ -91,12 +93,12 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
   const conflict = next.outcome === 'not_vegan' || next.outcome === 'conflicting' || findings.some(item => item.status === 'animal');
   const certifiedLogo = observations.some(item => item.kind === 'vegan_certification');
   return { ...next, outcome: conflict ? 'conflicting' : 'vegan', basis: conflict ? 'insufficient' : 'packaging',
-    title: conflict ? (de ? 'Widersprüchliche Belege' : 'Conflicting evidence') : certifiedLogo ? (de ? 'Vegan-Label sichtbar' : 'Vegan label visible') : (de ? 'Vegane Kennzeichnung sichtbar' : 'Vegan claim visible'),
-    summary: conflict ? (de ? 'Das sichtbare Vegan-Label widerspricht der Zutatenbewertung. Produktvariante und Belege prüfen.' : 'The visible vegan label conflicts with the ingredient assessment. Check the product variant and evidence.') : (de ? 'Die KI erkennt eine vegane Kennzeichnung auf dem bereitgestellten Produktfoto. Die Kennzeichnung am Original prüfen.' : 'The AI identified a vegan label on the supplied product photo. Verify the label against the original.'),
+    title: conflict ? t.conflictingEvidence : certifiedLogo ? t.veganLabelVisible : t.veganClaimVisible,
+    summary: conflict ? t.aiLabelConflictSummary : t.aiLabelSummary,
     questions: conflict ? next.questions : [],
     evidence: [...next.evidence, ...observations.map((item, index) => ({ id: `ai-label-${index}`, kind: 'ai_extraction' as const,
-      title: `${de ? 'Sichtbare Kennzeichnung (KI)' : 'Visible packaging label (AI)'}: ${item.name}`, excerpt: item.text,
+      title: `${t.aiLabelTitle}: ${item.name}`, excerpt: item.text,
       retrievedAt: next.checkedAt, claim: 'vegan' as const, verification: 'unverified' as const }))],
-    warnings: [...next.warnings, de ? 'Kennzeichnung von KI abgelesen; Echtheit und Zertifizierungsregister wurden nicht geprüft.' : 'Label read by AI; authenticity and certification registry were not checked.'],
+    warnings: [...next.warnings, t.aiLabelCaution],
   };
 }

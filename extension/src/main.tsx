@@ -7,7 +7,7 @@ import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { ProductMarket } from './product-market';
 import { Alternatives } from './alternatives';
 import type { AlternativeSearch, VeganAlternative } from '@vegsnap/core';
-import { messages } from './i18n';
+import { marketMessages, messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
 import { extractProducts, validGtin } from './extraction';
@@ -63,7 +63,7 @@ export function App() {
     if (!storedResult || !result || storedJSON === resultJSON) return;
     void request<HistoryResult | null>({type:'cache-community-result',expected:storedJSON!,result}).then(saved=>{
       if (saved) setResult(current=>JSON.stringify(current) === storedJSON ? saved : current);
-    }).catch(cause=>setError(cause instanceof Error ? cause.message : 'Could not update local history.'));
+    }).catch(cause=>setError(cause instanceof Error ? cause.message : messages[configRef.current.language].historyCacheFailed));
   },[storedJSON,resultJSON]);
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
@@ -108,6 +108,7 @@ export function App() {
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const detailsField = useRef<HTMLTextAreaElement>(null);
   const t = messages[config.language];
+  const mt = marketMessages[config.language];
   const isPopup = location.pathname.includes('popup');
   const alternativeResearchEnabled = config.connection === 'chatgpt'
     ? account.state === 'connected' && !!config.model
@@ -171,7 +172,7 @@ export function App() {
     window.addEventListener('blur', hide); document.addEventListener('visibilitychange', hide);
     return () => { window.removeEventListener('blur', hide); document.removeEventListener('visibilitychange', hide); };
   }, []);
-  async function act(work: () => Promise<void>) { setError(''); setNotice(''); setBusy(true); try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to complete this action.'); } finally { setBusy(false); } }
+  async function act(work: () => Promise<void>) { setError(''); setNotice(''); setBusy(true); try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : t.actionFailed); } finally { setBusy(false); } }
   async function runCheck(input: CheckInput): Promise<HistoryResult> {
     setOnlineCheck(undefined);
     const requestId = crypto.randomUUID();
@@ -278,7 +279,7 @@ export function App() {
     setError('');
     const operation = settingsWrites.current.catch(() => {}).then(() => request(message)).then(() => { onSuccess?.(); });
     settingsWrites.current = operation;
-    void operation.catch(cause => setError(cause instanceof Error ? cause.message : 'Unable to save settings.'));
+    void operation.catch(cause => setError(cause instanceof Error ? cause.message : t.settingsSaveFailed));
     return operation;
   }
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
@@ -301,7 +302,7 @@ export function App() {
     const previous = config.language;
     localConfig({ ...configRef.current, language }); setLanguageSaving(true); setError('');
     try { await persist({ type: 'set-language', language }); }
-    catch (cause) { localConfig({ ...configRef.current, language: previous }); setError(cause instanceof Error ? cause.message : 'Unable to save language.'); }
+    catch (cause) { localConfig({ ...configRef.current, language: previous }); setError(cause instanceof Error ? cause.message : t.languageSaveFailed); }
     finally { setLanguageSaving(false); }
   }
   async function connectHosted(command: 'connect' | 'status' | 'disconnect') {
@@ -345,10 +346,10 @@ export function App() {
   }
   async function inspect() {
     const [active] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!active?.id) throw new Error('Open the product page, then use the Vegsnap toolbar button.');
+    if (!active?.id) throw new Error(t.openProductPage);
     const [response] = await browser.scripting.executeScript({ target: { tabId: active.id }, func: () => ({ selection: window.getSelection()?.toString().slice(0, 30_000) ?? '', json: Array.from(document.querySelectorAll('script[type="application/ld+json"]')).slice(0, 10).map(node => (node.textContent ?? '').slice(0, 300_000)), title: document.title }) });
     const page = response?.result;
-    if (!page) throw new Error('This page cannot be read. Paste text or import a photo instead.');
+    if (!page) throw new Error(t.pageUnreadable);
     const products = page.json.flatMap(value => { try { return extractProducts(JSON.parse(value)); } catch { return []; } });
     const input = inspectedInput({ ...page, products });
     setText(input.text ?? '');
@@ -366,10 +367,10 @@ export function App() {
   async function remoteImage() {
     if (!imageUrl) return;
     const url = new URL(imageUrl);
-    if (url.protocol !== 'https:') throw new Error('Save this image and import it as a file.');
+    if (url.protocol !== 'https:') throw new Error(t.remoteImageUnsupported);
     if (!(await requestDataConsent(CONTENT_DATA, { origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error(t.dataConsentDenied);
     const response = await contentFetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
-    if (!response.ok) throw new Error('Image could not be loaded. Save it and import the file.');
+    if (!response.ok) throw new Error(t.imageLoadFailed);
     setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
   }
   function exportHistory() {
@@ -378,7 +379,7 @@ export function App() {
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'alternatives', 'history', 'settings'] as const).map(name => <button key={name} data-tab={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{name === 'alternatives' ? (config.language === 'de' ? 'Alternativen' : 'Alternatives') : t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'alternatives', 'history', 'settings'] as const).map(name => <button key={name} data-tab={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
@@ -413,10 +414,10 @@ export function App() {
       </section> : tab === 'alternatives' ? <Alternatives researchEnabled={alternativeResearchEnabled} config={config} market={config.fallbackCountry} research={researchAlternatives}/> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
-        <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(config.language === 'de' ? 'Einen gültigen Ländercode eingeben.' : 'Enter a valid country code.'); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
+        <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(mt.invalidCountry); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
           <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
-          <label>{config.language === 'de' ? 'Produktland' : 'Product country'}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{config.language === 'de' ? 'Land, für das das Produkt verkauft wird, z. B. SE für Schweden.' : 'Country this product is sold for, e.g. SE for Sweden.'}</small></label>
+          <label>{mt.productCountry}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{mt.countryHint}</small></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
           <label class="checkbox"><input type="checkbox" checked={complete} onChange={event => setComplete(event.currentTarget.checked)}/><span>{t.complete}<small>{t.completeHint}</small></span></label>
@@ -436,11 +437,11 @@ export function App() {
         <h1>{t.settings}</h1>
         <section aria-labelledby="store-heading"><h2 id="store-heading">{t.storeHeading}</h2><p class="hint">{t.storeHint}</p>{STORES.map(store => <div class="store" key={store.id}><div><strong>{store.name}</strong><small>{config.stores.includes(store.id) ? t.storeEnabled : t.storeOff}</small></div><div class="actions">{config.stores.includes(store.id) && storeAccess[store.id] === false && <button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store, true))}>{t.enableAllSites}</button>}<button disabled={!ready || busy} onClick={() => void act(() => toggleStore(store))}>{config.stores.includes(store.id) ? t.disable : t.enable}</button></div></div>)}</section>
         <form onSubmit={event => event.preventDefault()}>
-          <label class="check"><input type="checkbox" checked={config.autoCountry} disabled={!ready || busy} onChange={event=>update('autoCountry',event.currentTarget.checked)}/>{config.language === 'de' ? 'Produktland automatisch erkennen' : 'Detect product country automatically'}</label>
+          <label class="check"><input type="checkbox" checked={config.autoCountry} disabled={!ready || busy} onChange={event=>update('autoCountry',event.currentTarget.checked)}/>{mt.autoCountry}</label>
           <ProductMarket market={config.fallbackCountry} locale={config.language} disabled={!ready || busy} fallback onSave={country=>act(async ()=>{ update('fallbackCountry',country); await settingsWrites.current; })}/>
-          <p class="hint">{config.language === 'de' ? 'Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.' : 'Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.'}</p>
+          <p class="hint">{mt.autoCountryHint}</p>
           <label>{t.language}<select disabled={!ready || languageSaving || busy} value={config.language} onChange={event => void changeLanguage(event.currentTarget.value as 'de' | 'en')}><option value="de">Deutsch</option><option value="en">English</option></select></label>
-          <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="hosted">{t.hosted}</option><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : 'Custom'}</option>)}</select></label>
+          <label>{t.connection}<select disabled={!ready || busy || Boolean(connectionTask)} value={config.connection} onChange={event => changeConnection(event.currentTarget.value as Connection)}><option value="hosted">{t.hosted}</option><option value="chatgpt">{t.chatgpt}</option><option value="database">{t.database}</option>{Object.keys(PRESETS).map(preset => <option value={preset}>{preset === 'openai' ? 'OpenAI API' : preset === 'openrouter' ? 'OpenRouter' : preset === 'gemini' ? 'Gemini' : preset === 'ollama' ? 'Ollama' : t.custom}</option>)}</select></label>
           {config.connection === 'chatgpt' ? <section class="connection" aria-label={t.chatgpt} aria-busy={Boolean(connectionTask)}>
             <div class="connection-heading"><strong>{account.state === 'connected' ? t.connected : account.state === 'checking' ? t.checkingConnection : account.state === 'signedout' ? t.notConnected : t.connectionUnavailable}</strong>{account.state === 'connected' && <span class="connection-badge">ChatGPT</span>}</div>
             {account.state === 'connected' && account.email && <button type="button" class="account-email" aria-label={emailRevealed ? `${t.hideEmail}: ${account.email}` : t.showEmail} aria-pressed={emailRevealed} onClick={() => setEmailRevealed(value => !value)}><span aria-hidden="true" class={emailRevealed ? '' : 'email-obscured'}>{emailRevealed ? account.email : '••••••••@••••••••'}</span><span>{emailRevealed ? t.hideEmail : t.showEmail}</span></button>}
@@ -472,12 +473,12 @@ export function App() {
             <div class="actions"><button type="button" disabled={hostedBusy || !ready || hosted.state !== 'connected' && hosted.enabled === false} onClick={() => void connectHosted(hosted.state === 'connected' ? 'status' : 'connect')}>{hosted.state === 'signedout' ? t.hostedConnect : hosted.state === 'pending' ? t.hostedContinue : t.hostedRefresh}</button>
             {hosted.state !== 'signedout' && <button type="button" disabled={hostedBusy} onClick={() => void connectHosted('disconnect')}>{t.disconnect}</button>}</div>
           </section> : config.connection !== 'database' ? <><label>{t.endpoint}<input type="url" required value={config.baseUrl} onInput={event => update('baseUrl', event.currentTarget.value)}/></label><label>{t.token}<input type="password" autoComplete="off" value={token} onInput={event => changeToken(event.currentTarget.value)}/></label><p class="hint">{t.tokenHint} {hasKey ? t.hasKey : t.emptyKey}</p>{hasKey && <button type="button" onClick={() => changeToken('')}>{t.disconnect}</button>}</> : null}
-          {!['database', 'chatgpt', 'hosted'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder="Model ID" onInput={event => update('model', event.currentTarget.value)}/></label>}
+          {!['database', 'chatgpt', 'hosted'].includes(config.connection) && <label>{t.model}<input value={config.model} placeholder={t.model} onInput={event => update('model', event.currentTarget.value)}/></label>}
           {config.connection !== 'database' && activeModel && <p class="hint" role="status">{imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
           <p class="hint">{t.providerHint}</p>
           <section aria-labelledby="offline-heading"><h2 id="offline-heading">{t.offlineHeading}</h2><p class="hint">{t.offlineHint}</p>
             {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
-            <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.'); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
+            <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error(t.packSizeLimit); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
           </section>
           <h2>{t.privacy}</h2><p class="hint"><a href="https://vegsnap.app/privacy.html" target="_blank" rel="noreferrer">{t.privacyPolicy}</a></p><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
         </form>

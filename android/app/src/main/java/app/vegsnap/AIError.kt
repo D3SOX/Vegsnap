@@ -8,24 +8,22 @@ import org.json.JSONObject
 
 /** Only these fixed codes/messages may reach saved results; never a provider's raw response. */
 internal enum class AIErrorCode(val code: String, val english: String, val german: String) {
-    AUTHENTICATION("authentication", "Your AI connection has expired or was rejected. Reconnect ChatGPT or check your API key.", "Deine KI-Verbindung ist abgelaufen oder wurde abgelehnt. Verbinde ChatGPT erneut oder prüfe deinen API-Schlüssel."),
-    ACCESS("access_denied", "Your account does not have access to this AI request or model. Check your plan or choose another model.", "Dein Konto hat keinen Zugriff auf diese KI-Anfrage oder dieses Modell. Prüfe deinen Tarif oder wähle ein anderes Modell."),
-    QUOTA("quota", "An AI usage limit was reached. Check your provider's usage settings. For ChatGPT, open Settings → Usage.", "Ein KI-Nutzungslimit wurde erreicht. Prüfe die Nutzungseinstellungen deines Anbieters. Öffne bei ChatGPT Einstellungen → Nutzung."),
-    RATE_LIMIT("rate_limit", "The AI provider is receiving too many requests. Wait a moment, then try again.", "Der KI-Anbieter erhält zu viele Anfragen. Warte kurz und versuche es erneut."),
-    TIMEOUT("timeout", "The AI request timed out. Check your connection and try again.", "Die KI-Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut."),
-    NETWORK("network", "Vegsnap could not reach the AI provider. Check your internet connection and try again.", "Vegsnap konnte den KI-Anbieter nicht erreichen. Prüfe deine Internetverbindung und versuche es erneut."),
-    MODEL("unsupported_model", "The selected model is unavailable or does not support this request. Choose another model.", "Das gewählte Modell ist nicht verfügbar oder unterstützt diese Anfrage nicht. Wähle ein anderes Modell."),
-    INVALID_RESPONSE("invalid_response", "The AI response could not be safely evaluated. Your existing evidence was kept. Try again or choose another model.", "Die KI-Antwort konnte nicht zuverlässig ausgewertet werden. Bisherige Belege bleiben erhalten. Versuche es erneut oder wähle ein anderes Modell."),
-    INCOMPLETE("incomplete_response", "The AI response ended before the analysis was complete. Your existing evidence was kept. Try again.", "Die KI-Antwort endete vor Abschluss der Analyse. Bisherige Belege bleiben erhalten. Versuche es erneut."),
-    REJECTED("request_rejected", "The AI provider rejected this request. Check your provider and model settings.", "Der KI-Anbieter hat diese Anfrage abgelehnt. Prüfe deine Anbieter- und Modelleinstellungen."),
-    SERVICE("service", "The AI provider is temporarily unavailable. Try again later.", "Der KI-Anbieter ist vorübergehend nicht verfügbar. Versuche es später erneut."),
-    UNKNOWN("unknown", "The AI check failed. Your existing evidence was kept. Try again.", "Die KI-Prüfung ist fehlgeschlagen. Bisherige Belege bleiben erhalten. Versuche es erneut.");
+    AUTHENTICATION("authentication", ResultStrings.aiAuthenticationError(false), ResultStrings.aiAuthenticationError(true)),
+    ACCESS("access_denied", ResultStrings.aiAccessError(false), ResultStrings.aiAccessError(true)),
+    QUOTA("quota", ResultStrings.aiQuotaError(false), ResultStrings.aiQuotaError(true)),
+    RATE_LIMIT("rate_limit", ResultStrings.aiRateLimitError(false), ResultStrings.aiRateLimitError(true)),
+    TIMEOUT("timeout", ResultStrings.aiTimeoutError(false), ResultStrings.aiTimeoutError(true)),
+    NETWORK("network", ResultStrings.aiNetworkError(false), ResultStrings.aiNetworkError(true)),
+    MODEL("unsupported_model", ResultStrings.aiModelError(false), ResultStrings.aiModelError(true)),
+    INVALID_RESPONSE("invalid_response", ResultStrings.aiResponseError(false), ResultStrings.aiResponseError(true)),
+    INCOMPLETE("incomplete_response", ResultStrings.aiIncompleteError(false), ResultStrings.aiIncompleteError(true)),
+    REJECTED("request_rejected", ResultStrings.aiRequestError(false), ResultStrings.aiRequestError(true)),
+    SERVICE("service", ResultStrings.aiServiceError(false), ResultStrings.aiServiceError(true)),
+    UNKNOWN("unknown", ResultStrings.aiUnknownError(false), ResultStrings.aiUnknownError(true));
 
     fun message(locale: String, hosted: Boolean = false): String = when {
-        hosted && this == QUOTA -> if (locale == "de") "Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt."
-            else "The free Vegsnap AI allowance is used up. It resets at midnight UTC."
-        hosted && this == RATE_LIMIT -> if (locale == "de") "Zu viele Anfragen an Vegsnap KI. Warte eine Minute und versuche es erneut."
-            else "Too many requests to Vegsnap AI. Wait a minute, then try again."
+        hosted && this == QUOTA -> ResultStrings.hostedQuotaError(locale == "de")
+        hosted && this == RATE_LIMIT -> ResultStrings.hostedRateLimitError(locale == "de")
         else -> if (locale == "de") german else english
     }
     fun json(locale: String, hosted: Boolean = false): JSONObject =
