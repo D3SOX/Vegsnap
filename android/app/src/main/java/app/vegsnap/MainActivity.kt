@@ -691,7 +691,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                             Text(stringResource(R.string.ai_status_offline), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        (failedRetry?.failureReason?.json(locale)?.optString("message") ?: result.optJSONObject("aiError")?.optString("message"))?.takeIf { it.isNotBlank() }?.let {
+                        (failedRetry?.failureReason?.message(locale, hosted = failedRetry.settings.connection == "hosted") ?: result.optJSONObject("aiError")?.optString("message"))?.takeIf { it.isNotBlank() }?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                         }
                         if (failedRetry?.failureReason == AIErrorCode.QUOTA && failedRetry.settings.connection == "chatgpt") {

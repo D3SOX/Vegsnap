@@ -58,4 +58,23 @@ class GermanLocalizationTest {
         assertEquals(original, display.getJSONArray("findings").getJSONObject(0).getString("explanation"))
         assertEquals(saved.getJSONArray("evidence").toString(), display.getJSONArray("evidence").toString())
     }
+    @Test fun `hosted quota and throttle messages survive localization and history transfer`() {
+        val rules = JSONObject(File(root, "data/rules.json").readText())
+        val translations = ResultTextTranslations(JSONObject(File(root, "data/result-translations.json").readText()), rules)
+        for ((code, expected) in listOf(AIErrorCode.QUOTA to "Mitternacht UTC", AIErrorCode.RATE_LIMIT to "Minute")) {
+            val saved = Evaluator(rules).evaluate(CheckInput("unknown", "food", true))
+            saved.put("aiStatus", "failed").put("aiError", code.json("en", hosted = true))
+            saved.getJSONObject("aiError").put("message", "PRIVATE provider response").put("secret", "PRIVATE")
+            val localized = translations.localize(saved, "de").getJSONObject("aiError")
+            val exported = HistoryTransfer.export(listOf(HistoryEntry(saved.getString("id"), saved.getString("title"), saved.getString("checkedAt"), saved.toString())))
+            val imported = JSONObject(HistoryTransfer.parse(exported, "de").single().json).getJSONObject("aiError")
+            for (error in listOf(localized, imported)) {
+                assertEquals(code.code, error.getString("code"))
+                assertTrue(error.getBoolean("hosted"))
+                assertTrue(error.getString("message").contains(expected))
+                assertFalse(error.getString("message").contains("ChatGPT"))
+                assertFalse(error.toString().contains("PRIVATE"))
+            }
+        }
+    }
 }

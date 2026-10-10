@@ -148,11 +148,29 @@ class HostedAIFlowTest {
     }
     @Test fun quotaFailureKeepsLocalEvidenceAndSafeError() = runBlocking {
         MockWebServer().use { server ->
-            server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":{"message":"Private server details"}}"""))
+            server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":{"code":"usage_limit_reached","message":"Private server details"}}"""))
             val origin = server.url("/").toString().trimEnd('/')
-            val result = repository(origin).check(CheckInput("unknown additive", "food"), emptyList(),
+            val result = repository(origin).check(CheckInput("unknown additive", "food", locale = "de"), emptyList(),
                 AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
             assertEquals("failed", result.getString("aiStatus"))
+            assertEquals("quota", result.getJSONObject("aiError").getString("code"))
+            assertTrue(result.getJSONObject("aiError").getString("message").contains("Mitternacht UTC"))
+            assertFalse(result.getJSONObject("aiError").getString("message").contains("ChatGPT"))
+            assertFalse(result.toString().contains("Private server details"))
+        }
+    }
+    @Test fun firstCheckWithThreePhotosReportsTemporaryHostedThrottling() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":{"code":"rate_limit_exceeded","message":"Private server details"}}"""))
+            val origin = server.url("/").toString().trimEnd('/')
+            val result = repository(origin).check(CheckInput(locale = "de"), List(3) { PreparedPhoto(byteArrayOf(1)) },
+                AppSettings(connection = "hosted", baseUrl = origin, model = "gpt-6-luna"), token)
+            assertEquals("failed", result.getString("aiStatus"))
+            assertEquals("rate_limit", result.getJSONObject("aiError").getString("code"))
+            assertTrue(result.getJSONObject("aiError").getString("message").contains("Vegsnap"))
+            assertTrue(result.getJSONObject("aiError").getString("message").contains("Minute"))
+            assertEquals(1, server.requestCount)
+            assertEquals(3, JSONObject(server.takeRequest().body.readUtf8()).getJSONArray("images").length())
             assertFalse(result.toString().contains("Private server details"))
         }
     }

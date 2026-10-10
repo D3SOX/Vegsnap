@@ -28,6 +28,7 @@ beforeAll(async () => {
     ratelimits: {
       REQUEST_LIMIT: { namespace_id: '826402', simple: { limit: 5, period: 60 } },
       SESSION_REQUEST_LIMIT: { namespace_id: '826403', simple: { limit: 30, period: 60 } },
+      IP_REQUEST_LIMIT: { namespace_id: '826404', simple: { limit: 120, period: 60 } },
     },
     bindings: { PUBLIC_ORIGIN: 'https://ai.example', TURNSTILE_SITE_KEY: 'test-site', TURNSTILE_SECRET: 'test-only',
       OPENAI_API_KEY: 'test-only-openai', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20' },
@@ -71,9 +72,9 @@ beforeEach(async () => {
   const db = await mf.getD1Database('DB');
   await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
 });
-async function request(path: string, token = '', value?: unknown, method = value === undefined ? 'GET' : 'POST') {
+async function request(path: string, token = '', value?: unknown, method = value === undefined ? 'GET' : 'POST', ip = `192.0.2.${++client}`) {
   const response = await fetch(new URL(path, await mf.ready), { method, headers: {
-    Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Origin: 'https://ai.example', 'CF-Connecting-IP': `192.0.2.${++client}`, Connection: 'close',
+    Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Origin: 'https://ai.example', 'CF-Connecting-IP': ip, Connection: 'close',
   }, ...(value === undefined ? {} : { body: JSON.stringify(value) }) });
   return new Response(await response.arrayBuffer(), { status: response.status, headers: response.headers });
 }
@@ -84,7 +85,68 @@ async function connect(verify = true, installationId?: string) {
   return token;
 }
 const check = (token: string, input: unknown = { images: ['data:image/jpeg;base64,AA=='], category: 'food' }) => request('/api/check', token, input);
+async function fixedIPWindow(): Promise<Env> {
+  // Model one fixed window so guard tests cannot straddle Miniflare's wall-clock reset.
+  const counts = new Map<string, number>();
+  const ipLimit: Env['IP_REQUEST_LIMIT'] = { async limit({ key }) {
+    const count = counts.get(key) ?? 0;
+    counts.set(key, count + 1);
+    return { success: count < 120 };
+  } };
+  return { ...await mf.getBindings(), IP_REQUEST_LIMIT: ipLimit } as unknown as Env;
+}
 
+test('one installation cannot throttle another installation sharing its mobile IP', async () => {
+  const first = await connect();
+  const second = await connect();
+  const ip = '198.51.100.10';
+  for (let i = 0; i < 5; i++) expect((await request('/api/check', first, { text: '' }, 'POST', ip)).status).toBe(400);
+  const throttled = await request('/api/check', first, { text: 'Ingredients: oats' }, 'POST', ip);
+  expect(throttled.status).toBe(429);
+  expect(await throttled.json()).toMatchObject({ error: { code: 'rate_limit_exceeded' } });
+  expect(throttled.headers.get('Retry-After')).toBe('60');
+  expect((await request('/api/check', second, { text: 'Ingredients: oats' }, 'POST', ip)).status).toBe(200);
+  expect(await (await request('/api/session', first)).json()).toMatchObject({ remaining: 3 });
+  expect(upstream).toHaveLength(1);
+});
+test('verified installation throttling survives IP changes and additional sessions', async () => {
+  const installation = crypto.getRandomValues(new Uint8Array(32)).toHex();
+  const first = await connect(true, installation);
+  const second = await connect(true, installation);
+  for (let i = 0; i < 5; i++) expect((await request('/api/check', first, { text: '' })).status).toBe(400);
+  const response = await check(second);
+  expect(response.status).toBe(429);
+  expect(await response.json()).toMatchObject({ error: { code: 'rate_limit_exceeded' } });
+  expect(upstream).toHaveLength(0);
+});
+test('unverified sessions cannot spend a verified installation request allowance', async () => {
+  const installation = crypto.getRandomValues(new Uint8Array(32)).toHex();
+  const pending = await connect(false, installation);
+  const verified = await connect(true, installation);
+  for (let i = 0; i < 6; i++) expect((await check(pending)).status).toBe(401);
+  expect((await check(verified)).status).toBe(200);
+  expect(upstream).toHaveLength(1);
+});
+test('daily allowance exhaustion has a quota code and retries after the UTC reset', async () => {
+  const token = await connect();
+  for (let i = 0; i < 3; i++) expect((await check(token)).status).toBe(200);
+  const before = Date.now();
+  const response = await check(token);
+  const after = Date.now();
+  expect(response.status).toBe(429);
+  expect(await response.json()).toMatchObject({ error: { code: 'usage_limit_reached' } });
+  const reset = Date.parse(new Date(before).toISOString().slice(0, 10)) + 86_400_000;
+  const retry = Number(response.headers.get('Retry-After'));
+  expect(retry).toBeGreaterThanOrEqual(Math.ceil((reset - after) / 1000));
+  expect(retry).toBeLessThanOrEqual(Math.ceil((reset - before) / 1000));
+  expect(upstream).toHaveLength(3);
+});
+test('three photos consume one free check', async () => {
+  const token = await connect();
+  expect((await check(token, { images: Array(3).fill('data:image/jpeg;base64,AA==') })).status).toBe(200);
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
+  expect(upstream).toHaveLength(1);
+});
 test('missing OpenAI key is disabled and never reaches upstream', async () => {
   const env = { ...await mf.getBindings(), OPENAI_API_KEY: undefined } as unknown as Env;
   const response = await worker.fetch(new Request('https://ai.example/api/check', { method: 'POST', headers: { Authorization: `Bearer ${'a'.repeat(64)}` } }), env);
@@ -123,16 +185,19 @@ test('only successful verification consumes the atomic daily admission cap', asy
   expect(await db.prepare('SELECT COUNT(*) AS count FROM sessions WHERE verified = 1').first('count')).toBe(20);
   expect(upstream).toHaveLength(0);
 });
-test('edge rate limiting rejects repeated connection requests from one IP', async () => {
+test('the broad IP guard allows shared networks but still rejects connection floods', async () => {
+  const env = await fixedIPWindow();
   const replies = [];
-  for (let i = 0; i < 6; i++) {
-    const response = await fetch(new URL('/api/connect', await mf.ready), { method: 'POST', headers: {
-      Authorization: `Bearer ${crypto.getRandomValues(new Uint8Array(32)).toHex()}`, 'CF-Connecting-IP': '198.51.100.1', 'Content-Type': 'application/json', Connection: 'close',
-    }, body: JSON.stringify({ installationId: 'c'.repeat(64) }) });
-    await response.arrayBuffer();
+  for (let i = 0; i < 121; i++) {
+    const response = await worker.fetch(new Request('https://ai.example/api/connect', { method: 'POST', headers: {
+      Authorization: `Bearer ${crypto.getRandomValues(new Uint8Array(32)).toHex()}`, 'Content-Type': 'application/json', 'CF-Connecting-IP': '198.51.100.1',
+    }, body: '{}' }), env);
     replies.push(response);
   }
-  expect(replies.map(reply => reply.status)).toEqual([201, 201, 201, 201, 201, 429]);
+  expect(replies.slice(0, 120).map(reply => reply.status)).toEqual(Array(120).fill(400));
+  expect(replies[120]?.status).toBe(429);
+  expect(await replies[120]?.json()).toMatchObject({ error: { code: 'rate_limit_exceeded' } });
+  expect(await (await mf.getD1Database('DB')).prepare('SELECT COUNT(*) AS count FROM sessions').first('count')).toBe(0);
   expect(upstream).toHaveLength(0);
 });
 test('requires server-verified unexpired sessions and rejects wrong Turnstile action or hostname', async () => {
@@ -146,23 +211,32 @@ test('requires server-verified unexpired sessions and rejects wrong Turnstile ac
   expect((await check(token)).status).toBe(401);
   expect(upstream).toHaveLength(0);
 });
-test('session reads and deletions limit arbitrary bearer tokens before accessing D1', async () => {
+test('the broad IP guard bounds session reads and deletions with arbitrary tokens', async () => {
   const active = await connect();
+  const env = await fixedIPWindow();
   for (const method of ['GET', 'DELETE']) {
     const statuses = [];
-    for (let i = 0; i < 31; i++) {
-      const response = await fetch(new URL('/api/session', await mf.ready), { method, headers: {
-        Authorization: `Bearer ${i === 30 ? active : crypto.getRandomValues(new Uint8Array(32)).toHex()}`,
+    for (let i = 0; i < 121; i++) {
+      const response = await worker.fetch(new Request('https://ai.example/api/session', { method, headers: {
+        Authorization: `Bearer ${i === 120 ? active : crypto.getRandomValues(new Uint8Array(32)).toHex()}`,
         'CF-Connecting-IP': method === 'GET' ? '198.51.100.2' : '198.51.100.3', Connection: 'close',
-      } });
+      } }), env);
       await response.arrayBuffer();
       statuses.push(response.status);
     }
-    expect(statuses.slice(0, 30)).toEqual(Array(30).fill(method === 'GET' ? 401 : 200));
-    expect(statuses[30]).toBe(429);
+    expect(statuses.slice(0, 120)).toEqual(Array(120).fill(method === 'GET' ? 401 : 200));
+    expect(statuses[120]).toBe(429);
   }
   expect(await (await request('/api/session', active)).json()).toMatchObject({ state: 'connected', remaining: 3 });
   expect(upstream).toHaveLength(0);
+}, 30_000);
+test('session polling limits one session without blocking another on the same IP', async () => {
+  const first = await connect();
+  const second = await connect();
+  const ip = '198.51.100.4';
+  for (let i = 0; i < 30; i++) expect((await request('/api/session', first, undefined, 'GET', ip)).status).toBe(200);
+  expect((await request('/api/session', first, undefined, 'GET', ip)).status).toBe(429);
+  expect((await request('/api/session', second, undefined, 'GET', ip)).status).toBe(200);
 });
 test('unreadable Turnstile responses preserve pending access and do not consume admission', async () => {
   const token = await connect(false);
@@ -268,6 +342,7 @@ test('global allowance is atomic across different sessions', async () => {
   const replies = await Promise.all(tokens.map(token => check(token)));
   expect(replies.filter(reply => reply.status === 200)).toHaveLength(4);
   expect(replies.filter(reply => reply.status === 429)).toHaveLength(2);
+  for (const reply of replies.filter(reply => reply.status === 429)) expect(await reply.json()).toMatchObject({ error: { code: 'usage_limit_reached' } });
   expect(upstream).toHaveLength(4);
   for (const token of tokens) expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 0 });
 });

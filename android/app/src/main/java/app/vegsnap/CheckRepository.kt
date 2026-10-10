@@ -164,7 +164,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 }
                 if (extracted.getString("text").isNotBlank()) warnings.put(if (input.locale == "de") "KI kann Etiketten falsch lesen. Extraktion ist kein Zertifizierungsnachweis." else "AI may misread labels. Extraction is not certification evidence.")
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
-            catch (error: Exception) { aiStatus = "failed"; aiError = aiFailure(error, input.locale) }
+            catch (error: Exception) { aiStatus = "failed"; aiError = aiFailure(error, input.locale, hosted = settings.connection == "hosted") }
         }
         // Vision gets the untouched sanitized photos first. Local OCR is a last-resort,
         // one-shot fallback and must never reinterpret a successful AI analysis.
