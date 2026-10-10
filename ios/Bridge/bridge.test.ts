@@ -39,6 +39,14 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   };
 }
 describe('iOS JavaScriptCore host contract', () => {
+  test('alternative searches preserve shared filtering and store ranking in JavaScriptCore', async () => {
+    const fixture = await Bun.file(new URL('../../contracts/alternatives-fixtures.json', import.meta.url)).json();
+    const app = harness();
+    expect(app.call('publicAlternatives', fixture).map((item: { barcode: string }) => item.barcode)).toEqual(fixture.expectedCodes);
+    const url = new URL(app.call('alternativeUrl', { input: fixture.input, storeOnly: true }));
+    expect(url.searchParams.get('tag_1')).toBe('REWE');
+    expect(app.calls).toHaveLength(0);
+  });
   test('community lookup and verdicts work through the native runtime without sending scan content', () => {
     const app = harness();
     const result: CheckResult = app.call('analyze', {text:'Ingredients: water, mystery',name:'Lemon',brand:'Fun Light',barcode:'4006381333931',market:'SE',category:'drink'});

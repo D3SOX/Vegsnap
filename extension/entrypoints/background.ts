@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
+import { researchVeganAlternatives, validateAlternativeSearch, type AlternativeSearch } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
@@ -12,6 +13,7 @@ import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSetting
 import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type CheckReply, type Pending, type Reply } from '../src/protocol';
 
 export default defineBackground(() => {
+  const alternativeRequests = new Map<string, AbortController>();
   let historyQueue = Promise.resolve();
   let settingsQueue = Promise.resolve();
   const connection = createCompanionState();
@@ -53,8 +55,21 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: unknown, sender) => {
     const extensionPage = sender.id === browser.runtime.id && !!sender.url?.startsWith(browser.runtime.getURL('/'));
     const reply = async (): Promise<Reply<unknown>> => {
+      let alternativeId: string | undefined;
+      let alternativeController: AbortController | undefined;
       try {
         if (!isRecord(message) || typeof message.type !== 'string') throw new Error('Invalid request.');
+        if (['research-alternatives', 'cancel-alternative-research'].includes(message.type)) {
+          if (!extensionPage || typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId)) throw new Error('Invalid alternative search request.');
+          if (message.type === 'cancel-alternative-research') {
+            alternativeRequests.get(message.requestId)?.abort();
+            return { ok: true, result: null };
+          }
+          alternativeId = message.requestId;
+          if (alternativeRequests.has(alternativeId)) throw new Error('Alternative search is already running.');
+          alternativeController = new AbortController();
+          alternativeRequests.set(alternativeId, alternativeController);
+        }
         const config = await settings();
         if (!extensionPage) {
           if (sender.id !== browser.runtime.id || !isBackgroundRequest(message) || !allowBackground(sender.url, STORES.filter(store => config.stores.includes(store.id)).flatMap(store => store.origins))) throw new Error('This request is not allowed.');
@@ -161,6 +176,7 @@ export default defineBackground(() => {
             if (!isRecord(value) || typeof value.createdAt !== 'number' || Date.now() - value.createdAt > 300_000) throw new Error('This check expired. Select the product again.');
             return { ok: true, result: value };
           }
+          case 'research-alternatives':
           case 'check': {
             if (!isCheckInput(message.input)) throw new Error('Invalid product input.');
             if (message.requestId !== undefined && (typeof message.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(message.requestId))) throw new Error('Invalid check identifier.');
@@ -199,6 +215,10 @@ export default defineBackground(() => {
                   if (config.connection === 'hosted') await hostedCommand('status').catch(() => {});
                 }
               };
+            }
+            if (message.type === 'research-alternatives') {
+              const search = validateAlternativeSearch(message.input as AlternativeSearch);
+              return { ok: true, result: provider ? await researchVeganAlternatives(search, provider, alternativeController?.signal) : [] };
             }
             const fetcher: typeof fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
               if (!(await hasDataConsent(CONTENT_DATA))) onlineConsent ??= 'database';
@@ -276,6 +296,7 @@ export default defineBackground(() => {
           default: throw new Error('Unknown request.');
         }
       } catch (error) { return { ok: false, error: error instanceof Error ? error.message : 'The check could not be completed.' }; }
+      finally { if (alternativeId && alternativeRequests.get(alternativeId) === alternativeController) alternativeRequests.delete(alternativeId); }
     };
     return reply();
   });

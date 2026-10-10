@@ -24,8 +24,29 @@ struct OfflineBrowseProduct: Decodable {
 }
 struct BrowsePage { var records: [BrowseRecord]; var next: Int? }
 actor BrowseService {
+    static let shared = BrowseService()
+    private var alternativeCache: [String: (Date, Data)] = [:]
     private var cache: [String: (Date, BrowsePage)] = [:]
     private var lastStarted: Date = .distantPast
+    private func pacedGet(_ url: URL) async throws -> Data {
+        // Recheck after suspension: only requests that actually start consume a slot.
+        while true {
+            try Task.checkCancellation()
+            let wait = 6.1 - Date().timeIntervalSince(lastStarted)
+            if wait <= 0 { break }
+            try await Task.sleep(for: .seconds(wait))
+        }
+        lastStarted = Date()
+        return try await Network.get(url)
+    }
+    func alternativeDocument(_ url: URL) async throws -> Data {
+        if let cached = alternativeCache[url.absoluteString], Date().timeIntervalSince(cached.0) < 300 { return cached.1 }
+        let data = try await pacedGet(url)
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], json["products"] is [Any], json["error"] == nil, json["errors"] == nil else { throw AppError(L("The service returned an invalid response.")) }
+        alternativeCache[url.absoluteString] = (Date(), data)
+        if alternativeCache.count > 20, let oldest = alternativeCache.min(by: { $0.value.0 < $1.value.0 })?.key { alternativeCache.removeValue(forKey: oldest) }
+        return data
+    }
     func search(_ query: String, source: BrowseSource, cursor: Int, locale: String) async throws -> BrowsePage {
         guard (2...200).contains(query.trimmingCharacters(in: .whitespacesAndNewlines).count), (0...10000).contains(cursor) else { throw AppError(L("Enter 2–200 characters to search.")) }
         var components = URLComponents(string: source.origin)!
@@ -38,15 +59,7 @@ actor BrowseService {
         components.queryItems = parameters.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         let url = components.url!
         if let cached = cache[url.absoluteString], Date().timeIntervalSince(cached.0) < 300 { return cached.1 }
-        // Recheck after suspension: only requests that actually start consume a slot.
-        while true {
-            try Task.checkCancellation()
-            let wait = 6.1 - Date().timeIntervalSince(lastStarted)
-            if wait <= 0 { break }
-            try await Task.sleep(for: .seconds(wait))
-        }
-        lastStarted = Date()
-        let data = try await Network.get(url)
+        let data = try await pacedGet(url)
         let page: BrowsePage
         if source == .barnivore { page = try Self.barnivore(String(decoding: data, as: UTF8.self)) }
         else {

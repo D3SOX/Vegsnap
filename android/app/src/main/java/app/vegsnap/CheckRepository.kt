@@ -44,6 +44,13 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         fun defaultHttpClient() = OkHttpClient.Builder().dispatcher(Dispatcher().apply { maxRequestsPerHost = 10 }).followRedirects(false).followSslRedirects(false)
             .callTimeout(60, TimeUnit.SECONDS).connectTimeout(15, TimeUnit.SECONDS).build()
     }
+    internal suspend fun alternativeResearch(query: AlternativeQuery, settings: AppSettings, token: String): List<VeganAlternative> = withContext(Dispatchers.IO) {
+        validateAlternativeQuery(query)
+        if (settings.offline || !settings.aiEnabled || settings.connection == "api" && settings.baseUrl.trimEnd('/') != "https://api.openai.com/v1") return@withContext emptyList()
+        val extraction = extractOnce(CheckInput(name = query.query, category = query.category, market = query.market, locale = query.locale, autoMarket = false),
+            emptyList(), settings, token, alternativeSearch = JSONObject().put("query", query.query).put("store", query.store))
+        parseAIAlternatives(extraction, query)
+    }
 
     suspend fun check(original: CheckInput, photos: List<PreparedPhoto>, settings: AppSettings, token: String,
         onProgress: (CheckStage) -> Unit = {},
@@ -367,7 +374,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
 
     private suspend fun extractOnce(input: CheckInput, photos: List<PreparedPhoto>, settings: AppSettings, token: String,
         researchIdentity: JSONObject? = null, onProgress: (CheckStage) -> Unit = {}, catalogue: JSONObject? = null, database: Pair<CheckInput, JSONObject>? = null,
-        hostedCountryContext: JSONObject? = null): JSONObject {
+        hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null): JSONObject {
         val requireResearch = researchIdentity != null
         val allowResearch = requireResearch || input.autoMarket != true
         val prompt = ((if (requireResearch) extractionPrompt + "\n" + researchPrompt else extractionPrompt) +
@@ -383,14 +390,14 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                     .put("brand", evidence.optString("databaseBrand")).put("text", record.text).put("complete", false)
                     .put("url", evidence.getString("url")).put("sourceType", "database")) }
             }.toString()
-        else extractionInputContext(input).toString()
+        else extractionInputContext(input).apply { alternativeSearch?.let { put("alternativeSearch", it) } }.toString()
         var research: JSONObject? = null
         val text = if (settings.connection == "hosted") {
             require(settings.baseUrl == hostedBaseUrl && !requireResearch)
             val payload = JSONObject(context)
             hostedCountryContext?.let { payload.put("countryContext", it) }
             if (payload.isNull("complete")) payload.remove("complete")
-            if (settings.vision) payload.put("images", JSONArray(photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) }))
+            if (settings.vision && photos.isNotEmpty()) payload.put("images", JSONArray(photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) }))
             val response = requireNotNull(request(Request.Builder().url("$hostedBaseUrl/api/check")
                 .header("Authorization", "Bearer $token").post(payload.toString().toRequestBody("application/json".toMediaType())).build()))
             research = response.optJSONObject("research")
@@ -398,7 +405,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             response.toString()
         } else if (settings.connection == "chatgpt") {
             val response = requireNotNull(chatGPT) { "ChatGPT connection unavailable" }.extract(settings.chatgptModel, prompt, context,
-                if (settings.vision) photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) } else emptyList(), requireResearch && catalogue == null, allowResearch = allowResearch, onResearchStarted = { onProgress(CheckStage.SEARCHING_WEB) })
+                if (settings.vision) photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) } else emptyList(), alternativeSearch != null || requireResearch && catalogue == null, allowResearch = allowResearch, onResearchStarted = { onProgress(CheckStage.SEARCHING_WEB) })
             research = response.research
             response.text
         } else {
@@ -418,7 +425,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 .put(JSONObject().put("role", "user").put("content", content)))
             if (supportsSearch && allowResearch) body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
                 .put("max_tool_calls", 3).put("include", JSONArray().put("web_search_call.action.sources"))
-            if (supportsSearch && requireResearch && catalogue == null) body.put("tool_choice", "required")
+            if (supportsSearch && (alternativeSearch != null || requireResearch && catalogue == null)) body.put("tool_choice", "required")
             val builder = Request.Builder().url(settings.baseUrl.trimEnd('/') + if (supportsSearch) "/responses" else "/chat/completions")
                 .post(body.toString().toRequestBody("application/json".toMediaType()))
             if (token.isNotBlank()) builder.header("Authorization", "Bearer $token")

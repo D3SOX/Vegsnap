@@ -42,8 +42,13 @@ async function hashToken(request: Request): Promise<string> {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 function product(value: unknown): { input: CheckInput; countryContext: Parameters<ProviderAdapter['extract']>[2] } {
-  const fields = ['text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext'];
+  const fields = ['alternativeSearch', 'text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext'];
   if (!record(value) || Object.keys(value).some(key => !fields.includes(key))) throw new HttpError(400, 'Invalid product input.');
+  if (value.alternativeSearch !== undefined && (!record(value.alternativeSearch) ||
+    Object.keys(value.alternativeSearch).some(key => !['query', 'store'].includes(key)) ||
+    typeof value.alternativeSearch.query !== 'string' || value.alternativeSearch.query.trim().length < 2 || value.alternativeSearch.query.length > 200 ||
+    value.alternativeSearch.store !== undefined && (typeof value.alternativeSearch.store !== 'string' || value.alternativeSearch.store.length > 100) ||
+    value.text || value.images || value.countryContext)) throw new HttpError(400, 'Invalid alternative search.');
   for (const [key, maximum] of [['text', 30_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
     if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > maximum)) throw new HttpError(400, `Invalid ${key}.`);
   }
@@ -176,7 +181,10 @@ async function route(request: Request, env: Env): Promise<Response> {
   };
   try {
     // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
-    return json(await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal, countryContext));
+    const extraction = await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal, countryContext);
+    // Released clients reject unknown extraction fields. Alternatives are opt-in.
+    if (!input.alternativeSearch) delete extraction.alternatives;
+    return json(extraction);
   } catch { throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.'); }
 }
 export default {

@@ -327,3 +327,23 @@
 "Detected from database" = "Aus Datenbank erkannt";
 "Detected from packaging (AI — check the label)" = "Aus Verpackung erkannt (KI — Etikett prüfen)";
 "Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence." = "Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.";
+
+"Vegan alternatives" = "Vegane Alternativen";
+"Product or product type" = "Produkt oder Produktart";
+"Store name (optional)" = "Ladenname (optional)";
+"Find alternatives" = "Alternativen suchen";
+"Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there." = "Suche nach einer Produktart, z. B. Schokolade oder Joghurt. Ein Ladenname priorisiert dort gelistete Produkte.";
+"Searching public records…" = "Produktdaten werden durchsucht…";
+"AI is researching alternatives…" = "KI recherchiert Alternativen…";
+"Product search failed. Check your connection and try again." = "Produktsuche fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.";
+"AI research unavailable. Public matches have been kept." = "KI-Recherche nicht verfügbar. Öffentliche Treffer bleiben erhalten.";
+"No supported alternatives found. Try a broader product type or another store." = "Keine belegten Alternativen gefunden. Versuche eine allgemeinere Produktart oder einen anderen Laden.";
+"Alternative search needs an internet connection. Turn off offline mode to search." = "Die Alternativensuche benötigt eine Internetverbindung. Schalte den Offline-Modus aus.";
+"Store availability unknown" = "Verfügbarkeit im Laden unbekannt";
+"AI research — review the source" = "KI-Recherche — Quelle prüfen";
+"Product country unconfirmed" = "Produktland unbestätigt";
+"Open product source" = "Produktquelle öffnen";
+"Vegan evidence" = "Vegan-Beleg";
+"Community records can be outdated. Check the current package and your branch’s stock. AI research uses your connected provider and allowance; providers without web search keep public results." = "Gemeinschaftliche Angaben können veraltet sein. Prüfe die aktuelle Packung und den Bestand deiner Filiale. KI-Recherche nutzt die verbundene KI und deren Kontingent; ohne Websuche bleiben öffentliche Treffer.";
+"Listed at %@ — likely available" = "Bei %@ gelistet — wahrscheinlich erhältlich";
+"Vegan according to database label" = "Vegan laut Datenbanklabel";

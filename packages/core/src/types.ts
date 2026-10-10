@@ -18,6 +18,8 @@ export interface CheckInput {
   sourceUrl?: string;
   /** Already resized and stripped of metadata by the client. Never a remote URL. */
   images?: string[];
+  /** Explicit public-product alternative research; never includes scan text/photos. */
+  alternativeSearch?: { query: string; store?: string };
 }
 export interface Evidence {
   id: string;
@@ -101,6 +103,7 @@ export interface CheckResult {
   companyAssessment?: CompanyAssessment;
 }
 export interface AIExtraction {
+  alternatives?: { name: string; brand: string; url: string; quote: string; store?: string; storeUrl?: string; storeQuote?: string }[];
   text: string;
   /** Actual ingredient/material terms parsed by AI, grounded against text; source wording is preserved. */
   ingredients?: string[];

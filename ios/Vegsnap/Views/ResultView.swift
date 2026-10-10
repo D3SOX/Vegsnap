@@ -26,6 +26,9 @@ struct ResultView: View {
                     if let barcode = result.identity.barcode, !barcode.isEmpty { Label(barcode, systemImage: "barcode").font(.footnote).textSelection(.enabled) }
                 }.padding(.vertical, 8)
             } footer: { Text(L("Product evidence and company concerns are assessed separately. This result is not an allergy assessment.")) }
+            if result.outcome == .notVegan {
+                Section { NavigationLink(L("Vegan alternatives")) { AlternativesView(store: store, initialQuery: store.engine.alternativeQuery(result), initialCategory: result.category, productMarket: result.identity.market, excludeBarcode: result.identity.barcode) } }
+            }
             if !saved.photos.isEmpty {
                 Section(L("Photos")) { ScrollView(.horizontal) { HStack { ForEach(saved.photos, id: \.self) { name in
                     Button { photo = name } label: { if let image = UIImage(contentsOfFile: store.files.url(name).path) { Image(uiImage: image).resizable().scaledToFill().frame(width: 100, height: 120).clipped().clipShape(RoundedRectangle(cornerRadius: 10)) } }.buttonStyle(.borderless).accessibilityLabel(L("Review photo"))

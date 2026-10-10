@@ -122,6 +122,15 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "B4F2A16E3611E70DA1BEB8ED";
 		};
+		"3D1020C35632A7D4F32F3DF2" = {
+			"isa" = "PBXFileReference";
+			"path" = "Vegsnap/Views/AlternativesView.swift";
+			"sourceTree" = "<group>";
+		};
+		"8B6211D8DE2DA3A08F2FC2D9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "3D1020C35632A7D4F32F3DF2";
+		};
 		"F81DFF430FBBB47D54F58113" = {
 			"isa" = "PBXFileReference";
 			"path" = "Vegsnap/Views/BarcodeScanner.swift";
@@ -211,6 +220,7 @@
 				"129AD80D7C6435E38A925A87",
 				"C5B13845204D140352FEA2E7",
 				"563E2E0DDD4092DF31D7DCF5",
+				"8B6211D8DE2DA3A08F2FC2D9",
 				"F3FBDF05D56DC7B4822A7706",
 				"B3CA5492A6685B3349138170",
 				"3D7E923288845858F725A9B8",
@@ -372,6 +382,7 @@
 				"$(SRCROOT)/Bridge/identified-product.ts",
 				"$(SRCROOT)/Bridge/runtime.js",
 				"$(SRCROOT)/../packages/core/src/ai-evidence.ts",
+				"$(SRCROOT)/../packages/core/src/alternatives.ts",
 				"$(SRCROOT)/../packages/core/src/analyze.ts",
 				"$(SRCROOT)/../packages/core/src/barcode.ts",
 				"$(SRCROOT)/../packages/core/src/check.ts",
@@ -401,6 +412,7 @@
 				"$(SRCROOT)/../data/rules.json",
 				"$(SRCROOT)/../contracts/ai-extraction-prompt.json",
 				"$(SRCROOT)/../contracts/ai-extraction.schema.json",
+				"$(SRCROOT)/../contracts/alternatives-fixtures.json",
 				"$(SRCROOT)/../contracts/history.schema.json",
 				"$(SRCROOT)/../contracts/product-countries.json",
 				"$(SRCROOT)/../contracts/result.schema.json",
@@ -852,6 +864,7 @@
 				"ADCC26AC640A34D9A437597B",
 				"D3365271BF0DD76E2B62C0E7",
 				"B4F2A16E3611E70DA1BEB8ED",
+				"3D1020C35632A7D4F32F3DF2",
 				"F81DFF430FBBB47D54F58113",
 				"7D56E9647781B2A0DB3B819D",
 				"09444DFA8585B309A0BCDE90",

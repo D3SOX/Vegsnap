@@ -15,6 +15,7 @@ import JavaScriptCore
     private let context: JSContext
     private var requests: [String: Task<Void, Never>] = [:]
     private var pending: [String: CheckedContinuation<CheckResult, Error>] = [:]
+    private var alternativePending: [String: CheckedContinuation<[VeganAlternative], Error>] = [:]
     var progress: ((String, String) -> Void)?
     private var exception: String?
     init(bundle: Bundle = .main) throws {
@@ -62,6 +63,13 @@ import JavaScriptCore
         }
         let cancel: @convention(block) (String) -> Void = { [weak self] id in self?.requests[id]?.cancel() }
         let complete: @convention(block) (String, String, String) -> Void = { [weak self] id, value, error in
+            if let continuation = self?.alternativePending.removeValue(forKey: id) {
+                do {
+                    guard error.isEmpty else { throw AppError(error) }
+                    continuation.resume(returning: try JSONDecoder().decode([VeganAlternative].self, from: Data(value.utf8)))
+                } catch { continuation.resume(throwing: error) }
+                return
+            }
             guard let continuation = self?.pending.removeValue(forKey: id) else { return }
             do {
                 guard error.isEmpty else { throw AppError(error) }
@@ -121,5 +129,25 @@ import JavaScriptCore
     func cancel(_ id: String) {
         context.objectForKeyedSubscript("VegsnapCore")?.invokeMethod("cancel", withArguments: [id])
         pending.removeValue(forKey: id)?.resume(throwing: CancellationError())
+        alternativePending.removeValue(forKey: id)?.resume(throwing: CancellationError())
+    }
+    func researchAlternatives(_ input: AlternativeQuery, settings: Settings, token: String) async throws -> [VeganAlternative] {
+        struct Provider: Encodable { var baseUrl: String; var model: String; var token: String }
+        struct Arguments: Encodable { var input: AlternativeQuery; var provider: Provider?; var hostedToken: String?; var chatGPT: Bool }
+        let provider = settings.connection != "hosted" ? Provider(baseUrl: settings.baseUrl, model: settings.model, token: token) : nil
+        let json = try Arguments(input: input, provider: provider, hostedToken: settings.connection == "hosted" ? token : nil, chatGPT: settings.connection == "chatgpt").jsonString()
+        let id = UUID().uuidString
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                alternativePending[id] = continuation; exception = nil
+                context.objectForKeyedSubscript("VegsnapCore")?.invokeMethod("alternatives", withArguments: [id, json])
+                if let exception, let waiting = alternativePending.removeValue(forKey: id) { waiting.resume(throwing: AppError(exception)) }
+            }
+        } onCancel: { Task { @MainActor in self.cancel(id) } }
+    }
+    func alternativeQuery(_ result: CheckResult) -> String {
+        struct Arguments: Encodable { var name: String; var brand: String; var animalTerms: [String] }
+        return (try? call("alternativeQuery", Arguments(name: result.identity.name ?? "", brand: result.identity.brand ?? "", animalTerms: result.findings.filter { $0.status == "animal" }.map(\.term)), as: String.self)) ?? result.identity.name ?? ""
     }
 }

@@ -1,10 +1,12 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { countryCode, imageSupport, localizeResult, type CommunityReply } from '@vegsnap/core';
+import { alternativeQueryForProduct, countryCode, imageSupport, localizeResult, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { ProductMarket } from './product-market';
+import { Alternatives } from './alternatives';
+import type { AlternativeSearch, VeganAlternative } from '@vegsnap/core';
 import { messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
@@ -37,10 +39,18 @@ function IngredientStatus({ status, language }: { status: Finding['status']; lan
     </svg>
   </span>;
 }
+async function researchAlternatives(input: AlternativeSearch, signal: AbortSignal): Promise<VeganAlternative[]> {
+  signal.throwIfAborted();
+  const requestId = crypto.randomUUID();
+  const cancel = () => { void request({ type: 'cancel-alternative-research', requestId }).catch(() => {}); };
+  signal.addEventListener('abort', cancel, { once: true });
+  try { return await request<VeganAlternative[]>({ type: 'research-alternatives', input, requestId }); }
+  finally { signal.removeEventListener('abort', cancel); }
+}
 function safeLink(url: string | undefined): string | undefined { try { if (!url) return; const parsed = new URL(url); return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined; } catch { return; } }
 export function App() {
   const [config, setConfig] = useState<Settings>(defaultSettings);
-  const [tab, setTab] = useState<'scan' | 'history' | 'settings'>('scan');
+  const [tab, setTab] = useState<'scan' | 'alternatives' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
   const [editingResult, setEditingResult] = useState<HistoryResult>();
@@ -99,6 +109,11 @@ export function App() {
   const detailsField = useRef<HTMLTextAreaElement>(null);
   const t = messages[config.language];
   const isPopup = location.pathname.includes('popup');
+  const alternativeResearchEnabled = config.connection === 'chatgpt'
+    ? account.state === 'connected' && !!config.model
+    : config.connection === 'hosted'
+      ? hosted.state === 'connected' && hosted.enabled !== false
+      : config.connection !== 'database' && hasKey && !!config.model && config.baseUrl.replace(/\/$/, '') === 'https://api.openai.com/v1';
   function refresh() { return sharedRefresh.current(); }
   useEffect(() => {
     const sync = synchronizedRefresh(async () => {
@@ -363,7 +378,7 @@ export function App() {
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'history', 'settings'] as const).map(name => <button key={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'alternatives', 'history', 'settings'] as const).map(name => <button key={name} data-tab={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{name === 'alternatives' ? (config.language === 'de' ? 'Alternativen' : 'Alternatives') : t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
@@ -372,6 +387,7 @@ export function App() {
         <button class="text-button" onClick={newScan}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
         <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
+        {result.outcome === 'not_vegan' && <Alternatives researchEnabled={alternativeResearchEnabled} key={`${result.id}:${result.identity.market}`} config={config} initialQuery={alternativeQueryForProduct(result.identity.name ?? '', result.identity.brand, result.findings.filter(finding => finding.status === 'animal').map(finding => finding.term))} category={result.category} market={result.identity.market} excludeBarcode={result.identity.barcode} research={researchAlternatives}/>}
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
         {onlineCheck?.id === result.id && <div class="alert"><p>{t.onlineConsentHint}</p><button type="button" disabled={busy} onClick={allowOnlineCheck}>{t.allowOnlineChecks}</button></div>}
@@ -394,7 +410,7 @@ export function App() {
           canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
           onReplies={(replies,complete)=>setCommunity({key:communityKey,source:JSON.stringify(storedResult),...(complete ? {replies} : {}),retrievedAt:new Date().toISOString()})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
-      </section> : tab === 'scan' ? <section>
+      </section> : tab === 'alternatives' ? <Alternatives researchEnabled={alternativeResearchEnabled} config={config} market={config.fallbackCountry} research={researchAlternatives}/> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
         <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(config.language === 'de' ? 'Einen gültigen Ländercode eingeben.' : 'Enter a valid country code.'); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>

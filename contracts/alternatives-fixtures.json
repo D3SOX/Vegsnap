@@ -1,0 +1,15 @@
+{
+  "input": { "query": "chocolate", "store": "REWE", "category": "food", "market": "DE", "locale": "en", "excludeBarcode": "4006381333931" },
+  "document": { "products": [
+    { "code": "12345678", "product_name": "Oat chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "Other shop", "ingredients_text": "oats, cocoa" },
+    { "code": "23456789", "product_name": "Dark chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "REWE, dm", "ingredients_text": "cocoa, sugar" },
+    { "code": "23456789", "product_name": "Dark chocolate", "brands": "Plant", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "stores": "REWE" },
+    { "code": "34567890", "product_name": "Milk chocolate", "brands": "Dairy", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"], "ingredients_text": "milk, cocoa" },
+    { "code": "45678901", "product_name": "Foreign chocolate", "labels_tags": ["en:vegan"], "countries_tags": ["en:sweden"] },
+    { "code": "56789012", "product_name": "Plant chocolate", "labels_tags": ["en:vegetarian"], "countries_tags": ["en:germany"] },
+    { "code": "67890123", "product_name": "Conflicting chocolate", "labels_tags": ["en:vegan"], "ingredients_analysis_tags": ["en:non-vegan"] },
+    { "code": "4006381333931", "product_name": "Original chocolate", "labels_tags": ["en:vegan"], "countries_tags": ["en:germany"] },
+    { "code": "78901234", "product_name": "Unknown-country chocolate", "labels_tags": ["en:vegan"], "stores": "REWE City" }
+  ] },
+  "expectedCodes": ["23456789", "12345678", "78901234"]
+}

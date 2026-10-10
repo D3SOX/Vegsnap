@@ -94,6 +94,7 @@ internal fun BrowseScreen(settings: AppSettings, model: VegsnapViewModel) {
     fun open(url: String) { runCatching { uriHandler.openUri(url) }.onFailure { linkError = true } }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(vertical = 16.dp)) {
+        item { AlternativeSearchButton(model, market = settings.fallbackCountry) }
         item {
             Box {
                 OutlinedButton(onClick = { sourceMenu = true }, modifier = Modifier.fillMaxWidth()) {

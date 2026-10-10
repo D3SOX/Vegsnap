@@ -1,4 +1,6 @@
 export * from './types';
+export { alternativeQueryForProduct, alternativeSearchUrl, validateAlternativeSearch, parsePublicAlternatives, parseAIAlternatives, rankAlternatives, searchPublicAlternatives, researchVeganAlternatives } from './alternatives';
+export type { AlternativeSearch, VeganAlternative } from './alternatives';
 export { countryCode, selectProductCountry } from './market';
 export { analyzeText, parseSourceIngredients, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';

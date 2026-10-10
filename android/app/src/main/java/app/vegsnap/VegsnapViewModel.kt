@@ -27,6 +27,19 @@ data class ScanState(val text: String = "", val photos: List<Uri> = emptyList(),
 }
 
 class VegsnapViewModel(application: Application) : AndroidViewModel(application) {
+    private val alternativesRepository by lazy { BrowseRepository() }
+    private val alternativesEvaluator by lazy { Evaluator(JSONObject(getApplication<Application>().assets.open("rules.json").bufferedReader().use { it.readText() })) }
+    private val alternativesAI by lazy { CheckRepository(getApplication(), chatGPT) }
+    internal suspend fun publicAlternatives(input: AlternativeQuery): List<VeganAlternative> {
+        check(!settings.value.offline)
+        return alternativesRepository.alternatives(input, alternativesEvaluator)
+    }
+    internal suspend fun researchAlternatives(input: AlternativeQuery): List<VeganAlternative> {
+        val config = settings.value
+        if (config.offline || !aiConnectionReady(config, chatGPTState.value, hostedAIState.value, apiToken.value, hostedToken.value)) return emptyList()
+        val resolved = config.forAnalysis(hostedAI.baseUrl, hostedAI.model, true)
+        return alternativesAI.alternativeResearch(input, resolved, if (config.connection == "hosted") hostedToken.value else apiToken.value)
+    }
     private val database = ApplicationHistoryDatabase.get(application)
     private val offlineDatabase = ApplicationOfflineDatabase.get(application)
     internal val offlineData = offlineDatabase.state

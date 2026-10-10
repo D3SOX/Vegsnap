@@ -191,4 +191,24 @@
     <string name="country_from_database">Aus Datenbank erkannt</string>
     <string name="country_manual">Manuell ausgewählt</string>
     <string name="country_fallback">Land bei unklaren Angaben</string>
+    <string name="alternatives_title">Vegane Alternativen</string>
+    <string name="alternatives_query">Produkt oder Produktart</string>
+    <string name="alternatives_store">Ladenname (optional)</string>
+    <string name="alternatives_search">Alternativen suchen</string>
+    <string name="alternatives_hint">Suche nach einer Produktart, z. B. Schokolade oder Joghurt. Ein Ladenname priorisiert dort gelistete Produkte.</string>
+    <string name="alternatives_loading">Produktdaten werden durchsucht…</string>
+    <string name="alternatives_ai_loading">KI recherchiert Alternativen…</string>
+    <string name="alternatives_failed">Produktsuche fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="alternatives_ai_failed">KI-Recherche nicht verfügbar. Öffentliche Treffer bleiben erhalten.</string>
+    <string name="alternatives_empty">Keine belegten Alternativen gefunden. Versuche eine allgemeinere Produktart oder einen anderen Laden.</string>
+    <string name="alternatives_offline">Die Alternativensuche benötigt eine Internetverbindung. Schalte den Offline-Modus aus.</string>
+    <string name="alternatives_country">Produktland: %1$s</string>
+    <string name="alternatives_store_match">Bei %1$s gelistet — wahrscheinlich erhältlich</string>
+    <string name="alternatives_store_unknown">Verfügbarkeit im Laden unbekannt</string>
+    <string name="alternatives_ai_source">KI-Recherche — Quelle prüfen</string>
+    <string name="alternatives_database_label">%1$s · ODbL-1.0 · Vegan laut Datenbanklabel</string>
+    <string name="alternatives_country_unknown">Produktland unbestätigt</string>
+    <string name="alternatives_source">Produktquelle öffnen</string>
+    <string name="alternatives_vegan_evidence">Vegan-Beleg</string>
+    <string name="alternatives_disclaimer">Gemeinschaftliche Angaben können veraltet sein. Prüfe die aktuelle Packung und den Bestand deiner Filiale. KI-Recherche nutzt die verbundene KI und deren Kontingent; ohne Websuche bleiben öffentliche Treffer.</string>
 </resources>

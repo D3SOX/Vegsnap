@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 let mf: Miniflare;
 let client = 0;
 let failUpstream = false;
+let includeAlternatives = false;
 let needsResearch = false;
 let extractionText: string | undefined;
 let catalogueMode = false;
@@ -55,6 +56,7 @@ beforeAll(async () => {
       upstream.push(payload);
       if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
       const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker', ...(discoveredBarcode ? { barcode: discoveredBarcode } : {}), ...(packagingCountry ? { packaging: { country: packagingCountry } } : {}) } : { ...extraction, text: extractionText ?? extraction.text };
+      if (includeAlternatives) Object.assign(result, { alternatives: [{ name: 'Vegan chocolate', brand: 'Plant', url: 'https://maker.example/tissues', quote: 'This chocolate is vegan.' }] });
       return WorkerResponse.json({ status: 'completed', output: [
         ...(payload.tool_choice === 'required' ? [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: 'https://maker.example/tissues', title: 'Tissues' }] } }] : []),
         { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(result) }] },
@@ -68,7 +70,7 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
+  includeAlternatives = false; upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
   const db = await mf.getD1Database('DB');
   await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
 });
@@ -85,6 +87,35 @@ async function connect(verify = true, installationId?: string) {
   return token;
 }
 const check = (token: string, input: unknown = { images: ['data:image/jpeg;base64,AA=='], category: 'food' }) => request('/api/check', token, input);
+test('hosted alternative research accepts bounded public queries, requires search, and rejects scan content', async () => {
+  const token = await connect();
+  includeAlternatives = true;
+  const input = { name: 'chocolate', category: 'food', market: 'DE', locale: 'en', alternativeSearch: { query: 'chocolate', store: 'REWE' } };
+  const response = await check(token, input);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toHaveProperty('alternatives');
+  expect(upstream[0]?.tool_choice).toBe('required');
+  const body = upstream[0] as { input: { content: { text: string }[] }[] };
+  expect(JSON.parse(body.input[0]!.content[0]!.text).alternativeSearch).toEqual(input.alternativeSearch);
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
+  expect((await check(token, { ...input, text: 'private scan' })).status).toBe(400);
+  expect((await check(token, { ...input, images: ['data:image/jpeg;base64,AA=='] })).status).toBe(400);
+  expect((await check(token, { ...input, alternativeSearch: { query: 'x' } })).status).toBe(400);
+  expect(upstream).toHaveLength(1);
+});
+test('released clients retain their extraction schema when alternative search is not requested', async () => {
+  includeAlternatives = true; // Even an unsolicited model field cannot leak into old clients.
+  const token = await connect();
+  for (const input of [{ text: 'Ingredients: oats', category: 'food', images: [] }, { images: ['data:image/jpeg;base64,AA=='], category: 'food' }]) {
+    const response = await check(token, input);
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result).toMatchObject(extraction);
+    expect(result).not.toHaveProperty('alternatives');
+  }
+  expect(upstream.every(payload => !Object.hasOwn(payload, 'tool_choice'))).toBe(true);
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ state: 'connected', remaining: 1 });
+});
 async function fixedIPWindow(): Promise<Env> {
   // Model one fixed window so guard tests cannot straddle Miniflare's wall-clock reset.
   const counts = new Map<string, number>();
