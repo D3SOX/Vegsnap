@@ -10,8 +10,8 @@ android {
         applicationId = "app.vegsnap"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 21
-        versionName = providers.environmentVariable("VEGSNAP_VERSION_NAME").orNull ?: "0.2.15"
+        versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 22
+        versionName = providers.environmentVariable("VEGSNAP_VERSION_NAME").orNull ?: "0.2.16"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     val releaseKeystore = providers.environmentVariable("VEGSNAP_KEYSTORE_PATH").orNull
@@ -44,6 +44,11 @@ kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
 dependencies {
+    constraints {
+        implementation("androidx.fragment:fragment:1.9.1") {
+            because("CameraX requests Fragment 1.1.0, which Google Play flags as outdated.")
+        }
+    }
     implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.browser:browser:1.10.0")
     implementation("androidx.activity:activity-compose:1.11.0")
