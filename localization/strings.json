@@ -756,7 +756,7 @@
   },
   "app_historycachefailed": {
     "en": "Could not update local history.",
-    "de": "Could not update local history.",
+    "de": "Der lokale Verlauf konnte nicht aktualisiert werden.",
     "extension": [
       "app.historyCacheFailed"
     ]

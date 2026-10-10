@@ -1,4 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -154,7 +155,16 @@ export async function generateStrings(check = false): Promise<void> {
     });
     if (current === content) continue;
     if (check) stale.push(path);
-    else await writeFile(`${root}${path}`, content);
+    else {
+      const target = `${root}${path}`;
+      const temporary = `${target}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(temporary, content);
+        await rename(temporary, target);
+      } finally {
+        await rm(temporary, { force: true });
+      }
+    }
   }
   if (stale.length) throw new Error(`Generated strings are stale. Run bun run strings:generate:\n${stale.join('\n')}`);
 }

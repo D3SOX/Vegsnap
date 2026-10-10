@@ -225,7 +225,7 @@ export const messages = {
     "hideEmail": "E-Mail verbergen",
     "hideEmails": "E-Mail-Adressen verbergen",
     "history": "Verlauf",
-    "historyCacheFailed": "Could not update local history.",
+    "historyCacheFailed": "Der lokale Verlauf konnte nicht aktualisiert werden.",
     "historySetting": "Prüfungen auf diesem Gerät speichern",
     "hosted": "Vegsnap KI – begrenzte kostenlose Prüfungen",
     "hostedAllowance": "Heute verbleibende kostenlose Prüfungen",

@@ -63,7 +63,7 @@ export function App() {
     if (!storedResult || !result || storedJSON === resultJSON) return;
     void request<HistoryResult | null>({type:'cache-community-result',expected:storedJSON!,result}).then(saved=>{
       if (saved) setResult(current=>JSON.stringify(current) === storedJSON ? saved : current);
-    }).catch(cause=>setError(cause instanceof Error ? cause.message : t.historyCacheFailed));
+    }).catch(cause=>setError(cause instanceof Error ? cause.message : messages[configRef.current.language].historyCacheFailed));
   },[storedJSON,resultJSON]);
   const [onlineCheck, setOnlineCheck] = useState<{ id: string; input: CheckInput; kind: 'database' | 'ai' }>();
   const [text, setText] = useState('');
