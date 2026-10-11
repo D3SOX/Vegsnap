@@ -40,6 +40,7 @@ let cacheWait: Promise<void> | undefined;
 let cacheRequests = 0;
 let checkError = false;
 const checkedInputs: CheckInput[] = [];
+const checkedPreviousIds: (string | undefined)[] = [];
 let grantConsent = false;
 let hostedVerified = false;
 let hostedEnabled = true;
@@ -63,7 +64,7 @@ mock.module('wxt/browser', () => ({ browser: {
     async sendMessage(message: Request) {
       switch (message.type) {
         case 'check': {
-          checkRequests++; checkedInputs.push(structuredClone(message.input)); await checkWait;
+          checkRequests++; checkedInputs.push(structuredClone(message.input)); checkedPreviousIds.push(message.previousId); await checkWait;
           if (checkError) return { ok: false, error: 'Fixture check failed' };
           const { images, ...input } = message.input;
           return { ok: true, result: { ...fixtureResult, id: `check-${checkRequests}`, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
@@ -374,6 +375,25 @@ try {
   grantConsent = true; checkConsent = undefined;
   await act(async () => { onlineButton()!.click(); });
   await until(() => checkRequests === beforeConsentCheck + 1 && !onlineButton(), 'Granting access reruns the same input and clears the consent action');
+  assert.equal(checkedPreviousIds.at(-1), `check-${beforeConsentCheck}`, 'The consent retry keeps the previous saved result for research retention');
+  for (const saveHistory of [true, false]) {
+    settings = { ...settings, saveHistory }; storageChanged(['settings'], 'local');
+    const originalId = `saved-consent-origin-${saveHistory}`;
+    history = [{ ...fixtureResult, id: originalId, input: { text: 'Ingredients: oats' } }];
+    changed(); await tab(roots[0]!, 'history');
+    await until(() => historyItems(roots[0]!).length === 1, 'Original saved result is available');
+    await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
+    await act(async () => { editButton()!.click(); });
+    checkConsent = 'ai'; await submitEdit();
+    await until(() => !!onlineButton(), 'Saved recheck requests online consent');
+    assert.equal(checkedPreviousIds.at(-1), originalId);
+    const beforeRetry = checkRequests;
+    checkConsent = undefined;
+    await act(async () => { onlineButton()!.click(); });
+    await until(() => checkRequests === beforeRetry + 1 && !onlineButton(), 'Saved recheck finishes after consent');
+    assert.equal(checkedPreviousIds.at(-1), originalId, 'Consent retry preserves the original ID even when the interim result is not saved');
+  }
+  settings = { ...settings, saveHistory: true }; storageChanged(['settings'], 'local');
   console.log('Actual check UI: local-first results, gesture-bound permission prompts, denial preservation and granted retry verified');
   await tab(roots[0]!, 'settings'); await tab(roots[1]!, 'settings');
   const connections = roots[0]!.querySelectorAll<HTMLSelectElement>('select');

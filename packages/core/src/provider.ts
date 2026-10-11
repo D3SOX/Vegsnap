@@ -140,7 +140,8 @@ function researchAssessment(extracted: AIExtraction, input: CheckInput) {
   return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, extracted.complete), visible, extracted);
 }
 function needsResearch(extracted: AIExtraction, input: CheckInput): boolean {
-  return Boolean(extracted.name?.trim() && extracted.brand?.trim() && researchAssessment(extracted, input).outcome === 'uncertain');
+  if (!extracted.name?.trim() || !extracted.brand?.trim()) return false;
+  return ['uncertain', 'conflicting'].includes(researchAssessment(extracted, input).outcome) || !sourcedCompanyAssessment(extracted);
 }
 function publicResearchQuestions(extracted: AIExtraction, input: CheckInput): string[] {
   return researchAssessment(extracted, input).findings.filter(finding => finding.evidenceId?.startsWith('web-composition-') &&
@@ -210,7 +211,7 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         model: config.model, stream: false, store: false, instructions: EXTRACTION_PROMPT, max_output_tokens: 6000,
         tools: input.autoMarket ? undefined : [{ type: 'web_search' }],
         ...(input.alternativeSearch ? { tool_choice: 'required' } : {}),
-        max_tool_calls: input.autoMarket ? undefined : 3, include: input.autoMarket ? undefined : ['web_search_call.action.sources'],
+        max_tool_calls: input.autoMarket ? undefined : input.alternativeSearch ? 3 : 4, include: input.autoMarket ? undefined : ['web_search_call.action.sources'],
         input: [{ role: 'user', content: content.map(part => part.type === 'text'
           ? { type: 'input_text', text: part.text } : { type: 'input_image', image_url: part.image_url.url }) }],
       } : { model: config.model, stream: false, max_tokens: 6000,
@@ -259,25 +260,28 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         const withResearchMarket = (value: AIExtraction): AIExtraction => input.autoMarket && value.research?.searched
           ? { ...value, research: { ...value.research, market: researchInput.market } } : value;
         let catalogue: Awaited<ReturnType<typeof lookupMatspar>>;
-        if (input.images?.length && needsResearch(extracted, input)) {
+        if (input.images?.length && researchAssessment(extracted, input).outcome === 'uncertain' && needsResearch(extracted, input)) {
           try {
             catalogue = await lookupMatspar(extracted, researchInput, catalogueFetcher ?? fetcher, requestSignal);
           } catch (error) {
             if (requestSignal.aborted) throw error;
           }
         }
-        if (!needsResearch(extracted, input)) return extracted;
+        const usedSearchCalls = object(body) && Array.isArray(body.output)
+          ? body.output.filter(item => object(item) && item.type === 'web_search_call').length : 0;
+        const remainingSearchCalls = Math.max(0, 6 - usedSearchCalls);
+        if (!needsResearch(extracted, input) || !remainingSearchCalls) return extracted;
         try {
           const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
-            tools: [{ type: 'web_search' }], max_tool_calls: 3, include: ['web_search_call.action.sources'],
-            instructions: `${EXTRACTION_PROMPT}\n${promptData.researchPrompt}${catalogue ? '\n\nA verified Matspar product record has already been fetched and exact-matched. Use its ingredients only as parsing input. Do not perform another product lookup or treat its ingredients as photo transcription or a vegan claim. Keep the same canonical name and brand, top-level text empty and complete false. Return its full composition in webCompositions with every source-verbatim ingredient parsed, and ingredientAssessments for every parsed term. Continue web research only for unresolved origins or a product-specific declaration.' : ''}`,
+            tools: [{ type: 'web_search' }], max_tool_calls: remainingSearchCalls, include: ['web_search_call.action.sources'],
+            instructions: `${promptData.researchPrompt}${catalogue ? '\n\nA verified Matspar product record has already been fetched and exact-matched. Use its ingredients only as parsing input. Do not perform another product lookup or treat its ingredients as photo transcription or a vegan claim. Keep the same canonical name and brand, top-level text empty and complete false. Return its full composition in webCompositions with every source-verbatim ingredient parsed, and ingredientAssessments for every parsed term. Consult official contact if uncertainty remains and company evidence first, then research unresolved origins or a product-specific declaration.' : ''}`,
             text: { format: { type: 'json_schema', name: 'product_research', strict: false, schema: {
               type: 'object', properties: { name: { type: 'string', enum: [extracted.name] }, brand: { type: 'string', enum: [extracted.brand] } },
               required: ['text', 'complete', 'category', 'name', 'brand'],
             } } },
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
               packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
-              category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
+              category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', productOutcome: researchAssessment(extracted, input).outcome, webToolBudget: remainingSearchCalls, unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
               ...(catalogue ? { catalogueComposition: catalogue } : {}) }) }] }],
           }));
           const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);

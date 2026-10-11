@@ -1,6 +1,6 @@
 import { backgroundMessages } from '../src/i18n';
 import { browser } from 'wxt/browser';
-import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
+import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, retainPreviousResearch, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
 import { researchVeganAlternatives, validateAlternativeSearch, type AlternativeSearch } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
@@ -225,13 +225,17 @@ export default defineBackground(() => {
               if (!(await hasDataConsent(CONTENT_DATA))) onlineConsent ??= 'database';
               return contentFetch(...args);
             }, { preconnect: globalThis.fetch.preconnect });
-            const result = await checkProduct(input, { mode: 'explicit', provider, fetch: fetcher, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
+            let result = await checkProduct(input, { mode: 'explicit', provider, fetch: fetcher, offlineProducts: await offlineLibrary().index(), ...(requestId ? { onProgress(stage) {
               const progress: CheckProgressMessage = { type: 'check-progress', requestId, stage };
               void browser.runtime.sendMessage(progress).catch(() => {});
             } } : {}) });
             if (config.connection === 'database' && result.aiStatus === 'unconfigured') result.aiStatus = 'disabled';
             const inheritedFallback = message.input.autoMarket === undefined && !trustedStore && !config.autoCountry;
             if (inheritedFallback) result.identity.marketSource = 'fallback';
+            if (extensionPage && typeof message.previousId === 'string') {
+              const previous = (await history('list')).find(saved => saved.id === message.previousId);
+              if (previous) result = retainPreviousResearch(result, withoutCommunityHistory(previous));
+            }
             const { images, ...savedInput } = input;
             if (inheritedFallback) delete savedInput.autoMarket;
             const localResult = { ...result, input: savedInput, ...(images?.length ? { photos: images } : {}) };

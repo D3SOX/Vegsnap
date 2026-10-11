@@ -33,6 +33,9 @@ internal fun publicEvidenceUrl(value: String): String? {
     return value
 }
 
+internal fun responseSearchCalls(output: JSONArray): Int =
+    (0 until output.length()).count { output.optJSONObject(it)?.optString("type") == "web_search_call" }
+
 /** Only provider tool output supplies research metadata; model-authored JSON never does. */
 internal fun responseResearch(response: JSONObject): JSONObject {
     val sources = linkedMapOf<String, JSONObject>()

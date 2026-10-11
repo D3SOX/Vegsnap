@@ -104,6 +104,7 @@ struct SavedCheck: Codable, Identifiable {
     var originalAnalysis: CheckResult { communityOriginal ?? result }
 }
 struct CheckJob: Codable, Identifiable {
+    var previousID: String? = nil
     var id = UUID().uuidString
     var input: CheckInput
     var photos: [String]

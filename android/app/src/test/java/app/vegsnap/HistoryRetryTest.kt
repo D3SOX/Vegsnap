@@ -16,6 +16,95 @@ class HistoryRetryTest {
     private fun result(title: String, aiStatus: String = "images") = JSONObject().put("title", title)
         .put("checkedAt", "2026-10-06T12:00:00Z").put("aiStatus", aiStatus)
 
+    private fun researchedResult(): JSONObject {
+        val identity = JSONObject().put("name", "ICA Basic Tvättmedel Kulör").put("brand", "ICA Basic").put("market", "SE").put("barcode", "")
+        val contact = JSONObject().put("productName", identity.getString("name")).put("brand", "ICA Basic")
+            .put("sourceUrl", "https://www.ica.se/kundservice/vanliga-fragor/").put("email", "kundkontakt@ica.se")
+        val company = JSONObject().put("brand", "ICA Basic").put("company", "ICA Sverige AB").put("scope", "direct")
+            .put("verdict", "inconclusive").put("summary", "The consulted evidence is limited.").put("categories", org.json.JSONArray())
+            .put("sources", org.json.JSONArray().put(JSONObject().put("url", "https://www.ica.se/policy/").put("title", "Policy").put("quote", "Animal welfare requirements")))
+            .put("assessedAt", "2026-10-01T12:00:00Z")
+        return result("previous").put("identity", identity).put("manufacturerContact", contact).put("companyAssessment", company)
+    }
+
+    @Test fun `recheck keeps sourced contact and dated company assessment when AI omits them`() = withStores { queue, photos ->
+        val original = researchedResult()
+        val identity = original.getJSONObject("identity")
+        val rows = mutableMapOf("history" to HistoryEntry("history", "previous", original.getString("checkedAt"), original.toString()))
+        queue.enqueueHistory("history", CheckInput(), AppSettings(), emptyList())
+        AnalysisQueueRunner(queue, { _, _ -> result("new").put("identity", JSONObject(identity.toString())).put("outcome", "uncertain") }, { job, result ->
+            publishAnalysisResult(job, result, photos, { emptyList() }, rows::containsKey,
+                previous = { rows[it]?.json?.let(::JSONObject) }) { rows[it.id] = it }
+        }).run(queue.next(false)!!)
+        val saved = JSONObject(rows.getValue("history").json)
+        assertEquals(original.getJSONObject("manufacturerContact").toString(), saved.getJSONObject("manufacturerContact").toString())
+        assertEquals(original.getJSONObject("companyAssessment").toString(), saved.getJSONObject("companyAssessment").toString())
+        assertEquals("new", saved.getString("title"))
+    }
+
+    @Test fun `equivalent GTIN formats retain research but different missing or invalid codes do not`() {
+        for ((original, retried) in listOf(
+            "4006381333931" to "04006381333931", "04006381333931" to "4006381333931",
+            "4006381333931" to "4006-3813 33931", "036000291452" to "00036000291452"
+        )) {
+            val previous = researchedResult()
+            previous.getJSONObject("identity").put("barcode", original)
+            val updated = result("new").put("outcome", "uncertain")
+                .put("identity", JSONObject(previous.getJSONObject("identity").toString()).put("barcode", retried))
+            retainPreviousResearch(updated, previous)
+            assertEquals(previous.getJSONObject("companyAssessment").toString(), updated.getJSONObject("companyAssessment").toString())
+            assertEquals(previous.getJSONObject("manufacturerContact").toString(), updated.getJSONObject("manufacturerContact").toString())
+        }
+        for ((original, retried) in listOf(
+            "4006381333931" to "036000291452", "4006381333931" to "",
+            "4006381333932" to "04006381333932", "invalid" to "invalid"
+        )) {
+            val previous = researchedResult()
+            previous.getJSONObject("identity").put("barcode", original)
+            val updated = result("new").put("outcome", "uncertain")
+                .put("identity", JSONObject(previous.getJSONObject("identity").toString()).put("barcode", retried))
+            retainPreviousResearch(updated, previous)
+            assertFalse(updated.has("companyAssessment")); assertFalse(updated.has("manufacturerContact"))
+        }
+    }
+
+    @Test fun `previous research is never transferred to changed product identity`() {
+        for (field in listOf("name", "brand", "market", "barcode")) {
+            val previous = researchedResult()
+            val updated = result("new").put("outcome", "uncertain")
+                .put("identity", JSONObject(previous.getJSONObject("identity").toString()).put(field, "different"))
+            retainPreviousResearch(updated, previous)
+            assertFalse(field, updated.has("manufacturerContact"))
+            assertFalse(field, updated.has("companyAssessment"))
+        }
+    }
+
+    @Test fun `new research supersedes previous evidence and decisive verdict omits old contact`() {
+        val previous = researchedResult()
+        val updated = JSONObject(previous.toString()).put("outcome", "uncertain")
+        updated.getJSONObject("companyAssessment").put("assessedAt", "2026-10-06T12:00:00Z")
+        updated.getJSONObject("manufacturerContact").put("email", "new@ica.se")
+        retainPreviousResearch(updated, previous)
+        assertEquals("new@ica.se", updated.getJSONObject("manufacturerContact").getString("email"))
+        assertEquals("2026-10-06T12:00:00Z", updated.getJSONObject("companyAssessment").getString("assessedAt"))
+        for (outcome in listOf("vegan", "not_vegan")) {
+            val decisive = result("new").put("outcome", outcome).put("identity", previous.getJSONObject("identity"))
+            retainPreviousResearch(decisive, previous)
+            assertFalse(decisive.has("manufacturerContact"))
+            assertTrue(decisive.has("companyAssessment"))
+        }
+    }
+
+    @Test fun `invalid or mismatched saved research is not retained`() {
+        val previous = researchedResult()
+        previous.getJSONObject("manufacturerContact").put("productName", "Different product")
+        previous.getJSONObject("companyAssessment").put("assessedAt", "invalid date")
+        val updated = result("new").put("outcome", "uncertain").put("identity", previous.getJSONObject("identity"))
+        retainPreviousResearch(updated, previous)
+        assertFalse(updated.has("manufacturerContact"))
+        assertFalse(updated.has("companyAssessment"))
+    }
+
     @Test fun `same history retry replaces one result and keeps original photos and input`() = withStores { queue, photos ->
         val historyId = "imported/history:one"
         val input = CheckInput("water, salt", "food", true)

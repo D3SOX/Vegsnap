@@ -22,6 +22,15 @@ const webCheck = (value: AIExtraction, locale: 'en' | 'de' = 'en') => {
 };
 
 describe('AI parses source-grounded ingredient names', () => {
+  test('unspecified E920 origin cannot become an animal verdict from model assumptions', () => {
+    const input = { text: 'mjölbehandlingsmedel (E920)', category: 'food' as const, complete: true };
+    const result = applyAIEvidence(analyzeText(input), input, { ...input, ingredients: [input.text], ingredientAssessments: [
+      { term: input.text, status: 'animal', explanation: 'Often made from feathers; this listing does not specify the origin.' },
+    ] }, true);
+    expect(result.outcome).toBe('uncertain');
+    expect(result.findings.every(finding => finding.status !== 'animal')).toBe(true);
+    expect(result.findings.some(finding => finding.ruleId === 'cysteine' && finding.status === 'ambiguous')).toBe(true);
+  });
   for (const locale of ['en', 'de'] as const) test(`medicine excludes role prose, preserves chemicals and translates names into ${locale}`, () => {
     const value = extraction(locale);
     const result = webCheck(value, locale);
@@ -133,7 +142,7 @@ describe('AI parses source-grounded ingredient names', () => {
     expect(result.outcome).not.toBe('vegan');
   });
 
-  test('research decision uses parsed medicine list and avoids unnecessary follow-up after animal evidence', async () => {
+  test('company research after animal evidence preserves the parsed medicine list', async () => {
     const value = extraction();
     delete value.research;
     const requests: unknown[] = [];
@@ -146,7 +155,7 @@ describe('AI parses source-grounded ingredient names', () => {
     }) as typeof fetch;
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'supported', supportsVision: true }, fetcher);
     await provider.extract({ category: 'other', images: ['data:image/jpeg;base64,AA=='] });
-    expect(requests).toHaveLength(1);
+    expect(requests).toHaveLength(2);
   });
 });
 

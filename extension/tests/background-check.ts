@@ -8,6 +8,7 @@ import { countryCode } from '../../packages/core/src/market';
 import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
 import { applyCommunityReplies } from '../../packages/core/src/community';
+import { retainPreviousResearch } from '../../packages/core/src/history-research';
 import { defaultSettings, STORES } from '../src/settings';
 import type { CheckReply, Pending, Reply } from '../src/protocol';
 type Sender = { id: string; url: string; tab?: { id: number } };
@@ -110,6 +111,7 @@ const evaluateProduct = realCheckProduct;
 const parseCountry = countryCode;
 mock.module('@vegsnap/core', () => ({
   applyCommunityReplies,
+  retainPreviousResearch,
   countryCode: parseCountry, HOSTED_AI: hostedConfig,
   createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => {
     hostedRemaining = Math.max(0, hostedRemaining - 1);
@@ -839,3 +841,34 @@ assert.equal((await revokedResearch).ok, false);
 holdAlternative = false;
 assert.equal((await listener!({ type: 'research-alternatives', requestId: crypto.randomUUID(), input: alternativeInput }, firefoxTrusted)).ok, false, 'AI research checks revoked sharing at the network boundary');
 console.log('Alternative background: trusted routing, bounded public input, no history writes and revoked sharing verified');
+
+useRealEvaluator = true; dataAllowed = true;
+local.settings = { ...defaultSettings, connection: 'database', autoCountry: false };
+const retryInput = { text: 'E920', name: 'Tortillas', brand: 'Maker', market: 'SE', autoMarket: false };
+const originalRetry = await evaluateProduct(retryInput, { mode: 'explicit', offline: true });
+const retryFixture = { ...originalRetry, id: 'saved-research-retry',
+  companyAssessment: { brand: 'Maker', company: 'Maker Ltd', scope: 'direct', verdict: 'inconclusive', categories: [],
+    summary: 'No conclusion established.', assessedAt: '2026-10-01T12:00:00Z',
+    sources: [{ url: 'https://maker.example/policy', title: 'Policy', quote: 'Our policy.' }] },
+  manufacturerContact: { brand: 'Maker', productName: 'Tortillas', email: 'care@maker.example', sourceUrl: 'https://maker.example/contact' },
+};
+saved.push(retryFixture);
+const retryReply = await listener!({ type: 'check', input: retryInput, previousId: retryFixture.id }, firefoxTrusted);
+assert(retryReply.ok);
+const retried = retryReply.result as CheckReply;
+assert.deepEqual(retried.companyAssessment, retryFixture.companyAssessment);
+assert.deepEqual(retried.manufacturerContact, retryFixture.manufacturerContact);
+assert.equal(retried.outcome, 'uncertain');
+assert.deepEqual(saved.at(-1), retried, 'Retained research is persisted, not just displayed');
+local.settings = { ...defaultSettings, connection: 'database', autoCountry: false, saveHistory: false };
+const savedCount = saved.length;
+const unsavedRetry = await listener!({ type: 'check', input: retryInput, previousId: retryFixture.id }, firefoxTrusted);
+assert(unsavedRetry.ok);
+assert.deepEqual((unsavedRetry.result as CheckReply).companyAssessment, retryFixture.companyAssessment);
+assert.deepEqual((unsavedRetry.result as CheckReply).manufacturerContact, retryFixture.manufacturerContact);
+assert.equal(saved.length, savedCount, 'Research can be retained without saving the new result');
+const changedRetry = await listener!({ type: 'check', input: { ...retryInput, brand: 'Other' }, previousId: retryFixture.id }, firefoxTrusted);
+assert(changedRetry.ok);
+assert.equal((changedRetry.result as CheckReply).companyAssessment, undefined);
+assert.equal((changedRetry.result as CheckReply).manufacturerContact, undefined);
+console.log('Saved retry research: same identity retains sourced fields and original dates; changed identity cannot inherit them');

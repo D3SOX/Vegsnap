@@ -10,8 +10,8 @@ android {
         applicationId = "app.vegsnap"
         minSdk = 26
         targetSdk = 36
-        versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 22
-        versionName = providers.environmentVariable("VEGSNAP_VERSION_NAME").orNull ?: "0.2.16"
+        versionCode = providers.environmentVariable("VEGSNAP_VERSION_CODE").orNull?.toInt() ?: 23
+        versionName = providers.environmentVariable("VEGSNAP_VERSION_NAME").orNull ?: "0.2.17"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     val releaseKeystore = providers.environmentVariable("VEGSNAP_KEYSTORE_PATH").orNull

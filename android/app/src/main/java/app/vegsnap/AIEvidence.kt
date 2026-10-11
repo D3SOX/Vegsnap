@@ -156,6 +156,16 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
             finding.put("displayTerm", translated).put("displayLocale", if (de) "de" else "en")
         }
         if (finding.getString("status") != "unknown") continue
+        val parts = compositionTerms(finding.getString("term"), input.category in setOf("shoes", "clothing"))
+        val ambiguousChild = (0 until findings.length()).map { findings.getJSONObject(it) }.firstOrNull {
+            it.getString("status") == "ambiguous" && it.optString("evidenceId") == finding.optString("evidenceId") &&
+                normalizeCompositionTerm(it.getString("term")) in parts
+        }
+        if (ambiguousChild != null && assessment.getString("status") in setOf("plant", "animal")) {
+            finding.put("status", "ambiguous").put("explanation", ambiguousChild.getString("explanation"))
+            ambiguousChild.optString("ruleId").takeIf { it.isNotBlank() }?.let { finding.put("ruleId", it) }
+            continue
+        }
         finding.put("status", assessment.getString("status")).put("evidenceId", assessmentEvidenceId)
             .put("explanation", (ResultStrings.aiAssessmentPrefix(de)) + assessment.getString("explanation"))
         assessed += finding

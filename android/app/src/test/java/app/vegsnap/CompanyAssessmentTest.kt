@@ -105,9 +105,10 @@ class CompanyAssessmentTest {
         MockWebServer().use { server ->
             val extracted = extraction().apply { remove("research") }.put("text", "water, salt").put("complete", true).put("companyAssessment", "invalid")
             server.enqueue(MockResponse().setBody(response(extracted, true).toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
             val result = repository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test", aiEnabled = true), "")
             assertEquals("vegan", result.getString("outcome")); assertEquals("images", result.getString("aiStatus"))
-            assertFalse(result.has("companyAssessment")); assertEquals(1, server.requestCount)
+            assertFalse(result.has("companyAssessment")); assertEquals(2, server.requestCount)
         }
     }
     @Test fun followupResearchKeepsCompanyAssessmentAndItsActualProvenance() = runBlocking {
@@ -132,6 +133,23 @@ class CompanyAssessmentTest {
             val result = repository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test", aiEnabled = true), "")
             assertEquals(2, server.requestCount)
             assertEquals(url, result.getJSONObject("companyAssessment").getJSONArray("sources").getJSONObject(0).getString("url"))
+        }
+    }
+
+    @Test fun identifiedCompanyIsResearchedEvenWhenPhotoCompositionIsDecisive() = runBlocking {
+        MockWebServer().use { server ->
+            val initial = extraction().apply { remove("research"); remove("companyAssessment") }.put("text", "water, salt").put("complete", true)
+            server.enqueue(MockResponse().setBody(response(initial, false).toString()))
+            server.enqueue(MockResponse().setBody(response(extraction().apply { remove("research") }, true).toString()))
+            val result = repository(server).check(CheckInput(autoMarket = true), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test", aiEnabled = true), "")
+            assertEquals("vegan", result.getString("outcome"))
+            assertEquals(2, server.requestCount)
+            assertEquals("concerns_found", result.getJSONObject("companyAssessment").getString("verdict"))
+            assertFalse(server.takeRequest().body.readUtf8().contains("tool_choice"))
+            val followup = JSONObject(server.takeRequest().body.readUtf8())
+            val context = JSONObject(followup.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+            assertEquals("vegan", context.getString("productOutcome"))
+            assertFalse(followup.getJSONArray("input").toString().contains("input_image"))
         }
     }
 

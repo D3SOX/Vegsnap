@@ -18,3 +18,4 @@ export type { ManufacturerMessage, ManufacturerMessageLanguage } from './manufac
 export { communityLinks, validateCommunitySubmission, communityIdentityKey, replyCoverage, communityMatchRules, applyCommunityReplies, communityLookupParams, parseCommunityReplyPage, SubmissionError } from './community';
 export type { CommunitySubmission, CommunityReply, CommunityProduct, CommunityReplyPage, ReplyCoverage, ReplyClaim, ReplyScope } from './community';
 export { parseCompanyAssessment, parseResultCompanyAssessment, sourcedCompanyAssessment, applyCompanyAssessment } from './company-assessment';
+export { retainPreviousResearch } from './history-research';

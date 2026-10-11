@@ -206,4 +206,29 @@ describe('manufacturer contact', () => {
     expect(manufacturerMessage(result)?.body).toContain('including its processing aids');
     expect(manufacturerMessage({ ...result, outcome: 'vegan' })).toBeUndefined();
   });
+  test('ICA research reserves room for verified contact even when ingredient origins remain unresolved', async () => {
+    for (const [name, brand, category] of [['ICA Basic Tvättmedel Kulör', 'ICA Basic', 'household'], ['Soft tortillas Large 6-p', 'ICA', 'food']] as const) {
+      const requests: Record<string, unknown>[] = [];
+      const sourceUrl = 'https://www.ica.se/kundservice/vanliga-fragor/';
+      const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+        (async (_target: string | URL | Request, init?: RequestInit) => {
+          const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
+          requests.push(request);
+          const researched = requests.length === 2;
+          return new Response(JSON.stringify({ status: 'completed', output: [
+            ...(researched ? [{ type: 'web_search_call', status: 'completed', action: { type: 'open_page', url: sourceUrl } }] : []),
+            { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify({
+              text: '', complete: false, category, name, brand,
+              ...(researched ? { contact: { productName: name, brand, email: 'kundkontakt@ica.se', sourceUrl } } : {}),
+            }) }] },
+          ] }));
+        }) as unknown as typeof fetch, (async () => new Response(null, { status: 503 })) as unknown as typeof fetch);
+      const checked = await checkProduct({ images: ['data:image/jpeg;base64,AA=='], autoMarket: true, market: 'SE' }, { mode: 'explicit', provider });
+      expect(requests).toHaveLength(2);
+      expect(requests[1]?.max_tool_calls).toBe(6);
+      expect(checked.outcome).toBe('uncertain');
+      expect(checked.manufacturerContact?.email).toBe('kundkontakt@ica.se');
+    }
+  });
+
 });

@@ -22,7 +22,7 @@ export type Request =
   | { type: 'update-settings'; patch: Partial<Settings> }
   | { type: 'set-api-token'; endpoint: string; token: string }
   | { type: 'set-store'; store: string; enabled: boolean }
-  | { type: 'check'; input: CheckInput; requestId?: string }
+  | { type: 'check'; input: CheckInput; requestId?: string; previousId?: string }
   | { type: 'research-alternatives'; input: AlternativeSearch; requestId: string }
   | { type: 'cancel-alternative-research'; requestId: string }
   | { type: 'background-check'; barcode: string }

@@ -39,6 +39,21 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   };
 }
 describe('iOS JavaScriptCore host contract', () => {
+  test('a saved retry preserves omitted sourced company and contact fields through JavaScriptCore', () => {
+    const app = harness();
+    const result = app.call('analyze', { text: 'E920', name: 'Tortillas', brand: 'Maker', market: 'SE' });
+    const previous = { ...result,
+      companyAssessment: { brand: 'Maker', company: 'Maker Ltd', scope: 'direct', verdict: 'inconclusive', categories: [],
+        summary: 'No conclusion established.', assessedAt: '2026-10-01T12:00:00Z',
+        sources: [{ url: 'https://maker.example/policy', title: 'Policy', quote: 'Our policy.' }] },
+      manufacturerContact: { brand: 'Maker', productName: 'Tortillas', email: 'care@maker.example', sourceUrl: 'https://maker.example/contact' },
+    };
+    const retained = app.call('retainResearch', { result, previous });
+    expect(retained.companyAssessment).toEqual(previous.companyAssessment);
+    expect(retained.manufacturerContact).toEqual(previous.manufacturerContact);
+    expect(retained.outcome).toBe('uncertain');
+    expect(app.call('retainResearch', { result: { ...result, identity: { ...result.identity, market: 'DE' } }, previous }).companyAssessment).toBeUndefined();
+  });
   test('alternative searches preserve shared filtering and store ranking in JavaScriptCore', async () => {
     const fixture = await Bun.file(new URL('../../contracts/alternatives-fixtures.json', import.meta.url)).json();
     const app = harness();

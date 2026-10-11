@@ -56,6 +56,12 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
         ? { ...display, explanation: t.aiUnknownOrigin }
         : display;
     }
+    const parts = compositionTerms(finding.term, ['shoes', 'clothing'].includes(input.category ?? 'other'));
+    const ambiguousChild = result.findings.find(child => child.status === 'ambiguous' && child.evidenceId === finding.evidenceId &&
+      parts.includes(normalizeTerm(child.term)));
+    if (ambiguousChild && ['plant', 'animal'].includes(assessment.status)) {
+      return { ...display, status: 'ambiguous', explanation: ambiguousChild.explanation, ruleId: ambiguousChild.ruleId };
+    }
     return { ...display, status: assessment.status, evidenceId: 'ai-assessment',
       explanation: `${t.aiAssessment}: ${assessment.explanation}` };
   });

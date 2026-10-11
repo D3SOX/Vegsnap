@@ -136,7 +136,7 @@ internal fun refreshedChatGPTSession(previous: JSONObject, tokens: JSONObject, i
     return next
 }
 
-data class ChatGPTExtraction(val text: String, val research: JSONObject)
+data class ChatGPTExtraction(val text: String, val research: JSONObject, val searchCalls: Int = 0)
 
 /** SSE output is usable only when the provider confirms completion, never just after a delta. */
 internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -> Unit = {}, onDiagnostic: (String) -> Unit = {}): ChatGPTExtraction {
@@ -144,6 +144,7 @@ internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -> Uni
     val data = StringBuilder()
     val output = StringBuilder()
     var completed = false
+    var searchCalls = 0
     val completedItems = JSONArray()
     var research = JSONObject().put("searched", false).put("sources", JSONArray())
     var read = 0
@@ -193,6 +194,7 @@ internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -> Uni
                     throw providerStreamFailure(json, type)
                 }
                 val finalItems = response?.optJSONArray("output") ?: JSONArray()
+                searchCalls = maxOf(responseSearchCalls(finalItems), responseSearchCalls(completedItems))
                 terminalText = messageText(finalItems).ifBlank { messageText(completedItems) }
                 for (index in 0 until finalItems.length()) completedItems.put(finalItems.get(index))
                 // The terminal event may omit or repeat items already delivered by output_item.done.
@@ -223,7 +225,7 @@ internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -> Uni
     onDiagnostic("stream completed=$completed events=$events text_present=${text.isNotBlank()}")
     if (!completed) throw AIProviderFailure(AIErrorCode.INCOMPLETE)
     if (text.isBlank()) throw AIProviderFailure(AIErrorCode.INVALID_RESPONSE)
-    return ChatGPTExtraction(text, research)
+    return ChatGPTExtraction(text, research, searchCalls)
 }
 
 // All connections in this app share one credential vault and refresh-token rotation lock.
@@ -369,7 +371,8 @@ class ChatGPTConnection(private val context: Context) {
         (0 until response.length()).map { response.getJSONObject(it) }.filter { it.optString("visibility") == "list" }
             .map { ChatGPTModel(it.getString("slug"), it.getString("display_name"), knownModelVisionSupport(it.getString("slug"), it)) }
     } }
-    suspend fun extract(model: String, prompt: String, text: String, images: List<String>, requireResearch: Boolean = false, allowResearch: Boolean = true, onResearchStarted: () -> Unit = {}): ChatGPTExtraction = withContext(Dispatchers.IO) { withChatGPTSession(::activeSession) { session ->
+    suspend fun extract(model: String, prompt: String, text: String, images: List<String>, requireResearch: Boolean = false, allowResearch: Boolean = true,
+        maxToolCalls: Int = 4, onResearchStarted: () -> Unit = {}): ChatGPTExtraction = withContext(Dispatchers.IO) { withChatGPTSession(::activeSession) { session ->
         require(model.isNotBlank() && model.length <= 200 && text.length <= 32_000 && images.size <= 3)
         val content = JSONArray().put(JSONObject().put("type", "input_text").put("text", text.ifBlank { "Read the product labels in these photos." }))
         images.forEach { require(it.startsWith("data:image/jpeg;base64,") && it.length <= 4_000_000); content.put(JSONObject().put("type", "input_image").put("image_url", it)) }
@@ -377,6 +380,7 @@ class ChatGPTConnection(private val context: Context) {
             .put("input", JSONArray().put(JSONObject().put("role", "user").put("content", content)))
         if (allowResearch) body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
             .put("include", JSONArray().put("web_search_call.action.sources"))
+            .put("max_tool_calls", maxToolCalls)
         if (requireResearch) body.put("tool_choice", "required")
         request(authorized("/responses", session).post(body.toString().toRequestBody("application/json".toMediaType())).build()) { readChatGPTStream(it, onResearchStarted) { diagnostic -> android.util.Log.i("VegsnapAI", diagnostic) } }
     } }

@@ -20,6 +20,7 @@ export function call(operation: string, json: string): string {
     case 'rankAlternatives': return JSON.stringify(core.rankAlternatives(args.items, args.input));
     case 'analyze': return JSON.stringify(core.attachCompanyConcerns(core.analyzeText(args), args.locale));
     case 'merge': return JSON.stringify(mergeResults(args.original, args.additional));
+    case 'retainResearch': return JSON.stringify(core.retainPreviousResearch(args.result, args.previous));
     case 'barcode': return JSON.stringify(core.normalizeBarcode(args) ?? null);
     case 'message': return JSON.stringify(core.manufacturerMessage(args.result, args.locale) ?? null);
     case 'community': return JSON.stringify(core.communityLinks(args.result, args.locale) ?? null);

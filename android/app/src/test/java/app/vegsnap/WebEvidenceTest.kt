@@ -72,6 +72,7 @@ class WebEvidenceTest {
                     .put("text", "havre, kakao, hallon").put("complete", true).put("sourceType", "manufacturer")
                     .put("productName", "Granola Kakao & Hallon").put("brand", "Paulúns")))
             server.enqueue(MockResponse().setBody(providerResponse(extracted.toString()).toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
             val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build()
             val result = CheckRepository(evaluator, "prompt", client).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", aiEnabled = true, model = "test"), "")
             assertEquals("vegan", result.getString("outcome"))
@@ -318,7 +319,7 @@ class WebEvidenceTest {
             assertFalse(result.getJSONArray("evidence").toString().contains("web-claim"))
             server.takeRequest()
             val request = JSONObject(server.takeRequest().body.readUtf8())
-            assertFalse(request.has("tool_choice"))
+            assertEquals("required", request.getString("tool_choice"))
             assertFalse(request.toString().contains("Private shopping note"))
             assertTrue(request.toString().contains("catalogueComposition"))
         }
@@ -483,6 +484,7 @@ class WebEvidenceTest {
                 .put("webCompositions", JSONArray().put(sourceComposition("Ravioli in Tomatensauce", "MAGGI", "water, beef")))
                 .put("ingredientAssessments", JSONArray().put(JSONObject().put("term", "beef").put("status", "plant").put("explanation", "Incorrect model assessment must not erase the local animal rule.")))
             server.enqueue(MockResponse().setBody(providerResponse(extracted.toString()).toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
             val result = officialRepository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", aiEnabled = true, model = "test"), "")
             assertEquals("not_vegan", result.getString("outcome"))
             assertEquals("composition", result.getString("basis"))
@@ -513,6 +515,28 @@ class WebEvidenceTest {
         assertTrue(result.getJSONArray("evidence").toString().contains("Retailer composition"))
         assertTrue(result.getJSONArray("findings").toString().contains("milk"))
     }
+    @Test fun extractionAndFollowupShareSixCallsIncludingFailedSearches() = runBlocking {
+        for (used in listOf(0, 4, 6)) MockWebServer().use { server ->
+            val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Granola").put("brand", "Maker")
+            val response = providerResponse(first.toString())
+            val output = response.getJSONArray("output")
+            val message = output.getJSONObject(output.length() - 1)
+            val items = JSONArray()
+            repeat(used) { items.put(JSONObject().put("type", "web_search_call").put("status", if (it % 2 == 0) "completed" else "failed")) }
+            response.put("output", items.put(message))
+            server.enqueue(MockResponse().setBody(response.toString()))
+            if (used < 6) server.enqueue(MockResponse().setBody(providerResponse(first.toString()).toString()))
+            officialRepository(server).check(CheckInput(market = "DE", autoMarket = false), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", aiEnabled = true, model = "test"), "")
+            assertEquals(if (used == 6) 1 else 2, server.requestCount)
+            assertEquals(4, JSONObject(server.takeRequest().body.readUtf8()).getInt("max_tool_calls"))
+            if (used < 6) {
+                val followup = JSONObject(server.takeRequest().body.readUtf8())
+                assertEquals(6 - used, followup.getInt("max_tool_calls"))
+                val context = JSONObject(followup.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text"))
+                assertEquals(6 - used, context.getInt("webToolBudget"))
+            }
+        }
+    }
     @Test fun unresearchedFrontPhotoTriggersOneIdentityOnlyRequiredSearch() = runBlocking {
         MockWebServer().use { server ->
             val first = JSONObject().put("text", "").put("complete", false).put("category", "food").put("name", "Granola Kakao & Hallon").put("brand", "Paulúns")
@@ -530,7 +554,7 @@ class WebEvidenceTest {
             assertEquals(1, content.length())
             val identity = JSONObject(content.getJSONObject(0).getString("text"))
             assertEquals("Granola Kakao & Hallon", identity.getString("name"))
-            assertEquals(setOf("name", "brand", "category", "locale", "market", "unresolvedIngredients"), identity.keys().asSequence().toSet())
+            assertEquals(setOf("name", "brand", "category", "locale", "market", "productOutcome", "webToolBudget", "unresolvedIngredients"), identity.keys().asSequence().toSet())
             assertEquals("SE", identity.getString("market"))
             assertEquals("SE", result.getJSONObject("identity").getString("market"))
             assertEquals(0, identity.getJSONArray("unresolvedIngredients").length())
@@ -577,6 +601,7 @@ class WebEvidenceTest {
                 .put("webCompositions", JSONArray().put(sourceComposition("Granola Kakao & Hallon", "Paulúns", text, "retailer")))
                 .put("ingredientAssessments", JSONArray(terms.map { JSONObject().put("term", it).put("status", "plant").put("explanation", "Plant or mineral ingredient; compound components are plant-derived.") }))
             server.enqueue(MockResponse().setBody(providerResponse(extracted.toString()).toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
             val result = officialRepository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", aiEnabled = true, model = "test"), "")
             assertEquals("vegan", result.getString("outcome"))
             assertEquals("composition", result.getString("basis"))
@@ -663,6 +688,7 @@ class WebEvidenceTest {
     @Test fun officialOpenAiUsesResponsesSearchAndActualImagePayload() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody(providerResponse(extraction().toString()).toString()))
+            server.enqueue(MockResponse().setResponseCode(503))
             val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
                 chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())
             }.build()
@@ -673,7 +699,7 @@ class WebEvidenceTest {
             assertEquals("/v1/responses", request.path)
             val body = JSONObject(request.body.readUtf8())
             assertEquals("web_search", body.getJSONArray("tools").getJSONObject(0).getString("type"))
-            assertEquals(3, body.getInt("max_tool_calls"))
+            assertEquals(4, body.getInt("max_tool_calls"))
             assertFalse(body.getBoolean("store"))
             assertEquals("data:image/jpeg;base64,AQID", body.getJSONArray("input").getJSONObject(0).getJSONArray("content").getJSONObject(1).getString("image_url"))
             assertEquals("manufacturer", result.getString("basis"))
