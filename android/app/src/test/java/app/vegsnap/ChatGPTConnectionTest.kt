@@ -15,6 +15,18 @@ import org.junit.Test
 import java.util.Date
 
 class ChatGPTConnectionTest {
+    @Test fun researchUsesSupportedChatGPTFieldsAndPromptBudget() {
+        for (budget in listOf(2, 3, 4, 6)) {
+            val body = chatGPTRequestBody("test", "Research prompt", "{\"webToolBudget\":$budget}", emptyList(), true, true, budget)
+            assertFalse("The ChatGPT plan endpoint rejects max_tool_calls", body.has("max_tool_calls"))
+            assertTrue(body.getString("instructions").contains("at most $budget web-tool calls"))
+            assertEquals("required", body.getString("tool_choice"))
+            assertEquals("web_search", body.getJSONArray("tools").getJSONObject(0).getString("type"))
+            assertTrue(body.getBoolean("stream")); assertFalse(body.getBoolean("store"))
+        }
+        val photo = chatGPTRequestBody("test", "Photo prompt", "Read labels", listOf("data:image/jpeg;base64,YQ=="), false, false, 4)
+        assertFalse(photo.has("tools")); assertFalse(photo.has("tool_choice")); assertFalse(photo.has("max_tool_calls"))
+    }
     @Test fun persistedHostIdIsUuidV4UrnInAuthorization() {
         var stored: String? = null
         var saves = 0
