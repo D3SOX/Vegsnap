@@ -11,6 +11,26 @@ const previous = (): CheckResult => ({
 });
 
 describe('saved research on retry', () => {
+  test('equivalent GTIN formats retain research, while different, missing and invalid codes do not', () => {
+    for (const [original, retried] of [
+      ['4006381333931', '04006381333931'], ['04006381333931', '4006381333931'],
+      ['4006381333931', '4006-3813 33931'], ['036000291452', '00036000291452'],
+    ]) {
+      const saved = previous(), fresh = result();
+      saved.identity.barcode = original; fresh.identity.barcode = retried;
+      const retained = retainPreviousResearch(fresh, saved);
+      expect(retained.companyAssessment).toEqual(saved.companyAssessment);
+      expect(retained.manufacturerContact).toEqual(saved.manufacturerContact);
+    }
+    for (const [original, retried] of [
+      ['4006381333931', '036000291452'], ['4006381333931', ''],
+      ['4006381333932', '04006381333932'], ['invalid', 'invalid'],
+    ]) {
+      const saved = previous(), fresh = result();
+      saved.identity.barcode = original; fresh.identity.barcode = retried;
+      expect(retainPreviousResearch(fresh, saved)).toEqual(fresh);
+    }
+  });
   test('preserves omitted research with its original date without changing the new product assessment', () => {
     const fresh = result(), saved = previous();
     const retained = retainPreviousResearch(fresh, saved);

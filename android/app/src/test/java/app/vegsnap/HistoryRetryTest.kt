@@ -42,6 +42,32 @@ class HistoryRetryTest {
         assertEquals("new", saved.getString("title"))
     }
 
+    @Test fun `equivalent GTIN formats retain research but different missing or invalid codes do not`() {
+        for ((original, retried) in listOf(
+            "4006381333931" to "04006381333931", "04006381333931" to "4006381333931",
+            "4006381333931" to "4006-3813 33931", "036000291452" to "00036000291452"
+        )) {
+            val previous = researchedResult()
+            previous.getJSONObject("identity").put("barcode", original)
+            val updated = result("new").put("outcome", "uncertain")
+                .put("identity", JSONObject(previous.getJSONObject("identity").toString()).put("barcode", retried))
+            retainPreviousResearch(updated, previous)
+            assertEquals(previous.getJSONObject("companyAssessment").toString(), updated.getJSONObject("companyAssessment").toString())
+            assertEquals(previous.getJSONObject("manufacturerContact").toString(), updated.getJSONObject("manufacturerContact").toString())
+        }
+        for ((original, retried) in listOf(
+            "4006381333931" to "036000291452", "4006381333931" to "",
+            "4006381333932" to "04006381333932", "invalid" to "invalid"
+        )) {
+            val previous = researchedResult()
+            previous.getJSONObject("identity").put("barcode", original)
+            val updated = result("new").put("outcome", "uncertain")
+                .put("identity", JSONObject(previous.getJSONObject("identity").toString()).put("barcode", retried))
+            retainPreviousResearch(updated, previous)
+            assertFalse(updated.has("companyAssessment")); assertFalse(updated.has("manufacturerContact"))
+        }
+    }
+
     @Test fun `previous research is never transferred to changed product identity`() {
         for (field in listOf("name", "brand", "market", "barcode")) {
             val previous = researchedResult()
