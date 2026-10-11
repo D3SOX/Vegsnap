@@ -1192,10 +1192,8 @@ fn research_content(
             .is_some_and(|items| items.iter().any(|item| item["status"] == "animal"));
     // Only the client has the ingredient rules. A model's "animal" classification
     // cannot establish that contact is unnecessary (for example, E920's origin).
-    if visible_label
-        && !visible_animal
-        && sourced_company_assessment(&extracted, &analysis.research)
-    {
+    let label_resolves_product = visible_label && !visible_animal && unresolved.is_empty();
+    if label_resolves_product && sourced_company_assessment(&extracted, &analysis.research) {
         return None;
     }
     let remaining_search_calls = 6usize.saturating_sub(analysis.search_calls);
@@ -1214,7 +1212,7 @@ fn research_content(
         "locale":original["locale"].as_str().unwrap_or("en"),
         // The shared client evaluates ingredients. Without that evaluator, keep the
         // hint conservative so source-dependent AI classifications cannot hide contact.
-        "productOutcome":if visible_label && !visible_animal { "vegan" } else { "uncertain" },
+        "productOutcome":if label_resolves_product { "vegan" } else { "uncertain" },
         "webToolBudget":remaining_search_calls
     });
     if !unresolved.is_empty() {
@@ -1726,6 +1724,35 @@ mod tests {
                     ..context.clone()
                 };
                 assert!(research_content(&first, &content, Some(&manual)).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn sourced_unresolved_composition_keeps_contact_research_despite_a_visible_label() {
+        let content = vec![json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="})];
+        for status in ["ambiguous", "unknown", "plant"] {
+            let mut first = research_fixture(true);
+            let mut extracted = extraction_json(&first.text).unwrap();
+            let term = if status == "plant" { "water" } else { "E920" };
+            extracted["labelObservations"] =
+                json!([{"kind":"vegan_certification","name":"Unrecognized mark","text":"vegan"}]);
+            extracted["ingredientAssessments"] =
+                json!([{"term":term,"status":status,"explanation":"Origin assessment"}]);
+            extracted["webCompositions"] = json!([{"url":"https://maker.example/product","text":term,"complete":true,"sourceType":"manufacturer","productName":"Granola Kakao & Hallon","brand":"Paulúns"}]);
+            extracted["companyAssessment"] = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The policy is unclear.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Policy","quote":"Policy text"}]});
+            first.text = extracted.to_string();
+            first.research["sources"] = json!([{"url":"https://maker.example/product","title":"Product"},{"url":"https://maker.example/policy","title":"Policy"}]);
+            first.search_calls = 4;
+            let followup = research_content(&first, &content, None);
+            if status == "plant" {
+                assert!(followup.is_none());
+            } else {
+                let context: Value =
+                    serde_json::from_str(followup.unwrap()[0]["text"].as_str().unwrap()).unwrap();
+                assert_eq!(context["unresolvedIngredients"], json!(["E920"]));
+                assert_eq!(context["productOutcome"], "uncertain");
+                assert_eq!(context["webToolBudget"], 2);
             }
         }
     }
