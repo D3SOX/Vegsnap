@@ -1184,12 +1184,9 @@ fn research_content(
                         .any(|term| text.contains(term))
                 })
             });
-    let visible_animal = extracted["text"]
-        .as_str()
-        .is_some_and(|text| !text.trim().is_empty())
-        && extracted["ingredientAssessments"]
-            .as_array()
-            .is_some_and(|items| items.iter().any(|item| item["status"] == "animal"));
+    let animal_assessment = extracted["ingredientAssessments"]
+        .as_array()
+        .is_some_and(|items| items.iter().any(|item| item["status"] == "animal"));
     let unresolved_visible = extracted["ingredientAssessments"]
         .as_array()
         .is_some_and(|items| {
@@ -1200,7 +1197,7 @@ fn research_content(
     // Only the client has the ingredient rules. A model's "animal" classification
     // cannot establish that contact is unnecessary (for example, E920's origin).
     let label_resolves_product =
-        visible_label && !visible_animal && !unresolved_visible && unresolved.is_empty();
+        visible_label && !animal_assessment && !unresolved_visible && unresolved.is_empty();
     if label_resolves_product && sourced_company_assessment(&extracted, &analysis.research) {
         return None;
     }
@@ -1740,10 +1737,14 @@ mod tests {
     fn unresolved_composition_keeps_contact_research_despite_a_visible_label() {
         let content = vec![json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="})];
         for public in [false, true] {
-            for status in ["ambiguous", "unknown", "plant"] {
+            for status in ["ambiguous", "unknown", "plant", "animal"] {
                 let mut first = research_fixture(true);
                 let mut extracted = extraction_json(&first.text).unwrap();
-                let term = if status == "plant" { "water" } else { "E920" };
+                let term = match status {
+                    "plant" => "water",
+                    "animal" => "gelatine",
+                    _ => "E920",
+                };
                 extracted["labelObservations"] = json!([{"kind":"vegan_certification","name":"Unrecognized mark","text":"vegan"}]);
                 extracted["ingredientAssessments"] =
                     json!([{"term":term,"status":status,"explanation":"Origin assessment"}]);
@@ -1753,6 +1754,8 @@ mod tests {
                     extracted.as_object_mut().unwrap().remove("webCompositions");
                     extracted["text"] = json!(format!("Ingredients: {term}"));
                     extracted["complete"] = json!(true);
+                } else {
+                    extracted["text"] = json!("");
                 }
                 first.text = extracted.to_string();
                 first.research["sources"] = json!([{"url":"https://maker.example/product","title":"Product"},{"url":"https://maker.example/policy","title":"Policy"}]);
@@ -1764,7 +1767,7 @@ mod tests {
                     let context: Value =
                         serde_json::from_str(followup.unwrap()[0]["text"].as_str().unwrap())
                             .unwrap();
-                    if public {
+                    if public && status != "animal" {
                         assert_eq!(context["unresolvedIngredients"], json!(["E920"]));
                     } else {
                         assert!(
