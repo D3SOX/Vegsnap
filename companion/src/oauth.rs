@@ -1654,7 +1654,9 @@ fn product_request(
     if required || alternatives || !automatic_country {
         body["tools"] = json!([{"type":"web_search"}]);
         body["include"] = json!(["web_search_call.action.sources"]);
-        body["max_tool_calls"] = json!(if required {
+        let budget = if alternatives {
+            3
+        } else if required {
             body["input"][0]["content"][0]["text"]
                 .as_str()
                 .and_then(|text| serde_json::from_str::<Value>(text).ok())
@@ -1663,13 +1665,15 @@ fn product_request(
                 .min(6)
         } else {
             4
-        });
+        };
+        // The ChatGPT plan endpoint rejects max_tool_calls, unlike the API-key endpoint.
+        body["instructions"] = json!(format!(
+            "{}\nUse at most {budget} web-tool calls for this request.",
+            body["instructions"].as_str().unwrap_or_default()
+        ));
     }
     if required || alternatives {
         body["tool_choice"] = json!("required");
-    }
-    if alternatives {
-        body["max_tool_calls"] = json!(3);
     }
     body
 }
@@ -1900,6 +1904,38 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn chatgpt_research_uses_prompt_budget_without_unsupported_wire_limit() {
+        for budget in [2, 3, 4, 6] {
+            let content = vec![
+                json!({"type":"input_text","text":json!({"webToolBudget":budget}).to_string()}),
+            ];
+            let body = product_request("test", "extract", "research", content, true, true);
+            assert!(
+                body.get("max_tool_calls").is_none(),
+                "ChatGPT rejects this field"
+            );
+            assert!(
+                body["instructions"]
+                    .as_str()
+                    .unwrap()
+                    .contains(&format!("at most {budget} web-tool calls"))
+            );
+            assert_eq!(body["tool_choice"], "required");
+            assert_eq!(body["tools"][0]["type"], "web_search");
+        }
+        let content =
+            vec![json!({"type":"input_text","text":json!({"alternativeSearch":{}}).to_string()})];
+        let body = product_request("test", "extract", "research", content, false, true);
+        assert!(body.get("max_tool_calls").is_none());
+        assert!(
+            body["instructions"]
+                .as_str()
+                .unwrap()
+                .contains("at most 3 web-tool calls")
+        );
     }
 
     #[test]

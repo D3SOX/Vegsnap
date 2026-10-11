@@ -236,6 +236,21 @@ internal suspend fun <T> withChatGPTSession(loadSession: suspend () -> JSONObjec
     return request(session)
 }
 
+internal fun chatGPTRequestBody(model: String, prompt: String, text: String, images: List<String>, requireResearch: Boolean, allowResearch: Boolean, maxToolCalls: Int): JSONObject {
+    require(model.isNotBlank() && model.length <= 200 && text.length <= 32_000 && images.size <= 3)
+    require(maxToolCalls in 1..6)
+    val content = JSONArray().put(JSONObject().put("type", "input_text").put("text", text.ifBlank { "Read the product labels in these photos." }))
+    images.forEach { require(it.startsWith("data:image/jpeg;base64,") && it.length <= 4_000_000); content.put(JSONObject().put("type", "input_image").put("image_url", it)) }
+    // The ChatGPT plan endpoint rejects max_tool_calls; keep the allowance in instructions.
+    val instructions = if (allowResearch) "$prompt\nUse at most $maxToolCalls web-tool calls for this request." else prompt
+    val body = JSONObject().put("model", model).put("instructions", instructions).put("store", false).put("stream", true)
+        .put("input", JSONArray().put(JSONObject().put("role", "user").put("content", content)))
+    if (allowResearch) body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+        .put("include", JSONArray().put("web_search_call.action.sources"))
+    if (requireResearch) body.put("tool_choice", "required")
+    return body
+}
+
 /** Owns one account. Network destinations are fixed; API-key credentials use a separate vault. */
 class ChatGPTConnection(private val context: Context) {
     private val vault = CredentialStore(context, "chatgpt")
@@ -373,15 +388,7 @@ class ChatGPTConnection(private val context: Context) {
     } }
     suspend fun extract(model: String, prompt: String, text: String, images: List<String>, requireResearch: Boolean = false, allowResearch: Boolean = true,
         maxToolCalls: Int = 4, onResearchStarted: () -> Unit = {}): ChatGPTExtraction = withContext(Dispatchers.IO) { withChatGPTSession(::activeSession) { session ->
-        require(model.isNotBlank() && model.length <= 200 && text.length <= 32_000 && images.size <= 3)
-        val content = JSONArray().put(JSONObject().put("type", "input_text").put("text", text.ifBlank { "Read the product labels in these photos." }))
-        images.forEach { require(it.startsWith("data:image/jpeg;base64,") && it.length <= 4_000_000); content.put(JSONObject().put("type", "input_image").put("image_url", it)) }
-        val body = JSONObject().put("model", model).put("instructions", prompt).put("store", false).put("stream", true)
-            .put("input", JSONArray().put(JSONObject().put("role", "user").put("content", content)))
-        if (allowResearch) body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
-            .put("include", JSONArray().put("web_search_call.action.sources"))
-            .put("max_tool_calls", maxToolCalls)
-        if (requireResearch) body.put("tool_choice", "required")
+        val body = chatGPTRequestBody(model, prompt, text, images, requireResearch, allowResearch, maxToolCalls)
         request(authorized("/responses", session).post(body.toString().toRequestBody("application/json".toMediaType())).build()) { readChatGPTStream(it, onResearchStarted) { diagnostic -> android.util.Log.i("VegsnapAI", diagnostic) } }
     } }
     private fun authorized(path: String, session: JSONObject) = Request.Builder().url(CHATGPT_RESOURCE + path)
