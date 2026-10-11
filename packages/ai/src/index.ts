@@ -162,7 +162,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     throw new HttpError(session ? 429 : 401, session ? 'The free allowance is used up. It resets at midnight UTC.' : 'Connect to Vegsnap AI in settings.', session ? 'usage_limit_reached' : undefined);
   }
   // The core adapter owns prompts, validation, and search provenance. Clients supply only product data.
-  // No tools in the first pass; at most three search tool calls in the research pass.
+  // No tools in the first pass; the research pass reserves calls for contact and company evidence.
   let calls = 0;
   const boundedFetch: typeof fetch = async (url, init) => {
     if (++calls > 2 || String(url) !== 'https://api.openai.com/v1/responses') throw new Error('Unexpected AI request.');
@@ -173,7 +173,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     payload.store = false;
     if (payload.tool_choice === 'required') {
       payload.tools = [{ type: 'web_search', search_context_size: 'low' }];
-      payload.max_tool_calls = 3;
+      payload.max_tool_calls = input.alternativeSearch ? 3 : 6;
     } else {
       for (const key of ['tools', 'max_tool_calls', 'include']) delete payload[key];
     }

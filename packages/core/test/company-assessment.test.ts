@@ -104,4 +104,24 @@ describe('sourced AI company assessments', () => {
       expect(checked.companyAssessment?.summary).toBe(sourced ? 'Follow-up assessment.' : assessment.summary);
     }
   });
+  test('researches the identified company when photo analysis already resolves the product', async () => {
+    const requests: Record<string, unknown>[] = [];
+    const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+      (async (_target: string | URL | Request, init?: RequestInit) => {
+        requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        const data = { text: 'milk', complete: true, category: 'food', name: 'Drink', brand: 'Maker',
+          ...(requests.length === 2 ? { companyAssessment: assessment } : {}) };
+        return new Response(JSON.stringify({ status: 'completed', output: [
+          ...(requests.length === 2 ? [{ type: 'web_search_call', status: 'completed', action: { type: 'open_page', url } }] : []),
+          { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(data) }] },
+        ] }));
+      }) as unknown as typeof fetch);
+    const checked = await checkProduct({ ...input, autoMarket: true }, { mode: 'explicit', provider });
+    expect(checked.outcome).toBe('not_vegan');
+    expect(requests).toHaveLength(2);
+    expect(checked.companyAssessment?.verdict).toBe('concerns_found');
+    const context = requests[1]?.input as { content: { text: string }[] }[];
+    expect(JSON.parse(context[0]!.content[0]!.text).productOutcome).toBe('not_vegan');
+    expect(JSON.stringify(requests[1]?.input)).not.toContain('data:image/');
+  });
 });

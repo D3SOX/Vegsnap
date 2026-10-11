@@ -57,6 +57,11 @@
       "id": "fda-maltodextrin",
       "url": "https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-184/subpart-B/section-184.1444",
       "title": "FDA maltodextrin definition: hydrolysed corn, potato or rice starch"
+    },
+    {
+      "id": "efsa-cysteine-fermentation",
+      "url": "https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2025.9689",
+      "title": "EFSA: L-cysteine production from fermentation-derived L-cystine"
     }
   ],
   "rules": [
@@ -1290,6 +1295,30 @@
       },
       "sourceIds": [
         "v-label"
+      ]
+    },
+    {
+      "id": "cysteine",
+      "status": "ambiguous",
+      "aliases": [
+        "e920",
+        "e 920",
+        "l-cysteine",
+        "l cysteine",
+        "cysteine",
+        "l-cystein",
+        "l cystein",
+        "cystein",
+        "l-cystein hydrochloride",
+        "l-cysteine hydrochloride"
+      ],
+      "explanation": {
+        "en": "L-cysteine can be made from different sources; confirm the actual origin.",
+        "de": "L-Cystein kann aus verschiedenen Quellen stammen; die tatsächliche Herkunft muss bestätigt werden."
+      },
+      "sourceIds": [
+        "eu-additive-specifications",
+        "efsa-cysteine-fermentation"
       ]
     },
     {

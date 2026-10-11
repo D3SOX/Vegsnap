@@ -10,6 +10,7 @@ let includeAlternatives = false;
 let needsResearch = false;
 let extractionText: string | undefined;
 let catalogueMode = false;
+let companyMode = false;
 let packagingCountry: string | undefined;
 let discoveredBarcode: string | undefined;
 let discoveredMarkets: string[] = [];
@@ -18,7 +19,7 @@ const catalogueRequests: { url: string; authorization: string | null; body: unkn
 const coopText = 'INGREDIENSER: Kikärtor* 58%, vatten, rapsolja, SESAMPASTA 5,8%, röd paprika, salt, surhetsreglerande medel (E 330), chili 0,5%, paprikapulver, vitlökspulver, konserveringsmedel (E 202). *Ursprung: Se till vänster.';
 const coopTerms = ['Kikärtor', 'vatten', 'rapsolja', 'SESAMPASTA', 'röd paprika', 'salt', 'E 330', 'chili', 'paprikapulver', 'vitlökspulver', 'E 202'];
 const upstream: Record<string, unknown>[] = [];
-const extraction = { text: 'Ingredients: oats', ingredients: ['oats'], complete: true, category: 'food', name: 'Oats', brand: 'Maker' };
+const extraction = { text: 'Ingredients: oats', ingredients: ['oats'], complete: true, category: 'food', name: 'Oats' };
 beforeAll(async () => {
   const root = resolve(import.meta.dir, '..');
   const build = await Bun.build({ entrypoints: [resolve(root, 'src/index.ts')], target: 'browser' });
@@ -56,6 +57,11 @@ beforeAll(async () => {
       upstream.push(payload);
       if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
       const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker', ...(discoveredBarcode ? { barcode: discoveredBarcode } : {}), ...(packagingCountry ? { packaging: { country: packagingCountry } } : {}) } : { ...extraction, text: extractionText ?? extraction.text };
+      if (companyMode) Object.assign(result, { brand: 'Maker', ...(payload.tool_choice === 'required' ? { companyAssessment: {
+        brand: 'Maker', company: 'Maker Ltd', scope: 'direct', verdict: 'inconclusive', categories: [],
+        summary: 'The consulted policy does not establish whether animal testing takes place.',
+        sources: [{ url: 'https://maker.example/tissues', title: 'Company policy', quote: 'We review our testing policies.' }],
+      } } : {}) });
       if (includeAlternatives) Object.assign(result, { alternatives: [{ name: 'Vegan chocolate', brand: 'Plant', url: 'https://maker.example/tissues', quote: 'This chocolate is vegan.' }] });
       return WorkerResponse.json({ status: 'completed', output: [
         ...(payload.tool_choice === 'required' ? [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: 'https://maker.example/tissues', title: 'Tissues' }] } }] : []),
@@ -70,7 +76,7 @@ beforeAll(async () => {
 }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  includeAlternatives = false; upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
+  includeAlternatives = false; upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; companyMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
   const db = await mf.getD1Database('DB');
   await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
 });
@@ -327,14 +333,27 @@ test('a Swedish front photo retains catalogue ingredients without forwarding AI 
   expect(JSON.stringify(catalogueRequests)).not.toContain('image/jpeg');
   expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
 });
-test('research has a bounded three-call budget and cannot rename the observed product', async () => {
+test('research has a bounded six-call budget and cannot rename the observed product', async () => {
   needsResearch = true;
   expect((await check(await connect())).status).toBe(200);
   expect(upstream).toHaveLength(2);
   expect(upstream[0]?.tools).toBeUndefined();
-  expect(upstream[1]).toMatchObject({ max_tool_calls: 3, tool_choice: 'required', tools: [{ type: 'web_search', search_context_size: 'low' }],
+  expect(upstream[1]).toMatchObject({ max_tool_calls: 6, tool_choice: 'required', tools: [{ type: 'web_search', search_context_size: 'low' }],
     text: { format: { type: 'json_schema', schema: { properties: { name: { enum: ['Tissues'] }, brand: { enum: ['Maker'] } } } } } });
   expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
+});
+test('a decisive branded photo still researches the company within one free check', async () => {
+  companyMode = true;
+  const token = await connect();
+  const response = await check(token);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ ...extraction, brand: 'Maker', companyAssessment: { verdict: 'inconclusive' }, research: { searched: true } });
+  expect(upstream).toHaveLength(2);
+  expect(upstream[1]?.max_tool_calls).toBe(6);
+  const context = JSON.parse((upstream[1]!.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
+  expect(context.productOutcome).toBe('vegan');
+  expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
 });
 test('concurrent checks cannot exceed the per-session allowance', async () => {
   const token = await connect();

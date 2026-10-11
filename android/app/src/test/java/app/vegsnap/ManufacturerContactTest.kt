@@ -182,4 +182,36 @@ class ManufacturerContactTest {
         assertFalse(Regex("[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])").containsMatchIn(draft.body))
         assertTrue(draft.body.contains("Glycerin"))
     }
+    @Test fun unresolvedIcaProductsRetainVerifiedContactFromResearchWithoutAComposition() = runBlocking {
+        val root = File(requireNotNull(System.getProperty("vegsnap.repo")))
+        val prompts = JSONObject(File(root, "contracts/ai-extraction-prompt.json").readText())
+        for ((name, brand, category) in listOf(Triple("ICA Basic Tvättmedel Kulör", "ICA Basic", "household"), Triple("Soft tortillas Large 6-p", "ICA", "food"))) {
+            MockWebServer().use { server ->
+                val extracted = JSONObject().put("text", "").put("complete", false).put("category", category).put("name", name).put("brand", brand)
+                val sourceUrl = "https://www.ica.se/kundservice/vanliga-fragor/"
+                fun response(value: JSONObject, searched: Boolean) = JSONObject().put("status", "completed").put("output", JSONArray().apply {
+                    if (searched) put(JSONObject().put("type", "web_search_call").put("status", "completed").put("action", JSONObject().put("url", sourceUrl)))
+                    put(JSONObject().put("type", "message").put("content", JSONArray().put(JSONObject().put("type", "output_text").put("text", value.toString()))))
+                })
+                server.enqueue(MockResponse().setBody(response(extracted, false).toString()))
+                val researched = JSONObject(extracted.toString()).put("contact", JSONObject().put("sourceUrl", sourceUrl)
+                    .put("productName", name).put("brand", brand).put("email", "kundkontakt@ica.se"))
+                server.enqueue(MockResponse().setBody(response(researched, true).toString()))
+                val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build())
+                }.build()
+                val repository = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), prompts.getString("prompt"), client, researchPrompt = prompts.getString("researchPrompt"))
+                val result = repository.check(CheckInput(autoMarket = true, market = "SE"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
+                assertEquals("uncertain", result.getString("outcome"))
+                assertEquals("kundkontakt@ica.se", result.getJSONObject("manufacturerContact").getString("email"))
+                assertEquals(2, server.requestCount)
+                server.takeRequest()
+                val request = JSONObject(server.takeRequest().body.readUtf8())
+                assertEquals(6, request.getInt("max_tool_calls"))
+                assertTrue(request.getString("instructions").contains("even when composition or ingredient origins remain unresolved"))
+                assertFalse(request.getJSONArray("input").toString().contains("input_image"))
+            }
+        }
+    }
+
 }

@@ -23,6 +23,17 @@ class AIIngredientsTest {
         }))
     private fun findings(result: JSONObject) = result.getJSONArray("findings").let { array -> (0 until array.length()).map { array.getJSONObject(it) } }
 
+    @Test fun `unspecified E920 origin cannot become an animal verdict from model assumptions`() {
+        val source = "mjölbehandlingsmedel (E920)"
+        val input = CheckInput(source, "food", true)
+        val extracted = JSONObject().put("ingredients", JSONArray().put(source)).put("ingredientAssessments", JSONArray().put(
+            JSONObject().put("term", source).put("status", "animal").put("explanation", "Often made from feathers; actual origin is unspecified.")))
+        val result = applyAIEvidence(evaluator.evaluate(input, listOf(source)), input, extracted, true, false)
+        assertEquals("uncertain", result.getString("outcome"))
+        assertFalse(findings(result).any { it.getString("status") == "animal" })
+        assertTrue(findings(result).any { it.optString("ruleId") == "cysteine" && it.getString("status") == "ambiguous" })
+    }
+
     @Test fun `web medicine uses AI split ingredients and translations without headings or chemical fragments`() {
         for (locale in listOf("en", "de")) {
             val input = CheckInput(locale = locale)

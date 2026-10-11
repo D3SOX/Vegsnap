@@ -59,7 +59,9 @@ internal class AnalysisQueueRunner(private val store: AnalysisQueueStore,
 
 /** Exact-snapshot retries replace only the database row; the original photos remain authoritative. */
 internal suspend fun publishAnalysisResult(job: AnalysisJob, result: JSONObject, historyPhotos: HistoryPhotoStore,
-    photos: () -> List<ByteArray>, exists: suspend (String) -> Boolean, persist: suspend (HistoryEntry) -> Unit) {
+    photos: () -> List<ByteArray>, exists: suspend (String) -> Boolean,
+    previous: suspend (String) -> JSONObject? = { null }, persist: suspend (HistoryEntry) -> Unit) {
+    if (job.historyId != null) previous(job.resultId)?.let { retainPreviousResearch(result, it) }
     val entry = HistoryEntry(job.resultId, result.getString("title"), result.getString("checkedAt"), result.toString())
     if (exists(job.resultId)) {
         if (job.historyId != null) persist(entry)
@@ -128,7 +130,8 @@ class AnalysisQueueService : Service() {
             }, publish = { job, result ->
                 publishAnalysisResult(job, result, historyPhotos,
                     photos = { store.files(job.id).map { it.readBytes() } },
-                    exists = { database.history().find(it) != null }, persist = { database.history().save(it) })
+                    exists = { database.history().find(it) != null },
+                    previous = { database.history().find(it)?.json?.let(::JSONObject) }, persist = { database.history().save(it) })
             })
             val parallel = ParallelAnalysisQueue(store, scope, runner) { changes.trySend(Unit) }
             scheduler = parallel

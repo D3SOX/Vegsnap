@@ -18,13 +18,13 @@ describe('grounded web research', () => {
     let sent: unknown;
     let endpoint = '';
     const fetcher = (async (target: string | URL | Request, init?: RequestInit) => {
-      endpoint = String(target); sent = JSON.parse(String(init?.body));
+      endpoint = String(target); sent ??= JSON.parse(String(init?.body));
       return reply(envelope({ ...base, webClaims: [claim] }, [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ type: 'url', url }] } }]));
     }) as unknown as typeof fetch;
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true }, fetcher);
     const result = await checkProduct(input, { mode: 'explicit', provider });
     expect(endpoint).toBe('https://api.openai.com/v1/responses');
-    expect(sent).toMatchObject({ store: false, max_tool_calls: 3, tools: [{ type: 'web_search' }], include: ['web_search_call.action.sources'], input: [{ content: [{ type: 'input_text' }, { type: 'input_image', image_url: input.images?.[0] }] }] });
+    expect(sent).toMatchObject({ store: false, max_tool_calls: 6, tools: [{ type: 'web_search' }], include: ['web_search_call.action.sources'], input: [{ content: [{ type: 'input_text' }, { type: 'input_image', image_url: input.images?.[0] }] }] });
     expect(result.webSearchStatus).toBe('searched');
     expect(result.outcome).toBe('vegan');
     expect(result.basis).toBe('manufacturer');
