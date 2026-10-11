@@ -1080,10 +1080,14 @@ fn unresolved_public_ingredients(extracted: &Value, research: &Value) -> Vec<Str
 }
 
 fn sourced_company_assessment(extracted: &Value, research: &Value) -> bool {
+    use unicode_normalization::UnicodeNormalization;
+
     let assessment = &extracted["companyAssessment"];
     let normalize = |value: &Value| {
         value.as_str().map(|text| {
-            text.split_whitespace()
+            text.nfkc()
+                .collect::<String>()
+                .split_whitespace()
                 .collect::<Vec<_>>()
                 .join(" ")
                 .to_lowercase()
@@ -1091,7 +1095,22 @@ fn sourced_company_assessment(extracted: &Value, research: &Value) -> bool {
     };
     let cited = |value: &Value| {
         value.as_str().is_some_and(|url| {
-            url.starts_with("https://")
+            url.encode_utf16().count() <= 2000
+                && !url
+                    .chars()
+                    .any(|c| c.is_whitespace() || c.is_control() || c == '\u{feff}')
+                && Url::parse(url).ok().is_some_and(|url| {
+                    url.scheme() == "https"
+                        && url.username().is_empty()
+                        && url.password().is_none()
+                        && url.host_str().is_some_and(|host| {
+                            host.contains('.')
+                                && !host.ends_with(".local")
+                                && !host.ends_with(".localhost")
+                                && !host.contains(':')
+                                && !host.chars().all(|c| c.is_ascii_digit() || c == '.')
+                        })
+                })
                 && research["sources"]
                     .as_array()
                     .is_some_and(|sources| sources.iter().any(|source| source["url"] == url))
@@ -1100,9 +1119,34 @@ fn sourced_company_assessment(extracted: &Value, research: &Value) -> bool {
     let text = |value: &Value, limit| {
         value
             .as_str()
-            .is_some_and(|text| !text.trim().is_empty() && text.encode_utf16().count() <= limit)
+            .is_some_and(|text| {
+                !text.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}').is_empty()
+                    && text.encode_utf16().count() <= limit
+                    && !text.chars().any(|c| matches!(c, '\u{0000}'..='\u{0008}' | '\u{000b}'..='\u{001f}' | '\u{007f}'..='\u{009f}'))
+            })
     };
     research["searched"] == true
+        && assessment.as_object().is_some_and(|object| {
+            object.keys().all(|key| {
+                [
+                    "brand",
+                    "company",
+                    "scope",
+                    "verdict",
+                    "summary",
+                    "categories",
+                    "sources",
+                    "ownershipSourceUrl",
+                ]
+                .contains(&key.as_str())
+            })
+        })
+        && text(&assessment["brand"], 300)
+        && ["brand", "company"].iter().all(|field| {
+            assessment[*field]
+                .as_str()
+                .is_some_and(|text| !text.contains(['\n', '\t']))
+        })
         && normalize(&assessment["brand"])
             .is_some_and(|brand| !brand.is_empty() && Some(brand) == normalize(&extracted["brand"]))
         && text(&assessment["company"], 300)
@@ -1136,7 +1180,11 @@ fn sourced_company_assessment(extracted: &Value, research: &Value) -> bool {
             !sources.is_empty()
                 && sources.len() <= 5
                 && sources.iter().all(|source| {
-                    cited(&source["url"])
+                    source.as_object().is_some_and(|object| {
+                        object
+                            .keys()
+                            .all(|key| ["url", "title", "quote"].contains(&key.as_str()))
+                    }) && cited(&source["url"])
                         && text(&source["title"], 300)
                         && text(&source["quote"], 1000)
                 })
@@ -1729,6 +1777,78 @@ mod tests {
                     ..context.clone()
                 };
                 assert!(research_content(&first, &content, Some(&manual)).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_company_output_keeps_followup_enabled_for_a_vegan_label() {
+        let content = vec![json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="})];
+        let valid = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The policy is unclear.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Policy","quote":"Policy text"}]});
+        for case in [
+            "valid",
+            "valid_multiline",
+            "valid_nfkc",
+            "assessment_extra",
+            "source_extra",
+            "brand_length",
+            "company_newline",
+            "summary_control",
+            "quote_control",
+            "url_credentials",
+            "url_local",
+            "url_ip",
+            "url_whitespace",
+            "url_length",
+        ] {
+            let mut first = research_fixture(true);
+            let mut extracted = extraction_json(&first.text).unwrap();
+            extracted["labelObservations"] = json!([{"kind":"vegan_claim","text":"vegan"}]);
+            let mut assessment = valid.clone();
+            match case {
+                "valid_multiline" => {
+                    assessment["summary"] = json!("Policy\nsummary");
+                    assessment["sources"][0]["quote"] = json!("Policy\ttext\ncontinues");
+                }
+                "valid_nfkc" => assessment["brand"] = json!("Ｐaulúns"),
+                "assessment_extra" => assessment["extra"] = json!(true),
+                "source_extra" => assessment["sources"][0]["extra"] = json!(true),
+                "brand_length" => {
+                    assessment["brand"] = json!("a".repeat(301));
+                    extracted["brand"] = assessment["brand"].clone();
+                }
+                "company_newline" => assessment["company"] = json!("Example\nmaker"),
+                "summary_control" => assessment["summary"] = json!("Bad\u{0000}text"),
+                "quote_control" => assessment["sources"][0]["quote"] = json!("Bad\u{0085}text"),
+                "url_credentials" => {
+                    assessment["sources"][0]["url"] =
+                        json!("https://user:pass@maker.example/policy")
+                }
+                "url_local" => {
+                    assessment["sources"][0]["url"] = json!("https://maker.local/policy")
+                }
+                "url_ip" => assessment["sources"][0]["url"] = json!("https://127.0.0.1/policy"),
+                "url_whitespace" => {
+                    assessment["sources"][0]["url"] = json!("https://maker.example/ policy")
+                }
+                "url_length" => {
+                    assessment["sources"][0]["url"] =
+                        json!(format!("https://maker.example/{}", "a".repeat(2000)))
+                }
+                _ => {}
+            }
+            extracted["companyAssessment"] = assessment.clone();
+            first.text = extracted.to_string();
+            first.research["sources"] =
+                json!([{"url":assessment["sources"][0]["url"],"title":"Policy"}]);
+            first.search_calls = 4;
+            let followup = research_content(&first, &content, None);
+            assert_eq!(followup.is_some(), !case.starts_with("valid"), "{case}");
+            if let Some(followup) = followup {
+                let identity: Value =
+                    serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
+                assert_eq!(identity["webToolBudget"], 2);
+                assert_eq!(identity["productOutcome"], "vegan");
             }
         }
     }
