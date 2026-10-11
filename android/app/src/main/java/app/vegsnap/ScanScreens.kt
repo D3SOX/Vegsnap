@@ -276,6 +276,7 @@ private fun PhotoStack(photos: List<Uri>, enabled: Boolean, onClick: () -> Unit)
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ManualScreen(state: ScanState, model: VegsnapViewModel) {
     val keyboard = LocalSoftwareKeyboardController.current
@@ -286,8 +287,11 @@ internal fun ManualScreen(state: ScanState, model: VegsnapViewModel) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.manual_hint))
-            CategorySelector(state.category, enabled, { value -> model.update { it.copy(category = value) } })
-            ProductMarketButton(state.market, enabled) { model.setProductMarket(it); true }
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                CategorySelector(state.category, enabled, { value -> model.update { it.copy(category = value) } })
+                ProductMarketButton(state.market, enabled) { model.setProductMarket(it); true }
+            }
             OutlinedTextField(value = state.name, onValueChange = { value -> model.update { it.copy(name = value.take(300)) } },
                 label = { Text(stringResource(R.string.product_name)) }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = enabled)
             if (state.barcode.isNotBlank()) OutlinedTextField(value = state.barcode, onValueChange = { value -> model.update { it.copy(barcode = value.take(14)) } },
