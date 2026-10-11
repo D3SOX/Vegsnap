@@ -40,6 +40,7 @@ let cacheWait: Promise<void> | undefined;
 let cacheRequests = 0;
 let checkError = false;
 const checkedInputs: CheckInput[] = [];
+const checkedPreviousIds: (string | undefined)[] = [];
 let grantConsent = false;
 let hostedVerified = false;
 let hostedEnabled = true;
@@ -63,7 +64,7 @@ mock.module('wxt/browser', () => ({ browser: {
     async sendMessage(message: Request) {
       switch (message.type) {
         case 'check': {
-          checkRequests++; checkedInputs.push(structuredClone(message.input)); await checkWait;
+          checkRequests++; checkedInputs.push(structuredClone(message.input)); checkedPreviousIds.push(message.previousId); await checkWait;
           if (checkError) return { ok: false, error: 'Fixture check failed' };
           const { images, ...input } = message.input;
           return { ok: true, result: { ...fixtureResult, id: `check-${checkRequests}`, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
@@ -374,6 +375,7 @@ try {
   grantConsent = true; checkConsent = undefined;
   await act(async () => { onlineButton()!.click(); });
   await until(() => checkRequests === beforeConsentCheck + 1 && !onlineButton(), 'Granting access reruns the same input and clears the consent action');
+  assert.equal(checkedPreviousIds.at(-1), `check-${beforeConsentCheck}`, 'The consent retry keeps the previous saved result for research retention');
   console.log('Actual check UI: local-first results, gesture-bound permission prompts, denial preservation and granted retry verified');
   await tab(roots[0]!, 'settings'); await tab(roots[1]!, 'settings');
   const connections = roots[0]!.querySelectorAll<HTMLSelectElement>('select');

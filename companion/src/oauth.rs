@@ -1079,6 +1079,75 @@ fn unresolved_public_ingredients(extracted: &Value, research: &Value) -> Vec<Str
     unresolved
 }
 
+fn sourced_company_assessment(extracted: &Value, research: &Value) -> bool {
+    let assessment = &extracted["companyAssessment"];
+    let normalize = |value: &Value| {
+        value.as_str().map(|text| {
+            text.split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .to_lowercase()
+        })
+    };
+    let cited = |value: &Value| {
+        value.as_str().is_some_and(|url| {
+            url.starts_with("https://")
+                && research["sources"]
+                    .as_array()
+                    .is_some_and(|sources| sources.iter().any(|source| source["url"] == url))
+        })
+    };
+    let text = |value: &Value, limit| {
+        value
+            .as_str()
+            .is_some_and(|text| !text.trim().is_empty() && text.encode_utf16().count() <= limit)
+    };
+    research["searched"] == true
+        && normalize(&assessment["brand"])
+            .is_some_and(|brand| !brand.is_empty() && Some(brand) == normalize(&extracted["brand"]))
+        && text(&assessment["company"], 300)
+        && text(&assessment["summary"], 1500)
+        && matches!(
+            assessment["verdict"].as_str(),
+            Some("concerns_found" | "no_concerns_found" | "inconclusive")
+        )
+        && assessment["categories"]
+            .as_array()
+            .is_some_and(|categories| {
+                categories.len() <= 3
+                    && categories.iter().all(|category| {
+                        matches!(
+                            category.as_str(),
+                            Some(
+                                "animal_testing"
+                                    | "animal_welfare_lobbying"
+                                    | "animal_exploitation"
+                            )
+                        )
+                    })
+                    && (assessment["verdict"] != "concerns_found" || !categories.is_empty())
+                    && (assessment["verdict"] != "no_concerns_found" || categories.is_empty())
+                    && categories
+                        .iter()
+                        .enumerate()
+                        .all(|(index, category)| !categories[..index].contains(category))
+            })
+        && assessment["sources"].as_array().is_some_and(|sources| {
+            !sources.is_empty()
+                && sources.len() <= 5
+                && sources.iter().all(|source| {
+                    cited(&source["url"])
+                        && text(&source["title"], 300)
+                        && text(&source["quote"], 1000)
+                })
+        })
+        && match assessment["scope"].as_str() {
+            Some("direct") => assessment.get("ownershipSourceUrl").is_none_or(cited),
+            Some("parent") => cited(&assessment["ownershipSourceUrl"]),
+            _ => false,
+        }
+}
+
 fn research_content(
     analysis: &crate::stream::AnalysisResponse,
     content: &[Value],
@@ -1091,23 +1160,7 @@ fn research_content(
     let brand = extracted["brand"]
         .as_str()
         .filter(|value| !value.trim().is_empty() && value.len() <= 1200)?;
-    let searched = analysis.research["searched"] == true;
     let unresolved = unresolved_public_ingredients(&extracted, &analysis.research);
-    let unresolved_visible = country_context.is_some_and(|context| context.automatic)
-        && extracted["ingredientAssessments"]
-            .as_array()
-            .is_some_and(|items| {
-                items
-                    .iter()
-                    .any(|item| item["status"] == "ambiguous" || item["status"] == "unknown")
-            });
-    if if searched {
-        unresolved.is_empty()
-    } else {
-        extracted["complete"] != false && !unresolved_visible
-    } {
-        return None;
-    }
     let visible_label = content.iter().any(|part| part["type"] == "input_image")
         && extracted["labelObservations"]
             .as_array()
@@ -1137,7 +1190,16 @@ fn research_content(
         && extracted["ingredientAssessments"]
             .as_array()
             .is_some_and(|items| items.iter().any(|item| item["status"] == "animal"));
-    if visible_label || visible_animal {
+    // Only the client has the ingredient rules. A model's "animal" classification
+    // cannot establish that contact is unnecessary (for example, E920's origin).
+    if visible_label
+        && !visible_animal
+        && sourced_company_assessment(&extracted, &analysis.research)
+    {
+        return None;
+    }
+    let remaining_search_calls = 6usize.saturating_sub(analysis.search_calls);
+    if remaining_search_calls == 0 {
         return None;
     }
     let original: Value = content
@@ -1149,7 +1211,11 @@ fn research_content(
         "name":name,"brand":brand,"category":extracted["category"],
         "market":country_context.map(|context| context.research_market(extracted["packaging"]["country"].as_str()))
             .unwrap_or_else(|| original["market"].as_str().unwrap_or("DE").to_owned()),
-        "locale":original["locale"].as_str().unwrap_or("en")
+        "locale":original["locale"].as_str().unwrap_or("en"),
+        // The shared client evaluates ingredients. Without that evaluator, keep the
+        // hint conservative so source-dependent AI classifications cannot hide contact.
+        "productOutcome":if visible_label && !visible_animal { "vegan" } else { "uncertain" },
+        "webToolBudget":remaining_search_calls
     });
     if !unresolved.is_empty() {
         identity["unresolvedIngredients"] = json!(unresolved);
@@ -1503,34 +1569,8 @@ fn research_if_needed(
     if let Some(contact) = next.get("contact").filter(|value| value.is_object()) {
         original["contact"] = contact.clone();
     }
-    if let Some(assessment) = next
-        .get("companyAssessment")
-        .filter(|value| value.is_object())
-    {
-        let normalize = |value: &Value| {
-            value.as_str().map(|text| {
-                text.split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .to_lowercase()
-            })
-        };
-        let cited = |url: &Value| {
-            url.as_str()
-                .is_some_and(|url| sources.iter().any(|source| source["url"] == url))
-        };
-        let matched = normalize(&assessment["brand"])
-            .is_some_and(|brand| !brand.is_empty() && Some(brand) == normalize(&original["brand"]));
-        let sourced = assessment["sources"].as_array().is_some_and(|items| {
-            !items.is_empty() && items.len() <= 5 && items.iter().all(|item| cited(&item["url"]))
-        });
-        let ownership = match assessment.get("ownershipSourceUrl") {
-            Some(url) => cited(url),
-            None => assessment["scope"] != "parent",
-        };
-        if matched && sourced && ownership {
-            original["companyAssessment"] = assessment.clone();
-        }
+    if sourced_company_assessment(&next, &json!({"searched":true,"sources":sources})) {
+        original["companyAssessment"] = next["companyAssessment"].clone();
     }
     let mut research = json!({"searched":true,"sources":sources});
     if let Some(market) = research_market {
@@ -1539,6 +1579,7 @@ fn research_if_needed(
     crate::stream::AnalysisResponse {
         text: original.to_string(),
         research,
+        search_calls: first.search_calls + researched.search_calls,
     }
 }
 
@@ -1556,12 +1597,22 @@ fn product_request(
         .and_then(|text| serde_json::from_str::<Value>(text).ok())
         .is_some_and(|input| input["alternativeSearch"].is_object());
     let mut body = json!({"model":model,"store":false,"stream":true,
-        "instructions":if required { format!("{instructions}\n{research_prompt}") } else { instructions.to_string() },
+        "instructions":if required { research_prompt.to_string() } else { instructions.to_string() },
         "input":[{"role":"user","content":content}]});
     // Automatic extraction must resolve packaging and barcode clues before web research.
     if required || alternatives || !automatic_country {
         body["tools"] = json!([{"type":"web_search"}]);
         body["include"] = json!(["web_search_call.action.sources"]);
+        body["max_tool_calls"] = json!(if required {
+            body["input"][0]["content"][0]["text"]
+                .as_str()
+                .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                .and_then(|input| input["webToolBudget"].as_u64())
+                .unwrap_or(6)
+                .min(6)
+        } else {
+            4
+        });
     }
     if required || alternatives {
         body["tool_choice"] = json!("required");
@@ -1638,7 +1689,7 @@ mod tests {
     use jsonwebtoken::{EncodingKey, Header, encode};
 
     #[test]
-    fn automatic_complete_labels_research_unresolved_origins_but_keep_resolved_checks_local() {
+    fn complete_labels_research_missing_company_assessments_independently_of_ingredients() {
         let context = CountryContext {
             automatic: true,
             fallback_market: "DE".into(),
@@ -1658,17 +1709,23 @@ mod tests {
                         json!([{"kind":"vegan_claim","text":"vegan"}]);
                 }
                 first.text = extraction.to_string();
-                let expected = ["ambiguous", "unknown"].contains(&status) && !vegan_label;
+                let followup = research_content(&first, &content, Some(&context)).unwrap();
+                let identity: Value =
+                    serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
                 assert_eq!(
-                    research_content(&first, &content, Some(&context)).is_some(),
-                    expected
+                    identity["productOutcome"],
+                    if vegan_label && status != "animal" {
+                        "vegan"
+                    } else {
+                        "uncertain"
+                    }
                 );
-                assert!(research_content(&first, &content, None).is_none());
+                assert!(research_content(&first, &content, None).is_some());
                 let manual = CountryContext {
                     automatic: false,
                     ..context.clone()
                 };
-                assert!(research_content(&first, &content, Some(&manual)).is_none());
+                assert!(research_content(&first, &content, Some(&manual)).is_some());
             }
         }
     }
@@ -2079,6 +2136,7 @@ mod tests {
         crate::stream::AnalysisResponse {
             text: json!({"text":"","complete":false,"category":"food","name":"Granola Kakao & Hallon","brand":"Paulúns"}).to_string(),
             research: json!({"searched":searched,"sources":[]}),
+            search_calls: 0,
         }
     }
 
@@ -2129,6 +2187,24 @@ mod tests {
                 assert!(extracted.get("companyAssessment").is_none());
             }
         }
+    }
+
+    #[test]
+    fn source_dependent_ingredient_still_researches_contact_when_company_is_already_sourced() {
+        let mut first = research_fixture(true);
+        let mut extracted = extraction_json(&first.text).unwrap();
+        extracted["text"] = json!("E920");
+        extracted["complete"] = json!(true);
+        extracted["ingredientAssessments"] = json!([{"term":"E920","status":"animal","explanation":"Unsupported origin assumption"}]);
+        extracted["companyAssessment"] = json!({"brand":"Paulúns","company":"Example maker","scope":"direct","verdict":"inconclusive","summary":"The policy is unclear.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Policy","quote":"Policy text"}]});
+        first.text = extracted.to_string();
+        first.research["sources"] =
+            json!([{"url":"https://maker.example/policy","title":"Policy"}]);
+        first.search_calls = 4;
+        let followup = research_content(&first, &[], None).unwrap();
+        let context: Value = serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(context["productOutcome"], "uncertain");
+        assert_eq!(context["webToolBudget"], 2);
     }
 
     #[test]
@@ -2273,7 +2349,10 @@ mod tests {
                 _ => unreachable!(),
             }
             first.text = data.to_string();
-            assert!(research_content(&first, &[], None).is_none(), "{mode}");
+            let followup = research_content(&first, &[], None).unwrap();
+            let identity: Value =
+                serde_json::from_str(followup[0]["text"].as_str().unwrap()).unwrap();
+            assert!(identity.get("unresolvedIngredients").is_none(), "{mode}");
         }
     }
 
@@ -2476,14 +2555,9 @@ mod tests {
     }
 
     #[test]
-    fn research_followup_skips_resolved_or_searched_without_unresolved_public_terms() {
+    fn research_followup_skips_missing_identity_or_exhausted_budget() {
         let content = vec![json!({"type":"input_image","image_url":"data:image/jpeg;base64,YQ=="})];
-        for changes in [
-            json!({"complete":true}),
-            json!({"name":""}),
-            json!({"brand":""}),
-            json!({"labelObservations":[{"kind":"vegan_claim","text":"vegan"}]}),
-        ] {
+        for changes in [json!({"name":""}), json!({"brand":""})] {
             let mut first = research_fixture(false);
             let mut extracted = extraction_json(&first.text).unwrap();
             for (key, value) in changes.as_object().unwrap() {
@@ -2494,8 +2568,10 @@ mod tests {
                 panic!("No research request expected")
             });
         }
-        research_if_needed(research_fixture(true), &content, None, |_| {
-            panic!("Search was already used")
+        let mut exhausted = research_fixture(true);
+        exhausted.search_calls = 6;
+        research_if_needed(exhausted, &content, None, |_| {
+            panic!("The six-call budget is exhausted")
         });
     }
 

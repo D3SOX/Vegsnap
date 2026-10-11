@@ -173,13 +173,13 @@ export function App() {
     return () => { window.removeEventListener('blur', hide); document.removeEventListener('visibilitychange', hide); };
   }, []);
   async function act(work: () => Promise<void>) { setError(''); setNotice(''); setBusy(true); try { await work(); } catch (cause) { setError(cause instanceof Error ? cause.message : t.actionFailed); } finally { setBusy(false); } }
-  async function runCheck(input: CheckInput): Promise<HistoryResult> {
+  async function runCheck(input: CheckInput, previousId?: string): Promise<HistoryResult> {
     setOnlineCheck(undefined);
     const requestId = crypto.randomUUID();
     activeCheckId.current = requestId;
     setElapsedSeconds(0); setCheckProgress({ stage: 'evaluating', startedAt: Date.now() });
     try {
-      const checked = await request<CheckReply>({ type: 'check', input, requestId });
+      const checked = await request<CheckReply>({ type: 'check', input, requestId, ...(previousId ? { previousId } : {}) });
       if (checked.onlineConsent) setOnlineCheck({ id: checked.id, input, kind: checked.onlineConsent });
       return checked;
     }
@@ -188,7 +188,7 @@ export function App() {
   async function check(input: CheckInput) {
     await act(async () => {
       await settingsWrites.current;
-      const checked = await runCheck(input); newScan(); setResult(checked); await refresh(); });
+      const checked = await runCheck(input, editingResult?.id); newScan(); setResult(checked); await refresh(); });
   }
   function editResult() {
     if (!storedResult) return;
@@ -214,7 +214,7 @@ export function App() {
   }
   function allowOnlineCheck() {
     if (!onlineCheck) return;
-    const { input, kind } = onlineCheck;
+    const { id, input, kind } = onlineCheck;
     const current = configRef.current;
     const api = kind === 'ai' && !['chatgpt', 'database'].includes(current.connection);
     // Request immediately from this click, before any asynchronous work.
@@ -223,7 +223,7 @@ export function App() {
     void act(async () => {
       if (!(await consent)) { setNotice(t.dataConsentDenied); return; }
       await settingsWrites.current;
-      setResult(await runCheck(input)); await refresh();
+      setResult(await runCheck(input, id)); await refresh();
     });
   }
   useEffect(() => {

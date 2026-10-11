@@ -117,7 +117,7 @@ struct ResultView: View {
             CommunitySection(store: store, state: community, onRefresh: { communityRefresh += 1 })
             Section {
                 Button(L("Check again"), systemImage: "arrow.clockwise") {
-                    if store.enqueue(input: saved.input ?? result.retryInput, photos: saved.photos) {
+                    if store.enqueue(input: saved.input ?? result.retryInput, photos: saved.photos, previousID: saved.id) {
                         store.selectedResult = nil
                         store.selectedTab = "check"
                     }

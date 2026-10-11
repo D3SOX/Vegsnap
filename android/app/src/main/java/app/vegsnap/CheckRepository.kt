@@ -300,7 +300,9 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         val hostedCountryContext = if (countryInput.autoMarket == true) JSONObject()
             .put("fallbackMarket", productCountryCode(countryInput.market) ?: "DE")
             .put("markets", JSONArray(markets.map { productCountryCode(it) ?: "unknown" }.distinct())) else null
-        val first = extractOnce(input, photos, settings, token, onProgress = onProgress, hostedCountryContext = hostedCountryContext)
+        var usedSearchCalls = 0
+        val first = extractOnce(input, photos, settings, token, onProgress = onProgress, hostedCountryContext = hostedCountryContext,
+            onSearchCalls = { usedSearchCalls = it })
         val recognizedBarcode = first.optString("barcode").takeIf(::validGtin).orEmpty()
         require(input.barcode.isBlank() || recognizedBarcode.isBlank() || input.barcode.padStart(14, '0') == recognizedBarcode.padStart(14, '0')) { "AI identified a different product" }
         var databaseLookupFailed = false
@@ -330,6 +332,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             catch (_: Exception) { null }
         } else null
         val product = ExtractedProduct(first, database, exactDatabase, databaseLookupFailed)
+        val remainingSearchCalls = (6 - usedSearchCalls).coerceAtLeast(0)
+        if (remainingSearchCalls == 0) return product
         if (databaseLookupFailed && countryInput.autoMarket == true || !needsResearch(input, first, photos.isNotEmpty() && settings.vision, settings)) return product
         val remaining = 130_000L - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
         if (remaining <= 0) return product
@@ -343,7 +347,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                     catch (_: Exception) { null }
                 } else null
                 extractOnce(CheckInput(category = first.getString("category"), locale = input.locale, barcode = input.barcode.ifBlank { recognizedBarcode }, market = researchMarket), emptyList(), settings, token, first, onProgress, catalogue, exactDatabase ?: database,
-                    researchOutcome = researchAssessment(input, first, photos.isNotEmpty() && settings.vision).getString("outcome"))
+                    researchOutcome = researchAssessment(input, first, photos.isNotEmpty() && settings.vision).getString("outcome"), maxToolCalls = remainingSearchCalls)
             }
         } catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (_: Exception) { null }
@@ -375,7 +379,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
 
     private suspend fun extractOnce(input: CheckInput, photos: List<PreparedPhoto>, settings: AppSettings, token: String,
         researchIdentity: JSONObject? = null, onProgress: (CheckStage) -> Unit = {}, catalogue: JSONObject? = null, database: Pair<CheckInput, JSONObject>? = null,
-        hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null): JSONObject {
+        hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null,
+        maxToolCalls: Int = 4, onSearchCalls: (Int) -> Unit = {}): JSONObject {
         val requireResearch = researchIdentity != null
         val allowResearch = requireResearch || input.autoMarket != true
         val prompt = ((if (requireResearch) researchPrompt else extractionPrompt) +
@@ -384,6 +389,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         val context = if (researchIdentity != null) JSONObject().put("name", researchIdentity.getString("name")).put("brand", researchIdentity.getString("brand"))
             .put("category", researchIdentity.getString("category")).put("locale", input.locale).put("market", input.market)
             .put("productOutcome", requireNotNull(researchOutcome))
+            .put("webToolBudget", maxToolCalls)
             .put("unresolvedIngredients", publicResearchQuestions(input, researchIdentity))
             .apply {
                 researchIdentity.optJSONObject("packaging")?.let { put("packaging", it) }
@@ -408,8 +414,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             response.toString()
         } else if (settings.connection == "chatgpt") {
             val response = requireNotNull(chatGPT) { "ChatGPT connection unavailable" }.extract(settings.chatgptModel, prompt, context,
-                if (settings.vision) photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) } else emptyList(), alternativeSearch != null || requireResearch && catalogue == null, allowResearch = allowResearch, onResearchStarted = { onProgress(CheckStage.SEARCHING_WEB) })
+                if (settings.vision) photos.take(3).map { "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(it.jpeg) } else emptyList(), alternativeSearch != null || requireResearch,
+                allowResearch = allowResearch, maxToolCalls = if (alternativeSearch != null) 3 else maxToolCalls, onResearchStarted = { onProgress(CheckStage.SEARCHING_WEB) })
             research = response.research
+            onSearchCalls(response.searchCalls)
             response.text
         } else {
             require(validEndpoint(settings.baseUrl) && settings.model.isNotBlank())
@@ -427,8 +435,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             else body.put("messages", JSONArray().put(JSONObject().put("role", "system").put("content", prompt))
                 .put(JSONObject().put("role", "user").put("content", content)))
             if (supportsSearch && allowResearch) body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
-                .put("max_tool_calls", if (alternativeSearch != null) 3 else 6).put("include", JSONArray().put("web_search_call.action.sources"))
-            if (supportsSearch && (alternativeSearch != null || requireResearch && catalogue == null)) body.put("tool_choice", "required")
+                .put("max_tool_calls", if (alternativeSearch != null) 3 else maxToolCalls).put("include", JSONArray().put("web_search_call.action.sources"))
+            if (supportsSearch && (alternativeSearch != null || requireResearch)) body.put("tool_choice", "required")
             val builder = Request.Builder().url(settings.baseUrl.trimEnd('/') + if (supportsSearch) "/responses" else "/chat/completions")
                 .post(body.toString().toRequestBody("application/json".toMediaType()))
             if (token.isNotBlank()) builder.header("Authorization", "Bearer $token")
@@ -436,6 +444,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             if (supportsSearch) {
                 if (response.optString("status") != "completed") throw providerStreamFailure(response)
                 research = responseResearch(response)
+                onSearchCalls(responseSearchCalls(response.optJSONArray("output") ?: JSONArray()))
                 val output = response.getJSONArray("output")
                 buildString {
                     for (index in 0 until output.length()) {

@@ -173,7 +173,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     payload.store = false;
     if (payload.tool_choice === 'required') {
       payload.tools = [{ type: 'web_search', search_context_size: 'low' }];
-      payload.max_tool_calls = input.alternativeSearch ? 3 : 6;
+      payload.max_tool_calls = Math.min(input.alternativeSearch ? 3 : 6, Number(payload.max_tool_calls));
     } else {
       for (const key of ['tools', 'max_tool_calls', 'include']) delete payload[key];
     }

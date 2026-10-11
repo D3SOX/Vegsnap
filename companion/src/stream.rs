@@ -7,6 +7,7 @@ use url::Url;
 pub struct AnalysisResponse {
     pub text: String,
     pub research: Value,
+    pub search_calls: usize,
 }
 
 fn add_source(sources: &mut Vec<Value>, url: &str, title: &str) {
@@ -85,6 +86,7 @@ pub fn read_response(reader: impl BufRead) -> Result<AnalysisResponse, String> {
     let mut consumed = 0;
     let mut searched = false;
     let mut sources = Vec::new();
+    let mut search_calls = 0;
     // Bound the read before allocating a line; checking line length afterwards is too late.
     for line in reader.take(4 * 1024 * 1024 + 1).lines() {
         let line = line.map_err(|_| "The AI response was interrupted.")?;
@@ -106,10 +108,19 @@ pub fn read_response(reader: impl BufRead) -> Result<AnalysisResponse, String> {
                     text.push_str(event["delta"].as_str().unwrap_or_default());
                 }
                 Some("response.output_item.done") => {
+                    if event["item"]["type"] == "web_search_call" {
+                        search_calls += 1;
+                    }
                     research_item(&event["item"], &mut searched, &mut sources);
                 }
                 Some("response.completed") => {
                     if let Some(output) = event["response"]["output"].as_array() {
+                        search_calls = search_calls.max(
+                            output
+                                .iter()
+                                .filter(|item| item["type"] == "web_search_call")
+                                .count(),
+                        );
                         for item in output {
                             research_item(item, &mut searched, &mut sources);
                         }
@@ -135,6 +146,7 @@ pub fn read_response(reader: impl BufRead) -> Result<AnalysisResponse, String> {
     Ok(AnalysisResponse {
         text,
         research: json!({"searched": searched, "sources": sources}),
+        search_calls,
     })
 }
 
@@ -198,6 +210,27 @@ mod tests {
         let stream = "data: {\"type\":\"response.output_text.delta\",\"delta\":\"partial\"}\n\ndata: {\"type\":\"response.incomplete\"}\n\n";
         assert!(read_response(Cursor::new(stream)).is_err());
     }
+    #[test]
+    fn counts_failed_searches_without_double_counting_terminal_output() {
+        let items = json!([
+            {"type":"web_search_call","status":"completed"},
+            {"type":"web_search_call","status":"failed"}
+        ]);
+        let mut stream =
+            String::from("data: {\"type\":\"response.output_text.delta\",\"delta\":\"{}\"}\n\n");
+        for item in items.as_array().unwrap() {
+            stream.push_str(&format!(
+                "data: {}\n\n",
+                json!({"type":"response.output_item.done","item":item})
+            ));
+        }
+        stream.push_str(&format!(
+            "data: {}\n\n",
+            json!({"type":"response.completed","response":{"output":items}})
+        ));
+        assert_eq!(read_response(Cursor::new(stream)).unwrap().search_calls, 2);
+    }
+
     #[test]
     fn research_metadata_comes_from_completed_tool_output() {
         let event = json!({"type":"response.completed","response":{"output":[

@@ -129,7 +129,7 @@ import CryptoKit
         } catch { report(error) }
     }
     var draftSubmitted: Bool { jobs.contains { $0.id == draftID } || history.contains { $0.id == draftID } }
-    @discardableResult func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil) -> Bool {
+    @discardableResult func enqueue(input supplied: CheckInput? = nil, photos suppliedPhotos: [String]? = nil, previousID: String? = nil) -> Bool {
         do {
             guard supplied != nil || !draftSubmitted else { return false }
             // Persist the identity before accepting this draft into the queue.
@@ -148,6 +148,7 @@ import CryptoKit
             }
             input.images = nil
             var job = CheckJob(input: input, photos: photos, settings: settings, accountID: settings.connection == "chatgpt" ? chatGPT.selectedAccount : nil)
+            job.previousID = previousID
             if supplied == nil { job.id = draftID }
             let nextJobs = jobs + [job]
             try files.save(nextJobs, "queue.json"); jobs = nextJobs
@@ -225,6 +226,11 @@ import CryptoKit
     @discardableResult func complete(_ result: SavedCheck, jobID: String) throws -> SavedCheck {
         // The core generates its own result ID; completion must retain the queue's identity.
         var saved = result; saved.id = jobID; saved.result.id = jobID
+        if let previousID = jobs.first(where: { $0.id == jobID })?.previousID,
+           let previous = history.first(where: { $0.id == previousID }) {
+            struct Research: Encodable { var result: CheckResult; var previous: CheckResult }
+            saved.result = try engine.call("retainResearch", Research(result: saved.result, previous: previous.originalAnalysis))
+        }
         let nextHistory = [saved] + history.filter { $0.id != saved.id }
         try files.save(nextHistory, "history.json")
         history = nextHistory

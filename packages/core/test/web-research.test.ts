@@ -14,6 +14,25 @@ const envelope = (text: unknown, output: unknown[] = []) => ({ status: 'complete
 const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
 describe('grounded web research', () => {
+  test('both passes share six tool calls, including failed searches, and stop when exhausted', async () => {
+    for (const used of [0, 1, 4, 6]) {
+      const requests: { max_tool_calls: number; input: { content: { text: string }[] }[] }[] = [];
+      const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
+        (async (_target: unknown, init?: RequestInit) => {
+          requests.push(JSON.parse(String(init?.body)));
+          return reply(envelope(base, requests.length === 1 ? Array.from({ length: used }, (_, index) => ({
+            type: 'web_search_call', status: index % 2 ? 'failed' : 'completed',
+          })) : []));
+        }) as unknown as typeof fetch, (async () => new Response(null, { status: 503 })) as unknown as typeof fetch);
+      await provider.extract(input);
+      expect(requests[0]!.max_tool_calls).toBe(4);
+      expect(requests).toHaveLength(used === 6 ? 1 : 2);
+      if (used < 6) {
+        expect(requests[1]!.max_tool_calls).toBe(6 - used);
+        expect(JSON.parse(requests[1]!.input[0]!.content[0]!.text).webToolBudget).toBe(6 - used);
+      }
+    }
+  });
   test('official OpenAI uses bounded Responses search and transports only envelope provenance', async () => {
     let sent: unknown;
     let endpoint = '';
@@ -24,7 +43,7 @@ describe('grounded web research', () => {
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true }, fetcher);
     const result = await checkProduct(input, { mode: 'explicit', provider });
     expect(endpoint).toBe('https://api.openai.com/v1/responses');
-    expect(sent).toMatchObject({ store: false, max_tool_calls: 6, tools: [{ type: 'web_search' }], include: ['web_search_call.action.sources'], input: [{ content: [{ type: 'input_text' }, { type: 'input_image', image_url: input.images?.[0] }] }] });
+    expect(sent).toMatchObject({ store: false, max_tool_calls: 4, tools: [{ type: 'web_search' }], include: ['web_search_call.action.sources'], input: [{ content: [{ type: 'input_text' }, { type: 'input_image', image_url: input.images?.[0] }] }] });
     expect(result.webSearchStatus).toBe('searched');
     expect(result.outcome).toBe('vegan');
     expect(result.basis).toBe('manufacturer');

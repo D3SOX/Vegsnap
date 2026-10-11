@@ -608,6 +608,28 @@ import Security
         XCTAssertTrue(store.jobs.isEmpty); XCTAssertEqual(store.history.count, 1)
         XCTAssertEqual(store.history.first?.id, job.id)
     }
+    func testSavedRetryCompletionRetainsResearchAndOriginalAssessmentDate() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        let input = CheckInput(text: "E920", name: "Tortillas", brand: "Maker", market: "SE", autoMarket: false)
+        let fresh: CheckResult = try engine.call("analyze", input)
+        var previous = fresh
+        previous.manufacturerContact = ManufacturerContact(email: "care@maker.example", sourceUrl: "https://maker.example/contact", productName: "Tortillas", brand: "Maker")
+        previous.companyAssessment = try JSONDecoder().decode(CompanyAssessment.self, from: Data("""
+        {"brand":"Maker","company":"Maker Ltd","scope":"direct","verdict":"inconclusive","summary":"No conclusion established.","categories":[],"sources":[{"url":"https://maker.example/policy","title":"Policy","quote":"Our policy."}],"assessedAt":"2026-10-01T12:00:00Z"}
+        """.utf8))
+        store.history = [SavedCheck(id: previous.id, result: previous, input: input, photos: [])]
+        var job = CheckJob(input: input, photos: []); job.previousID = previous.id
+        store.jobs = [job]
+        let completed = try store.complete(SavedCheck(id: fresh.id, result: fresh, input: input, photos: []), jobID: job.id)
+        XCTAssertEqual(completed.result.companyAssessment?.assessedAt, previous.companyAssessment?.assessedAt)
+        XCTAssertEqual(completed.result.manufacturerContact?.email, "care@maker.example")
+        XCTAssertEqual(completed.result.outcome, .uncertain)
+        let restored = try AppStore(root: root)
+        XCTAssertEqual(restored.history.first?.result.manufacturerContact?.email, "care@maker.example")
+        XCTAssertEqual(restored.history.first?.result.companyAssessment?.assessedAt, "2026-10-01T12:00:00Z")
+    }
     func testCompletionWriteFailuresKeepRecoverableState() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

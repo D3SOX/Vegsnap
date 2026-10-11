@@ -156,6 +156,15 @@ class ChatGPTConnectionTest {
         assertThrows(Exception::class.java) { readChatGPTStream((prefix + "data: {\"type\":\"response.failed\"}\n\n").byteInputStream()) }
         assertThrows(Exception::class.java) { readChatGPTStream(prefix.byteInputStream()) }
     }
+    @Test fun searchBudgetCountsFailedCallsWithoutDuplicatingTerminalItems() {
+        fun event(value: JSONObject) = "data: $value\n\n"
+        val items = JSONArray().put(JSONObject().put("type", "web_search_call").put("status", "completed"))
+            .put(JSONObject().put("type", "web_search_call").put("status", "failed"))
+        var stream = event(JSONObject().put("type", "response.output_text.delta").put("delta", "{}"))
+        for (index in 0 until items.length()) stream += event(JSONObject().put("type", "response.output_item.done").put("item", items.get(index)))
+        stream += event(JSONObject().put("type", "response.completed").put("response", JSONObject().put("status", "completed").put("output", items)))
+        assertEquals(2, readChatGPTStream(stream.byteInputStream()).searchCalls)
+    }
     @Test fun streamMergesEarlyMessageCitationsAndTerminalSourcesWithoutDuplicates() {
         fun event(value: JSONObject) = "data: $value\n\n"
         val tool = JSONObject().put("type", "web_search_call").put("status", "completed")
