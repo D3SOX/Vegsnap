@@ -10,5 +10,5 @@
     "./barcode": "./src/barcode.ts"
   },
   "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
-  "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^5.9.3" }
+  "devDependencies": { "@types/bun": "^1.3.0", "typescript": "^7.0.2" }
 }
