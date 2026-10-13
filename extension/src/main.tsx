@@ -81,7 +81,7 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [checkProgress, setCheckProgress] = useState<{ stage: CheckStage; startedAt: number }>();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const activeCheckId = useRef<string>();
+  const activeCheckId = useRef<string | undefined>(undefined);
   const [ready, setReady] = useState(false);
   const [showStartupLoading, setShowStartupLoading] = useState(false);
   const activeModel = config.connection === 'hosted' ? HOSTED_AI.model : config.model;
@@ -105,8 +105,8 @@ export function App() {
   const hostedOperation = useRef(false);
   const configRef = useRef(config);
   const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
-  const resultHeading = useRef<HTMLHeadingElement>(null);
-  const detailsField = useRef<HTMLTextAreaElement>(null);
+  const resultHeading = useRef<HTMLHeadingElement | null>(null);
+  const detailsField = useRef<HTMLTextAreaElement | null>(null);
   const t = messages[config.language];
   const mt = marketMessages[config.language];
   const isPopup = location.pathname.includes('popup');

@@ -98,5 +98,5 @@ try {
   assert.equal(root.querySelector('section')?.getAttribute('aria-busy'), 'false');
   console.log('Alternative UI: optional-store query, public-first ranking, AI failure preservation, cancellation and country reset verified');
 } finally {
-  render(null, root); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
+  await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
 }

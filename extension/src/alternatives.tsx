@@ -20,7 +20,7 @@ export function Alternatives({ config, initialQuery = '', category = 'food', mar
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState('');
   const [stage, setStage] = useState('');
-  const generation = useRef(0), abort = useRef<AbortController>();
+  const generation = useRef(0), abort = useRef<AbortController | undefined>(undefined);
   const cancel = () => { generation.current++; abort.current?.abort(); setBusy(false); };
   useEffect(() => {
     cancel(); setItems([]); setSearched(false); setError('');
