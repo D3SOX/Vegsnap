@@ -16,7 +16,6 @@
     <a href="https://github.com/D3SOX/vegsnap/releases/latest"><img src="marketing/badges/android.svg" alt="Download Android APK releases" width="200" height="58"></a>
     <a href="https://vegsnap.app/#play-test"><img src="marketing/badges/play.svg" alt="Join the Google Play closed test" width="200" height="58"></a>
     <br>
-    <a href="#install-the-browser-extension"><img src="marketing/badges/extension.svg" alt="Install the browser extension" width="200" height="58"></a>
     <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D"><img src="marketing/badges/obtainium.svg" alt="Add to Obtainium" width="200" height="58"></a>
   </p>
   <p><a href="https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej"><img src="marketing/badges/chrome-web-store.svg" alt="Install from the Chrome Web Store" width="200" height="58"></a>
