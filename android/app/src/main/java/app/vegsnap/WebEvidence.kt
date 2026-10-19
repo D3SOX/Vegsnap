@@ -200,11 +200,8 @@ internal fun validateWebClaims(extracted: JSONObject) {
     }
 }
 
-/** Approximate registrable domain without a suffix list: keep a third label for two-letter ccTLD second levels (co.uk). */
-internal fun registrableDomain(host: String): String {
-    val labels = host.lowercase(java.util.Locale.ROOT).removePrefix("www.").split('.')
-    return labels.takeLast(if (labels.size > 2 && labels[labels.size - 2].length <= 3 && labels.last().length == 2) 3 else 2).joinToString(".")
-}
+/** The label directly before the top-level domain. Multi-label and private suffixes (co.uk, github.io) deliberately never match a brand. */
+internal fun siteLabel(host: String): String = host.lowercase(java.util.Locale.ROOT).removeSuffix(".").split('.').let { it.getOrNull(it.size - 2) ?: "" }
 
 internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, certifiers: Set<String>): JSONObject {
     val research = extracted.optJSONObject("research") ?: return result.put("webSearchStatus", "unsupported")
@@ -236,16 +233,13 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
     if (claims.isEmpty()) return consultedOnly()
     val de = input.locale == "de"
     // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-    // The model's sourceType and contact are not ownership proof: the site name must equal the brand or one of its longer words.
-    fun brandKey(value: String) = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
-    val brandName = extracted.optString("brand")
-    val brandSites = (listOf(brandKey(brandName)) + brandName.split(Regex("\\s+")).map(::brandKey).filter { it.length >= 4 }).filter { it.length >= 3 }.toSet()
+    // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
+    val brandKey = java.text.Normalizer.normalize(extracted.optString("brand"), java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
     val trust = claims.map { item ->
         val host = requireNotNull(item.getString("url").toHttpUrlOrNull()).host.lowercase(java.util.Locale.ROOT)
-        val site = registrableDomain(host)
         when {
             certifiers.any { host == it || host.endsWith(".$it") } -> "certification"
-            item.getString("sourceType") == "manufacturer" && site.substringBefore('.').replace("-", "") in brandSites -> "manufacturer"
+            item.getString("sourceType") == "manufacturer" && brandKey.length >= 3 && siteLabel(host).replace("-", "") == brandKey -> "manufacturer"
             else -> null
         }
     }

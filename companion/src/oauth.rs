@@ -1322,6 +1322,7 @@ fn valid_research_additions(value: &Value) -> bool {
             &[
                 "url",
                 "text",
+                "ingredients",
                 "complete",
                 "sourceType",
                 "productName",
@@ -1367,6 +1368,17 @@ fn valid_research_additions(value: &Value) -> bool {
                     } else {
                         text(item, "text", 20_000)
                             && item["complete"].is_boolean()
+                            && item.get("ingredients").is_none_or(|terms| {
+                                terms.as_array().is_some_and(|terms| {
+                                    terms.len() <= 100
+                                        && terms.iter().all(|term| {
+                                            term.as_str().is_some_and(|term| {
+                                                !term.trim().is_empty()
+                                                    && term.encode_utf16().count() <= 300
+                                            })
+                                        })
+                                })
+                            })
                             && matches!(
                                 item["sourceType"].as_str(),
                                 Some("manufacturer" | "retailer")
@@ -2552,6 +2564,26 @@ mod tests {
         assert!(extracted.get("contact").is_none());
         assert!(extracted.get("companyAssessment").is_none());
         assert_eq!(extracted["webCompositions"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn research_compositions_keep_valid_parsed_ingredients() {
+        let research = |ingredients: Value| {
+            research_if_needed(research_fixture(false), &[], None, move |_| {
+                let mut next = research_fixture(true);
+                let mut extracted = extraction_json(&next.text).unwrap();
+                extracted["webCompositions"] = json!([{"url":"https://maker.example/granola","text":"oats, cocoa","ingredients":ingredients,"complete":true,"sourceType":"manufacturer","productName":"Granola Kakao & Hallon","brand":"Paulúns"}]);
+                next.text = extracted.to_string();
+                Ok(next)
+            })
+        };
+        let extracted = extraction_json(&research(json!(["oats", "cocoa"])).text).unwrap();
+        assert_eq!(
+            extracted["webCompositions"][0]["ingredients"],
+            json!(["oats", "cocoa"])
+        );
+        let rejected = extraction_json(&research(json!(vec!["oats"; 101])).text).unwrap();
+        assert!(rejected.get("webCompositions").is_none());
     }
 
     #[test]

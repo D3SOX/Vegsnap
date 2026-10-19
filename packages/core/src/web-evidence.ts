@@ -7,10 +7,9 @@ import type { AIExtraction, CheckInput, CheckResult, Evidence } from './types';
 
 const identityKey = (value: string | undefined) => (value ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
 const veganCertifiers: string[] = rulesData.veganCertifiers;
-/** Approximate registrable domain without a suffix list: keep a third label for two-letter ccTLD second levels (co.uk). */
-export function registrableDomain(host: string): string {
-  const labels = host.toLowerCase().replace(/^www\./, '').split('.');
-  return labels.slice(labels.length > 2 && labels.at(-2)!.length <= 3 && labels.at(-1)!.length === 2 ? -3 : -2).join('.');
+/** The label directly before the top-level domain. Multi-label and private suffixes (co.uk, github.io) deliberately never match a brand. */
+export function siteLabel(host: string): string {
+  return host.toLowerCase().replace(/\.$/, '').split('.').at(-2) ?? '';
 }
 
 /** The tool must actually have consulted the URL; a model-generated link alone is never evidence. */
@@ -54,14 +53,12 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
     identityKey(claim.productName) === name && identityKey(claim.brand) === brand);
   if (!claims.length) return compositions.length ? result : consultedOnly();
   // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-  // The model's sourceType and contact are not ownership proof: the site name must equal the brand or one of its longer words.
-  const brandKey = (value: string) => value.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const brandSites = new Set([brandKey(extracted.brand ?? ''), ...(extracted.brand ?? '').split(/\s+/).map(brandKey).filter(word => word.length >= 4)].filter(key => key.length >= 3));
+  // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
+  const brandKey = (extracted.brand ?? '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
   const trust = claims.map(claim => {
     const host = new URL(claim.url).hostname.toLowerCase();
-    const site = registrableDomain(host);
     if (veganCertifiers.some(domain => host === domain || host.endsWith(`.${domain}`))) return 'certification' as const;
-    if (claim.sourceType === 'manufacturer' && brandSites.has(site.split('.')[0]!.replace(/-/g, ''))) return 'manufacturer' as const;
+    if (claim.sourceType === 'manufacturer' && brandKey.length >= 3 && siteLabel(host).replace(/-/g, '') === brandKey) return 'manufacturer' as const;
     return undefined;
   });
   const evidence: Evidence[] = claims.map((claim, index) => ({
