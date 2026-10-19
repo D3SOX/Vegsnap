@@ -54,15 +54,14 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
     identityKey(claim.productName) === name && identityKey(claim.brand) === brand);
   if (!claims.length) return compositions.length ? result : consultedOnly();
   // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-  const contact = extracted.contact && identityKey(extracted.contact.productName) === name && identityKey(extracted.contact.brand) === brand &&
-    sources.has(extracted.contact.sourceUrl) && (!extracted.contact.url || sources.has(extracted.contact.url)) ? extracted.contact : undefined;
-  const contactSites = new Set([contact?.sourceUrl, contact?.url].flatMap(url => url ? [registrableDomain(new URL(url).hostname)] : []));
-  const brandKey = (extracted.brand ?? '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // The model's sourceType and contact are not ownership proof: the site name must equal the brand or one of its longer words.
+  const brandKey = (value: string) => value.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const brandSites = new Set([brandKey(extracted.brand ?? ''), ...(extracted.brand ?? '').split(/\s+/).map(brandKey).filter(word => word.length >= 4)].filter(key => key.length >= 3));
   const trust = claims.map(claim => {
     const host = new URL(claim.url).hostname.toLowerCase();
     const site = registrableDomain(host);
     if (veganCertifiers.some(domain => host === domain || host.endsWith(`.${domain}`))) return 'certification' as const;
-    if (claim.sourceType === 'manufacturer' && (contactSites.has(site) || brandKey.length >= 3 && site.split('.')[0]!.replace(/-/g, '').includes(brandKey))) return 'manufacturer' as const;
+    if (claim.sourceType === 'manufacturer' && brandSites.has(site.split('.')[0]!.replace(/-/g, ''))) return 'manufacturer' as const;
     return undefined;
   });
   const evidence: Evidence[] = claims.map((claim, index) => ({

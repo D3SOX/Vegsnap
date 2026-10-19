@@ -236,16 +236,16 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
     if (claims.isEmpty()) return consultedOnly()
     val de = input.locale == "de"
     // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-    val contact = extracted.optJSONObject("contact")?.takeIf { normalizeProductIdentity(it.optString("productName")) == name &&
-        normalizeProductIdentity(it.optString("brand")) == brand && it.optString("sourceUrl") in urls && (!it.has("url") || it.optString("url") in urls) }
-    val contactSites = listOf("sourceUrl", "url").mapNotNull { contact?.optString(it)?.toHttpUrlOrNull()?.host?.let(::registrableDomain) }.toSet()
-    val brandKey = java.text.Normalizer.normalize(extracted.optString("brand"), java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
+    // The model's sourceType and contact are not ownership proof: the site name must equal the brand or one of its longer words.
+    fun brandKey(value: String) = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
+    val brandName = extracted.optString("brand")
+    val brandSites = (listOf(brandKey(brandName)) + brandName.split(Regex("\\s+")).map(::brandKey).filter { it.length >= 4 }).filter { it.length >= 3 }.toSet()
     val trust = claims.map { item ->
         val host = requireNotNull(item.getString("url").toHttpUrlOrNull()).host.lowercase(java.util.Locale.ROOT)
         val site = registrableDomain(host)
         when {
             certifiers.any { host == it || host.endsWith(".$it") } -> "certification"
-            item.getString("sourceType") == "manufacturer" && (site in contactSites || brandKey.length >= 3 && site.substringBefore('.').replace("-", "").contains(brandKey)) -> "manufacturer"
+            item.getString("sourceType") == "manufacturer" && site.substringBefore('.').replace("-", "") in brandSites -> "manufacturer"
             else -> null
         }
     }
