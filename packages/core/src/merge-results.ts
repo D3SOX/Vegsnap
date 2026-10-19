@@ -2,7 +2,7 @@ import { resultMessages } from './i18n';
 import type { CheckResult, Evidence, Finding, Locale } from './types';
 import { normalizeTerm } from './analyze';
 
-export function mergeResults(current: CheckResult, next: CheckResult): CheckResult {
+export function mergeResults(current: CheckResult, next: CheckResult, locale: Locale = 'en'): CheckResult {
   const contradictory = current.outcome === 'vegan' && next.outcome === 'not_vegan' || current.outcome === 'not_vegan' && next.outcome === 'vegan';
   const preferred = current.outcome === 'conflicting' || current.outcome !== 'uncertain' && next.outcome === 'uncertain' ? current : next;
   const evidence = [...new Map([...current.evidence, ...next.evidence].map(item => [item.id, item])).values()];
@@ -18,8 +18,8 @@ export function mergeResults(current: CheckResult, next: CheckResult): CheckResu
   return {
     ...preferred, id: current.id,
     identity: current.identity.match === 'exact_barcode' ? current.identity : next.identity.match === 'exact_barcode' ? next.identity : preferred.identity,
-    ...(contradictory ? { outcome: 'conflicting' as const, basis: 'insufficient' as const, title: resultMessages.en.conflictingEvidence,
-      summary: resultMessages.en.compositionConflictSummary } : {}),
+    ...(contradictory ? { outcome: 'conflicting' as const, basis: 'insufficient' as const, title: resultMessages[locale].conflictingEvidence,
+      summary: resultMessages[locale].compositionConflictSummary } : {}),
     evidence,
     findings: filtered,
     questions: filtered.length < findings.size ? reconcileOriginQuestions(preferred.questions, filtered) : preferred.questions,

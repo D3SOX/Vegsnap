@@ -53,6 +53,8 @@ internal fun needsProcessingEvidence(input: CheckInput): Boolean = input.categor
 
 class Evaluator(private val rulesDocument: JSONObject) {
     private val rules = rulesDocument.getJSONArray("rules")
+    /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
+    internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
     private fun ruleForTerm(term: String): JSONObject? = (0 until rules.length()).map { rules.getJSONObject(it) }.firstOrNull { rule ->
         val aliases = rule.getJSONArray("aliases")
         (0 until aliases.length()).any { normalizeCompositionTerm(aliases.getString(it)) == term }

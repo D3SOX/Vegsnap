@@ -1,4 +1,4 @@
-import { countryCode, createOpenAIProvider, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
+import { countryCode, createOpenAIProvider, EXTRACTION_PROMPT, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
 import { readBoundedText } from '../../core/src/http';
 
 export interface Env {
@@ -16,6 +16,7 @@ export interface Env {
   SESSION_CHECK_LIMIT: string;
   DAILY_CONNECT_LIMIT: string;
   PENDING_CONNECT_LIMIT: string;
+  DAILY_IP_CONNECT_LIMIT: string;
 }
 class HttpError extends Error {
   constructor(readonly status: number, message: string,
@@ -36,11 +37,20 @@ async function body(request: Request, maximum: number): Promise<unknown> {
   try { return JSON.parse(await readBoundedText(new Response(request.body), maximum)); }
   catch { throw new HttpError(400, 'Invalid or oversized JSON.'); }
 }
+const hex = (buffer: ArrayBuffer) => Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, '0')).join('');
+const sha256 = async (value: string) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+const clientIp = (request: Request) => request.headers.get('CF-Connecting-IP') ?? 'unknown';
+// Keyed so stored IP hashes cannot be reversed by enumerating addresses.
+async function hashIp(request: Request, env: Env): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.TURNSTILE_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(clientIp(request))));
+}
 async function hashToken(request: Request): Promise<string> {
   const token = request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '';
   if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, 'Connect to Vegsnap AI in settings.');
-  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), byte => byte.toString(16).padStart(2, '0')).join('');
+  return sha256(token);
 }
+const PENDING_IP_CONNECT_LIMIT = 3;
 function product(value: unknown): { input: CheckInput; countryContext: Parameters<ProviderAdapter['extract']>[2] } {
   const fields = ['alternativeSearch', 'text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext'];
   if (!record(value) || Object.keys(value).some(key => !fields.includes(key))) throw new HttpError(400, 'Invalid product input.');
@@ -69,7 +79,7 @@ function product(value: unknown): { input: CheckInput; countryContext: Parameter
   return { input: { ...input, ...(countryContext ? { autoMarket: true } : {}) } as CheckInput,
     countryContext: countryContext as Parameters<ProviderAdapter['extract']>[2] };
 }
-async function route(request: Request, env: Env): Promise<Response> {
+async function route(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const path = new URL(request.url).pathname;
   const today = day();
   if (request.method === 'OPTIONS' && path.startsWith('/api/')) return new Response(null, { status: 204 });
@@ -80,7 +90,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     return env.ASSETS.fetch(request);
   }
   // A broad IP guard protects unauthenticated routes without sharing the strict user limit.
-  if (!(await env.IP_REQUEST_LIMIT.limit({ key: `${request.method}:${path}:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` })).success) throw new HttpError(429, 'Please wait a minute before trying again.');
+  if (!(await env.IP_REQUEST_LIMIT.limit({ key: `${request.method}:${path}:${clientIp(request)}` })).success) throw new HttpError(429, 'Please wait a minute before trying again.');
   const tokenHash = await hashToken(request);
   if (path === '/api/session' && ['GET', 'DELETE'].includes(request.method) &&
       !(await env.SESSION_REQUEST_LIMIT.limit({ key: `${request.method}:${tokenHash}` })).success) throw new HttpError(429, 'Please wait a minute before trying again.');
@@ -100,7 +110,8 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/connect') {
     const value = await body(request, 4096);
     if (!record(value) || Object.keys(value).some(key => key !== 'installationId') || typeof value.installationId !== 'string' || !/^[a-f0-9]{64}$/.test(value.installationId)) throw new HttpError(400, 'Start the connection in Vegsnap.');
-    const installationHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value.installationId))), byte => byte.toString(16).padStart(2, '0')).join('');
+    const installationHash = await sha256(value.installationId);
+    const ipHash = await hashIp(request, env);
     const existing = await env.DB.prepare('SELECT installation_hash, expires_at, day, checks FROM sessions WHERE token_hash = ?').bind(tokenHash)
       .first<{ installation_hash: string; expires_at: number; day: string; checks: number }>();
     if (existing && existing.installation_hash !== installationHash) throw new HttpError(403, 'This connection belongs to another installation.');
@@ -109,7 +120,10 @@ async function route(request: Request, env: Env): Promise<Response> {
     }
     await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ? AND expires_at <= ?').bind(tokenHash, now()).run();
     const results = await env.DB.batch([
-      env.DB.prepare('INSERT INTO sessions(token_hash, expires_at, day, installation_hash) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM sessions WHERE token_hash = ?) AND (SELECT COUNT(*) FROM sessions WHERE verified = 0 AND expires_at > ?) < ?').bind(tokenHash, now() + 600, today, installationHash, tokenHash, now(), limit(env.PENDING_CONNECT_LIMIT)),
+      // One client IP cannot fill the global pending queue with unverified connections.
+      env.DB.prepare(`INSERT INTO sessions(token_hash, expires_at, day, installation_hash, ip_hash) SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM sessions WHERE token_hash = ?)
+        AND (SELECT COUNT(*) FROM sessions WHERE verified = 0 AND expires_at > ?) < ? AND (SELECT COUNT(*) FROM sessions WHERE ip_hash = ? AND verified = 0 AND expires_at > ?) < ?`)
+        .bind(tokenHash, now() + 600, today, installationHash, ipHash, tokenHash, now(), limit(env.PENDING_CONNECT_LIMIT), ipHash, now(), PENDING_IP_CONNECT_LIMIT),
       env.DB.prepare('INSERT INTO installation_usage(installation_hash, day) SELECT ?, ? WHERE changes() = 1 ON CONFLICT DO NOTHING').bind(installationHash, today),
     ]);
     if (!results[0]?.meta.changes) throw new HttpError(429, 'Too many connections are waiting for verification. Try again shortly.');
@@ -126,17 +140,23 @@ async function route(request: Request, env: Env): Promise<Response> {
     try {
       verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(10_000),
-        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge }),
+        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge, ...(request.headers.has('CF-Connecting-IP') ? { remoteip: clientIp(request) } : {}) }),
       });
       result = await verification.json();
     } catch { throw new HttpError(502, 'Verification could not be checked. Please verify again.'); }
     if (!verification.ok || !record(result) || result.success !== true || result.hostname !== new URL(env.PUBLIC_ORIGIN).hostname || result.action !== 'connect-ai') throw new HttpError(403, 'Verification failed. Try again.');
+    // Installation IDs are client-chosen, so each IP has a daily admission cap; the IP hash is dropped from verified sessions.
+    const ipHash = await hashIp(request, env);
     const verified = await env.DB.batch([
       env.DB.prepare('INSERT INTO daily_budget(day) VALUES (?) ON CONFLICT DO NOTHING').bind(today),
-      env.DB.prepare('UPDATE daily_budget SET connections = connections + 1 WHERE day = ? AND connections < ? AND EXISTS (SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 0 AND expires_at > ?)').bind(today, limit(env.DAILY_CONNECT_LIMIT), tokenHash, now()),
-      env.DB.prepare('UPDATE sessions SET verified = 1, expires_at = ? WHERE token_hash = ? AND verified = 0 AND expires_at > ? AND changes() = 1').bind(now() + 86400, tokenHash, now()),
+      env.DB.prepare('INSERT INTO ip_usage(ip_hash, day) VALUES (?, ?) ON CONFLICT DO NOTHING').bind(ipHash, today),
+      env.DB.prepare(`UPDATE ip_usage SET connections = connections + 1 WHERE ip_hash = ? AND day = ? AND connections < ? AND (SELECT connections FROM daily_budget WHERE day = ?) < ?
+        AND EXISTS (SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 0 AND expires_at > ?)`)
+        .bind(ipHash, today, limit(env.DAILY_IP_CONNECT_LIMIT), today, limit(env.DAILY_CONNECT_LIMIT), tokenHash, now()),
+      env.DB.prepare('UPDATE daily_budget SET connections = connections + 1 WHERE day = ? AND changes() = 1').bind(today),
+      env.DB.prepare('UPDATE sessions SET verified = 1, expires_at = ?, ip_hash = NULL WHERE token_hash = ? AND verified = 0 AND expires_at > ? AND changes() = 1').bind(now() + 86400, tokenHash, now()),
     ]);
-    if (!verified[2]?.meta.changes) {
+    if (!verified[4]?.meta.changes) {
       const waiting = await env.DB.prepare('SELECT 1 FROM sessions WHERE token_hash = ? AND verified = 0 AND expires_at > ?').bind(tokenHash, now()).first();
       throw new HttpError(waiting ? 429 : 401, waiting ? 'The free connection allowance is full. It resets at midnight UTC.' : 'This connection expired or was already verified.', waiting ? 'usage_limit_reached' : undefined);
     }
@@ -164,20 +184,26 @@ async function route(request: Request, env: Env): Promise<Response> {
   // The core adapter owns prompts, validation, and search provenance. Clients supply only product data.
   // No tools in the first pass; the research pass reserves calls for contact and company evidence.
   let calls = 0;
+  let billed = false;
+  let upstreamStatus: number | undefined;
   const boundedFetch: typeof fetch = async (url, init) => {
     if (++calls > 2 || String(url) !== 'https://api.openai.com/v1/responses') throw new Error('Unexpected AI request.');
     const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
     payload.model = HOSTED_AI.model;
     payload.reasoning = { effort: 'medium' };
-    payload.max_output_tokens = 6000;
+    payload.max_output_tokens = 16_000; // Reasoning tokens count against this limit.
     payload.store = false;
     if (payload.tool_choice === 'required') {
       payload.tools = [{ type: 'web_search', search_context_size: 'low' }];
       payload.max_tool_calls = Math.min(input.alternativeSearch ? 3 : 6, Number(payload.max_tool_calls));
     } else {
       for (const key of ['tools', 'max_tool_calls', 'include']) delete payload[key];
+      payload.instructions = EXTRACTION_PROMPT; // Without tools, web research instructions only waste context.
     }
-    return fetch(url, { ...init, body: JSON.stringify(payload), redirect: 'manual' });
+    const response = await fetch(url, { ...init, body: JSON.stringify(payload), redirect: 'manual' });
+    upstreamStatus = response.status;
+    billed ||= response.ok;
+    return response;
   };
   try {
     // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
@@ -185,12 +211,24 @@ async function route(request: Request, env: Env): Promise<Response> {
     // Released clients reject unknown extraction fields. Alternatives are opt-in.
     if (!input.alternativeSearch) delete extraction.alternatives;
     return json(extraction);
-  } catch { throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.'); }
+  } catch (error) {
+    console.error('AI check failed', { error: error instanceof Error ? error.name : typeof error, upstreamStatus, billed });
+    if (billed) throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.');
+    // Refund checks when OpenAI never returned a successful (billable) response.
+    const refund = env.DB.batch([
+      env.DB.prepare('UPDATE sessions SET checks = checks - 1 WHERE token_hash = ? AND day = ? AND checks > 0').bind(tokenHash, today),
+      env.DB.prepare('UPDATE installation_usage SET checks = checks - 1 WHERE installation_hash = ? AND day = ? AND checks > 0').bind(session.installation_hash, today),
+      env.DB.prepare('UPDATE daily_budget SET checks = checks - 1 WHERE day = ? AND checks > 0').bind(today),
+    ]);
+    ctx?.waitUntil(refund); // Completes even if the client disconnected.
+    await refund;
+    throw new HttpError(502, 'AI could not complete this check. Its allowance was not used; local evidence is still available.');
+  }
 }
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     let response: Response;
-    try { response = await route(request, env); }
+    try { response = await route(request, env, ctx); }
     catch (error) {
       response = json({ error: { message: error instanceof HttpError ? error.message : 'Service unavailable.',
         ...(error instanceof HttpError && error.code ? { code: error.code } : {}) } }, error instanceof HttpError ? error.status : 503);
@@ -215,6 +253,7 @@ export default {
   async scheduled(_event: ScheduledController, env: Env) {
     await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now()),
       env.DB.prepare('DELETE FROM daily_budget WHERE day < ?').bind(day()),
-      env.DB.prepare('DELETE FROM installation_usage WHERE day < ?').bind(day())]);
+      env.DB.prepare('DELETE FROM installation_usage WHERE day < ?').bind(day()),
+      env.DB.prepare('DELETE FROM ip_usage WHERE day < ?').bind(day())]);
   },
 };

@@ -34,7 +34,7 @@ class ProviderFlowTest {
         val extracted = JSONObject().put("name", "Product A").put("brand", "Maker")
             .put("research", JSONObject().put("searched", true).put("sources", JSONArray().put(JSONObject().put("url", "https://maker.example/product"))))
             .put("webClaims", JSONArray().put(JSONObject().put("url", "https://maker.example/product").put("claim", "vegan").put("sourceType", "manufacturer").put("quote", "Product B is vegan").put("productName", "Product B").put("brand", "Maker")))
-        val checked = applyWebEvidence(result, CheckInput(), extracted)
+        val checked = applyWebEvidence(result, CheckInput(), extracted, emptySet())
         assertEquals("uncertain", checked.getString("outcome"))
         val evidence = checked.getJSONArray("evidence")
         assertTrue((0 until evidence.length()).any { evidence.getJSONObject(it).optString("url") == "https://maker.example/product" && !evidence.getJSONObject(it).has("claim") })

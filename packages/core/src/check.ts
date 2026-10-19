@@ -2,7 +2,7 @@ import { resultMessages } from './i18n';
 import { analyzeText, parseSourceIngredients } from './analyze';
 import { lookupProduct, normalizeBarcode } from './database';
 import { validateAIExtraction } from './provider';
-import { applyAIEvidence } from './ai-evidence';
+import { applyAIEvidence, transcriptionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { mergeResults, withoutCompositionFindings } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
@@ -51,14 +51,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now)); return true; }
+      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now), input.locale); return true; }
       if (options.offline) {
         result.warnings.push(t.offlineMissing);
         return;
       }
       const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
         category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
-      if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now)); }
+      if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now), input.locale); }
       else result.warnings.push(t.databaseMissing);
       return true;
     } catch (error) {
@@ -104,7 +104,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     }
     // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
     const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
-    const complete = input.complete === false ? false : input.images?.length ? extracted.complete : localComplete && extracted.complete;
+    const complete = input.complete === false ? false : input.images?.length ? transcriptionComplete(extracted, true) : localComplete && extracted.complete;
     // A checked complete text list remains the composition authority even when a front photo is attached.
     // The photo can add label evidence, but must not silently replace or truncate supplied ingredients.
     const hasCompleteText = input.complete === true && Boolean(original.trim());
@@ -123,7 +123,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
       excerpt: extracted.text, retrievedAt: result.checkedAt }] : [];
     extractedResult.findings = extractedResult.findings.map(finding => ({ ...finding, evidenceId: 'ai-extraction' }));
     if (extracted.text) extractedResult.warnings.push(t.aiTranscriptionUnverified);
-    result = mergeResults(parsed ? withoutCompositionFindings(result, authoritativeText) : result, extractedResult);
+    result = mergeResults(parsed ? withoutCompositionFindings(result, authoritativeText) : result, extractedResult, input.locale);
     result.aiStatus = input.images?.length ? 'images' : 'text';
     result.webSearchStatus = extracted.research?.searched ? 'searched' : options.provider.supportsWebSearch === false ? 'unsupported' : 'not_used';
     result = applyAIEvidence(result, aiInput, extracted, completeForEvaluation);

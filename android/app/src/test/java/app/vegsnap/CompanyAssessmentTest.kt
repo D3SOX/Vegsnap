@@ -103,7 +103,7 @@ class CompanyAssessmentTest {
         CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain -> chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build()) }.build())
     @Test fun malformedModelFieldDoesNotFailProductAnalysis() = runBlocking {
         MockWebServer().use { server ->
-            val extracted = extraction().apply { remove("research") }.put("text", "water, salt").put("complete", true).put("companyAssessment", "invalid")
+            val extracted = extraction().apply { remove("research") }.put("text", "Ingredients: water, salt").put("complete", true).put("companyAssessment", "invalid")
             server.enqueue(MockResponse().setBody(response(extracted, true).toString()))
             server.enqueue(MockResponse().setResponseCode(503))
             val result = repository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test", aiEnabled = true), "")
@@ -138,7 +138,7 @@ class CompanyAssessmentTest {
 
     @Test fun identifiedCompanyIsResearchedEvenWhenPhotoCompositionIsDecisive() = runBlocking {
         MockWebServer().use { server ->
-            val initial = extraction().apply { remove("research"); remove("companyAssessment") }.put("text", "water, salt").put("complete", true)
+            val initial = extraction().apply { remove("research"); remove("companyAssessment") }.put("text", "Ingredients: water, salt").put("complete", true)
             server.enqueue(MockResponse().setBody(response(initial, false).toString()))
             server.enqueue(MockResponse().setBody(response(extraction().apply { remove("research") }, true).toString()))
             val result = repository(server).check(CheckInput(autoMarket = true), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test", aiEnabled = true), "")

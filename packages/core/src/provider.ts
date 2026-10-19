@@ -1,9 +1,10 @@
 import promptData from '../../../contracts/ai-extraction-prompt.json';
+import outputSchema from '../../../contracts/ai-output.schema.json';
 import type { AIExtraction, Category, CheckInput, ProviderAdapter, ProviderConfig } from './types';
 import { readBoundedText } from './http';
 import { acceptsImages } from './model-capabilities';
 import { analyzeText, parseSourceIngredients, safeSourceUrl } from './analyze';
-import { applyAIEvidence } from './ai-evidence';
+import { applyAIEvidence, transcriptionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
@@ -13,6 +14,19 @@ import { countryCode, selectProductCountry } from './market';
 import { lookupMatspar, retainMatsparComposition, matchesMatsparIdentity } from './matspar-catalogue';
 
 export const EXTRACTION_PROMPT = promptData.prompt;
+const toolBudget = (calls: number) => promptData.toolBudgetPrompt.replace('{budget}', String(calls));
+/** Strict Structured Outputs; product passes omit alternatives and the follow-up pins the extracted identity. */
+function outputFormat(options: { alternatives?: boolean; identity?: { name?: string; brand?: string } } = {}) {
+  const { alternatives, ...product } = outputSchema.properties;
+  const properties = { ...product, ...(options.alternatives ? { alternatives } : {}), ...(options.identity ? {
+    name: { type: 'string', enum: [options.identity.name] }, brand: { type: 'string', enum: [options.identity.brand] } } : {}) };
+  return { format: { type: 'json_schema', name: 'product_evidence', strict: true, schema: { ...outputSchema, properties, required: Object.keys(properties) } } };
+}
+/** Strict schemas express optional fields as null; validators and released clients expect them absent. */
+function withoutNulls(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutNulls);
+  return object(value) ? Object.fromEntries(Object.entries(value).filter(([, field]) => field !== null).map(([key, field]) => [key, withoutNulls(field)])) : value;
+}
 export const PROVIDER_PRESETS = [
   { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
   { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
@@ -95,8 +109,7 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
 export function parseAIExtraction(text: string): AIExtraction {
   if (text.length > 100_000) throw new Error('AI extraction is too large.');
   const trimmed = text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-  const parsed: unknown = JSON.parse(trimmed);
-  return validateAIExtraction(parsed);
+  return validateAIExtraction(withoutNulls(JSON.parse(trimmed)));
 }
 
 /** Search provenance comes from the Responses envelope, never from the model's JSON text. */
@@ -134,10 +147,12 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
   const extraction = parseAIExtraction(text.join('\n'));
   return { ...extraction, research: { searched, sources: searched ? [...sources.values()] : [] } };
 }
-function researchAssessment(extracted: AIExtraction, input: CheckInput) {
-  const visible: CheckInput = { text: extracted.text, complete: extracted.complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
+/** Assess one extraction exactly as research planning sees it; shared evidence fixtures run through here. */
+export function researchAssessment(extracted: AIExtraction, input: CheckInput) {
+  const complete = transcriptionComplete(extracted, Boolean(input.images?.length));
+  const visible: CheckInput = { text: extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
     name: input.name || extracted.name, brand: input.brand || extracted.brand, locale: input.locale, images: input.images };
-  return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, extracted.complete), visible, extracted);
+  return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, complete), visible, extracted);
 }
 function needsResearch(extracted: AIExtraction, input: CheckInput): boolean {
   if (!extracted.name?.trim() || !extracted.brand?.trim()) return false;
@@ -147,19 +162,22 @@ function publicResearchQuestions(extracted: AIExtraction, input: CheckInput): st
   return researchAssessment(extracted, input).findings.filter(finding => finding.evidenceId?.startsWith('web-composition-') &&
     ['unknown', 'ambiguous'].includes(finding.status)).map(finding => finding.term).slice(0, 20);
 }
-function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtraction {
+export function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtraction {
   const key = (value: string | undefined) => value?.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
   if (!researched.research?.searched || key(original.name) !== key(researched.name) || key(original.brand) !== key(researched.brand)) return original;
   const unique = <T>(values: T[]): T[] => [...new Map(values.map(value => [JSON.stringify(value), value])).values()];
-  const assessments = unique([...(original.ingredientAssessments ?? []), ...(researched.ingredientAssessments ?? [])]);
-  const webClaims = unique([...(original.webClaims ?? []), ...(researched.webClaims ?? [])]);
+  // Bound by priority (contradicting evidence, then original, then new) instead of dropping a whole follow-up.
+  const assessments = unique([...(original.ingredientAssessments ?? []), ...(researched.ingredientAssessments ?? [])])
+    .sort((a, b) => Number(b.status === 'animal') - Number(a.status === 'animal')).slice(0, 100);
+  const webClaims = unique([...(original.webClaims ?? []), ...(researched.webClaims ?? [])])
+    .sort((a, b) => Number(b.claim === 'not_vegan') - Number(a.claim === 'not_vegan')).slice(0, 5);
   const compositions = new Map<string, NonNullable<AIExtraction['webCompositions']>[number]>();
   for (const item of [...(original.webCompositions ?? []), ...(researched.webCompositions ?? [])]) {
     const sourceKey = JSON.stringify([item.url, key(item.text), item.complete, item.sourceType, key(item.productName), key(item.brand)]);
     const previous = compositions.get(sourceKey);
     compositions.set(sourceKey, { ...item, ingredients: parseSourceIngredients(item.text, item.ingredients) ? item.ingredients : previous?.ingredients ?? item.ingredients });
   }
-  const webCompositions = [...compositions.values()];
+  const webCompositions = [...compositions.values()].slice(0, 3);
   const consulted = new Map([...(original.research?.sources ?? []), ...researched.research.sources].map(source => [source.url, source]));
   const citedUrls = new Set<string>([
     ...webCompositions.map(item => item.url),
@@ -170,8 +188,6 @@ function mergeResearch(original: AIExtraction, researched: AIExtraction): AIExtr
     ] : []),
   ]);
   const sources = [...consulted.values()].sort((a, b) => Number(citedUrls.has(b.url)) - Number(citedUrls.has(a.url))).slice(0, 50);
-  // Preserve all original evidence and later contradictions, or keep the original intact when bounds are exceeded.
-  if (assessments.length > 100 || webClaims.length > 5 || webCompositions.length > 3) return original;
   const companyAssessment = sourcedCompanyAssessment({ ...researched, research: { searched: true, sources } });
   return { ...original, webClaims, webCompositions, ingredientAssessments: assessments,
     ...(researched.contact ? { contact: researched.contact } : {}),
@@ -190,6 +206,8 @@ export function validateProviderConfig(config: ProviderConfig): URL {
 export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fetch = globalThis.fetch, catalogueFetcher?: typeof fetch): ProviderAdapter {
   const base = validateProviderConfig(config);
   const supportsWebSearch = base.origin === 'https://api.openai.com' && base.pathname.replace(/\/$/, '') === '/v1';
+  // JSON mode is widely but not universally supported (LM Studio rejects json_object), so only known providers get it.
+  const jsonMode = ['openrouter.ai', 'generativelanguage.googleapis.com'].includes(base.hostname) || base.port === '11434';
   const endpoint = new URL(`${base.pathname.replace(/\/$/, '')}/${supportsWebSearch ? 'responses' : 'chat/completions'}`, base.origin).href;
   return {
     supportsWebSearch,
@@ -207,15 +225,19 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         { type: 'text', text: JSON.stringify({ alternativeSearch: input.alternativeSearch, text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
         ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
       ];
+      const searchTools = !input.autoMarket;
       const requestBody = supportsWebSearch ? {
-        model: config.model, stream: false, store: false, instructions: EXTRACTION_PROMPT, max_output_tokens: 6000,
-        tools: input.autoMarket ? undefined : [{ type: 'web_search' }],
+        model: config.model, stream: false, store: false, max_output_tokens: 16_000,
+        instructions: input.alternativeSearch ? `${promptData.alternativesPrompt}\n${toolBudget(3)}`
+          : searchTools ? `${EXTRACTION_PROMPT}\n${promptData.searchPrompt}\n${toolBudget(4)}` : EXTRACTION_PROMPT,
+        tools: searchTools ? [{ type: 'web_search' }] : undefined,
         ...(input.alternativeSearch ? { tool_choice: 'required' } : {}),
-        max_tool_calls: input.autoMarket ? undefined : input.alternativeSearch ? 3 : 4, include: input.autoMarket ? undefined : ['web_search_call.action.sources'],
+        max_tool_calls: searchTools ? input.alternativeSearch ? 3 : 4 : undefined, include: searchTools ? ['web_search_call.action.sources'] : undefined,
+        text: outputFormat({ alternatives: Boolean(input.alternativeSearch) }),
         input: [{ role: 'user', content: content.map(part => part.type === 'text'
           ? { type: 'input_text', text: part.text } : { type: 'input_image', image_url: part.image_url.url }) }],
-      } : { model: config.model, stream: false, max_tokens: 6000,
-        messages: [{ role: 'system', content: EXTRACTION_PROMPT }, { role: 'user', content }] };
+      } : { model: config.model, stream: false, max_tokens: 6000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        messages: [{ role: 'system', content: input.alternativeSearch ? promptData.alternativesPrompt : EXTRACTION_PROMPT }, { role: 'user', content }] };
       const deadlineSignal = AbortSignal.timeout(130_000);
       const requestSignal = signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal;
       async function send(body: unknown): Promise<unknown> {
@@ -274,11 +296,9 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
         try {
           const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
             tools: [{ type: 'web_search' }], max_tool_calls: remainingSearchCalls, include: ['web_search_call.action.sources'],
-            instructions: `${promptData.researchPrompt}${catalogue ? '\n\nA verified Matspar product record has already been fetched and exact-matched. Use its ingredients only as parsing input. Do not perform another product lookup or treat its ingredients as photo transcription or a vegan claim. Keep the same canonical name and brand, top-level text empty and complete false. Return its full composition in webCompositions with every source-verbatim ingredient parsed, and ingredientAssessments for every parsed term. Consult official contact if uncertainty remains and company evidence first, then research unresolved origins or a product-specific declaration.' : ''}`,
-            text: { format: { type: 'json_schema', name: 'product_research', strict: false, schema: {
-              type: 'object', properties: { name: { type: 'string', enum: [extracted.name] }, brand: { type: 'string', enum: [extracted.brand] } },
-              required: ['text', 'complete', 'category', 'name', 'brand'],
-            } } },
+            instructions: [EXTRACTION_PROMPT, promptData.searchPrompt, promptData.researchPrompt, ...(catalogue ? [promptData.cataloguePrompt] : []),
+              toolBudget(remainingSearchCalls)].join('\n'),
+            text: outputFormat({ identity: extracted }),
             input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
               packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
               category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', productOutcome: researchAssessment(extracted, input).outcome, webToolBudget: remainingSearchCalls, unresolvedIngredients: publicResearchQuestions(extracted, researchInput),

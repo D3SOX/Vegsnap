@@ -240,6 +240,61 @@
           "pattern": "\\S"
         }
       }
+    },
+    "alternatives": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "brand": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "store": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "storeUrl": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "storeQuote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "name",
+          "brand",
+          "url",
+          "quote"
+        ]
+      }
     }
   },
   "required": [

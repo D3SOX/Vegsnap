@@ -79,7 +79,7 @@ class CompanyConcernsTest {
 
     @Test fun successfulAiIdentityAttachesReviewedRecordsWithoutAcceptingModelAccusations() = runBlocking {
         MockWebServer().use { server ->
-            val extraction = JSONObject().put("text", "water, salt").put("complete", true).put("category", "food")
+            val extraction = JSONObject().put("text", "Ingredients: water, salt").put("complete", true).put("category", "food")
                 .put("name", "Sample").put("brand", "Garden Gourmet")
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(JSONObject().put("choices", JSONArray().put(
                 JSONObject().put("finish_reason", "stop").put("message", JSONObject().put("content", extraction.toString())))).toString()))

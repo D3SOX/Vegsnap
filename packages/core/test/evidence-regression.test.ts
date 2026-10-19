@@ -71,7 +71,7 @@ describe('composition and photo evidence regressions', () => {
     expect(result.evidence.at(-1)?.verification).toBe('unverified');
   });
   test('a plant compound assessment covers its exact parsed components from the actual composition', async () => {
-    const text = 'oligofruktos* (fiber), torkade dadlar (dadlar, rismjöl)';
+    const text = 'Ingredienser: oligofruktos* (fiber), torkade dadlar (dadlar, rismjöl)';
     const result = await check({ images: [photo], category: 'food' }, { text, complete: true, category: 'food', ingredientAssessments: [
       { term: 'oligofruktos* (fiber)', status: 'plant', explanation: 'Plant-derived dietary fiber.' },
       { term: 'torkade dadlar (dadlar, rismjöl)', status: 'plant', explanation: 'Dates and rice flour are plant ingredients.' },

@@ -2,7 +2,7 @@ export * from './types';
 export { alternativeQueryForProduct, alternativeSearchUrl, validateAlternativeSearch, parsePublicAlternatives, parseAIAlternatives, rankAlternatives, searchPublicAlternatives, researchVeganAlternatives } from './alternatives';
 export type { AlternativeSearch, VeganAlternative } from './alternatives';
 export { countryCode, selectProductCountry } from './market';
-export { analyzeText, parseSourceIngredients, normalizeTerm, applyVerifiedEvidence, safeSourceUrl } from './analyze';
+export { analyzeText, parseSourceIngredients, normalizeTerm, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
 export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';
 export { HOSTED_AI, createHostedAIProvider } from './hosted-ai';

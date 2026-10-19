@@ -1,11 +1,14 @@
 import { afterAll, beforeAll, beforeEach, expect, spyOn, test } from 'bun:test';
 import { Miniflare, Response as WorkerResponse, convertV4MiniflareOptions } from 'miniflare';
 import worker, { type Env } from '../src/index';
+import { EXTRACTION_PROMPT } from '@vegsnap/core';
 import { resolve } from 'node:path';
 
 let mf: Miniflare;
 let client = 0;
 let failUpstream = false;
+let invalidUpstream = false;
+const remoteIps: (string | undefined)[] = [];
 let includeAlternatives = false;
 let needsResearch = false;
 let extractionText: string | undefined;
@@ -33,10 +36,11 @@ beforeAll(async () => {
       IP_REQUEST_LIMIT: { namespace_id: '826404', simple: { limit: 120, period: 60 } },
     },
     bindings: { PUBLIC_ORIGIN: 'https://ai.example', TURNSTILE_SITE_KEY: 'test-site', TURNSTILE_SECRET: 'test-only',
-      OPENAI_API_KEY: 'test-only-openai', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20' },
+      OPENAI_API_KEY: 'test-only-openai', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20', DAILY_IP_CONNECT_LIMIT: '3' },
     outboundService: async request => {
       if (request.url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
-        const body = await request.json() as { response: string };
+        const body = await request.json() as { response: string; remoteip?: string };
+        remoteIps.push(body.remoteip);
         if (body.response === 'non-json') return new WorkerResponse('<html>Proxy failure</html>', { status: 502 });
         return WorkerResponse.json({ success: body.response !== 'invalid', hostname: body.response === 'wrong-host' ? 'wrong.example' : 'ai.example', action: body.response === 'wrong-action' ? 'wrong-action' : 'connect-ai' });
       }
@@ -56,6 +60,7 @@ beforeAll(async () => {
       const payload = await request.json() as Record<string, unknown>;
       upstream.push(payload);
       if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
+      if (invalidUpstream) return WorkerResponse.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'not json' }] }] });
       const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker', ...(discoveredBarcode ? { barcode: discoveredBarcode } : {}), ...(packagingCountry ? { packaging: { country: packagingCountry } } : {}) } : { ...extraction, text: extractionText ?? extraction.text };
       if (companyMode) Object.assign(result, { brand: 'Maker', ...(payload.tool_choice === 'required' ? { companyAssessment: {
         brand: 'Maker', company: 'Maker Ltd', scope: 'direct', verdict: 'inconclusive', categories: [],
@@ -71,14 +76,16 @@ beforeAll(async () => {
   }));
   await mf.ready;
   const db = await mf.getD1Database('DB');
-  const sql = await Bun.file(resolve(root, 'migrations/0001_sessions.sql')).text();
-  await db.batch(sql.split(';').map(s => s.trim()).filter(Boolean).map(s => db.prepare(s)));
+  for (const file of ['0001_sessions.sql', '0002_ip_limits.sql']) {
+    const sql = (await Bun.file(resolve(root, 'migrations', file)).text()).replace(/^--.*$/gm, '');
+    await db.batch(sql.split(';').map(s => s.trim()).filter(Boolean).map(s => db.prepare(s)));
+  }
 }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  includeAlternatives = false; upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; companyMode = false; failUpstream = false; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
+  includeAlternatives = false; upstream.length = 0; catalogueRequests.length = 0; catalogueMode = false; companyMode = false; failUpstream = false; invalidUpstream = false; remoteIps.length = 0; needsResearch = false; extractionText = undefined; packagingCountry = undefined; discoveredBarcode = undefined; discoveredMarkets = []; failDiscoveredLookup = false;
   const db = await mf.getD1Database('DB');
-  await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage')]);
+  await db.batch([db.prepare('DELETE FROM sessions'), db.prepare('DELETE FROM daily_budget'), db.prepare('DELETE FROM installation_usage'), db.prepare('DELETE FROM ip_usage')]);
 });
 async function request(path: string, token = '', value?: unknown, method = value === undefined ? 'GET' : 'POST', ip = `192.0.2.${++client}`) {
   const response = await fetch(new URL(path, await mf.ready), { method, headers: {
@@ -122,15 +129,17 @@ test('released clients retain their extraction schema when alternative search is
   expect(upstream.every(payload => !Object.hasOwn(payload, 'tool_choice'))).toBe(true);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ state: 'connected', remaining: 1 });
 });
-async function fixedIPWindow(): Promise<Env> {
-  // Model one fixed window so guard tests cannot straddle Miniflare's wall-clock reset.
+function fixedLimit(maximum: number): RateLimit {
   const counts = new Map<string, number>();
-  const ipLimit: Env['IP_REQUEST_LIMIT'] = { async limit({ key }) {
+  return { async limit({ key }) {
     const count = counts.get(key) ?? 0;
     counts.set(key, count + 1);
-    return { success: count < 120 };
+    return { success: count < maximum };
   } };
-  return { ...await mf.getBindings(), IP_REQUEST_LIMIT: ipLimit } as unknown as Env;
+}
+async function fixedIPWindow(): Promise<Env> {
+  // Model one fixed window so guard tests cannot straddle Miniflare's wall-clock reset.
+  return { ...await mf.getBindings(), IP_REQUEST_LIMIT: fixedLimit(120), SESSION_REQUEST_LIMIT: fixedLimit(30) } as unknown as Env;
 }
 
 test('one installation cannot throttle another installation sharing its mobile IP', async () => {
@@ -270,10 +279,38 @@ test('the broad IP guard bounds session reads and deletions with arbitrary token
 test('session polling limits one session without blocking another on the same IP', async () => {
   const first = await connect();
   const second = await connect();
-  const ip = '198.51.100.4';
-  for (let i = 0; i < 30; i++) expect((await request('/api/session', first, undefined, 'GET', ip)).status).toBe(200);
-  expect((await request('/api/session', first, undefined, 'GET', ip)).status).toBe(429);
-  expect((await request('/api/session', second, undefined, 'GET', ip)).status).toBe(200);
+  const env = await fixedIPWindow();
+  const poll = async (token: string) => (await worker.fetch(new Request('https://ai.example/api/session', { headers: {
+    Authorization: `Bearer ${token}`, 'CF-Connecting-IP': '198.51.100.4' } }), env)).status;
+  for (let i = 0; i < 30; i++) expect(await poll(first)).toBe(200);
+  expect(await poll(first)).toBe(429);
+  expect(await poll(second)).toBe(200);
+});
+test('one IP cannot fill the global pending-connection queue', async () => {
+  const ip = '198.51.100.5';
+  const statuses = [];
+  for (let i = 0; i < 4; i++) statuses.push((await request('/api/connect', crypto.getRandomValues(new Uint8Array(32)).toHex(), { installationId: 'c'.repeat(64) }, 'POST', ip)).status);
+  expect(statuses).toEqual([201, 201, 201, 429]);
+  const token = await connect(false);
+  const db = await mf.getD1Database('DB');
+  expect(await db.prepare('SELECT COUNT(DISTINCT ip_hash) AS count FROM sessions WHERE ip_hash IS NOT NULL').first('count')).toBe(2);
+  expect(JSON.stringify(await db.prepare('SELECT * FROM sessions').all())).not.toContain(ip);
+  expect((await request('/api/verify', token, { challenge: 'valid' })).status).toBe(200);
+  expect(await db.prepare('SELECT ip_hash FROM sessions WHERE verified = 1').first('ip_hash')).toBeNull();
+  await db.prepare('UPDATE sessions SET expires_at = 0 WHERE verified = 0').run();
+  expect((await request('/api/connect', crypto.getRandomValues(new Uint8Array(32)).toHex(), { installationId: 'c'.repeat(64) }, 'POST', ip)).status).toBe(201);
+});
+test('one IP has a daily cap on successful verifications and Turnstile receives its address', async () => {
+  const ip = '198.51.100.6';
+  const tokens = await Promise.all(Array.from({ length: 4 }, () => connect(false)));
+  const statuses = [];
+  for (const token of tokens) statuses.push((await request('/api/verify', token, { challenge: 'valid' }, 'POST', ip)).status);
+  expect(statuses).toEqual([200, 200, 200, 429]);
+  expect(remoteIps).toEqual(Array(4).fill(ip));
+  expect((await request('/api/verify', tokens[3]!, { challenge: 'valid' })).status).toBe(200);
+  const db = await mf.getD1Database('DB');
+  expect(await db.prepare('SELECT connections FROM daily_budget').first('connections')).toBe(4);
+  expect(await db.prepare('SELECT SUM(connections) AS count FROM ip_usage').first('count')).toBe(4);
 });
 test('unreadable Turnstile responses preserve pending access and do not consume admission', async () => {
   const token = await connect(false);
@@ -308,8 +345,9 @@ test('uses a fixed model without tools for a readable photo, and stores only cou
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ ...extraction, research: { searched: false, sources: [] } });
   expect(upstream).toHaveLength(1);
-  expect(upstream[0]).toMatchObject({ model: 'gpt-6-luna', reasoning: { effort: 'medium' }, store: false, max_output_tokens: 6000 });
+  expect(upstream[0]).toMatchObject({ model: 'gpt-6-luna', reasoning: { effort: 'medium' }, store: false, max_output_tokens: 16_000 });
   expect(upstream[0]?.tools).toBeUndefined();
+  expect(upstream[0]).toMatchObject({ instructions: EXTRACTION_PROMPT, text: { format: { type: 'json_schema', strict: true } } });
   const db = await mf.getD1Database('DB');
   const stored = JSON.stringify((await db.prepare('SELECT * FROM sessions').all()).results);
   expect(stored).not.toContain(token);
@@ -339,7 +377,8 @@ test('research has a bounded six-call budget and cannot rename the observed prod
   expect(upstream).toHaveLength(2);
   expect(upstream[0]?.tools).toBeUndefined();
   expect(upstream[1]).toMatchObject({ max_tool_calls: 6, tool_choice: 'required', tools: [{ type: 'web_search', search_context_size: 'low' }],
-    text: { format: { type: 'json_schema', schema: { properties: { name: { enum: ['Tissues'] }, brand: { enum: ['Maker'] } } } } } });
+    text: { format: { type: 'json_schema', strict: true, schema: { properties: { name: { enum: ['Tissues'] }, brand: { enum: ['Maker'] } } } } } });
+  expect(upstream[1]?.instructions).toContain('Use at most 6 web-tool calls');
   expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
 });
 test('a decisive branded photo still researches the company within one free check', async () => {
@@ -435,12 +474,26 @@ test('client text at the 30000-character boundary reaches OpenAI and preserves i
   expect((await response.json() as { text: string }).text).toBe(extractionText);
   expect(JSON.stringify(upstream[0]?.input)).toContain(extractionText);
 });
-test('failed requests consume reserved allowance and never expose upstream details', async () => {
+test('failed upstream requests refund the allowance and never expose upstream details', async () => {
   failUpstream = true;
   const token = await connect();
   const response = await check(token);
   expect(response.status).toBe(502);
-  expect(await response.text()).not.toContain('PRIVATE');
+  const text = await response.text();
+  expect(text).not.toContain('PRIVATE');
+  expect(text).toContain('was not used');
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 3 });
+  const db = await mf.getD1Database('DB');
+  expect(await db.prepare('SELECT checks FROM daily_budget').first('checks')).toBe(0);
+  expect(await db.prepare('SELECT checks FROM installation_usage').first('checks')).toBe(0);
+});
+test('completed upstream responses that fail validation still consume the allowance', async () => {
+  invalidUpstream = true;
+  const token = await connect();
+  const response = await check(token);
+  expect(response.status).toBe(502);
+  expect(await response.text()).toContain('was consumed');
+  expect(upstream.length).toBeGreaterThan(0);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
 });
 test('UTC rollover resets per-session quota and revocation removes access', async () => {

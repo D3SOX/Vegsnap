@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { checkProduct, createOpenAIProvider, parseAIExtraction } from '../src';
 import type { AIExtraction, CheckInput } from '../src';
+import prompts from '../../../contracts/ai-extraction-prompt.json';
 
 const url = 'https://maker.example/products/tissues';
 const base: AIExtraction = { text: '', complete: false, category: 'household', name: 'Soft tissues', brand: 'Maker' };
@@ -16,7 +17,8 @@ const reply = (body: unknown) => new Response(JSON.stringify(body), { status: 20
 describe('grounded web research', () => {
   test('both passes share six tool calls, including failed searches, and stop when exhausted', async () => {
     for (const used of [0, 1, 4, 6]) {
-      const requests: { max_tool_calls: number; input: { content: { text: string }[] }[] }[] = [];
+      const requests: { max_tool_calls: number; instructions: string; text: { format: { strict: boolean; schema: { properties: Record<string, unknown> } } };
+        input: { content: { text: string }[] }[] }[] = [];
       const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
         (async (_target: unknown, init?: RequestInit) => {
           requests.push(JSON.parse(String(init?.body)));
@@ -26,9 +28,13 @@ describe('grounded web research', () => {
         }) as unknown as typeof fetch, (async () => new Response(null, { status: 503 })) as unknown as typeof fetch);
       await provider.extract(input);
       expect(requests[0]!.max_tool_calls).toBe(4);
+      expect(requests[0]!.instructions).toBe(`${prompts.prompt}\n${prompts.searchPrompt}\nUse at most 4 web-tool calls for this request.`);
+      expect(requests[0]!.text.format.strict).toBe(true);
+      expect(requests[0]!.text.format.schema.properties.alternatives).toBeUndefined();
       expect(requests).toHaveLength(used === 6 ? 1 : 2);
       if (used < 6) {
         expect(requests[1]!.max_tool_calls).toBe(6 - used);
+        expect(requests[1]!.instructions).toBe([prompts.prompt, prompts.searchPrompt, prompts.researchPrompt, `Use at most ${6 - used} web-tool calls for this request.`].join('\n'));
         expect(JSON.parse(requests[1]!.input[0]!.content[0]!.text).webToolBudget).toBe(6 - used);
       }
     }
@@ -111,10 +117,15 @@ describe('grounded web research', () => {
     expect(result.basis).toBe('insufficient');
   });
   test('certification website is an AI-read source, not an independently checked registry', async () => {
-    const result = await check({ ...base, webClaims: [{ ...claim, sourceType: 'certification' }], research });
+    const certifier = 'https://www.vegansociety.com/search/products/soft-tissues';
+    const result = await check({ ...base, webClaims: [{ ...claim, url: certifier, sourceType: 'certification' }], research: { searched: true, sources: [{ url: certifier, title: 'Vegan Society' }] } });
     expect(result.outcome).toBe('vegan');
     expect(result.basis).toBe('research');
     expect(result.evidence.at(-1)?.verification).toBe('unverified');
+    // A self-described certification page outside the certifier allowlist is shown but cannot settle the verdict.
+    const unlisted = await check({ ...base, webClaims: [{ ...claim, sourceType: 'certification' }], research });
+    expect(unlisted.outcome).toBe('uncertain');
+    expect(unlisted.evidence.at(-1)).toMatchObject({ url, kind: 'ai_extraction', claim: 'vegan' });
   });
   test('compatible providers report unsupported search and cannot inject research JSON', async () => {
     const provider = createOpenAIProvider({ baseUrl: 'https://compatible.example/v1', model: 'selected', supportsVision: true }, (async () => reply({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(base) } }] })) as unknown as typeof fetch);
@@ -181,7 +192,9 @@ describe('researched product composition', () => {
     expect(parseAIExtraction(JSON.stringify({ ...first, packaging: { language: 'Swedish', quantity: '200 g' } }))).toMatchObject({
       packaging: { language: 'Swedish', quantity: '200 g' },
     });
-    for (const packaging of [null, [], {}, 'Swedish', { language: '' }, { language: ' ' }, { quantity: 200 },
+    // Strict structured outputs encode omitted optional fields as null.
+    expect(parseAIExtraction(JSON.stringify({ ...first, packaging: null, barcode: null }))).toEqual({ ...first, category: 'food' });
+    for (const packaging of [[], {}, 'Swedish', { language: '' }, { language: ' ' }, { quantity: 200 },
       { language: 'x'.repeat(301) }, { privateNote: 'do not send' }]) {
       expect(() => parseAIExtraction(JSON.stringify({ ...first, packaging }))).toThrow('packaging');
     }
@@ -257,17 +270,17 @@ describe('researched product composition', () => {
     expect(result.identity.name).toBe(granola.name);
     expect(result.warnings).toContain('Web research did not complete; the available photo or text evidence was kept.');
   });
-  test('overflow preserves the first response instead of dropping a later contradictory assessment', async () => {
+  test('overflow keeps a later contradictory assessment and trims the rest by priority', async () => {
     let requests = 0;
     const first = { ...granola, ingredientAssessments: Array.from({ length: 100 }, (_, i) => ({ term: `ingredient${i}`, status: 'plant' as const, explanation: 'Plant origin.' })) };
-    const second = { ...granola, webCompositions: [composition], ingredientAssessments: [{ term: 'ingredient0', status: 'animal', explanation: 'Conflicting origin.' }] };
+    const second = { ...granola, webCompositions: [composition], ingredientAssessments: [{ term: 'ingredient0', status: 'animal' as const, explanation: 'Conflicting origin.' }] };
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true },
       (async () => reply(++requests === 1 ? envelope(first) : envelope(second, [{ type: 'web_search_call', status: 'completed', action: { sources: [{ url }] } }]))) as unknown as typeof fetch);
     const extracted = await provider.extract(input);
     expect(requests).toBe(2);
-    expect(extracted.ingredientAssessments).toEqual(first.ingredientAssessments);
-    expect(extracted.webCompositions).toBeUndefined();
-    expect(extracted.research?.searched).toBe(false);
+    expect(extracted.ingredientAssessments).toEqual([second.ingredientAssessments[0]!, ...first.ingredientAssessments.slice(0, 99)]);
+    expect(extracted.webCompositions).toEqual([composition]);
+    expect(extracted.research?.searched).toBe(true);
   });
   test('source metadata overflow preserves a retrieved composition and its consulted URL', async () => {
     let requests = 0;

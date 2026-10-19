@@ -19,7 +19,7 @@ export function call(operation: string, json: string): string {
     case 'publicAlternatives': return JSON.stringify(core.parsePublicAlternatives(args.document, args.input));
     case 'rankAlternatives': return JSON.stringify(core.rankAlternatives(args.items, args.input));
     case 'analyze': return JSON.stringify(core.attachCompanyConcerns(core.analyzeText(args), args.locale));
-    case 'merge': return JSON.stringify(mergeResults(args.original, args.additional));
+    case 'merge': return JSON.stringify(mergeResults(args.original, args.additional, args.locale));
     case 'retainResearch': return JSON.stringify(core.retainPreviousResearch(args.result, args.previous));
     case 'barcode': return JSON.stringify(core.normalizeBarcode(args) ?? null);
     case 'message': return JSON.stringify(core.manufacturerMessage(args.result, args.locale) ?? null);
@@ -47,7 +47,7 @@ export function call(operation: string, json: string): string {
       if (text) {
         const ocr = core.analyzeText({ ...args.input, text: text.slice(0, 30000), complete: false });
         ocr.evidence.forEach(e => { e.kind = 'ocr'; e.title = args.input.locale === 'de' ? 'Texterkennung auf dem Gerät — am Etikett prüfen' : 'On-device text recognition — verify against the label'; });
-        return JSON.stringify(core.attachCompanyConcerns(mergeResults(result, ocr), args.input.locale));
+        return JSON.stringify(core.attachCompanyConcerns(mergeResults(result, ocr, args.input.locale), args.input.locale));
       }
       return JSON.stringify(result);
     }
@@ -80,7 +80,7 @@ export function check(id: string, json: string) {
         try {
           const database = await identifiedProduct(extraction, {...args.input, market:result.identity.market}, controller.signal);
           if (database) {
-            const merged = mergeResults(result, database);
+            const merged = mergeResults(result, database, args.input.locale);
             result = core.attachCompanyConcerns({ ...merged,
             identity: {...merged.identity, market:result.identity.market, marketSource:result.identity.marketSource},
             manufacturerContact: result.manufacturerContact, companyAssessment: result.companyAssessment }, args.input.locale, result.identity.brand);
