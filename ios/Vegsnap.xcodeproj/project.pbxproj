@@ -416,6 +416,7 @@
 				"$(SRCROOT)/../contracts/ai-extraction.schema.json",
 				"$(SRCROOT)/../contracts/ai-output.schema.json",
 				"$(SRCROOT)/../contracts/alternatives-fixtures.json",
+				"$(SRCROOT)/../contracts/evidence-fixtures.json",
 				"$(SRCROOT)/../contracts/history.schema.json",
 				"$(SRCROOT)/../contracts/product-countries.json",
 				"$(SRCROOT)/../contracts/result.schema.json",
