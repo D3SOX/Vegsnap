@@ -197,6 +197,7 @@ describe('AI privacy and validation', () => {
     });
     expect(result.outcome).toBe('uncertain');
     expect(result.warnings.join(' ')).toContain('changed');
+    expect(parseAIExtraction(JSON.stringify({ ...extraction, packaging: { language: null, country: null, variant: null, quantity: null } })).packaging).toBeUndefined();
     expect(() => parseAIExtraction(JSON.stringify({ ...extraction, certified: true }))).toThrow();
     expect(() => parseAIExtraction(JSON.stringify({ ...extraction, category: 'weapons' }))).toThrow();
   });

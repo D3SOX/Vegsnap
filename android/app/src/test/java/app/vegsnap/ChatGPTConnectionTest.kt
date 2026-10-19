@@ -28,7 +28,7 @@ class ChatGPTConnectionTest {
         assertFalse(photo.has("tools")); assertFalse(photo.has("tool_choice")); assertFalse(photo.has("max_tool_calls")); assertFalse(photo.has("text"))
     }
     @Test fun strictOutputNullsAreOmittedAndJsonModeIsLimitedToKnownProviders() {
-        val stripped = withoutNulls(JSONObject("{\"text\":\"\",\"name\":null,\"contact\":{\"url\":null,\"email\":\"a@b.c\"},\"webClaims\":[{\"brand\":null}]}"))
+        val stripped = withoutNulls(JSONObject("{\"text\":\"\",\"name\":null,\"packaging\":{\"language\":null,\"country\":null},\"contact\":{\"url\":null,\"email\":\"a@b.c\"},\"webClaims\":[{\"brand\":null}]}"))
         assertEquals(JSONObject("{\"text\":\"\",\"contact\":{\"email\":\"a@b.c\"},\"webClaims\":[{}]}").toString(), stripped.toString())
         assertTrue(jsonModeEndpoint("http://127.0.0.1:11434/v1".toHttpUrl()))
         assertTrue(jsonModeEndpoint("https://openrouter.ai/api/v1".toHttpUrl()))

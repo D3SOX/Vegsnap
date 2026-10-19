@@ -543,7 +543,7 @@ internal fun jsonModeEndpoint(endpoint: okhttp3.HttpUrl) = endpoint.host in setO
 internal fun withoutNulls(value: JSONObject): JSONObject = JSONObject().also { result ->
     for (key in value.keys()) when (val field = value.get(key)) {
         JSONObject.NULL -> Unit
-        is JSONObject -> result.put(key, withoutNulls(field))
+        is JSONObject -> if (field.length() == 0 || field.keys().asSequence().any { field.get(it) != JSONObject.NULL }) result.put(key, withoutNulls(field))
         is JSONArray -> result.put(key, JSONArray((0 until field.length()).map { field.get(it).let { item -> if (item is JSONObject) withoutNulls(item) else item } }))
         else -> result.put(key, field)
     }

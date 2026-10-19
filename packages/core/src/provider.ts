@@ -22,10 +22,12 @@ function outputFormat(options: { alternatives?: boolean; identity?: { name?: str
     name: { type: 'string', enum: [options.identity.name] }, brand: { type: 'string', enum: [options.identity.brand] } } : {}) };
   return { format: { type: 'json_schema', name: 'product_evidence', strict: true, schema: { ...outputSchema, properties, required: Object.keys(properties) } } };
 }
-/** Strict schemas express optional fields as null; validators and released clients expect them absent. */
+/** Strict schemas express optional fields as null; validators and released clients expect them absent, as are objects whose fields were all null. */
 function withoutNulls(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(withoutNulls);
-  return object(value) ? Object.fromEntries(Object.entries(value).filter(([, field]) => field !== null).map(([key, field]) => [key, withoutNulls(field)])) : value;
+  const allNull = (field: unknown) => object(field) && Object.keys(field).length > 0 && Object.values(field).every(item => item === null);
+  return object(value) ? Object.fromEntries(Object.entries(value).filter(([, field]) => field !== null && !allNull(field))
+    .map(([key, field]) => [key, withoutNulls(field)])) : value;
 }
 export const PROVIDER_PRESETS = [
   { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },

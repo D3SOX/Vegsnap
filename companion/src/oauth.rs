@@ -1685,7 +1685,12 @@ fn without_nulls(value: Value) -> Value {
     match value {
         Value::Object(map) => Value::Object(
             map.into_iter()
-                .filter(|(_, field)| !field.is_null())
+                .filter(|(_, field)| {
+                    !field.is_null()
+                        && field.as_object().is_none_or(|object| {
+                            object.is_empty() || object.values().any(|item| !item.is_null())
+                        })
+                })
                 .map(|(key, field)| (key, without_nulls(field)))
                 .collect(),
         ),
@@ -2043,7 +2048,7 @@ mod tests {
         assert!(body["text"]["format"]["schema"]["properties"]["alternatives"].is_object());
         assert_eq!(
             without_nulls(
-                json!({"text":"","name":null,"contact":{"url":null,"email":"a@b.c"},"webClaims":[{"brand":null}]})
+                json!({"text":"","name":null,"packaging":{"language":null,"country":null},"contact":{"url":null,"email":"a@b.c"},"webClaims":[{"brand":null}]})
             ),
             json!({"text":"","contact":{"email":"a@b.c"},"webClaims":[{}]})
         );
