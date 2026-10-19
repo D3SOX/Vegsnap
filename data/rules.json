@@ -2,6 +2,7 @@
   "version": 1,
   "license": "AGPL-3.0-only",
   "note": "Original concise classification rules; linked references are supporting sources, not imported databases. Plant status includes mineral and synthetic materials without identified animal content. Not a full ingredient taxonomy.",
+  "veganCertifiers": ["vegan.org", "vegansociety.com", "v-label.com", "v-label.eu"],
   "sources": [
     {
       "id": "v-label",

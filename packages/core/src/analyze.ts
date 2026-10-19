@@ -135,25 +135,3 @@ export function safeSourceUrl(value?: string): string | undefined {
     return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : undefined;
   } catch { return undefined; }
 }
-
-/** Compose already verified product-specific evidence. Never pass model-authored claims here. */
-export function applyVerifiedEvidence(result: CheckResult, evidence: Evidence[]): CheckResult {
-  const t = resultMessages.en;
-  const usable = evidence.filter(item => Boolean(safeSourceUrl(item.url)) && (
-    item.kind === 'certification' && (item.verification === 'registry' || item.verification === 'packaging') ||
-    item.kind === 'manufacturer' && item.verification === 'source'
-  ));
-  const supports = usable.some(item => item.claim === 'vegan');
-  const opposes = usable.some(item => item.claim === 'not_vegan');
-  if (result.outcome === 'conflicting' || supports && (opposes || result.outcome === 'not_vegan') || opposes && result.outcome === 'vegan') {
-    return { ...result, outcome: 'conflicting', basis: 'insufficient', title: t.conflictingEvidence,
-      summary: t.verificationConflictSummary, evidence: [...result.evidence, ...usable] };
-  }
-  if (supports || opposes) {
-    const basis = usable.some(item => item.kind === 'certification' && item.claim === 'vegan') ? 'certified' : 'manufacturer';
-    return { ...result, outcome: supports ? 'vegan' : 'not_vegan', basis,
-      title: opposes ? t.notVegan : basis === 'certified' ? t.veganCertified : t.manufacturerSaysVegan,
-      summary: t.verificationSummary, questions: [], evidence: [...result.evidence, ...usable] };
-  }
-  return result;
-}

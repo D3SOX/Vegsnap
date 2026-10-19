@@ -1,6 +1,7 @@
 import { describe, expect, test, mock } from 'bun:test';
 import fixtures from '../../../fixtures/composition.json';
-import { analyzeText, applyVerifiedEvidence, checkProduct, createOpenAIProvider, lookupProduct, normalizeBarcode, parseAIExtraction } from '../src';
+import prompts from '../../../contracts/ai-extraction-prompt.json';
+import { analyzeText, checkProduct, createOpenAIProvider, lookupProduct, normalizeBarcode, parseAIExtraction } from '../src';
 import type { Basis, CheckInput, Evidence, Outcome, ProviderAdapter } from '../src';
 import { readBoundedText } from '../src/http';
 
@@ -47,14 +48,6 @@ describe('shared composition fixtures', () => {
     const result = analyzeText({ text: `Ingredients: ${'water, '.repeat(4000)}milk`, category: 'food', complete: true });
     expect(result.outcome).toBe('uncertain');
     expect(result.questions).toContain('Provide the complete ingredients or materials list.');
-  });
-  test('verified manufacturer claim conflicting with composition stays conflicting', () => {
-    const original = analyzeText({ text: 'Ingredients: milk', category: 'food' });
-    const evidence: Evidence = { id: 'manufacturer', kind: 'manufacturer', title: 'Product declaration', excerpt: 'Vegan',
-      url: 'https://maker.example/product', retrievedAt: now().toISOString(), claim: 'vegan', verification: 'source' };
-    expect(applyVerifiedEvidence(original, [evidence]).outcome).toBe('conflicting');
-    expect(applyVerifiedEvidence(applyVerifiedEvidence(original, [evidence]), [{ ...evidence, id: 'second' }]).outcome).toBe('conflicting');
-    expect(applyVerifiedEvidence(original, [{ ...evidence, verification: 'unverified' }]).outcome).toBe('not_vegan');
   });
 });
 
@@ -204,6 +197,7 @@ describe('AI privacy and validation', () => {
     });
     expect(result.outcome).toBe('uncertain');
     expect(result.warnings.join(' ')).toContain('changed');
+    expect(parseAIExtraction(JSON.stringify({ ...extraction, packaging: { language: null, country: null, variant: null, quantity: null } })).packaging).toBeUndefined();
     expect(() => parseAIExtraction(JSON.stringify({ ...extraction, certified: true }))).toThrow();
     expect(() => parseAIExtraction(JSON.stringify({ ...extraction, category: 'weapons' }))).toThrow();
   });
@@ -243,11 +237,26 @@ describe('AI privacy and validation', () => {
     const fetcher = mock(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(init?.redirect).toBe('error'); expect(init?.credentials).toBe('omit');
       expect(init?.headers).toMatchObject({ Authorization: 'Bearer test-secret' });
-      expect(JSON.parse(String(init?.body)).messages[1].content[0].text).not.toContain('test-secret');
+      const body = JSON.parse(String(init?.body));
+      expect(body.messages[1].content[0].text).not.toContain('test-secret');
+      expect(body.messages[0].content).toBe(prompts.prompt);
+      expect(body.response_format).toBeUndefined();
       return response({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(extraction) } }] });
     }) as unknown as typeof fetch;
     const provider = createOpenAIProvider({ baseUrl: 'https://example.com/v1/', token: 'test-secret', model: 'test' }, fetcher);
     expect(await provider.extract({ text: 'water, salt' })).toEqual(extraction);
+  });
+  test('known chat-completions providers use JSON mode without web research instructions', async () => {
+    for (const baseUrl of ['http://localhost:11434/v1', 'https://openrouter.ai/api/v1', 'https://generativelanguage.googleapis.com/v1beta/openai']) {
+      let body: { response_format: unknown; messages: { content: unknown }[] } | undefined;
+      const provider = createOpenAIProvider({ baseUrl, model: 'local' }, (async (_url: unknown, init?: RequestInit) => {
+        body = JSON.parse(String(init?.body));
+        return response({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ ...extraction, name: null }) } }] });
+      }) as unknown as typeof fetch);
+      expect(await provider.extract({ text: 'water, salt' })).toEqual(extraction);
+      expect(body?.response_format).toEqual({ type: 'json_object' });
+      expect(body?.messages[0]?.content).toBe(prompts.prompt);
+    }
   });
   test('truncated completion, unsupported images, remote images, and invented keys fail closed', async () => {
     const fetcher = mock(async () => response({ choices: [{ finish_reason: 'length', message: { content: JSON.stringify(extraction) } }] })) as unknown as typeof fetch;

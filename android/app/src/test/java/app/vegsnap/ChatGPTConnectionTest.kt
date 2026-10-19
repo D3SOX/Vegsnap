@@ -15,17 +15,24 @@ import org.junit.Test
 import java.util.Date
 
 class ChatGPTConnectionTest {
-    @Test fun researchUsesSupportedChatGPTFieldsAndPromptBudget() {
-        for (budget in listOf(2, 3, 4, 6)) {
-            val body = chatGPTRequestBody("test", "Research prompt", "{\"webToolBudget\":$budget}", emptyList(), true, true, budget)
-            assertFalse("The ChatGPT plan endpoint rejects max_tool_calls", body.has("max_tool_calls"))
-            assertTrue(body.getString("instructions").contains("at most $budget web-tool calls"))
-            assertEquals("required", body.getString("tool_choice"))
-            assertEquals("web_search", body.getJSONArray("tools").getJSONObject(0).getString("type"))
-            assertTrue(body.getBoolean("stream")); assertFalse(body.getBoolean("store"))
-        }
-        val photo = chatGPTRequestBody("test", "Photo prompt", "Read labels", listOf("data:image/jpeg;base64,YQ=="), false, false, 4)
-        assertFalse(photo.has("tools")); assertFalse(photo.has("tool_choice")); assertFalse(photo.has("max_tool_calls"))
+    @Test fun researchUsesSupportedChatGPTFields() {
+        val format = JSONObject().put("format", JSONObject().put("type", "json_schema").put("strict", true))
+        val body = chatGPTRequestBody("test", "Research prompt", "{\"webToolBudget\":2}", emptyList(), true, true, format)
+        assertFalse("The ChatGPT plan endpoint rejects max_tool_calls", body.has("max_tool_calls"))
+        assertEquals("Research prompt", body.getString("instructions"))
+        assertEquals(format.toString(), body.getJSONObject("text").toString())
+        assertEquals("required", body.getString("tool_choice"))
+        assertEquals("web_search", body.getJSONArray("tools").getJSONObject(0).getString("type"))
+        assertTrue(body.getBoolean("stream")); assertFalse(body.getBoolean("store"))
+        val photo = chatGPTRequestBody("test", "Photo prompt", "Read labels", listOf("data:image/jpeg;base64,YQ=="), false, false)
+        assertFalse(photo.has("tools")); assertFalse(photo.has("tool_choice")); assertFalse(photo.has("max_tool_calls")); assertFalse(photo.has("text"))
+    }
+    @Test fun strictOutputNullsAreOmittedAndJsonModeIsLimitedToKnownProviders() {
+        val stripped = withoutNulls(JSONObject("{\"text\":\"\",\"name\":null,\"packaging\":{\"language\":null,\"country\":null},\"contact\":{\"url\":null,\"email\":\"a@b.c\"},\"webClaims\":[{\"brand\":null}]}"))
+        assertEquals(JSONObject("{\"text\":\"\",\"contact\":{\"email\":\"a@b.c\"},\"webClaims\":[{}]}").toString(), stripped.toString())
+        assertTrue(jsonModeEndpoint("http://127.0.0.1:11434/v1".toHttpUrl()))
+        assertTrue(jsonModeEndpoint("https://openrouter.ai/api/v1".toHttpUrl()))
+        assertFalse(jsonModeEndpoint("http://localhost:1234/v1".toHttpUrl()))
     }
     @Test fun persistedHostIdIsUuidV4UrnInAuthorization() {
         var stored: String? = null

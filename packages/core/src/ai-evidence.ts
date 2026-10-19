@@ -5,6 +5,15 @@ import type { AIExtraction, CheckInput, CheckResult, Finding } from './types';
 
 const veganCertifications = new Set(['v-label', 'v label', 'v-label vegan', 'v label vegan', 'vegan society', 'the vegan society', 'vegan society trademark', 'vegan trademark', 'vegan flower', 'veganblume', 'veganblomman', 'certified vegan', 'vegan action']);
 
+// Any negation anywhere disqualifies a label: "Vegan: no", "not suitable for vegans", "ungeeignet für Veganer", "Vegan ✗".
+// ...except animal-free wording such as "no animal ingredients", "ohne tierische Bestandteile" or "inga animaliska ingredienser".
+const animalFree = /\b(?:no|without|ohne|frei\s+von|kein\w*|inga|ingen|utan)\s+(?:animal|tierisch|animalisk)\w*/gi;
+const labelNegation = /\b(?:not|non|no|never|nicht|kein(?:e|en|er|em|es)?|nein|niemals|un(?:suitable|geeignet)|inte|ej|nej|icke|ingen|olämplig)\b|[✗✘❌]/i;
+/** Photo transcriptions only count as complete when a composition heading is visible, not just because the model says so. */
+const photoCompositionHeading = /(?:^|[^\p{L}\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition)\s*[:：]/iu;
+export const transcriptionComplete = (extracted: Pick<AIExtraction, 'complete' | 'text'>, photo: boolean): boolean =>
+  extracted.complete && (!photo || photoCompositionHeading.test(extracted.text));
+
 /** Model evidence stays explicitly attributed and cannot rewrite a known local ingredient rule. */
 export function applyAIEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction, complete: boolean): CheckResult {
   const de = input.locale === 'de';
@@ -23,7 +32,7 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
       evaluated.evidence = [];
       evaluated.findings = evaluated.findings.map(finding => ({ ...finding, evidenceId: source.id }));
     }
-    result = mergeResults(parsed ? withoutCompositionFindings(result, sourceText) : result, evaluated);
+    result = mergeResults(parsed ? withoutCompositionFindings(result, sourceText) : result, evaluated, input.locale);
   }
   const assessments = new Map<string, NonNullable<AIExtraction['ingredientAssessments']>[number]>();
   const composition = normalizeTerm(sourceText);
@@ -91,9 +100,8 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
     if (unresolved.length) next.questions.push(`${t.originQuestionPrefix}${unresolved.join(', ')}.`);
   }
   if (!input.images?.length) return next;
-  const observations = (extracted.labelObservations ?? []).filter(label => /\bvegan\b/i.test(label.text) &&
-    !/\b(?:vegetarian|vegetarisch|vegetarisk)\b/i.test(label.text) &&
-    !/\b(?:not|non|nicht|kein|keine|inte|ej)\s*[-:]?\s*vegan\b/i.test(label.text) &&
+  const observations = (extracted.labelObservations ?? []).filter(label => /\bvegans?\b/i.test(label.text) &&
+    !/\b(?:vegetarian|vegetarisch|vegetarisk)\b/i.test(label.text) && !labelNegation.test(label.text.replace(animalFree, ' ')) &&
     (label.kind === 'vegan_claim' || veganCertifications.has(normalizeTerm(label.name))));
   if (!observations.length) return next;
   const conflict = next.outcome === 'not_vegan' || next.outcome === 'conflicting' || findings.some(item => item.status === 'animal');

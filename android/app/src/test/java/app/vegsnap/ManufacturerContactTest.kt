@@ -200,15 +200,22 @@ class ManufacturerContactTest {
                 val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
                     chain.proceed(chain.request().newBuilder().url(server.url("/v1/responses")).build())
                 }.build()
-                val repository = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), prompts.getString("prompt"), client, researchPrompt = prompts.getString("researchPrompt"))
+                val repository = CheckRepository(Evaluator(JSONObject(File(root, "data/rules.json").readText())), prompts.getString("prompt"), client, researchPrompt = prompts.getString("researchPrompt"),
+                    promptParts = prompts, outputSchema = JSONObject(File(root, "contracts/ai-output.schema.json").readText()))
                 val result = repository.check(CheckInput(autoMarket = true, market = "SE"), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", model = "test"), "")
                 assertEquals("uncertain", result.getString("outcome"))
                 assertEquals("kundkontakt@ica.se", result.getJSONObject("manufacturerContact").getString("email"))
                 assertEquals(2, server.requestCount)
-                server.takeRequest()
+                val first = JSONObject(server.takeRequest().body.readUtf8())
+                assertEquals(prompts.getString("prompt"), first.getString("instructions"))
+                assertFalse(first.getJSONObject("text").getJSONObject("format").getJSONObject("schema").getJSONObject("properties").has("alternatives"))
                 val request = JSONObject(server.takeRequest().body.readUtf8())
                 assertEquals(6, request.getInt("max_tool_calls"))
-                assertTrue(request.getString("instructions").contains("even when composition or ingredient origins remain unresolved"))
+                assertEquals(listOf("prompt", "searchPrompt", "researchPrompt").joinToString("\n") { prompts.getString(it) } +
+                    "\nUse at most 6 web-tool calls for this request.", request.getString("instructions"))
+                val format = request.getJSONObject("text").getJSONObject("format")
+                assertTrue(format.getBoolean("strict"))
+                assertEquals(name, format.getJSONObject("schema").getJSONObject("properties").getJSONObject("name").getJSONArray("enum").getString(0))
                 assertFalse(request.getJSONArray("input").toString().contains("input_image"))
             }
         }

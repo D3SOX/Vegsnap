@@ -198,8 +198,8 @@ import CryptoKit
                             input.barcode = normalized
                             var local = config; local.aiEnabled = false
                             let additional = try await engine.check(id: job.id, input: input, settings: local, token: "")
-                            struct Merge: Encodable { var original: CheckResult; var additional: CheckResult }
-                            result = try engine.call("merge", Merge(original: result, additional: additional))
+                            struct Merge: Encodable { var original: CheckResult; var additional: CheckResult; var locale: String }
+                            result = try engine.call("merge", Merge(original: result, additional: additional, locale: input.locale))
                         }
                     }
                     struct OCR: Encodable { var result: CheckResult; var input: CheckInput; var text: String }

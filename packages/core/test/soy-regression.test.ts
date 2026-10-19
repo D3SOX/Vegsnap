@@ -50,7 +50,7 @@ describe('saved Nordic soy-product regressions', () => {
 });
 
 describe('researching remaining ingredient questions', () => {
-  test('searched composition with a culture ambiguity gets one declaration lookup, preserving both sources', async () => {
+  test('searched composition with a culture ambiguity gets one declaration lookup; a third-party declaration is shown but not decisive', async () => {
     const { createOpenAIProvider, checkProduct } = await import('../src');
     const name = 'Oddlygood Soygurt Natural';
     const brand = 'Oddlygood';
@@ -76,10 +76,9 @@ describe('researching remaining ingredient questions', () => {
     expect(JSON.stringify(requests[1]?.input)).toContain('hapate');
     expect(JSON.stringify(requests[1]?.input)).not.toContain('Private refrigerator note');
     expect(JSON.stringify(requests[1]?.input)).not.toContain('input_image');
-    expect(result.outcome).toBe('vegan');
-    expect(result.basis).toBe('manufacturer');
+    expect(result.outcome).toBe('uncertain');
     expect(result.evidence.some(item => item.url === ingredientUrl)).toBe(true);
-    expect(result.evidence.some(item => item.url === declarationUrl)).toBe(true);
+    expect(result.evidence.find(item => item.url === declarationUrl)?.kind).toBe('ai_extraction');
     expect(result.findings.find(item => item.term === 'hapate')?.status).toBe('ambiguous');
   });
 });

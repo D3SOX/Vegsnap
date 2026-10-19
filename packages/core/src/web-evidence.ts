@@ -1,3 +1,4 @@
+import rulesData from '../../../data/rules.json';
 import { resultMessages } from './i18n';
 import { analyzeText, safeSourceUrl } from './analyze';
 import { applyAIEvidence } from './ai-evidence';
@@ -5,6 +6,11 @@ import { mergeResults } from './merge-results';
 import type { AIExtraction, CheckInput, CheckResult, Evidence } from './types';
 
 const identityKey = (value: string | undefined) => (value ?? '').normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+const veganCertifiers: string[] = rulesData.veganCertifiers;
+/** The label directly before the top-level domain. Multi-label and private suffixes (co.uk, github.io) deliberately never match a brand. */
+export function siteLabel(host: string): string {
+  return host.toLowerCase().replace(/\.$/, '').split('.').at(-2) ?? '';
+}
 
 /** The tool must actually have consulted the URL; a model-generated link alone is never evidence. */
 export function applyWebEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction): CheckResult {
@@ -41,20 +47,32 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
       ...evaluated.evidence.filter(item => item.id === 'ai-assessment').map(item => ({ ...item, id: `${evidenceId}-assessment` }))];
     evaluated.findings = evaluated.findings.map(finding => ({ ...finding, evidenceId: finding.evidenceId === 'ai-assessment' ? `${evidenceId}-assessment` : evidenceId }));
     evaluated.warnings.push(t.webCompositionCaution);
-    result = mergeResults(result, evaluated);
+    result = mergeResults(result, evaluated, input.locale);
   }
   const claims = (extracted.webClaims ?? []).filter(claim => sources.has(claim.url) && safeSourceUrl(claim.url) &&
     identityKey(claim.productName) === name && identityKey(claim.brand) === brand);
   if (!claims.length) return compositions.length ? result : consultedOnly();
-  const positive = claims.some(claim => claim.claim === 'vegan');
-  const negative = claims.some(claim => claim.claim === 'not_vegan');
-  const conflict = result.outcome === 'conflicting' || positive && (negative || result.outcome === 'not_vegan' || result.findings.some(item => item.status === 'animal')) || negative && result.outcome === 'vegan';
-  const manufacturer = claims.some(claim => claim.sourceType === 'manufacturer');
+  // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
+  // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
+  const brandKey = (extracted.brand ?? '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const trust = claims.map(claim => {
+    const host = new URL(claim.url).hostname.toLowerCase();
+    if (veganCertifiers.some(domain => host === domain || host.endsWith(`.${domain}`))) return 'certification' as const;
+    if (claim.sourceType === 'manufacturer' && brandKey.length >= 3 && siteLabel(host).replace(/-/g, '') === brandKey) return 'manufacturer' as const;
+    return undefined;
+  });
   const evidence: Evidence[] = claims.map((claim, index) => ({
-    id: `web-claim-${index}`, kind: claim.sourceType === 'manufacturer' ? 'manufacturer' : 'certification',
-    title: sources.get(claim.url)?.title || (claim.sourceType === 'manufacturer' ? claim.brand : t.certificationSource),
+    id: `web-claim-${index}`, kind: trust[index] ?? 'ai_extraction',
+    title: sources.get(claim.url)?.title || (trust[index] === 'manufacturer' ? claim.brand : trust[index] ? t.certificationSource : new URL(claim.url).hostname),
     excerpt: claim.quote, url: claim.url, retrievedAt: result.checkedAt, claim: claim.claim, verification: 'unverified',
   }));
+  // Safety asymmetry: any consulted not-vegan claim may still contradict or reject.
+  const settling = claims.filter((claim, index) => trust[index] || claim.claim === 'not_vegan');
+  if (!settling.length) return { ...result, evidence: [...result.evidence, ...evidence], warnings: [...result.warnings, t.webSourceCaution] };
+  const positive = settling.some(claim => claim.claim === 'vegan');
+  const negative = settling.some(claim => claim.claim === 'not_vegan');
+  const conflict = result.outcome === 'conflicting' || positive && (negative || result.outcome === 'not_vegan' || result.findings.some(item => item.status === 'animal')) || negative && result.outcome === 'vegan';
+  const manufacturer = trust.includes('manufacturer');
   return { ...result, outcome: conflict ? 'conflicting' : positive ? 'vegan' : 'not_vegan',
     basis: conflict ? 'insufficient' : manufacturer ? 'manufacturer' : 'research',
     title: conflict ? t.conflictingEvidence : negative ? t.sourceSaysNotVegan : manufacturer ? t.manufacturerSaysVegan : t.certificationSourceSaysVegan,

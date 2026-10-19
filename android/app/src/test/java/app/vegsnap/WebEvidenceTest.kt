@@ -14,6 +14,8 @@ class WebEvidenceTest {
     private val root = File(requireNotNull(System.getProperty("vegsnap.repo")))
     private val evaluator = Evaluator(JSONObject(File(root, "data/rules.json").readText()))
     private val claim = JSONObject("""{"url":"https://maker.example/tissues","quote":"ICA Basic tissues are vegan.","claim":"vegan","sourceType":"manufacturer","productName":"Basic tissues","brand":"ICA"}""")
+    // A brand-owned host, so the manufacturer claim may settle a verdict.
+    private fun brandExtraction() = extraction().put("webClaims", JSONArray().put(JSONObject(claim.toString()).put("url", "https://www.ica.se/tissues")))
     private fun extraction() = JSONObject().put("text", "").put("complete", false).put("category", "household")
         .put("name", "Basic tissues").put("brand", "ICA").put("webClaims", JSONArray().put(claim))
     private fun providerResponse(text: String, sourceUrl: String = claim.getString("url")) = JSONObject().put("status", "completed").put("output", JSONArray()
@@ -40,8 +42,8 @@ class WebEvidenceTest {
             assertTrue(input.contains("hapate"))
             assertFalse(input.contains("Private refrigerator note"))
             assertFalse(input.contains("input_image"))
-            assertEquals("vegan", result.getString("outcome"))
-            assertEquals("manufacturer", result.getString("basis"))
+            // A third-party product database declaration is shown, but is not a brand-owned source.
+            assertEquals("uncertain", result.getString("outcome"))
             assertTrue(result.getJSONArray("evidence").toString().contains(ingredientUrl))
             assertTrue(result.getJSONArray("evidence").toString().contains(declarationUrl))
             assertFalse(result.getJSONArray("warnings").toString().contains("did not complete"))
@@ -439,7 +441,8 @@ class WebEvidenceTest {
         }
     }
     @Test fun malformedPackagingCluesCannotReachResearch() = runBlocking {
-        for (packaging in listOf(JSONObject.NULL, JSONArray(), JSONObject(), "Swedish", JSONObject().put("language", " "),
+        // null is an omitted strict-output field, not a malformed clue.
+        for (packaging in listOf(JSONArray(), JSONObject(), "Swedish", JSONObject().put("language", " "),
             JSONObject().put("quantity", 200), JSONObject().put("language", "x".repeat(301)), JSONObject().put("privateNote", "do not send"))) {
             MockWebServer().use { server ->
                 val first = JSONObject().put("text", "").put("complete", false).put("category", "food")
@@ -636,7 +639,7 @@ class WebEvidenceTest {
         assertEquals("uncertain", conflict.getString("outcome"))
         assertEquals("ambiguous", conflict.getJSONArray("findings").getJSONObject(1).getString("status"))
     }
-    @Test fun overflowingFollowupAssessmentsCannotDropAContradiction() = runBlocking {
+    @Test fun overflowingFollowupKeepsAContradictionByPriority() = runBlocking {
         MockWebServer().use { server ->
             val assessments = JSONArray((0 until 99).map { JSONObject().put("term", "unused $it").put("status", "plant").put("explanation", "Unused fixture term.") })
                 .put(JSONObject().put("term", "rare fiber").put("status", "plant").put("explanation", "Initial assessment."))
@@ -649,8 +652,9 @@ class WebEvidenceTest {
             server.enqueue(MockResponse().setBody(providerResponse(followup.toString()).toString()))
             val result = officialRepository(server).check(CheckInput(), listOf(PreparedPhoto(byteArrayOf(1))), AppSettings(connection = "api", aiEnabled = true, model = "test"), "")
             assertEquals(2, server.requestCount)
-            assertEquals("uncertain", result.getString("outcome"))
-            assertFalse(result.getJSONArray("evidence").toString().contains("web-composition"))
+            // The contradicting animal assessment outranks the 100th original plant assessment when trimming.
+            assertEquals("not_vegan", result.getString("outcome"))
+            assertTrue(result.getJSONArray("evidence").toString().contains("web-composition"))
             assertEquals("images", result.getString("aiStatus"))
         }
     }
@@ -663,31 +667,31 @@ class WebEvidenceTest {
     }
     @Test fun sourceClaimNeedsActualToolUrlAndMatchingIdentity() {
         val input = CheckInput(category = "household", name = "Basic tissues")
-        val extracted = extraction()
-        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted).getString("outcome"))
-        extracted.put("research", responseResearch(providerResponse(extracted.toString())))
-        val result = applyWebEvidence(evaluator.evaluate(input), input, extracted)
+        val extracted = brandExtraction()
+        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
+        extracted.put("research", responseResearch(providerResponse(extracted.toString(), "https://www.ica.se/tissues")))
+        val result = applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers)
         assertEquals("vegan", result.getString("outcome"))
         assertEquals("manufacturer", result.getString("basis"))
         assertEquals("searched", result.getString("webSearchStatus"))
         assertEquals("unverified", result.getJSONArray("evidence").getJSONObject(1).getString("verification"))
         extracted.put("name", "Different tissues")
-        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted).getString("outcome"))
+        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
         extracted.put("name", "Basic tissues").getJSONArray("webClaims").getJSONObject(0).put("url", "https://invented.example/claim")
-        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted).getString("outcome"))
+        assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
     }
     @Test fun incompleteToolCannotGroundSourceAndAnimalConflictSurvives() {
-        val extracted = extraction()
-        val response = providerResponse(extracted.toString())
+        val extracted = brandExtraction()
+        val response = providerResponse(extracted.toString(), "https://www.ica.se/tissues")
         response.getJSONArray("output").getJSONObject(0).put("status", "failed")
         assertFalse(responseResearch(response).getBoolean("searched"))
-        extracted.put("research", responseResearch(providerResponse(extracted.toString())))
+        extracted.put("research", responseResearch(providerResponse(extracted.toString(), "https://www.ica.se/tissues")))
         val input = CheckInput("milk", "household", true, "Basic tissues")
-        assertEquals("conflicting", applyWebEvidence(evaluator.evaluate(input), input, extracted).getString("outcome"))
+        assertEquals("conflicting", applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
     }
     @Test fun officialOpenAiUsesResponsesSearchAndActualImagePayload() = runBlocking {
         MockWebServer().use { server ->
-            server.enqueue(MockResponse().setBody(providerResponse(extraction().toString()).toString()))
+            server.enqueue(MockResponse().setBody(providerResponse(brandExtraction().toString(), "https://www.ica.se/tissues").toString()))
             server.enqueue(MockResponse().setResponseCode(503))
             val client = CheckRepository.defaultHttpClient().newBuilder().addInterceptor { chain ->
                 chain.proceed(chain.request().newBuilder().url(server.url(chain.request().url.encodedPath)).build())

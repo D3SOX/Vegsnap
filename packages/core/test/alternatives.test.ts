@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import fixtures from '../../../contracts/alternatives-fixtures.json';
+import prompts from '../../../contracts/ai-extraction-prompt.json';
 import { alternativeQueryForProduct, alternativeSearchUrl, parsePublicAlternatives, parseAIAlternatives, rankAlternatives, researchVeganAlternatives, searchPublicAlternatives, validateAlternativeSearch } from '../src/alternatives';
 import type { AlternativeSearch } from '../src/alternatives';
 import type { AIExtraction } from '../src/types';
@@ -89,6 +90,8 @@ describe('vegan alternatives', () => {
     const fetcher = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
       calls++; const body = JSON.parse(String(init?.body));
       expect(body.tool_choice).toBe('required');
+      expect(body.instructions).toBe(`${prompts.alternativesPrompt}\nUse at most 3 web-tool calls for this request.`);
+      expect(body.text.format.schema.properties.alternatives.type).toEqual(['array', 'null']);
       expect(JSON.parse(body.input[0].content[0].text).alternativeSearch.query).toBe(input.query);
       const { research: _, ...model } = extraction;
       return Response.json({ status: 'completed', output: [

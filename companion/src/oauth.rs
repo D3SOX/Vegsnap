@@ -1322,6 +1322,7 @@ fn valid_research_additions(value: &Value) -> bool {
             &[
                 "url",
                 "text",
+                "ingredients",
                 "complete",
                 "sourceType",
                 "productName",
@@ -1367,6 +1368,17 @@ fn valid_research_additions(value: &Value) -> bool {
                     } else {
                         text(item, "text", 20_000)
                             && item["complete"].is_boolean()
+                            && item.get("ingredients").is_none_or(|terms| {
+                                terms.as_array().is_some_and(|terms| {
+                                    terms.len() <= 100
+                                        && terms.iter().all(|term| {
+                                            term.as_str().is_some_and(|term| {
+                                                !term.trim().is_empty()
+                                                    && term.encode_utf16().count() <= 300
+                                            })
+                                        })
+                                })
+                            })
                             && matches!(
                                 item["sourceType"].as_str(),
                                 Some("manufacturer" | "retailer")
@@ -1634,42 +1646,104 @@ fn research_if_needed(
     }
 }
 
+static PROMPTS: std::sync::LazyLock<Value> = std::sync::LazyLock::new(|| {
+    serde_json::from_str(include_str!("../../contracts/ai-extraction-prompt.json"))
+        .expect("bundled prompt contract")
+});
+static OUTPUT_SCHEMA: std::sync::LazyLock<Value> = std::sync::LazyLock::new(|| {
+    serde_json::from_str(include_str!("../../contracts/ai-output.schema.json"))
+        .expect("bundled output schema")
+});
+
+fn prompt(name: &str) -> &'static str {
+    PROMPTS[name].as_str().unwrap_or_default()
+}
+
+/// Strict Structured Outputs; product passes omit alternatives and research pins the identity.
+fn output_format(alternatives: bool, identity: Option<&Value>) -> Value {
+    let mut schema = OUTPUT_SCHEMA.clone();
+    let properties = schema["properties"]
+        .as_object_mut()
+        .expect("schema properties");
+    if !alternatives {
+        properties.shift_remove("alternatives");
+    }
+    if let Some(identity) = identity {
+        for field in ["name", "brand"] {
+            properties.insert(
+                field.into(),
+                json!({"type":"string","enum":[identity[field]]}),
+            );
+        }
+    }
+    schema["required"] = json!(properties.keys().collect::<Vec<_>>());
+    json!({"format":{"type":"json_schema","name":"product_evidence","strict":true,"schema":schema}})
+}
+
+/// Strict schemas express omitted optional fields as null; released clients expect them absent.
+fn without_nulls(value: Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(
+            map.into_iter()
+                .filter(|(_, field)| {
+                    !field.is_null()
+                        && field.as_object().is_none_or(|object| {
+                            object.is_empty() || object.values().any(|item| !item.is_null())
+                        })
+                })
+                .map(|(key, field)| (key, without_nulls(field)))
+                .collect(),
+        ),
+        Value::Array(items) => Value::Array(items.into_iter().map(without_nulls).collect()),
+        other => other,
+    }
+}
+
 fn product_request(
     model: &str,
-    instructions: &str,
-    research_prompt: &str,
     content: Vec<Value>,
     required: bool,
     automatic_country: bool,
 ) -> Value {
-    let alternatives = content
+    let input = content
         .first()
         .and_then(|part| part["text"].as_str())
         .and_then(|text| serde_json::from_str::<Value>(text).ok())
-        .is_some_and(|input| input["alternativeSearch"].is_object());
-    let mut body = json!({"model":model,"store":false,"stream":true,
-        "instructions":if required { research_prompt.to_string() } else { instructions.to_string() },
+        .unwrap_or(Value::Null);
+    let alternatives = input["alternativeSearch"].is_object();
+    let tools = required || alternatives || !automatic_country;
+    let instructions = if alternatives {
+        prompt("alternativesPrompt").to_owned()
+    } else if required {
+        [
+            prompt("prompt"),
+            prompt("searchPrompt"),
+            prompt("researchPrompt"),
+        ]
+        .join("\n")
+    } else if tools {
+        [prompt("prompt"), prompt("searchPrompt")].join("\n")
+    } else {
+        prompt("prompt").to_owned()
+    };
+    let mut body = json!({"model":model,"store":false,"stream":true,"instructions":instructions,
+        "text":output_format(alternatives, required.then_some(&input)),
         "input":[{"role":"user","content":content}]});
     // Automatic extraction must resolve packaging and barcode clues before web research.
-    if required || alternatives || !automatic_country {
+    if tools {
         body["tools"] = json!([{"type":"web_search"}]);
         body["include"] = json!(["web_search_call.action.sources"]);
         let budget = if alternatives {
             3
         } else if required {
-            body["input"][0]["content"][0]["text"]
-                .as_str()
-                .and_then(|text| serde_json::from_str::<Value>(text).ok())
-                .and_then(|input| input["webToolBudget"].as_u64())
-                .unwrap_or(6)
-                .min(6)
+            input["webToolBudget"].as_u64().unwrap_or(6).min(6)
         } else {
             4
         };
         // The ChatGPT plan endpoint rejects max_tool_calls, unlike the API-key endpoint.
         body["instructions"] = json!(format!(
-            "{}\nUse at most {budget} web-tool calls for this request.",
-            body["instructions"].as_str().unwrap_or_default()
+            "{instructions}\n{}",
+            prompt("toolBudgetPrompt").replace("{budget}", &budget.to_string())
         ));
     }
     if required || alternatives {
@@ -1686,15 +1760,6 @@ pub fn check(payload: Value) -> Result<Value> {
     }
     let country_context = payload.country_context.take();
     let (model, content) = check_content(payload)?;
-    let prompt: Value =
-        serde_json::from_str(include_str!("../../contracts/ai-extraction-prompt.json"))
-            .map_err(|_| "Extraction instructions are unavailable.")?;
-    let instructions = prompt["prompt"]
-        .as_str()
-        .ok_or("Extraction instructions missing.")?;
-    let research_prompt = prompt["researchPrompt"]
-        .as_str()
-        .ok_or("Research instructions missing.")?;
     let client = client()?;
     let session = active_session(&client)?;
     let deadline = Instant::now() + Duration::from_secs(130);
@@ -1708,8 +1773,6 @@ pub fn check(payload: Value) -> Result<Value> {
             }
             let body = product_request(
                 &model,
-                instructions,
-                research_prompt,
                 content,
                 required,
                 country_context
@@ -1725,7 +1788,11 @@ pub fn check(payload: Value) -> Result<Value> {
                     .send()
                     .map_err(|_| "The product check could not reach the provider.")?,
             )?;
-            crate::stream::read_response(BufReader::new(response))
+            let mut response = crate::stream::read_response(BufReader::new(response))?;
+            if let Some(extraction) = extraction_json(&response.text) {
+                response.text = without_nulls(extraction).to_string();
+            }
+            Ok(response)
         };
     let first = request(content.clone(), false)?;
     let analysis = research_with_discovered_country(
@@ -1912,7 +1979,7 @@ mod tests {
             let content = vec![
                 json!({"type":"input_text","text":json!({"webToolBudget":budget}).to_string()}),
             ];
-            let body = product_request("test", "extract", "research", content, true, true);
+            let body = product_request("test", content, true, true);
             assert!(
                 body.get("max_tool_calls").is_none(),
                 "ChatGPT rejects this field"
@@ -1928,7 +1995,7 @@ mod tests {
         }
         let content =
             vec![json!({"type":"input_text","text":json!({"alternativeSearch":{}}).to_string()})];
-        let body = product_request("test", "extract", "research", content, false, true);
+        let body = product_request("test", content, false, true);
         assert!(body.get("max_tool_calls").is_none());
         assert!(
             body["instructions"]
@@ -1939,11 +2006,59 @@ mod tests {
     }
 
     #[test]
+    fn requests_use_strict_schema_and_pass_specific_prompts() {
+        let identity = json!({"name":"Tissues","brand":"Maker","webToolBudget":2});
+        let content = vec![json!({"type":"input_text","text":identity.to_string()})];
+        let research = product_request("test", content, true, true);
+        let format = &research["text"]["format"];
+        assert_eq!(format["strict"], true);
+        assert_eq!(
+            format["schema"]["properties"]["name"]["enum"],
+            json!(["Tissues"])
+        );
+        assert_eq!(
+            format["schema"]["properties"]["brand"]["enum"],
+            json!(["Maker"])
+        );
+        assert!(format["schema"]["properties"].get("alternatives").is_none());
+        let instructions = research["instructions"].as_str().unwrap();
+        assert!(instructions.starts_with(prompt("prompt")));
+        assert!(instructions.contains(prompt("researchPrompt")));
+        let first = product_request("test", vec![], false, true);
+        assert_eq!(first["instructions"], prompt("prompt"));
+        assert_eq!(
+            first["text"]["format"]["schema"]["required"],
+            json!(
+                first["text"]["format"]["schema"]["properties"]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .collect::<Vec<_>>()
+            )
+        );
+        let alternatives =
+            vec![json!({"type":"input_text","text":json!({"alternativeSearch":{}}).to_string()})];
+        let body = product_request("test", alternatives, false, true);
+        assert!(
+            body["instructions"]
+                .as_str()
+                .unwrap()
+                .starts_with(prompt("alternativesPrompt"))
+        );
+        assert!(body["text"]["format"]["schema"]["properties"]["alternatives"].is_object());
+        assert_eq!(
+            without_nulls(
+                json!({"text":"","name":null,"packaging":{"language":null,"country":null},"contact":{"url":null,"email":"a@b.c"},"webClaims":[{"brand":null}]})
+            ),
+            json!({"text":"","contact":{"email":"a@b.c"},"webClaims":[{}]})
+        );
+    }
+
+    #[test]
     fn automatic_first_request_has_no_web_tools_but_research_and_legacy_requests_do() {
         for automatic in [false, true] {
             for required in [false, true] {
-                let body =
-                    product_request("test", "extract", "research", vec![], required, automatic);
+                let body = product_request("test", vec![], required, automatic);
                 assert_eq!(body.get("tools").is_some(), required || !automatic);
                 assert_eq!(body.get("include").is_some(), required || !automatic);
                 assert_eq!(body.get("tool_choice").is_some(), required);
@@ -2454,6 +2569,26 @@ mod tests {
         assert!(extracted.get("contact").is_none());
         assert!(extracted.get("companyAssessment").is_none());
         assert_eq!(extracted["webCompositions"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn research_compositions_keep_valid_parsed_ingredients() {
+        let research = |ingredients: Value| {
+            research_if_needed(research_fixture(false), &[], None, move |_| {
+                let mut next = research_fixture(true);
+                let mut extracted = extraction_json(&next.text).unwrap();
+                extracted["webCompositions"] = json!([{"url":"https://maker.example/granola","text":"oats, cocoa","ingredients":ingredients,"complete":true,"sourceType":"manufacturer","productName":"Granola Kakao & Hallon","brand":"Paulúns"}]);
+                next.text = extracted.to_string();
+                Ok(next)
+            })
+        };
+        let extracted = extraction_json(&research(json!(["oats", "cocoa"])).text).unwrap();
+        assert_eq!(
+            extracted["webCompositions"][0]["ingredients"],
+            json!(["oats", "cocoa"])
+        );
+        let rejected = extraction_json(&research(json!(vec!["oats"; 101])).text).unwrap();
+        assert!(rejected.get("webCompositions").is_none());
     }
 
     #[test]

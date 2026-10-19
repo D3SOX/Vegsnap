@@ -106,6 +106,15 @@ internal fun validateAIEvidence(extracted: JSONObject) {
     }
 }
 
+// Any negation anywhere disqualifies a label: "Vegan: no", "not suitable for vegans", "ungeeignet für Veganer", "Vegan ✗".
+// ...except animal-free wording such as "no animal ingredients", "ohne tierische Bestandteile" or "inga animaliska ingredienser".
+private val animalFree = Regex("\\b(?:no|without|ohne|frei\\s+von|kein\\w*|inga|ingen|utan)\\s+(?:animal|tierisch|animalisk)\\w*", RegexOption.IGNORE_CASE)
+private val labelNegation = Regex("\\b(?:not|non|no|never|nicht|kein(?:e|en|er|em|es)?|nein|niemals|un(?:suitable|geeignet)|inte|ej|nej|icke|ingen|olämplig)\\b|[✗✘❌]", RegexOption.IGNORE_CASE)
+/** Photo transcriptions only count as complete when a composition heading is visible, not just because the model says so. */
+private val photoCompositionHeading = Regex("(?:^|[^\\p{L}\\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition)\\s*[:：]", RegexOption.IGNORE_CASE)
+internal fun transcriptionComplete(extracted: JSONObject, photo: Boolean): Boolean =
+    extracted.optBoolean("complete") && (!photo || photoCompositionHeading.containsMatchIn(extracted.optString("text")))
+
 private val veganLabels = setOf("v-label", "v label", "v-label vegan", "v label vegan", "vegan society", "the vegan society", "vegan society trademark", "vegan trademark", "vegan flower", "veganblume", "veganblomman", "certified vegan", "vegan action")
 
 /** The model may resolve unknown terms, but cannot overwrite known local ingredient evidence. */
@@ -193,8 +202,8 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val labels = extracted.optJSONArray("labelObservations") ?: JSONArray()
     val observations = (0 until labels.length()).map { labels.getJSONObject(it) }.filter {
         val text = it.getString("text")
-        Regex("\\bvegan\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
-            !Regex("\\b(?:vegetarian|vegetarisch|vegetarisk)\\b|\\b(?:not|non|nicht|kein|keine|inte|ej)\\s*[-:]?\\s*vegan\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
+        Regex("\\bvegans?\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
+            !Regex("\\b(?:vegetarian|vegetarisch|vegetarisk)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) && !labelNegation.containsMatchIn(text.replace(animalFree, " ")) &&
             (it.getString("kind") == "vegan_claim" || normalizeCompositionTerm(it.getString("name")) in veganLabels)
     }
     if (observations.isEmpty()) return result
