@@ -7,10 +7,6 @@ on:
 permissions:
   contents: read
 
-# Pull request checks reuse the checked-in Open Food Facts snapshot instead of refreshing it over the network.
-env:
-  VEGSNAP_OFFLINE_SNAPSHOT: cached
-
 concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -34,6 +30,9 @@ jobs:
           version-file: pyproject.toml
       - run: bun run test
       - run: bun run test:package
+        # Reuse the checked-in Open Food Facts snapshot instead of refreshing it over the network.
+        env:
+          VEGSNAP_OFFLINE_SNAPSHOT: cached
       - run: bun run test:screenshots
       - run: python3 -m unittest discover -s scripts -p 'test_extension_stores.py' -v
 
