@@ -59,6 +59,27 @@ describe('offline snapshot build', () => {
       expect(await readdir(folder)).toEqual(['pack.json']);
     } finally { await rm(folder, { recursive: true, force: true }); }
   });
+  test('VEGSNAP_OFFLINE_SNAPSHOT=cached reuses an expired snapshot without network unless forced', async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-'));
+    const previous = process.env.VEGSNAP_OFFLINE_SNAPSHOT;
+    process.env.VEGSNAP_OFFLINE_SNAPSHOT = 'cached';
+    try {
+      const output = join(folder, 'pack.json');
+      const original = JSON.stringify(createSnapshot('germany', [[row]], date));
+      await writeFile(output, original);
+      let requests = 0;
+      const fetcher = (async () => { requests++; throw new Error('network unavailable'); });
+      const now = new Date(+date + 10 * CACHE_TTL_MS);
+      expect(await refreshSnapshot({ output, includeNonfood: false, region: 'germany', now, fetcher, log: () => {} })).toBe('cached');
+      expect(requests).toBe(0);
+      expect(await readFile(output, 'utf8')).toBe(original);
+      expect(await refreshSnapshot({ output, includeNonfood: false, region: 'germany', now, fetcher, force: true, log: () => {} })).toBe('stale');
+      expect(requests).toBe(1);
+    } finally {
+      if (previous === undefined) delete process.env.VEGSNAP_OFFLINE_SNAPSHOT; else process.env.VEGSNAP_OFFLINE_SNAPSHOT = previous;
+      await rm(folder, { recursive: true, force: true });
+    }
+  });
   test('rejects truncated/empty exports atomically; complete valid refresh replaces the cache', async () => {
     const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-'));
     try {

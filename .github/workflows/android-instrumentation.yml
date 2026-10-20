@@ -1,0 +1,83 @@
+name: Android instrumentation tests
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  pull_request:
+    paths:
+      - android/**
+      - data/**
+      - contracts/**
+      - scripts/screenshots/**
+      - .github/workflows/android-instrumentation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-instrumentation-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Cache the AVD
+        id: avd-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api36-google_apis-x86_64-pixel_7
+      - name: Create the AVD and its boot snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          avd-name: vegsnap_instrumentation
+          force-avd-creation: false
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swangle
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          avd-name: vegsnap_instrumentation
+          force-avd-creation: false
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swangle -no-snapshot-save
+          disable-animations: true
+          working-directory: android
+          # The isolated capture application ID lets every test run; marketing captures belong to screenshots.yml.
+          script: |
+            # The fresh Pixel launcher can ANR under CI load and steal focus from UI tests.
+            adb shell am force-stop com.google.android.apps.nexuslauncher
+            ./gradlew connectedDebugAndroidTest -PmarketingCapture -Pandroid.testInstrumentationRunnerArguments.notClass=app.vegsnap.MarketingScreenshotTest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: android-instrumentation-report
+          path: |
+            android/app/build/reports/androidTests/connected
+            android/app/build/outputs/androidTest-results/connected
+          if-no-files-found: ignore

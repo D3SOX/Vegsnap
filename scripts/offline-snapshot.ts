@@ -219,6 +219,9 @@ export async function refreshSnapshot(options: { output: string; region?: Region
   fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }): Promise<'cached' | 'updated' | 'stale'> {
   const region = options.region ?? 'de-eu', now = options.now ?? new Date(), log = options.log ?? console.log;
   const existing = await readSnapshot(options.output, region);
+  if (existing && !options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
+    log(`Offline ${region}: using ${existing.products.length} products from ${existing.generatedAt} (VEGSNAP_OFFLINE_SNAPSHOT=cached).`); return 'cached';
+  }
   const age = existing ? now.getTime() - Date.parse(existing.generatedAt) : Infinity;
   if (existing && !options.force && age >= 0 && age < CACHE_TTL_MS && existing.sources.every(source => now.getTime() - Date.parse(source.retrievedAt) >= 0 && now.getTime() - Date.parse(source.retrievedAt) < CACHE_TTL_MS)) {
     log(`Offline ${region}: using ${existing.products.length} products from ${existing.generatedAt} (7-day cache).`); return 'cached';
