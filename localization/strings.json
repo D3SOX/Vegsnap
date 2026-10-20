@@ -1756,7 +1756,8 @@
     "extension": [
       "app.cancel",
       "alternatives.cancel",
-      "browse.cancel"
+      "browse.cancel",
+      "report.cancel"
     ]
   },
   "category": {
@@ -2174,6 +2175,9 @@
     "de": "Schließen",
     "android": [
       "close"
+    ],
+    "extension": [
+      "report.close"
     ]
   },
   "clothing": {
@@ -3826,6 +3830,9 @@
     "de": "Ausgeblendete Antworten bleiben auf diesem Gerät verborgen.",
     "ios": [
       "Hidden replies stay hidden on this device."
+    ],
+    "extension": [
+      "community.hiddenNotice"
     ]
   },
   "hide_account_email": {
@@ -3840,6 +3847,9 @@
     "de": "Diese Antwort ausblenden",
     "ios": [
       "Hide this reply"
+    ],
+    "extension": [
+      "community.hideReply"
     ]
   },
   "history": {
@@ -5692,6 +5702,9 @@
     "de": "KI-Ausgabe melden",
     "android": [
       "report_ai"
+    ],
+    "extension": [
+      "report.ai"
     ]
   },
   "report_ai_content": {
@@ -5706,6 +5719,9 @@
     "de": "Prüfe den Text und entferne persönliche Angaben. Nur dieser Text und dein Meldegrund werden an Vegsnaps Moderationsdienst auf Cloudflare gesendet. Fotos, Zugangsdaten und Verlauf werden nicht angehängt. Meldungen bleiben privat und laufen nach 30 Tagen ab.",
     "android": [
       "report_ai_notice"
+    ],
+    "extension": [
+      "report.aiNotice"
     ]
   },
   "report_failed": {
@@ -5713,6 +5729,9 @@
     "de": "Die Meldung konnte nicht gesendet werden. Versuche es in Kürze erneut. Der Eingang ist noch nicht bestätigt.",
     "android": [
       "report_failed"
+    ],
+    "extension": [
+      "report.failed"
     ]
   },
   "report_offline": {
@@ -5720,6 +5739,16 @@
     "de": "Gehe online, um eine Meldung zu senden.",
     "android": [
       "report_offline"
+    ],
+    "extension": [
+      "report.offline"
+    ]
+  },
+  "report_permission_hint": {
+    "en": "Browser permission is needed before a report can be sent to the community service.",
+    "de": "Eine Browserberechtigung ist erforderlich, bevor eine Meldung an den Community-Dienst gesendet werden kann.",
+    "extension": [
+      "report.permission"
     ]
   },
   "report_reason": {
@@ -5727,6 +5756,9 @@
     "de": "Warum meldest du diesen Inhalt?",
     "android": [
       "report_reason"
+    ],
+    "extension": [
+      "report.reason"
     ]
   },
   "report_reply": {
@@ -5737,6 +5769,9 @@
     ],
     "ios": [
       "Report this reply"
+    ],
+    "extension": [
+      "report.reply"
     ]
   },
   "report_reply_notice": {
@@ -5744,6 +5779,48 @@
     "de": "Nur die Referenz dieser Antwort und dein Meldegrund werden an Vegsnaps Moderationsdienst auf Cloudflare gesendet. Entferne persönliche Angaben aus deinem Meldegrund. Meldungen bleiben privat und laufen nach 30 Tagen ab.",
     "android": [
       "report_reply_notice"
+    ],
+    "extension": [
+      "report.replyNotice"
+    ]
+  },
+  "report_result": {
+    "en": "Report wrong result",
+    "de": "Falsches Ergebnis melden",
+    "android": [
+      "report_result"
+    ],
+    "ios": [
+      "Report wrong result"
+    ],
+    "extension": [
+      "report.result"
+    ]
+  },
+  "report_result_notice": {
+    "en": "Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days.",
+    "de": "Nur das Ergebnis, die aufgeführten Zutatenbegriffe mit Status und Regel-ID, Produktname und Marke, App-Sprache, Plattform und Version sowie dein Grund werden an den Moderationsdienst von Vegsnap auf Cloudflare gesendet. Fotos, gespeicherter Verlauf und Zugangsdaten werden nie mitgesendet. Meldungen sind privat und verfallen nach 30 Tagen.",
+    "android": [
+      "report_result_notice"
+    ],
+    "ios": [
+      "Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days."
+    ],
+    "extension": [
+      "report.resultNotice"
+    ]
+  },
+  "report_result_reason": {
+    "en": "What is wrong with this result?",
+    "de": "Was ist an diesem Ergebnis falsch?",
+    "android": [
+      "report_result_reason"
+    ],
+    "ios": [
+      "What is wrong with this result?"
+    ],
+    "extension": [
+      "report.resultReason"
     ]
   },
   "report_send": {
@@ -5754,6 +5831,9 @@
     ],
     "ios": [
       "Send report"
+    ],
+    "extension": [
+      "report.send"
     ]
   },
   "report_sending": {
@@ -5761,6 +5841,9 @@
     "de": "Wird gesendet…",
     "android": [
       "report_sending"
+    ],
+    "extension": [
+      "report.sending"
     ]
   },
   "report_sent": {
@@ -5775,6 +5858,9 @@
     "de": "Meldung gesendet. Referenz:",
     "ios": [
       "Report sent. Reference:"
+    ],
+    "extension": [
+      "report.sent"
     ]
   },
   "report_text": {
@@ -5782,6 +5868,9 @@
     "de": "Zu meldender KI-Text",
     "android": [
       "report_text"
+    ],
+    "extension": [
+      "report.text"
     ]
   },
   "research": {
@@ -5817,6 +5906,9 @@
     "de": "Ausgeblendete Antworten wieder anzeigen",
     "ios": [
       "Restore hidden replies"
+    ],
+    "extension": [
+      "app.restoreHiddenReplies"
     ]
   },
   "result": {

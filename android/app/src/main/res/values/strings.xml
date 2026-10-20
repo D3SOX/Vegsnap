@@ -377,6 +377,9 @@
     <string name="report_reason">Why are you reporting this content?</string>
     <string name="report_reply">Report this reply</string>
     <string name="report_reply_notice">Only this reply’s reference and your reason are sent to Vegsnap’s moderation service on Cloudflare. Remove personal information from your reason. Reports are private and expire after 30 days.</string>
+    <string name="report_result">Report wrong result</string>
+    <string name="report_result_notice">Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days.</string>
+    <string name="report_result_reason">What is wrong with this result?</string>
     <string name="report_send">Send report</string>
     <string name="report_sending">Sending…</string>
     <string name="report_sent">Report received. Thank you. Reference: %1$s</string>

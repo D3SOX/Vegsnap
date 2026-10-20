@@ -377,6 +377,9 @@
     <string name="report_reason">Warum meldest du diesen Inhalt?</string>
     <string name="report_reply">Diese Antwort melden</string>
     <string name="report_reply_notice">Nur die Referenz dieser Antwort und dein Meldegrund werden an Vegsnaps Moderationsdienst auf Cloudflare gesendet. Entferne persönliche Angaben aus deinem Meldegrund. Meldungen bleiben privat und laufen nach 30 Tagen ab.</string>
+    <string name="report_result">Falsches Ergebnis melden</string>
+    <string name="report_result_notice">Nur das Ergebnis, die aufgeführten Zutatenbegriffe mit Status und Regel-ID, Produktname und Marke, App-Sprache, Plattform und Version sowie dein Grund werden an den Moderationsdienst von Vegsnap auf Cloudflare gesendet. Fotos, gespeicherter Verlauf und Zugangsdaten werden nie mitgesendet. Meldungen sind privat und verfallen nach 30 Tagen.</string>
+    <string name="report_result_reason">Was ist an diesem Ergebnis falsch?</string>
     <string name="report_send">Meldung senden</string>
     <string name="report_sending">Wird gesendet…</string>
     <string name="report_sent">Meldung eingegangen. Vielen Dank. Referenz: %1$s</string>
