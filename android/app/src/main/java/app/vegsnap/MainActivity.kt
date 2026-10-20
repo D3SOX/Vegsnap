@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -123,7 +124,8 @@ fun VegsnapApp(model: VegsnapViewModel) {
     } else if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFA7D4AF), secondary = Color(0xFFBDCDBE))
         else lightColorScheme(primary = Color(0xFF355D40), secondary = Color(0xFF526453), surface = Color(0xFFF7F9F3))
     val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(context.getString(it)); model.update { s -> s.copy(message = null) } } }
+    val resources = LocalResources.current
+    LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(resources.getString(it)); model.update { s -> s.copy(message = null) } } }
     MaterialTheme(colorScheme = scheme) {
         if (showTour) OnboardingScreen(settings, model) {
             tourPreferences.edit().putBoolean("completed", true).apply()
@@ -267,7 +269,7 @@ private fun PrivateAccountEmail(email: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTour: () -> Unit) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     var startMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ToggleRow(stringResource(R.string.offline), settings.offline, { enabled -> model.updateSettings { it.copy(offline = enabled) } })
@@ -278,7 +280,7 @@ private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTou
         var parallelValue by remember(settings.parallelChecks) { mutableFloatStateOf(settings.parallelChecks.toFloat()) }
         Slider(value = parallelValue, onValueChange = { parallelValue = it }, valueRange = 1f..10f, steps = 8,
             onValueChangeFinished = { model.updateSettings { it.copy(parallelChecks = kotlin.math.round(parallelValue).toInt().coerceIn(1, 10)) } },
-            modifier = Modifier.semantics { contentDescription = context.getString(R.string.parallel_checks, kotlin.math.round(parallelValue).toInt()) })
+            modifier = Modifier.semantics { contentDescription = resources.getString(R.string.parallel_checks, kotlin.math.round(parallelValue).toInt()) })
         Text(stringResource(R.string.parallel_checks_hint), style = MaterialTheme.typography.bodySmall)
         HorizontalDivider()
         OcrLanguageSettings(model, settings.offline)
