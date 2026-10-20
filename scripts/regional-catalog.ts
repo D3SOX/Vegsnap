@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { validateOfflineSnapshot, OFFLINE_MAX_BYTES } from '../packages/core/src/offline';
 
-export async function createCatalog(baseUrl: string, directory = 'regional-packs') {
+export async function createCatalog(baseUrl: string, directory: string) {
   const base = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) throw new Error('Use a plain HTTPS release asset base URL.');
   const packs = [];
@@ -19,8 +19,8 @@ export async function createCatalog(baseUrl: string, directory = 'regional-packs
 }
 
 if (import.meta.main) {
-  const base = process.argv[2];
-  if (!base) throw new Error('Usage: bun scripts/regional-catalog.ts HTTPS_RELEASE_ASSET_BASE [OUTPUT]');
-  const catalog = await createCatalog(base);
-  await writeFile(process.argv[3] ?? 'regional-packs/catalog.json', `${JSON.stringify(catalog, null, 2)}\n`);
+  const [base, directory] = process.argv.slice(2);
+  if (!base || !directory) throw new Error('Usage: bun scripts/regional-catalog.ts HTTPS_RELEASE_ASSET_BASE PACK_DIRECTORY [OUTPUT]');
+  const catalog = await createCatalog(base, directory);
+  await writeFile(process.argv[4] ?? `${directory}/catalog.json`, `${JSON.stringify(catalog, null, 2)}\n`);
 }

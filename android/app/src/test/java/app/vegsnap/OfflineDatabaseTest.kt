@@ -140,6 +140,22 @@ class OfflineDatabaseTest {
         try { database.import("x".repeat(OFFLINE_PACK_BYTES + 1).byteInputStream()); fail("Oversized import accepted") } catch (_: IllegalArgumentException) { }
         assertEquals(original, File(folder, "regions/${offlineRegionId("Sweden")}.json").readText())
     }
+    @Test fun `regional pack at the maximum product count loads and serves lookups`() = withDatabase { database, _ ->
+        fun gtin(index: Int): String {
+            val base = "2" + index.toString().padStart(11, '0')
+            val sum = base.reversed().withIndex().sumOf { (position, digit) -> digit.digitToInt() * if (position % 2 == 0) 3 else 1 }
+            return base + (10 - sum % 10) % 10
+        }
+        val products = JSONArray()
+        for (index in 0 until OFFLINE_PACK_PRODUCTS) products.put(JSONObject().put("source", "off").put("code", gtin(index))
+            .put("name", "Product $index").put("brands", "Brand").put("ingredients", "water, sugar, salt, ".repeat(10))
+            .put("countries_tags", JSONArray().put("en:sweden")).put("last_modified_t", 1700000000))
+        val bytes = document("Sweden").put("products", products).toString().toByteArray()
+        assertTrue(bytes.size in 10_000_001..OFFLINE_PACK_BYTES)
+        database.import(bytes.inputStream())
+        assertEquals(OFFLINE_PACK_PRODUCTS, database.state.value.installed.single().count)
+        assertEquals("Product 39999", database.lookup(CheckInput(barcode = gtin(39_999)))?.first?.name)
+    }
     @Test fun `offline browse searches local names and brands and retains attribution`() = withDatabase { database, _ ->
         var network = 0
         val repository = BrowseRepository(http = OkHttpClient.Builder().addInterceptor { network++; error("Network forbidden") }.build(), offlineDatabase = database)

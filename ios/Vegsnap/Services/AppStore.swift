@@ -364,7 +364,7 @@ import CryptoKit
         packs = try engine.call("packs", "")
     }
     func importPack(_ data: Data) throws {
-        guard data.count <= 10_000_000 else { throw AppError(L("Offline packs must be smaller than 10 MB.")) }
+        guard data.count <= 20_000_000 else { throw AppError(L("Offline packs must be smaller than 20 MB.")) }
         let validated = try engine.callRaw("snapshot", json: String(decoding: data, as: UTF8.self))
         struct Header: Decodable { var region: String; var generatedAt: String }
         let header = try JSONDecoder().decode(Header.self, from: Data(validated.utf8))
@@ -394,7 +394,7 @@ import CryptoKit
                 let data = try await Network.get(url, limit: 256_000, redirects: true)
                 let doc = try JSONDecoder().decode(PackCatalog.self, from: data)
                 guard doc.schemaVersion == 1, doc.packs.count <= 100, Set(doc.packs.map(\.id)).count == doc.packs.count,
-                      doc.packs.allSatisfy({ safeURL($0.url) != nil && (1...10_000_000).contains($0.bytes) && (0...10_000).contains($0.products) && $0.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && HistoryTransfer.parseDate($0.generatedAt) != nil }) else { throw AppError(L("Invalid regional pack catalog.")) }
+                      doc.packs.allSatisfy({ safeURL($0.url) != nil && (1...20_000_000).contains($0.bytes) && (0...40_000).contains($0.products) && $0.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && HistoryTransfer.parseDate($0.generatedAt) != nil }) else { throw AppError(L("Invalid regional pack catalog.")) }
                 try Task.checkCancellation()
                 catalog = doc.packs
             } catch {

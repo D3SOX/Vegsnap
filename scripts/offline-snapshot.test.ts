@@ -26,6 +26,17 @@ describe('offline snapshot build', () => {
     expect(sql).toContain('unique_scans_n DESC, code LIMIT 4000');
     expect(sql).not.toContain('SELECT *');
   });
+  test('downloadable packs grow past the bundled caps while the de-eu bundle keeps them', () => {
+    const gtin = (index: number) => {
+      const base = `2${String(index).padStart(11, '0')}`;
+      const sum = [...base].reverse().reduce((total, digit, position) => total + Number(digit) * (position % 2 === 0 ? 3 : 1), 0);
+      return `${base}${(10 - sum % 10) % 10}`;
+    };
+    const rows = Array.from({ length: 12_000 }, (_, index) => ({ ...row, code: gtin(index) }));
+    expect(new URL(exportUrl(regionQueries('germany')[0]!)).searchParams.get('sql')).toContain('LIMIT 30000');
+    expect(createSnapshot('germany', [rows], date).products).toHaveLength(12_000);
+    expect(createSnapshot('de-eu', [rows], date).products).toHaveLength(10_000);
+  });
   test('non-food sources keep individual retrieval dates and original composition', () => {
     const older = '2026-10-04T12:00:00.000Z';
     const pack = createSnapshot('germany', [[row]], date, [{ source: 'obf', retrievedAt: older,

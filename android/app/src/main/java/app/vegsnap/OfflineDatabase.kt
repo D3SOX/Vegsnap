@@ -20,7 +20,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal const val OFFLINE_PACK_BYTES = 10_000_000
+internal const val OFFLINE_PACK_BYTES = 20_000_000
+internal const val OFFLINE_PACK_PRODUCTS = 40_000
 internal const val OFFLINE_INSTALLED_PACKS = 10
 internal fun offlineRegionId(region: String): String = MessageDigest.getInstance("SHA-256")
     .digest(region.trim().lowercase(Locale.ROOT).toByteArray()).joinToString("") { "%02x".format(it) }
@@ -173,7 +174,7 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
             sources[id] = source
         }
         val values = document.getJSONArray("products")
-        require(values.length() <= 10_000)
+        require(values.length() <= OFFLINE_PACK_PRODUCTS)
         val seen = mutableSetOf<String>()
         val products = (0 until values.length()).map { index ->
             values.getJSONObject(index).also { p ->

@@ -52,7 +52,7 @@ internal fun parseRegionalCatalog(bytes: ByteArray): List<RegionalPackDescriptor
         require(item.getString("generatedAt").length <= 50)
         Instant.parse(item.getString("generatedAt"))
         require(item.get("bytes") is Number && item.getDouble("bytes") == item.getLong("bytes").toDouble() && item.getLong("bytes") in 1..OFFLINE_PACK_BYTES.toLong())
-        require(item.get("products") is Number && item.getDouble("products") == item.getInt("products").toDouble() && item.getInt("products") in 0..10_000)
+        require(item.get("products") is Number && item.getDouble("products") == item.getInt("products").toDouble() && item.getInt("products") in 0..OFFLINE_PACK_PRODUCTS)
         RegionalPackDescriptor(id, region, item.getString("url"), item.getLong("bytes"), item.getString("sha256"), item.getString("generatedAt"), item.getInt("products"))
     }
 }

@@ -174,7 +174,7 @@
 "Offline mode" = "Offline-Modus";
 "Offline mode prevents product, AI, and community requests. Local rules and text recognition remain available." = "Der Offline-Modus verhindert Produkt-, KI- und Community-Anfragen. Lokale Regeln und Texterkennung bleiben verfügbar.";
 "Offline mode — local evidence only" = "Offline-Modus — nur lokale Belege";
-"Offline packs must be smaller than 10 MB." = "Offline-Pakete müssen kleiner als 10 MB sein.";
+"Offline packs must be smaller than 20 MB." = "Offline-Pakete müssen kleiner als 20 MB sein.";
 "Offline product databases" = "Offline-Produktdatenbanken";
 "Offline snapshot" = "Offline-Datenstand";
 "On-device text recognition" = "Texterkennung auf dem Gerät";

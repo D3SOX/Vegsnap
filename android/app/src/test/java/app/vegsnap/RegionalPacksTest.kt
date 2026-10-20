@@ -155,7 +155,7 @@ class RegionalPacksTest {
             descriptor(bytes).put("url", "https://user:key@packs.example/file.json"),
             descriptor(bytes).put("url", "https://packs.example/file.json#fragment"),
             descriptor(bytes).put("id", "../outside"), descriptor(bytes).put("bytes", OFFLINE_PACK_BYTES + 1),
-            descriptor(bytes).put("products", 10001), descriptor(bytes).put("sha256", "bad"),
+            descriptor(bytes).put("products", OFFLINE_PACK_PRODUCTS + 1), descriptor(bytes).put("sha256", "bad"),
         )) {
             try { parseRegionalCatalog(catalog(bad)); fail("Unsafe manifest accepted") } catch (_: IllegalArgumentException) { }
         }
