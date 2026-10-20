@@ -1,13 +1,14 @@
-import { backgroundMessages } from '../src/i18n';
+import { backgroundMessages, messages } from '../src/i18n';
 import { browser } from 'wxt/browser';
 import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, retainPreviousResearch, HOSTED_AI, type CheckInput, type CheckResult, type ProviderAdapter } from '@vegsnap/core';
-import { researchVeganAlternatives, validateAlternativeSearch, type AlternativeSearch } from '@vegsnap/core';
+import { researchVeganAlternatives, validateAlternativeSearch, browseOfflinePage, validateBrowseSearch, type AlternativeSearch } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { hostedCommand, hostedToken } from '../src/hosted';
 import { history, type HistoryResult } from '../src/history';
 import { withoutCommunityHistory } from '../src/community-history';
+import { mergeHistoryImport, parseHistoryImport } from '../src/history-transfer';
 import { offlineLibrary } from '../src/offline';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
@@ -107,6 +108,21 @@ export default defineBackground(() => {
             await offlineLibrary().remove(message.region);
             cache.clear(); await stateChanged();
             return { ok: true, result: null };
+          }
+          case 'import-history': {
+            if (typeof message.text !== 'string') throw new Error('Unsupported history file.');
+            const imported = parseHistoryImport(message.text, messages[config.language].importedAssessment);
+            let outcome = { added: 0, skipped: 0 };
+            await changeHistory(async () => {
+              const merged = mergeHistoryImport(await history('list'), imported);
+              if (merged.added.length) await history('save', merged.added);
+              outcome = { added: merged.added.length, skipped: merged.skipped };
+            });
+            return { ok: true, result: outcome };
+          }
+          case 'browse-offline': {
+            const input = validateBrowseSearch(message.input);
+            return { ok: true, result: browseOfflinePage(await offlineLibrary().index(), input, config.fallbackCountry) };
           }
           case 'set-language': {
             if (message.language !== 'en' && message.language !== 'de') throw new Error('Unsupported language.');

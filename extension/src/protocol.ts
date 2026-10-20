@@ -1,4 +1,4 @@
-import type { AlternativeSearch, CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
+import type { AlternativeSearch, BrowseSearch, CheckInput, CheckStage, OfflinePackInfo } from '@vegsnap/core';
 import { countryCode } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 import type { Settings } from './settings';
@@ -17,6 +17,8 @@ export type Request =
   | { type: 'state' }
   | { type: 'import-offline-pack'; text: string }
   | { type: 'remove-offline-pack'; region: string }
+  | { type: 'import-history'; text: string }
+  | { type: 'browse-offline'; input: BrowseSearch }
   | { type: 'set-language'; language: Settings['language'] }
   | { type: 'set-chatgpt-model'; model: string }
   | { type: 'update-settings'; patch: Partial<Settings> }

@@ -29,10 +29,10 @@ function database(): Promise<IDBDatabase> {
   });
 }
 export async function history(operation: 'list'): Promise<HistoryResult[]>;
-export async function history(operation: 'save', value: HistoryResult): Promise<void>;
+export async function history(operation: 'save', value: HistoryResult | HistoryResult[]): Promise<void>;
 export async function history(operation: 'delete', value?: string): Promise<void>;
 // biome-ignore lint/suspicious/noConfusingVoidType: the save and delete overloads resolve to void.
-export async function history(operation: 'list' | 'save' | 'delete', value?: HistoryResult | string): Promise<HistoryResult[] | void> {
+export async function history(operation: 'list' | 'save' | 'delete', value?: HistoryResult | HistoryResult[] | string): Promise<HistoryResult[] | void> {
   const db = await database();
   try {
     // biome-ignore lint/suspicious/noConfusingVoidType: matches the overload return types.
@@ -41,7 +41,7 @@ export async function history(operation: 'list' | 'save' | 'delete', value?: His
       const store = transaction.objectStore('checks');
       let results: HistoryResult[] | undefined;
       if (operation === 'list') { const request = store.getAll(); request.onsuccess = () => { results = (request.result as HistoryResult[]).sort((a, b) => b.checkedAt.localeCompare(a.checkedAt)); }; }
-      else if (operation === 'save' && typeof value === 'object') store.put(value);
+      else if (operation === 'save' && typeof value === 'object') for (const item of Array.isArray(value) ? value : [value]) store.put(item);
       else if (typeof value === 'string') store.delete(value);
       else store.clear();
       transaction.oncomplete = () => resolve(results);

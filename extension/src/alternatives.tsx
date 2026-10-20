@@ -6,10 +6,10 @@ import { endpointOrigin, type Settings } from './settings';
 import { HOSTED_AI } from '@vegsnap/core';
 import { alternativeMessages } from './i18n';
 
-export function Alternatives({ config, initialQuery = '', category = 'food', market, excludeBarcode, research, researchEnabled = false }: {
+export function Alternatives({ config, initialQuery = '', category = 'food', market, excludeBarcode, research, researchEnabled = false, heading = true }: {
   config: Settings; initialQuery?: string; category?: AlternativeSearch['category']; market: string; excludeBarcode?: string;
   research: (input: AlternativeSearch, signal: AbortSignal) => Promise<VeganAlternative[]>;
-  researchEnabled?: boolean;
+  researchEnabled?: boolean; heading?: boolean;
 }) {
   const t = alternativeMessages[config.language];
   const [query, setQuery] = useState(initialQuery.slice(0, 200));
@@ -56,7 +56,7 @@ export function Alternatives({ config, initialQuery = '', category = 'food', mar
     if (id === generation.current) setBusy(false);
   }
   return <section aria-busy={busy}>
-    <h2>{t.title}</h2>
+    {heading && <h2>{t.title}</h2>}
     <p class="hint">{t.hint}</p>
     <p class="hint">{t.productCountry}: {market}</p>
     <form onSubmit={event => {

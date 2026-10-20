@@ -16,6 +16,7 @@ const extensionGroups = {
   store: 'storeMessages', background: 'backgroundMessages',
   market: 'marketMessages',
   alternatives: 'alternativeMessages',
+  browse: 'browseMessages',
 };
 const coreGroups = { analysis: 'analysisMessages', result: 'resultMessages' };
 const generatedNotice = 'Generated from localization/strings.json by bun run strings:generate. Do not edit.';

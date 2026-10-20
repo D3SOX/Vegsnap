@@ -196,7 +196,8 @@
     "en": "Allow data sharing to search.",
     "de": "Datenfreigabe für die Suche erlauben.",
     "extension": [
-      "alternatives.consentRequired"
+      "alternatives.consentRequired",
+      "browse.consentRequired"
     ]
   },
   "alternatives_country": {
@@ -520,13 +521,6 @@
     "de": "Online-Prüfung erlauben",
     "extension": [
       "app.allowOnlineChecks"
-    ]
-  },
-  "app_alternatives": {
-    "en": "Alternatives",
-    "de": "Alternativen",
-    "extension": [
-      "app.alternatives"
     ]
   },
   "app_auto": {
@@ -1275,6 +1269,9 @@
     "de": "Barcode",
     "android": [
       "barcode"
+    ],
+    "extension": [
+      "browse.barcode"
     ]
   },
   "barcode_clear": {
@@ -1393,6 +1390,10 @@
     ],
     "ios": [
       "Browse"
+    ],
+    "extension": [
+      "app.browse",
+      "browse.title"
     ]
   },
   "browse_brand": {
@@ -1401,6 +1402,9 @@
     "android": [
       "browse_brand",
       "community_brand"
+    ],
+    "extension": [
+      "browse.brand"
     ]
   },
   "browse_choose_source": {
@@ -1408,6 +1412,9 @@
     "de": "Datenbank auswählen",
     "android": [
       "browse_choose_source"
+    ],
+    "extension": [
+      "browse.source"
     ]
   },
   "browse_community_notice": {
@@ -1415,6 +1422,9 @@
     "de": "Gemeinschaftlich gepflegte Angaben. Vergleiche Produkt, Markt und Rezeptur mit deiner Packung. Aufgeführte Siegel sind keine Registerbestätigung.",
     "android": [
       "browse_community_notice"
+    ],
+    "extension": [
+      "browse.communityNotice"
     ]
   },
   "browse_composition": {
@@ -1426,6 +1436,9 @@
     ],
     "ios": [
       "Ingredients or materials"
+    ],
+    "extension": [
+      "browse.composition"
     ]
   },
   "browse_connection_error": {
@@ -1433,6 +1446,9 @@
     "de": "Keine Verbindung zur Datenbank. Prüfe deine Internetverbindung und versuche es erneut.",
     "android": [
       "browse_connection_error"
+    ],
+    "extension": [
+      "browse.connectionError"
     ]
   },
   "browse_description": {
@@ -1447,6 +1463,9 @@
     "de": "Keine passenden Einträge gefunden.",
     "android": [
       "browse_empty"
+    ],
+    "extension": [
+      "browse.empty"
     ]
   },
   "browse_error": {
@@ -1454,6 +1473,9 @@
     "de": "Die Datenbank konnte nicht geladen werden. Versuche es erneut.",
     "android": [
       "browse_error"
+    ],
+    "extension": [
+      "browse.error"
     ]
   },
   "browse_external": {
@@ -1489,6 +1511,9 @@
     "de": "Von der Quelle genannte Siegel",
     "android": [
       "browse_labels"
+    ],
+    "extension": [
+      "browse.labels"
     ]
   },
   "browse_loading": {
@@ -1496,6 +1521,9 @@
     "de": "Ausgewählte Datenbank wird durchsucht…",
     "android": [
       "browse_loading"
+    ],
+    "extension": [
+      "browse.loading"
     ]
   },
   "browse_manufacturer": {
@@ -1510,6 +1538,9 @@
     "de": "Von der Quelle genannte Märkte",
     "android": [
       "browse_markets"
+    ],
+    "extension": [
+      "browse.markets"
     ]
   },
   "browse_next": {
@@ -1518,6 +1549,9 @@
     "android": [
       "browse_next",
       "tour_next"
+    ],
+    "extension": [
+      "browse.next"
     ]
   },
   "browse_no_composition": {
@@ -1525,6 +1559,9 @@
     "de": "Dieser Eintrag enthält keine Zusammensetzung.",
     "android": [
       "browse_no_composition"
+    ],
+    "extension": [
+      "browse.noComposition"
     ]
   },
   "browse_offline": {
@@ -1555,11 +1592,21 @@
       "browse_page"
     ]
   },
+  "browse_page_extension": {
+    "en": "Page {page}",
+    "de": "Seite {page}",
+    "extension": [
+      "browse.page"
+    ]
+  },
   "browse_previous": {
     "en": "Previous",
     "de": "Zurück",
     "android": [
       "browse_previous"
+    ],
+    "extension": [
+      "browse.previous"
     ]
   },
   "browse_product_query": {
@@ -1567,6 +1614,9 @@
     "de": "Produktname oder Marke",
     "android": [
       "browse_product_query"
+    ],
+    "extension": [
+      "browse.query"
     ]
   },
   "browse_quantity": {
@@ -1574,6 +1624,9 @@
     "de": "Menge",
     "android": [
       "browse_quantity"
+    ],
+    "extension": [
+      "browse.quantity"
     ]
   },
   "browse_rate_limited": {
@@ -1581,6 +1634,9 @@
     "de": "Das Anfrage-Limit der Datenbank ist erreicht. Warte eine Minute und versuche es erneut.",
     "android": [
       "browse_rate_limited"
+    ],
+    "extension": [
+      "browse.rateLimited"
     ]
   },
   "browse_results_for": {
@@ -1588,6 +1644,13 @@
     "de": "Ergebnisse für „%1$s“",
     "android": [
       "browse_results_for"
+    ]
+  },
+  "browse_results_for_extension": {
+    "en": "Results for “{query}”",
+    "de": "Ergebnisse für „{query}“",
+    "extension": [
+      "browse.resultsFor"
     ]
   },
   "browse_search": {
@@ -1598,6 +1661,9 @@
     ],
     "ios": [
       "Search"
+    ],
+    "extension": [
+      "browse.search"
     ]
   },
   "browse_source_page": {
@@ -1605,6 +1671,9 @@
     "de": "Quellseite im Browser öffnen",
     "android": [
       "browse_source_page"
+    ],
+    "extension": [
+      "browse.sourcePage"
     ]
   },
   "browse_temporarily_unavailable": {
@@ -1612,6 +1681,9 @@
     "de": "Der Datenbankdienst ist vorübergehend nicht verfügbar. Warte kurz und suche dann erneut.",
     "android": [
       "browse_temporarily_unavailable"
+    ],
+    "extension": [
+      "browse.temporarilyUnavailable"
     ]
   },
   "browse_timeout": {
@@ -1619,6 +1691,9 @@
     "de": "Die Datenbank hat zu lange für eine Antwort gebraucht. Versuche es erneut oder grenze deine Suche ein.",
     "android": [
       "browse_timeout"
+    ],
+    "extension": [
+      "browse.timeout"
     ]
   },
   "browse_updated": {
@@ -1626,6 +1701,9 @@
     "de": "Letzte Aktualisierung der Quelle",
     "android": [
       "browse_updated"
+    ],
+    "extension": [
+      "browse.updated"
     ]
   },
   "browse_use_manual": {
@@ -1633,6 +1711,13 @@
     "de": "In „Manuell“ übernehmen",
     "android": [
       "browse_use_manual"
+    ]
+  },
+  "browse_use_scan": {
+    "en": "Use in Scan",
+    "de": "In „Prüfen“ übernehmen",
+    "extension": [
+      "browse.useInScan"
     ]
   },
   "bundled_snapshot": {
@@ -1670,7 +1755,8 @@
     ],
     "extension": [
       "app.cancel",
-      "alternatives.cancel"
+      "alternatives.cancel",
+      "browse.cancel"
     ]
   },
   "category": {
@@ -3690,6 +3776,16 @@
     "de": "Verlaufsdateien müssen kleiner als 5 MB sein.",
     "ios": [
       "History files must be smaller than 5 MB."
+    ],
+    "extension": [
+      "app.importSizeLimit"
+    ]
+  },
+  "history_import_done": {
+    "en": "Imported {added} checks; {skipped} were already saved.",
+    "de": "{added} Prüfungen importiert; {skipped} waren bereits gespeichert.",
+    "extension": [
+      "app.importDone"
     ]
   },
   "history_is_too_large_to_export_maximum_1_000_results_and_5_mb_no_file_was_created": {
@@ -3821,6 +3917,9 @@
     ],
     "ios": [
       "Import history"
+    ],
+    "extension": [
+      "app.import"
     ]
   },
   "import_offline_pack": {
@@ -3849,6 +3948,9 @@
     "de": "Importierte Unternehmensbewertung: Quellen und Zitate wurden auf diesem Gerät nicht überprüft.",
     "ios": [
       "Imported company assessment: sources and quotations have not been verified on this device."
+    ],
+    "extension": [
+      "app.importedAssessment"
     ]
   },
   "inconclusive": {
@@ -4721,11 +4823,21 @@
       "offline_snapshot_date"
     ]
   },
+  "offline_snapshot_date_extension": {
+    "en": "Offline snapshot: {date}",
+    "de": "Offline-Datenstand: {date}",
+    "extension": [
+      "browse.snapshotDate"
+    ]
+  },
   "offline_snapshot_empty": {
     "en": "No match in the limited offline snapshot. Other products may exist in the online database.",
     "de": "Kein Treffer im begrenzten Offline-Datenstand. In der Online-Datenbank können weitere Produkte vorhanden sein.",
     "android": [
       "offline_snapshot_empty"
+    ],
+    "extension": [
+      "browse.offlineEmpty"
     ]
   },
   "offline_snapshot_notice": {
@@ -4733,6 +4845,9 @@
     "de": "Eine begrenzte Auswahl öffentlicher Produktdaten ist auf diesem Gerät gespeichert. Angaben können veraltet oder unvollständig sein. Ein fehlender Eintrag sagt nichts darüber aus, ob ein Produkt vegan ist.",
     "android": [
       "offline_snapshot_notice"
+    ],
+    "extension": [
+      "browse.offlineNotice"
     ]
   },
   "ok": {

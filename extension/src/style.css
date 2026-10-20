@@ -39,3 +39,8 @@ nav button[aria-current="page"] .count{background:var(--paper);color:var(--green
 .manufacturer-contact .quote{white-space:pre-wrap}
 
 .alternative-source{display:inline-flex;align-items:center;min-height:44px}
+
+.browse-alternatives{margin:4px 0 20px}.browse-alternatives summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:650}.browse-alternatives summary:focus-visible{outline:3px solid #75975b;outline-offset:3px}.browse-alternatives summary::after{content:'›';margin-left:auto}.browse-alternatives[open] summary::after{transform:rotate(90deg)}.browse-alternatives h2{margin-top:8px}
+.browse-record summary{cursor:pointer;min-height:44px;display:flex;flex-direction:column;justify-content:center;gap:2px}.browse-record summary:focus-visible{outline:3px solid #75975b;outline-offset:3px}.browse-record summary strong{overflow-wrap:anywhere}.browse-record small{color:var(--muted);font-size:11px}.browse-record dl{margin:10px 0}.browse-record dt{font-size:11px;font-weight:650;color:var(--muted);margin-top:8px}.browse-record dd{margin:2px 0 0;overflow-wrap:anywhere;white-space:pre-line}.browse-record .actions{margin:12px 0 4px;align-items:center}
+.browse-pages{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0}.browse-pages button{font-size:12px}
+.section-title .actions{align-items:center;justify-content:flex-end}.section-title .upload{padding:10px 15px;margin:0;font-size:12px;font-weight:650}
