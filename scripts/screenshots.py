@@ -54,14 +54,14 @@ def expected_files():
 def device_lock(serial, avd):
     if not re.fullmatch(r'emulator-\d+', serial):
         raise ValueError('Screenshot capture requires an emulator, never a physical device.')
-    known = {'emulator-5556': 'api35', 'emulator-5558': 'api26'}
+    known = {'emulator-5556': 'android_api35', 'emulator-5558': 'android_api26'}
     name = known.get(serial, avd)
     if not name or not re.fullmatch(r'[\w-]+', name):
         raise ValueError('Pass --avd NAME for a nonbaseline emulator (and acquire its port lock).')
     # Same cooperative lock paths as the local Android lab; held throughout capture/restoration.
-    locks = [f'/tmp/opentubex-android-{name}.lock']
+    locks = [f'/tmp/android-lab-{name}.lock']
     if serial not in known:
-        locks.append(f'/tmp/opentubex-android-port-{serial.removeprefix("emulator-")}.lock')
+        locks.append(f'/tmp/android-lab-port-{serial.removeprefix("emulator-")}.lock')
     with ExitStack() as stack:
         for path in locks:
             handle = stack.enter_context(open(path, 'a'))
