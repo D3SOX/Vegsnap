@@ -2,7 +2,7 @@ import type { AIExtraction, Category, Locale, ProviderAdapter } from './types';
 import { DATABASES } from './database';
 import { countryCode } from './market';
 import { analyzeText, safeSourceUrl } from './analyze';
-import { readBoundedText } from './http';
+import { fetchPublicSearch } from './public-search';
 
 export interface AlternativeSearch {
   query: string; store?: string; category: Category; market: string; locale?: Locale; excludeBarcode?: string;
@@ -104,32 +104,11 @@ export async function researchVeganAlternatives(input: AlternativeSearch, provid
     alternativeSearch: { query: input.query, store: input.store } }, signal);
   return parseAIAlternatives(extracted, input);
 }
-// Public search endpoints allow 10 searches/minute. Serialize submitted searches and cache briefly.
-let queue = Promise.resolve();
-let lastStarted = 0;
-const cache = new Map<string, { expires: number; document: unknown }>();
 export async function searchPublicAlternatives(input: AlternativeSearch, fetcher: typeof fetch = globalThis.fetch, signal?: AbortSignal): Promise<VeganAlternative[]> {
   const items: VeganAlternative[] = [];
   for (const storeOnly of input.store ? [true, false] : [false]) {
     const url = alternativeSearchUrl(input, storeOnly);
-    const run = queue.catch(() => {}).then(async () => {
-      signal?.throwIfAborted();
-      const cached = cache.get(url);
-      if (cached && cached.expires > Date.now()) return cached.document;
-      const wait = Math.max(0, 6100 - (Date.now() - lastStarted));
-      if (wait) await new Promise<void>(resolve => setTimeout(resolve, wait));
-      signal?.throwIfAborted(); lastStarted = Date.now();
-      const response = await fetcher(url, { credentials: 'omit', redirect: 'error', headers: { Accept: 'application/json' },
-        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(35000)]) : AbortSignal.timeout(35000) });
-      if (!response.ok) throw new Error(`Product search returned HTTP ${response.status}.`);
-      const document: unknown = JSON.parse(await readBoundedText(response, 2000000));
-      parsePublicAlternatives(document, input);
-      if (cache.size >= 20) cache.delete(cache.keys().next().value!);
-      cache.set(url, { expires: Date.now() + 300000, document });
-      return document;
-    });
-    queue = run.then(() => {}, () => {});
-    try { items.push(...parsePublicAlternatives(await run, input)); }
+    try { items.push(...parsePublicAlternatives(await fetchPublicSearch(url, fetcher, signal, document => parsePublicAlternatives(document, input)), input)); }
     catch (error) {
       if (signal?.aborted) throw error;
       if (!storeOnly && !items.length) throw error;
