@@ -5,7 +5,7 @@ export const adminToken = 'integration-test-access-code-never-use-in-production'
 export const submission = {productName:'Example oat drink',brand:'Example Maker',barcode:'3017620422003',market:'SE',variant:'Vanilla 1 L',
   question:'Is the vitamin D plant derived?',reply:'Our vitamin D is plant derived.',repliedOn:'2026-01-10',claim:'vegan',scope:'ingredients',sourceUrl:'https://maker.example/reply'};
 export const png = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64'));
-export async function fixture(port?: number, host = '127.0.0.1', migrations = ['0001_submissions.sql', '0002_content_reports.sql', '0003_reply_coverage.sql']) {
+export async function fixture(port?: number, host = '127.0.0.1', migrations = ['0001_submissions.sql', '0002_content_reports.sql', '0003_reply_coverage.sql', '0004_result_reports.sql']) {
   const root = resolve(import.meta.dir,'..');
   const build = await Bun.build({entrypoints:[resolve(root,'src/index.ts')],target:'browser'});
   if (!build.success) throw new Error(build.logs.join('\n'));
