@@ -64,6 +64,11 @@ jobs:
           printf '\033\000\000\000{"id":"1","command":"none"}' \
             | "$RUNNER_TEMP/vegsnap-companion" chrome-extension://pkkfmbgdbdoccbdngnbfpjjhpldmphej/ \
             | grep -a 'Unknown companion command'
+      - name: Check the declared minimum Rust version
+        run: |
+          msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' companion/Cargo.toml)
+          rustup toolchain install "$msrv" --profile minimal
+          cargo "+$msrv" check --locked --manifest-path companion/Cargo.toml --all-targets
 
   ios:
     runs-on: macos-latest
