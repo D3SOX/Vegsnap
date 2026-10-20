@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -27,6 +28,31 @@ class ContentReportsTest {
         assertEquals("", ContentReport("community", contentId = id, reason = "Personal data").json().getString("text"))
         for (report in listOf(ContentReport("ai", text = "", reason = "Issue"), ContentReport("ai", text = "x", reason = ""),
             ContentReport("community", contentId = "bad", reason = "Issue"), ContentReport("community", contentId = id, text = "private", reason = "Issue"))) {
+            try { report.json(); fail("Invalid report accepted") } catch (_: IllegalArgumentException) { }
+        }
+    }
+    @Test fun `result reports mirror the shared payload without photos evidence text or history`() {
+        val result = JSONObject().put("id", "private-history-id").put("outcome", "not_vegan").put("photos", JSONArray().put("private-photo"))
+            .put("identity", JSONObject().put("name", " Oat drink ").put("brand", "Maker").put("barcode", "3017620422003"))
+            .put("findings", JSONArray()
+                .put(JSONObject().put("term", "milk").put("status", "animal").put("ruleId", "milk").put("explanation", "private explanation").put("evidenceId", "e1"))
+                .put(JSONObject().put("term", "oats").put("status", "plant").put("explanation", "private explanation").put("evidenceId", "e2")))
+            .put("evidence", JSONArray().put(JSONObject().put("excerpt", "private label text")))
+        val details = resultReport(result, "de", "0.2.19")
+        val json = ContentReport("result", reason = " Milk is plant based here ", result = details).json()
+        assertEquals(setOf("kind", "contentId", "text", "reason", "result"), json.keys().asSequence().toSet())
+        assertEquals("Milk is plant based here", json.getString("reason")); assertEquals("", json.getString("text"))
+        assertEquals(setOf("product", "brand", "outcome", "findings", "locale", "platform", "appVersion"), details.keys().asSequence().toSet())
+        assertEquals("Oat drink", details.getString("product")); assertEquals("Maker", details.getString("brand"))
+        assertEquals("not_vegan", details.getString("outcome")); assertEquals("de", details.getString("locale"))
+        assertEquals("android", details.getString("platform")); assertEquals("0.2.19", details.getString("appVersion"))
+        val findings = details.getJSONArray("findings")
+        assertEquals(2, findings.length())
+        assertEquals(setOf("term", "status", "ruleId"), findings.getJSONObject(0).keys().asSequence().toSet())
+        assertEquals("milk", findings.getJSONObject(0).getString("ruleId")); assertEquals("", findings.getJSONObject(1).getString("ruleId"))
+        for (secret in listOf("private", "3017620422003", "explanation", "excerpt")) assertFalse(secret, json.toString().contains(secret))
+        for (report in listOf(ContentReport("result", reason = "Issue"), ContentReport("result", text = "private", reason = "Issue", result = details),
+            ContentReport("ai", text = "x", reason = "Issue", result = details), ContentReport("community", contentId = id, reason = "Issue", result = details))) {
             try { report.json(); fail("Invalid report accepted") } catch (_: IllegalArgumentException) { }
         }
     }

@@ -697,6 +697,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                             }.trim()
                             ContentReportButton("ai", settings.offline, initialText = reportText)
                         }
+                        ContentReportButton("result", settings.offline, result = result)
                         if (sendToAI && settings.offline && aiStatusText != R.string.ai_status_offline) {
                             Text(stringResource(R.string.ai_status_offline), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

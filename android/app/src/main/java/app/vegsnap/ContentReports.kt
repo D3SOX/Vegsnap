@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -23,13 +24,34 @@ internal fun contentServiceOrigin(context: Context): HttpUrl? {
     return publicEvidenceUrl(base)?.toHttpUrlOrNull()?.takeIf { it.isHttps && it.username.isEmpty() && it.password.isEmpty() }
 }
 
-internal data class ContentReport(val kind: String, val contentId: String = "", val text: String = "", val reason: String) {
+private val REPORT_ID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+
+internal data class ContentReport(val kind: String, val contentId: String = "", val text: String = "", val reason: String, val result: JSONObject? = null) {
     fun json(): JSONObject {
-        require(kind in setOf("ai", "community") && reason.isNotBlank() && reason.length <= 2000 && text.length <= 8000)
-        require(if (kind == "ai") contentId.isEmpty() && text.isNotBlank() else
-            text.isEmpty() && contentId.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")))
-        return JSONObject().put("kind", kind).put("contentId", contentId).put("text", text.trim()).put("reason", reason.trim())
+        require(kind in setOf("ai", "community", "result") && reason.isNotBlank() && reason.length <= 2000 && text.length <= 8000)
+        require(when (kind) {
+            "ai" -> contentId.isEmpty() && text.isNotBlank() && result == null
+            "community" -> text.isEmpty() && contentId.matches(REPORT_ID) && result == null
+            else -> contentId.isEmpty() && text.isEmpty() && result != null
+        })
+        val json = JSONObject().put("kind", kind).put("contentId", contentId).put("text", text.trim()).put("reason", reason.trim())
+        return if (result != null) json.put("result", result) else json
     }
+}
+
+/** Mirrors resultReport in packages/core/src/content-reports.ts: verdict context only, never photos, evidence text or history. */
+internal fun resultReport(result: JSONObject, locale: String, appVersion: String): JSONObject {
+    val identity = result.optJSONObject("identity") ?: JSONObject()
+    val findings = result.optJSONArray("findings") ?: JSONArray()
+    return JSONObject()
+        .put("product", identity.optString("name").trim().take(300))
+        .put("brand", identity.optString("brand").trim().take(300))
+        .put("outcome", result.optString("outcome"))
+        .put("findings", JSONArray((0 until minOf(findings.length(), 200)).map { index ->
+            val finding = findings.getJSONObject(index)
+            JSONObject().put("term", finding.optString("term").take(200)).put("status", finding.optString("status")).put("ruleId", finding.optString("ruleId").take(100))
+        }))
+        .put("locale", locale.take(10)).put("platform", "android").put("appVersion", appVersion.take(40))
 }
 
 internal class ContentReportsRepository(
