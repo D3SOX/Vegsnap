@@ -29,7 +29,7 @@ globalThis.AbortSignal = class {
 };
 globalThis.AbortController = class {
   constructor() { this.signal = new AbortSignal(); }
-  abort() { if (!this.signal.aborted) { this.signal.aborted = true; this.signal.listeners.forEach(l => l()); } }
+  abort() { if (!this.signal.aborted) { this.signal.aborted = true; for (const l of this.signal.listeners) l(); } }
 };
 globalThis.fetch = (url, options = {}) => new Promise((resolve, reject) => {
   options.signal?.throwIfAborted();

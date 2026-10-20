@@ -1,0 +1,13 @@
+# Adjustments on top of detekt's default configuration (buildUponDefaultConfig = true).
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable'] # Composables are PascalCase by convention.
+style:
+  MaxLineLength:
+    active: false # Compact long lines are deliberate; see .editorconfig for indentation.
+  MagicNumber:
+    active: false # Thresholds and layout values are documented inline instead.
+  ReturnCount:
+    active: false # Early returns keep the parsing code flat.
+  WildcardImport:
+    active: false # Compose, coroutines and JUnit assertions are imported with wildcards.

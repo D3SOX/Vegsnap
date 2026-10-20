@@ -33,5 +33,6 @@ const storage: OfflinePackStorage = {
 };
 let library: ReturnType<typeof createOfflineLibrary> | undefined;
 export function offlineLibrary() {
-  return library ??= createOfflineLibrary(storage, validateOfflineSnapshot(bundled));
+  library ??= createOfflineLibrary(storage, validateOfflineSnapshot(bundled));
+  return library;
 }

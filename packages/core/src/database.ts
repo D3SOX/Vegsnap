@@ -1,6 +1,6 @@
 import { normalizeBarcode } from './barcode';
 export { normalizeBarcode } from './barcode';
-import type { Category, CheckInput, CheckOptions, DatabaseProduct } from './types';
+import type { CheckInput, CheckOptions, DatabaseProduct } from './types';
 import { readBoundedText } from './http';
 import { countryCode, selectProductCountry } from './market';
 import { resultMessages } from './i18n';

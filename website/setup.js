@@ -114,7 +114,7 @@ if (browserSelect) {
 
   function highlight(index) {
     activeIndex = (index + items.length) % items.length;
-    items.forEach((item, i) => item.classList.toggle('active', i === activeIndex));
+    items.forEach((item, i) => { item.classList.toggle('active', i === activeIndex); });
     trigger.setAttribute('aria-activedescendant', items[activeIndex].id);
     const item = items[activeIndex];
     if (item.offsetTop < menu.scrollTop) menu.scrollTop = item.offsetTop;

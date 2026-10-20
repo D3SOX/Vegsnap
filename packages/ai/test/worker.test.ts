@@ -326,10 +326,10 @@ test('Turnstile network failures report a retryable verification error', async (
   const token = await connect(false);
   const env = await mf.getBindings() as unknown as Env;
   const originalFetch = globalThis.fetch;
-  const mocked = spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+  const mocked = spyOn(globalThis, 'fetch').mockImplementation(Object.assign(async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input) === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') throw new TypeError('Private network details');
     return originalFetch(input, init);
-  });
+  }, { preconnect: originalFetch.preconnect }));
   try {
     const response = await worker.fetch(new Request('https://ai.example/api/verify', { method: 'POST', headers: {
       Authorization: `Bearer ${token}`, Origin: 'https://ai.example', 'Content-Type': 'application/json',

@@ -156,7 +156,7 @@ try {
   await act(async () => { render(null, roots[0]!); });
   window.history.replaceState(null, '', '/app.html');
 
-  await act(async () => { roots.forEach(root => render(h(App, {}), root)); });
+  await act(async () => { for (const root of roots) render(h(App, {}), root); });
   await until(() => roots.every(root => root.querySelector('nav')), 'Both real Apps mounted');
   assert(roots.every(root => !root.querySelector('.spinner')), 'Fast startup needs no loading indicator');
   await tab(roots[0]!, 'history'); await tab(roots[1]!, 'history');
@@ -528,7 +528,7 @@ try {
   console.log('Community cache failure UI: a pending English write reports its fallback in the current German language');
 } finally {
   globalThis.fetch = originalFetch;
-  await act(async () => { roots.forEach(root => render(null, root)); });
+  await act(async () => { for (const root of roots) render(null, root); });
   assert.equal(messageListeners.size, 0, 'Unmount removes runtime listeners');
   assert.equal(storageListeners.size, 0, 'Unmount removes storage listeners');
   await window.happyDOM.close();

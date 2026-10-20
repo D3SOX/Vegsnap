@@ -1,0 +1,198 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:AIEvidence.kt$result.getString("outcome") == "uncertain" &amp;&amp; complete &amp;&amp; values.isNotEmpty() &amp;&amp; values.all { it.getString("status") == "plant" } &amp;&amp; input.category in setOf("food", "drink", "cosmetics", "household") &amp;&amp; !needsProcessingEvidence(input)</ID>
+    <ID>ComplexCondition:AIEvidence.kt$terms.size == 1 || term.any { it == '(' || it == '[' || it == '{' }</ID>
+    <ID>ComplexCondition:AlternativesScreen.kt$searched &amp;&amp; !busy &amp;&amp; failure == null &amp;&amp; items.isEmpty()</ID>
+    <ID>ComplexCondition:AnalysisQueueService.kt$AnalysisQueueService$store.jobs.value.any { it.status == AnalysisStatus.QUEUED &amp;&amp; (!settings.offline &amp;&amp; !ApplicationAnalysisQueue.networkPaused || it.settings.offline || it.result != null) }</ID>
+    <ID>ComplexCondition:BrowseScreen.kt$BrowseViewModel$offline &amp;&amp; current.source in setOf(BrowseSource.WIKIDATA, BrowseSource.BARNIVORE) || query.length &lt; 2 || current.loading</ID>
+    <ID>ComplexCondition:CheckRepository.kt$CheckRepository$databaseLookupFailed &amp;&amp; countryInput.autoMarket == true || !needsResearch(input, first, photos.isNotEmpty() &amp;&amp; settings.vision, settings)</ID>
+    <ID>ComplexCondition:CheckRepository.kt$CheckRepository$photos.isNotEmpty() &amp;&amp; result.getString("outcome") == "uncertain" &amp;&amp; !result.getBoolean("usedAI") &amp;&amp; recognizePhotos != null</ID>
+    <ID>ComplexCondition:CheckRepository.kt$CheckRepository$settings.offline || !settings.aiEnabled || settings.connection == "api" &amp;&amp; settings.baseUrl.trimEnd('/') != "https://api.openai.com/v1"</ID>
+    <ID>ComplexCondition:CheckRepository.kt$field == "findings" &amp;&amp; item is JSONObject &amp;&amp; !item.has("displayTerm") &amp;&amp; previous?.has("displayTerm") == true</ID>
+    <ID>ComplexCondition:CommunityRepliesState.kt$CommunityRepliesState$original.name.isNotBlank() &amp;&amp; key(original.name) != key(submitted.name) || original.brand.isNotBlank() &amp;&amp; key(original.brand) != key(submitted.brand)</ID>
+    <ID>ComplexCondition:CompanyAssessment.kt$source.keys().asSequence().any { it !in setOf("url", "title", "quote") } || !url(source, "url") || !text(source, "title", 300) || !text(source, "quote", 1000)</ID>
+    <ID>ComplexCondition:CompanyAssessment.kt$verdict == "concerns_found" &amp;&amp; unique.isEmpty() || verdict == "no_concerns_found" &amp;&amp; unique.isNotEmpty()</ID>
+    <ID>ComplexCondition:CompanyConcerns.kt$CompanyConcernResolver$record.optString("category") !in setOf("animal_testing", "animal_welfare_lobbying", "animal_exploitation") || record.optString("status") !in setOf("current", "resolved", "disputed") || !validUrl(record.optString("sourceUrl")) || reviewDate(record.optString("reviewedAt")) == null</ID>
+    <ID>ComplexCondition:IdentifiedProductLookup.kt$IdentifiedProductLookup$name.isBlank() || brand.isBlank() || quantity.isBlank() || validGtin(identity.optString("barcode"))</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$email.length &gt; 254 || !Regex("[A-Za-z0-9](?:[A-Za-z0-9._+\\-]{0,62}[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9\\-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9\\-]*[A-Za-z0-9])?)+").matches(email) || email.contains("..") || email.substringAfter('@').split('.').any { it.length &gt; 63 }</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$end &gt; 0 &amp;&amp; end &lt; value.length &amp;&amp; value[end - 1].isHighSurrogate() &amp;&amp; value[end].isLowSurrogate()</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$name != normalizeProductIdentity(extracted.optString("name")) || brand != normalizeProductIdentity(extracted.optString("brand")) || name != normalizeProductIdentity(identity.optString("name")) || brand != normalizeProductIdentity(identity.optString("brand")) || input.name.isNotBlank() &amp;&amp; name != normalizeProductIdentity(input.name)</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$value.has("url") &amp;&amp; (value.opt("url") !is String || publicEvidenceUrl(value.getString("url")) == null || value.getString("url").any { it.isWhitespace() || it.code &lt; 32 })</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$value.opt("sourceUrl") !is String || publicEvidenceUrl(value.getString("sourceUrl")) == null || value.getString("sourceUrl").any { it.isWhitespace() || it.code &lt; 32 }</ID>
+    <ID>ComplexCondition:ManufacturerContact.kt$value.opt(field) !is String || value.getString(field).isBlank() || value.getString(field).length &gt; 300 || value.getString(field).any { it.code &lt; 32 }</ID>
+    <ID>ComplexCondition:MatsparCatalogue.kt$MatsparCatalogue$productCountryCode(identity.optString("market", "DE")) != "SE" || identity.optString("category") !in setOf("food", "drink") || normalizeProductIdentity(packaging.optString("language")) !in setOf("sv", "swedish", "svenska") || packaging.has("country") &amp;&amp; normalizeProductIdentity(packaging.optString("country")) !in setOf("se", "sweden", "sverige") || identity.optString("barcode").let(::validGtin)</ID>
+    <ID>ComplexCondition:ProductMarket.kt$packagingCountry != null &amp;&amp; packaging == null || codes.any { it == null } || packaging != null &amp;&amp; codes.isNotEmpty() &amp;&amp; packaging !in codes</ID>
+    <ID>ComplexCondition:VeganAlternatives.kt$!code.matches(Regex("[0-9]{8,14}")) || name.isBlank() || code.padStart(14, '0') == input.excludeBarcode.padStart(14, '0') || labels.none { it in veganLabels } || "en:non-vegan" in product.optJSONArray("ingredients_analysis_tags").stringValues()</ID>
+    <ID>ComplexCondition:VeganAlternatives.kt$name.isBlank() || name.length &gt; 300 || brand.isBlank() || brand.length &gt; 300 || url.length &gt; 2000 || quote.length &gt; 1000 || !supported(url) || !veganClaim.containsMatchIn(quote) || negatedVeganClaim.containsMatchIn(quote)</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$connection.connection == "chatgpt" &amp;&amp; (disconnectingChatGPT || chatGPTState.value.busy || accountId != chatGPTState.value.selectedAccount)</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$disconnectingChatGPT || !settingsReady.isCompleted || state.value.busy || state.value.capturing</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$it.text.isBlank() &amp;&amp; it.name.isBlank() &amp;&amp; it.barcode.isBlank() &amp;&amp; it.photos.isEmpty()</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$job.settings.connection == "chatgpt" &amp;&amp; (disconnectingChatGPT || chatGPTState.value.busy || accountId != chatGPTState.value.selectedAccount)</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$photosOnly &amp;&amp; state.value.photos.isEmpty() || !photosOnly &amp;&amp; state.value.text.isBlank() &amp;&amp; state.value.name.isBlank() &amp;&amp; state.value.barcode.isBlank() &amp;&amp; state.value.photos.isEmpty()</ID>
+    <ID>ComplexCondition:VegsnapViewModel.kt$VegsnapViewModel$result == null || !barcodeCoordinator.accepts(observation) || state.value.capturing || state.value.photos.isNotEmpty()</ID>
+    <ID>ComplexCondition:WebEvidence.kt$!url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() || value.length &gt; 2000</ID>
+    <ID>ComplexCondition:WebEvidence.kt$name.isBlank() || brand.isBlank() || input.name.isNotBlank() &amp;&amp; normalizeProductIdentity(input.name) != name</ID>
+    <ID>ComplexCondition:WebEvidence.kt$url.host == "localhost" || url.host.endsWith(".local") || url.host.contains(':') || url.host.matches(Regex("[0-9.]+"))</ID>
+    <ID>CyclomaticComplexMethod:AIEvidence.kt$internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, complete: Boolean, imagesSent: Boolean, assessmentEvidenceId: String = "ai-assessment"): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:AIEvidence.kt$internal fun validateAIEvidence(extracted: JSONObject)</ID>
+    <ID>CyclomaticComplexMethod:AlternativesScreen.kt$@Composable private fun AlternativesScreen(model: VegsnapViewModel, initialQuery: String, initialCategory: String, market: String, barcode: String)</ID>
+    <ID>CyclomaticComplexMethod:AnalysisQueueService.kt$AnalysisQueueService$private suspend fun drain()</ID>
+    <ID>CyclomaticComplexMethod:BrowseScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun BrowseScreen(settings: AppSettings, model: VegsnapViewModel)</ID>
+    <ID>CyclomaticComplexMethod:BrowseScreen.kt$BrowseViewModel$fun search(offline: Boolean, locale: String, direction: Int = 0)</ID>
+    <ID>CyclomaticComplexMethod:ChatGPTConnection.kt$ChatGPTConnection$suspend fun signIn(newAccount: Boolean = false, accountId: String? = null, awaitForeground: suspend () -&gt; Unit, openBrowser: (String) -&gt; Unit): ChatGPTStatus</ID>
+    <ID>CyclomaticComplexMethod:ChatGPTConnection.kt$internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -&gt; Unit = {}, onDiagnostic: (String) -&gt; Unit = {}): ChatGPTExtraction</ID>
+    <ID>CyclomaticComplexMethod:CheckRepository.kt$CheckRepository$private suspend fun extract(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit, countryInput: CheckInput, markets: MutableList&lt;String&gt;): ExtractedProduct</ID>
+    <ID>CyclomaticComplexMethod:CheckRepository.kt$CheckRepository$private suspend fun extractOnce(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, researchIdentity: JSONObject? = null, onProgress: (CheckStage) -&gt; Unit = {}, catalogue: JSONObject? = null, database: Pair&lt;CheckInput, JSONObject&gt;? = null, hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null, maxToolCalls: Int = 4, onSearchCalls: (Int) -&gt; Unit = {}): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:CheckRepository.kt$CheckRepository$private suspend fun lookup(barcode: String, input: CheckInput, offline: Boolean = false): Pair&lt;CheckInput, JSONObject&gt;?</ID>
+    <ID>CyclomaticComplexMethod:CheckRepository.kt$CheckRepository$suspend fun check(original: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit = {}, recognizePhotos: (suspend (List&lt;PreparedPhoto&gt;) -&gt; List&lt;PreparedPhoto&gt;)? = null): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:CheckRepository.kt$fun mergeResults(current: JSONObject, next: JSONObject, locale: String = "en"): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:CommunityReplies.kt$internal fun parseCommunityReplies(body: String): CommunityReplyPage</ID>
+    <ID>CyclomaticComplexMethod:CommunityRepliesSection.kt$@Composable internal fun CommunityRepliesViewer( result: JSONObject, offline: Boolean, links: CommunityLinks, loadReplies: suspend (CommunityLookup) -&gt; CommunityReplyPage, open: (String) -&gt; Unit, state: CommunityRepliesState? = null, onSaveMarket: (suspend (String) -&gt; Boolean)? = null, )</ID>
+    <ID>CyclomaticComplexMethod:CommunityRepliesSection.kt$@Composable private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, open: (String) -&gt; Unit, offline: Boolean, block: () -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:CommunityVerdict.kt$internal fun applyCommunityReplies(source: JSONObject, replies: List&lt;CommunityReply&gt;, locale: String, baseUrl: String, now: Instant = Instant.now()): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:CompanyAssessment.kt$internal fun safeCompanyAssessment(value: JSONObject?, saved: Boolean = false): JSONObject?</ID>
+    <ID>CyclomaticComplexMethod:CompanyAssessmentSection.kt$@Composable internal fun CompanyAssessmentSection(result: JSONObject)</ID>
+    <ID>CyclomaticComplexMethod:CompanyConcernSection.kt$@Composable internal fun CompanyConcernSection(result: JSONObject, showHeading: Boolean = true)</ID>
+    <ID>CyclomaticComplexMethod:CompanyConcerns.kt$CompanyConcernResolver$fun resolve(brand: String, locale: String): JSONArray</ID>
+    <ID>CyclomaticComplexMethod:ContentReportButton.kt$@Composable internal fun ContentReportButton(kind: String, offline: Boolean, contentId: String = "", initialText: String = "", submit: (suspend (ContentReport) -&gt; String)? = null)</ID>
+    <ID>CyclomaticComplexMethod:Evaluator.kt$Evaluator$fun evaluate(input: CheckInput, parsedIngredients: List&lt;String&gt;? = null): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:HistoryResearch.kt$internal fun retainPreviousResearch(result: JSONObject, previous: JSONObject)</ID>
+    <ID>CyclomaticComplexMethod:IdentifiedProductLookup.kt$IdentifiedProductLookup$suspend fun lookup(identity: JSONObject): BrowseRecord?</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$@OptIn(ExperimentalLayoutApi::class) @Composable internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: VegsnapViewModel)</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun VegsnapApp(model: VegsnapViewModel)</ID>
+    <ID>CyclomaticComplexMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun ResultSheet(originalResult: JSONObject, onClose: () -&gt; Unit, onRecheck: () -&gt; Unit, onSettings: () -&gt; Unit, model: VegsnapViewModel, failedRetry: AnalysisJob? = null)</ID>
+    <ID>CyclomaticComplexMethod:ManufacturerContact.kt$internal fun applyManufacturerContact(result: JSONObject, input: CheckInput, extracted: JSONObject): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:ManufacturerContact.kt$internal fun manufacturerDraft(result: JSONObject, locale: String, messages: JSONObject): ManufacturerDraft</ID>
+    <ID>CyclomaticComplexMethod:ManufacturerContact.kt$internal fun safeManufacturerContact(value: JSONObject?): JSONObject?</ID>
+    <ID>CyclomaticComplexMethod:ManufacturerContactSection.kt$@Composable internal fun ManufacturerContactSection(result: JSONObject)</ID>
+    <ID>CyclomaticComplexMethod:MatsparCatalogue.kt$MatsparCatalogue$suspend fun lookup(identity: JSONObject): JSONObject?</ID>
+    <ID>CyclomaticComplexMethod:OfflineDatabase.kt$OfflineDatabase$internal suspend fun lookup(input: CheckInput): Pair&lt;CheckInput, JSONObject&gt;?</ID>
+    <ID>CyclomaticComplexMethod:OfflineDatabase.kt$OfflineDatabase$private fun parse(bytes: ByteArray): OfflinePack</ID>
+    <ID>CyclomaticComplexMethod:OfflineDatabaseSettings.kt$@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class) @Composable internal fun OfflineDatabaseSettings(model: VegsnapViewModel)</ID>
+    <ID>CyclomaticComplexMethod:OfflineDatabaseSettings.kt$@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class) @Composable internal fun RegionalPacksSheet( state: OfflineDatabaseState, downloads: RegionalPacksState, offline: Boolean, busy: Boolean, message: Int?, onRefresh: (String) -&gt; Unit, onCancel: () -&gt; Unit, onDownload: (String) -&gt; Unit, onDismiss: () -&gt; Unit, dragHandle: @Composable () -&gt; Unit = { BottomSheetDefaults.DragHandle() }, )</ID>
+    <ID>CyclomaticComplexMethod:OnboardingScreen.kt$@Composable internal fun OnboardingScreen(settings: AppSettings, model: VegsnapViewModel, onFinish: () -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:PhotoImages.kt$internal fun loadPhotoBitmap(context: Context, uri: Uri, maxEdge: Int): Bitmap</ID>
+    <ID>CyclomaticComplexMethod:ProviderFlowTest.kt$ProviderFlowTest$@Test fun selectedCountryConstrainsNameRecoveryAndItsEffectOnTheVerdict()</ID>
+    <ID>CyclomaticComplexMethod:QueueScreens.kt$@Composable internal fun QueueJobContent(job: AnalysisJob, model: VegsnapViewModel, offline: Boolean, compact: Boolean = false, showIdentity: Boolean = true)</ID>
+    <ID>CyclomaticComplexMethod:ScanScreens.kt$@Composable private fun CameraView(enabled: Boolean, aspect: Float, barcodeEnabled: Boolean, onBarcode: (String) -&gt; Unit, onCaptureStarted: () -&gt; Unit, onPhoto: (Uri) -&gt; Unit, onError: () -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:ScanScreens.kt$@OptIn(ExperimentalLayoutApi::class) @Composable internal fun ScanScreen(state: ScanState, model: VegsnapViewModel)</ID>
+    <ID>CyclomaticComplexMethod:Storage.kt$HistoryTransfer$fun parse(text: String, locale: String = "en"): List&lt;HistoryEntry&gt;</ID>
+    <ID>CyclomaticComplexMethod:VeganAlternatives.kt$internal fun parseAIAlternatives(extraction: JSONObject, input: AlternativeQuery): List&lt;VeganAlternative&gt;</ID>
+    <ID>CyclomaticComplexMethod:VeganAlternatives.kt$internal fun parsePublicAlternatives(document: JSONObject, input: AlternativeQuery, evaluator: Evaluator): List&lt;VeganAlternative&gt;</ID>
+    <ID>CyclomaticComplexMethod:VegsnapViewModel.kt$VegsnapViewModel$fun connectChatGPT(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -&gt; Unit)</ID>
+    <ID>CyclomaticComplexMethod:VegsnapViewModel.kt$VegsnapViewModel$fun retryHistory(result: JSONObject)</ID>
+    <ID>CyclomaticComplexMethod:VegsnapViewModel.kt$VegsnapViewModel$fun updateSettings(transform: (AppSettings) -&gt; AppSettings)</ID>
+    <ID>CyclomaticComplexMethod:VegsnapViewModel.kt$VegsnapViewModel$private fun performCheck(photosOnly: Boolean)</ID>
+    <ID>CyclomaticComplexMethod:WebEvidence.kt$internal fun applyWebCompositions(initial: JSONObject, input: CheckInput, extracted: JSONObject, evaluator: Evaluator): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:WebEvidence.kt$internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, certifiers: Set&lt;String&gt;): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:WebEvidence.kt$internal fun responseResearch(response: JSONObject): JSONObject</ID>
+    <ID>CyclomaticComplexMethod:WebEvidence.kt$internal fun retainCatalogueComposition(extracted: JSONObject, catalogue: JSONObject, identity: JSONObject)</ID>
+    <ID>EmptyElseBlock:ChatGPTConnection.kt$if (data.isNotEmpty()) data.append('\n')</ID>
+    <ID>EmptyElseBlock:ChatGPTConnection.kt$if (read &lt; 0) break</ID>
+    <ID>EmptyElseBlock:CheckRepository.kt$CheckRepository.&lt;no name provided&gt;$if (continuation.isActive) continuation.resume(null)</ID>
+    <ID>EmptyElseBlock:CheckRepository.kt$if (input.name.isNotBlank()) put("name", input.name.take(300))</ID>
+    <ID>EmptyElseBlock:Evaluator.kt$if (value[end] == '(') depth++</ID>
+    <ID>EmptyElseBlock:Evaluator.kt$if (value[end] == ')') depth--</ID>
+    <ID>EmptyElseBlock:OcrLanguages.kt$OcrLanguages$if (count &lt; 0) break</ID>
+    <ID>EmptyElseBlock:OfflineDatabase.kt$OfflineDatabase$if (count &lt; 0) break</ID>
+    <ID>EmptyElseBlock:VegsnapViewModel.kt$VegsnapViewModel$if (count &lt; 0) break</ID>
+    <ID>LargeClass:VegsnapViewModel.kt$VegsnapViewModel : AndroidViewModel</ID>
+    <ID>LargeClass:WebEvidenceTest.kt$WebEvidenceTest</ID>
+    <ID>LongMethod:AIEvidence.kt$internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, complete: Boolean, imagesSent: Boolean, assessmentEvidenceId: String = "ai-assessment"): JSONObject</ID>
+    <ID>LongMethod:BrowseScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun BrowseScreen(settings: AppSettings, model: VegsnapViewModel)</ID>
+    <ID>LongMethod:ChatGPTConnection.kt$ChatGPTConnection$suspend fun signIn(newAccount: Boolean = false, accountId: String? = null, awaitForeground: suspend () -&gt; Unit, openBrowser: (String) -&gt; Unit): ChatGPTStatus</ID>
+    <ID>LongMethod:CheckRepository.kt$CheckRepository$private suspend fun extract(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit, countryInput: CheckInput, markets: MutableList&lt;String&gt;): ExtractedProduct</ID>
+    <ID>LongMethod:CheckRepository.kt$CheckRepository$private suspend fun extractOnce(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, researchIdentity: JSONObject? = null, onProgress: (CheckStage) -&gt; Unit = {}, catalogue: JSONObject? = null, database: Pair&lt;CheckInput, JSONObject&gt;? = null, hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null, maxToolCalls: Int = 4, onSearchCalls: (Int) -&gt; Unit = {}): JSONObject</ID>
+    <ID>LongMethod:CheckRepository.kt$CheckRepository$suspend fun check(original: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit = {}, recognizePhotos: (suspend (List&lt;PreparedPhoto&gt;) -&gt; List&lt;PreparedPhoto&gt;)? = null): JSONObject</ID>
+    <ID>LongMethod:CommunityRepliesSection.kt$@Composable internal fun CommunityRepliesViewer( result: JSONObject, offline: Boolean, links: CommunityLinks, loadReplies: suspend (CommunityLookup) -&gt; CommunityReplyPage, open: (String) -&gt; Unit, state: CommunityRepliesState? = null, onSaveMarket: (suspend (String) -&gt; Boolean)? = null, )</ID>
+    <ID>LongMethod:Evaluator.kt$Evaluator$fun evaluate(input: CheckInput, parsedIngredients: List&lt;String&gt;? = null): JSONObject</ID>
+    <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalLayoutApi::class) @Composable internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: VegsnapViewModel)</ID>
+    <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun SettingsScreen(settings: AppSettings, model: VegsnapViewModel, onTour: () -&gt; Unit)</ID>
+    <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun VegsnapApp(model: VegsnapViewModel)</ID>
+    <ID>LongMethod:MainActivity.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun ResultSheet(originalResult: JSONObject, onClose: () -&gt; Unit, onRecheck: () -&gt; Unit, onSettings: () -&gt; Unit, model: VegsnapViewModel, failedRetry: AnalysisJob? = null)</ID>
+    <ID>LongMethod:ScanScreens.kt$@Composable private fun CameraView(enabled: Boolean, aspect: Float, barcodeEnabled: Boolean, onBarcode: (String) -&gt; Unit, onCaptureStarted: () -&gt; Unit, onPhoto: (Uri) -&gt; Unit, onError: () -&gt; Unit)</ID>
+    <ID>LongMethod:ScanScreens.kt$@OptIn(ExperimentalLayoutApi::class) @Composable internal fun ScanScreen(state: ScanState, model: VegsnapViewModel)</ID>
+    <ID>LongParameterList:AIEvidence.kt$(result: JSONObject, input: CheckInput, extracted: JSONObject, complete: Boolean, imagesSent: Boolean, assessmentEvidenceId: String = "ai-assessment")</ID>
+    <ID>LongParameterList:AnalysisQueueService.kt$(job: AnalysisJob, result: JSONObject, historyPhotos: HistoryPhotoStore, photos: () -&gt; List&lt;ByteArray&gt;, exists: suspend (String) -&gt; Boolean, previous: suspend (String) -&gt; JSONObject? = { null }, persist: suspend (HistoryEntry) -&gt; Unit)</ID>
+    <ID>LongParameterList:BarcodeScanner.kt$(buffer: ByteBuffer, width: Int, height: Int, rowStride: Int, pixelStride: Int, left: Int = 0, top: Int = 0)</ID>
+    <ID>LongParameterList:ChatGPTAuthFlow.kt$(template: String, returnAutomatically: Boolean, title: String, message: String, action: String, language: String = "en", packageName: String = "app.vegsnap")</ID>
+    <ID>LongParameterList:ChatGPTConnection.kt$(host: String, clientId: String, redirect: String, state: String, nonce: String, verifier: String, email: String = "", idToken: String = "")</ID>
+    <ID>LongParameterList:ChatGPTConnection.kt$(model: String, prompt: String, text: String, images: List&lt;String&gt;, requireResearch: Boolean, allowResearch: Boolean, format: JSONObject? = null)</ID>
+    <ID>LongParameterList:ChatGPTConnection.kt$ChatGPTConnection$(model: String, prompt: String, text: String, images: List&lt;String&gt;, requireResearch: Boolean = false, allowResearch: Boolean = true, format: JSONObject? = null, onResearchStarted: () -&gt; Unit = {})</ID>
+    <ID>LongParameterList:CheckRepository.kt$CheckRepository$(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit, countryInput: CheckInput, markets: MutableList&lt;String&gt;)</ID>
+    <ID>LongParameterList:CheckRepository.kt$CheckRepository$(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, researchIdentity: JSONObject? = null, onProgress: (CheckStage) -&gt; Unit = {}, catalogue: JSONObject? = null, database: Pair&lt;CheckInput, JSONObject&gt;? = null, hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null, maxToolCalls: Int = 4, onSearchCalls: (Int) -&gt; Unit = {})</ID>
+    <ID>LongParameterList:CheckRepository.kt$CheckRepository$(original: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit = {}, recognizePhotos: (suspend (List&lt;PreparedPhoto&gt;) -&gt; List&lt;PreparedPhoto&gt;)? = null)</ID>
+    <ID>LongParameterList:CheckRepository.kt$CheckRepository$(private val evaluator: Evaluator, private val extractionPrompt: String, private val http: OkHttpClient = defaultHttpClient(), private val chatGPT: ChatGPTConnection? = null, private val researchPrompt: String = "", private val productRequests: OpenFactsProductRequests = OpenFactsProductRequests(), private val offlineDatabase: OfflineDatabase? = null, private val companyConcerns: CompanyConcernResolver = CompanyConcernResolver(), private val hostedBaseUrl: String = "", private val catalogueLookup: (suspend (JSONObject) -&gt; JSONObject?)? = null, private val identifiedDatabaseLookup: (suspend (JSONObject) -&gt; Pair&lt;CheckInput, JSONObject&gt;?)? = null, /** Prompt fragments and the strict output schema from contracts/; tests may omit them. */ private val promptParts: JSONObject = JSONObject(), private val outputSchema: JSONObject? = null)</ID>
+    <ID>LongParameterList:CommunityRepliesSection.kt$( result: JSONObject, offline: Boolean, links: CommunityLinks, loadReplies: suspend (CommunityLookup) -&gt; CommunityReplyPage, open: (String) -&gt; Unit, state: CommunityRepliesState? = null, onSaveMarket: (suspend (String) -&gt; Boolean)? = null, )</ID>
+    <ID>LongParameterList:MainActivity.kt$(originalResult: JSONObject, onClose: () -&gt; Unit, onRecheck: () -&gt; Unit, onSettings: () -&gt; Unit, model: VegsnapViewModel, failedRetry: AnalysisJob? = null)</ID>
+    <ID>LongParameterList:OfflineDatabaseSettings.kt$( state: OfflineDatabaseState, downloads: RegionalPacksState, offline: Boolean, busy: Boolean, message: Int?, onRefresh: (String) -&gt; Unit, onCancel: () -&gt; Unit, onDownload: (String) -&gt; Unit, onDismiss: () -&gt; Unit, dragHandle: @Composable () -&gt; Unit = { BottomSheetDefaults.DragHandle() }, )</ID>
+    <ID>LongParameterList:PhotoImages.kt$(uri: Uri, description: String?, modifier: Modifier = Modifier, maxEdge: Int = 384, contentScale: ContentScale = ContentScale.Fit, onReady: (() -&gt; Unit)? = null)</ID>
+    <ID>LongParameterList:ProductMarket.kt$(market: String, enabled: Boolean = true, modifier: Modifier = Modifier, source: String? = null, colors: ButtonColors = ButtonDefaults.outlinedButtonColors(), onSave: suspend (String) -&gt; Boolean)</ID>
+    <ID>LongParameterList:ScanScreens.kt$(enabled: Boolean, aspect: Float, barcodeEnabled: Boolean, onBarcode: (String) -&gt; Unit, onCaptureStarted: () -&gt; Unit, onPhoto: (Uri) -&gt; Unit, onError: () -&gt; Unit)</ID>
+    <ID>LoopWithTooManyJumpStatements:AIEvidence.kt$for</ID>
+    <ID>LoopWithTooManyJumpStatements:AnalysisQueueService.kt$AnalysisQueueService$while</ID>
+    <ID>LoopWithTooManyJumpStatements:ChatGPTConnection.kt$ChatGPTConnection$while</ID>
+    <ID>LoopWithTooManyJumpStatements:ChatGPTConnection.kt$for</ID>
+    <ID>LoopWithTooManyJumpStatements:ChatGPTConnection.kt$while</ID>
+    <ID>LoopWithTooManyJumpStatements:CheckRepository.kt$CheckRepository$for</ID>
+    <ID>LoopWithTooManyJumpStatements:CompanyConcerns.kt$CompanyConcernResolver$for</ID>
+    <ID>LoopWithTooManyJumpStatements:WebEvidence.kt$for</ID>
+    <ID>MatchingDeclarationName:CheckProgress.kt$CheckStage</ID>
+    <ID>MatchingDeclarationName:CompanyConcerns.kt$CompanyConcernResolver</ID>
+    <ID>MatchingDeclarationName:HistoryPhotos.kt$HistoryPhotoStore</ID>
+    <ID>MatchingDeclarationName:InputLimits.kt$BoundedProductText</ID>
+    <ID>MatchingDeclarationName:OpenFactsProducts.kt$OpenFactsProductRequests</ID>
+    <ID>MatchingDeclarationName:PhotoGeometry.kt$FittedPhoto</ID>
+    <ID>MatchingDeclarationName:ResultPresentation.kt$ResultClassification</ID>
+    <ID>NestedBlockDepth:AIError.kt$internal fun providerHttpFailure(status: Int, stream: InputStream?): AIProviderFailure</ID>
+    <ID>NestedBlockDepth:AIEvidence.kt$internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, complete: Boolean, imagesSent: Boolean, assessmentEvidenceId: String = "ai-assessment"): JSONObject</ID>
+    <ID>NestedBlockDepth:AnalysisQueueService.kt$AnalysisQueueService$private suspend fun drain()</ID>
+    <ID>NestedBlockDepth:ChatGPTConnection.kt$internal fun readChatGPTStream(stream: InputStream, onResearchStarted: () -&gt; Unit = {}, onDiagnostic: (String) -&gt; Unit = {}): ChatGPTExtraction</ID>
+    <ID>NestedBlockDepth:CheckRepository.kt$CheckRepository$private suspend fun extractOnce(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, researchIdentity: JSONObject? = null, onProgress: (CheckStage) -&gt; Unit = {}, catalogue: JSONObject? = null, database: Pair&lt;CheckInput, JSONObject&gt;? = null, hostedCountryContext: JSONObject? = null, alternativeSearch: JSONObject? = null, researchOutcome: String? = null, maxToolCalls: Int = 4, onSearchCalls: (Int) -&gt; Unit = {}): JSONObject</ID>
+    <ID>NestedBlockDepth:CheckRepository.kt$fun mergeResults(current: JSONObject, next: JSONObject, locale: String = "en"): JSONObject</ID>
+    <ID>NestedBlockDepth:CompanyConcerns.kt$CompanyConcernResolver$fun resolve(brand: String, locale: String): JSONArray</ID>
+    <ID>NestedBlockDepth:OcrLanguages.kt$OcrLanguages$private fun install(language: OcrLanguage, source: InputStream, ensureActive: () -&gt; Unit)</ID>
+    <ID>NestedBlockDepth:WebEvidence.kt$internal fun responseResearch(response: JSONObject): JSONObject</ID>
+    <ID>SwallowedException:AnalysisQueueService.kt$AnalysisQueueService$error: Exception</ID>
+    <ID>SwallowedException:CheckRepository.kt$CheckRepository$error: Exception</ID>
+    <ID>SwallowedException:RegionalPacks.kt$HttpRegionalPackDownload$error: TimeoutCancellationException</ID>
+    <ID>SwallowedException:VegsnapViewModel.kt$VegsnapViewModel$error: Exception</ID>
+    <ID>ThrowingExceptionFromFinally:VegsnapViewModel.kt$VegsnapViewModel$throw error</ID>
+    <ID>ThrowsCount:CheckRepository.kt$CheckRepository$private suspend fun extract(input: CheckInput, photos: List&lt;PreparedPhoto&gt;, settings: AppSettings, token: String, onProgress: (CheckStage) -&gt; Unit, countryInput: CheckInput, markets: MutableList&lt;String&gt;): ExtractedProduct</ID>
+    <ID>ThrowsCount:VegsnapViewModel.kt$VegsnapViewModel$fun connectChatGPT(newAccount: Boolean = false, accountId: String? = null, openBrowser: (String) -&gt; Unit)</ID>
+    <ID>TooGenericExceptionCaught:AnalysisQueueService.kt$AnalysisQueueRunner$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:AnalysisQueueService.kt$AnalysisQueueService$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:AnalysisQueueStore.kt$AnalysisQueueStore$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:BarnivoreRepository.kt$BarnivoreRepository.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:BrowseRepository.kt$BrowseRepository$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:BrowseRepository.kt$BrowseRepository.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:BrowseScreen.kt$BrowseViewModel$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:ChatGPTAuthFlow.kt$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:ChatGPTConnection.kt$ChatGPTConnection.&lt;no name provided&gt;$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CheckRepository.kt$CheckRepository$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:CheckRepository.kt$CheckRepository.&lt;no name provided&gt;$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CommunityRepliesRepository.kt$CommunityRepliesRepository.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:ContentReports.kt$ContentReportsRepository.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:HistoryPhotos.kt$HistoryPhotoStore$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:HostedAIConnection.kt$HostedAIConnection.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:MatsparCatalogue.kt$MatsparCatalogue.&lt;no name provided&gt;$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:OcrLanguages.kt$OcrLanguages$error: Exception</ID>
+    <ID>TooGenericExceptionCaught:VegsnapViewModel.kt$VegsnapViewModel$error: Exception</ID>
+    <ID>TooManyFunctions:AnalysisQueueStore.kt$AnalysisQueueStore</ID>
+    <ID>TooManyFunctions:ChatGPTConnection.kt$ChatGPTConnection</ID>
+    <ID>TooManyFunctions:ChatGPTConnection.kt$app.vegsnap.ChatGPTConnection.kt</ID>
+    <ID>TooManyFunctions:ChatGPTRegistration.kt$ChatGPTRegistrations</ID>
+    <ID>TooManyFunctions:CheckRepository.kt$CheckRepository</ID>
+    <ID>TooManyFunctions:MainActivity.kt$app.vegsnap.MainActivity.kt</ID>
+    <ID>TooManyFunctions:OcrLanguages.kt$OcrLanguages</ID>
+    <ID>TooManyFunctions:OfflineDatabase.kt$OfflineDatabase</ID>
+    <ID>TooManyFunctions:ResultStrings.kt$ResultStrings</ID>
+    <ID>TooManyFunctions:VegsnapViewModel.kt$VegsnapViewModel : AndroidViewModel</ID>
+    <ID>TooManyFunctions:WebEvidence.kt$app.vegsnap.WebEvidence.kt</ID>
+    <ID>TopLevelPropertyNaming:Evaluator.kt$private const val additiveRoles = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel)"</ID>
+    <ID>TopLevelPropertyNaming:Evaluator.kt$private const val materialRoles = "(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)"</ID>
+    <ID>UnusedParameter:BrowseScreen.kt$BrowseViewModel$value: Boolean</ID>
+  </CurrentIssues>
+</SmellBaseline>

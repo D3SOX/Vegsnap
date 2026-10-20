@@ -45,7 +45,7 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
     // describes its outer ingredient and cannot be assigned to every child.
     if (!parsed && key && composition.includes(key)) {
       const terms = compositionTerms(assessment.term, ['shoes', 'clothing'].includes(input.category ?? 'other'));
-      if (assessment.status === 'plant') terms.forEach(term => keys.add(term));
+      if (assessment.status === 'plant') { for (const term of terms) keys.add(term); }
       else if ((terms.length === 1 || /[([{]/.test(assessment.term)) && terms[0]) keys.add(terms[0]);
     }
     for (const matchedKey of keys) {

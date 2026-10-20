@@ -25,13 +25,13 @@ try {
   assert.equal(nativeCalls, 0);
   assert.equal(await requestDataConsent(CONTENT_DATA, { origins: ['https://www.dm.de/*'] }), false);
   assert.deepEqual(requests.at(-1), { origins: ['https://www.dm.de/*'], data_collection: [...CONTENT_DATA] });
-  CONTENT_DATA.forEach(value => granted.add(value));
+  for (const value of CONTENT_DATA) granted.add(value);
   await contentFetch('https://example.invalid');
   await assert.rejects(() => aiFetch('https://example.invalid'), /Allow data sharing/);
   assert.equal(networkCalls, 1, 'Content consent does not authorize credentials');
-  AI_DATA.forEach(value => granted.add(value));
+  for (const value of AI_DATA) granted.add(value);
   await aiFetch('https://example.invalid');
-  ACCOUNT_DATA.forEach(value => granted.add(value));
+  for (const value of ACCOUNT_DATA) granted.add(value);
   await assert.rejects(() => companion('status'), /Native process reached/);
   assert.equal(nativeCalls, 1);
   granted.delete('websiteContent');

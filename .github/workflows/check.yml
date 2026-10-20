@@ -18,6 +18,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run strings:check
       - run: bun run typecheck
+      - name: Lint TypeScript with Biome
+        run: bun run lint
+      - name: Lint Python with ruff
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          version-file: pyproject.toml
       - run: bun run test
       - run: bun run test:package
       - run: bun run test:screenshots
@@ -35,6 +41,9 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: ./gradlew testDebugUnitTest lintDebug
+        working-directory: android
+      - name: Lint Kotlin with detekt
+        run: ./gradlew detekt
         working-directory: android
 
   companion:
@@ -55,6 +64,13 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - name: Lint Swift with SwiftLint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download 0.65.1 --repo realm/SwiftLint --pattern portable_swiftlint.zip --dir "$RUNNER_TEMP/swiftlint"
+          unzip -q "$RUNNER_TEMP/swiftlint/portable_swiftlint.zip" -d "$RUNNER_TEMP/swiftlint"
+          "$RUNNER_TEMP/swiftlint/swiftlint" lint --strict
       - run: bun run check:ios-types
       - run: bun run test:ios-bridge
       - run: bun run ios:prepare
