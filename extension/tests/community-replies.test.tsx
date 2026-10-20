@@ -96,3 +96,27 @@ test('automatic lookup respects permissions and offline mode, and rejects stale 
     expect(received).toHaveLength(0); expect(host.textContent).toContain('More than 50 replies match');
   } finally { await act(()=>render(null,host)); Object.assign(globalThis,{window:previous.window,document:previous.document}); Object.defineProperty(globalThis,'navigator',{configurable:true,value:previous.navigator}); }
 });
+
+test('hidden replies leave the list and the verdict, and each reply offers report and hide actions', async () => {
+  const window = new Window(); const document = window.document as unknown as Document;
+  const previous = {window:globalThis.window,document:globalThis.document,navigator:globalThis.navigator};
+  Object.assign(globalThis,{window,document}); Object.defineProperty(globalThis,'navigator',{configurable:true,value:window.navigator});
+  const host = document.createElement('div'); document.body.append(host);
+  const result = analyzeText({text:'vitamin D',name:'Drink',brand:'Maker',market:'SE'});
+  const reply = {productName:'Drink',brand:'Maker',barcode:'',market:'SE',variant:'',question:'Is it vegan?',reply:'Our drink is vegan.',
+    repliedOn:'2026-01-10',claim:'vegan',scope:'whole_product',sourceUrl:'',id:'12345678-1234-4234-8234-123456789abc',reviewedAt:'2026-01-11T00:00:00Z',evidencePublic:false,match:'name'};
+  const fetchReplies = Object.assign(async () => new Response(JSON.stringify({replies:[reply],more:false})),{preconnect:fetch.preconnect}) as typeof fetch;
+  let received: unknown[] = []; const hidden: string[] = [];
+  const mount = async (hiddenReplies: string[]) => { await act(async () => { render(<CommunityRepliesSection result={result} locale="en" baseUrl="https://community.example" fetchReplies={fetchReplies} hiddenReplies={hiddenReplies} onHideReply={id=>hidden.push(id)} onReplies={replies=>{received=replies;}}/>,host); await new Promise(resolve=>setTimeout(resolve,10)); }); };
+  try {
+    await mount([]); await act(async()=>{await new Promise(resolve=>setTimeout(resolve,10));});
+    expect(received).toHaveLength(1); expect(host.textContent).toContain('Our drink is vegan.');
+    const buttons = [...host.querySelectorAll('button')].map(button=>button.textContent);
+    expect(buttons).toContain('Report this reply'); expect(buttons).toContain('Hide this reply');
+    await act(()=>[...host.querySelectorAll('button')].find(button=>button.textContent==='Hide this reply')!.click());
+    expect(hidden).toEqual([reply.id]);
+    await mount([reply.id]);
+    expect(received).toHaveLength(0); expect(host.textContent).not.toContain('Our drink is vegan.');
+    expect(host.textContent).toContain('Hidden replies stay hidden on this device.');
+  } finally { await act(()=>render(null,host)); Object.assign(globalThis,{window:previous.window,document:previous.document}); Object.defineProperty(globalThis,'navigator',{configurable:true,value:previous.navigator}); }
+});

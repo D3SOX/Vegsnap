@@ -1,6 +1,6 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { alternativeQueryForProduct, countryCode, imageSupport, localizeResult, type CommunityReply } from '@vegsnap/core';
+import { alternativeQueryForProduct, communityLinks, countryCode, imageSupport, localizeResult, resultReport, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
@@ -21,7 +21,9 @@ import { synchronizedRefresh } from './synchronization';
 import { CompanyConcerns } from './company-concerns';
 import { ManufacturerContactSection } from './manufacturer-contact';
 import { CommunityRepliesSection } from './community-replies';
-import { applyCommunityHistory } from './community-history';
+import { ContentReportButton, aiReportText } from './content-report';
+import { HiddenRepliesSetting } from './hidden-replies-setting';
+import { applyCommunityHistory, hidesCommunityHistory, withoutCommunityHistory } from './community-history';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, contentFetch, hasDataConsent, requestDataConsent } from './data-consent';
 import { accountDetails, type AccountOptions, type CompanionCommand, type CompanionSnapshot } from './companion-state';
 
@@ -57,9 +59,11 @@ export function App() {
   const [storedResult, setResult] = useState<HistoryResult>();
   const [editingResult, setEditingResult] = useState<HistoryResult>();
   const [community, setCommunity] = useState<{ key: string; source: string; replies?: CommunityReply[]; retrievedAt: string }>();
+  const [hiddenReplies, setHiddenReplies] = useState<string[]>([]);
   const communityKey = storedResult ? `${storedResult.id}:${JSON.stringify(storedResult.identity)}` : '';
   const result = storedResult && community?.key === communityKey && community.source === JSON.stringify(storedResult) && community.replies
-    ? applyCommunityHistory(storedResult, community.replies, config.language, new Date(community.retrievedAt)) : storedResult;
+    ? applyCommunityHistory(storedResult, community.replies, config.language, new Date(community.retrievedAt))
+    : storedResult && hidesCommunityHistory(storedResult, hiddenReplies) ? withoutCommunityHistory(storedResult) : storedResult;
   const storedJSON = JSON.stringify(storedResult), resultJSON = JSON.stringify(result);
   useEffect(() => {
     if (!storedResult || !result || storedJSON === resultJSON) return;
@@ -112,6 +116,8 @@ export function App() {
   const detailsField = useRef<HTMLTextAreaElement | null>(null);
   const t = messages[config.language];
   const mt = marketMessages[config.language];
+  const reportLinks = result ? communityLinks(result, config.language) : undefined;
+  const reportOrigin = reportLinks ? new URL(reportLinks.submit).origin : '';
   const isPopup = location.pathname.includes('popup');
   const alternativeResearchEnabled = config.connection === 'chatgpt'
     ? account.state === 'connected' && !!config.model
@@ -132,7 +138,7 @@ export function App() {
       if (configRef.current.baseUrl !== state.settings.baseUrl || configRef.current.connection !== state.settings.connection) {
         credentialRevision.current++; setToken('');
       }
-      configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks);
+      configRef.current = state.settings; setConfig(state.settings); setHistory(state.history); setHasKey(state.hasKey); setOfflinePacks(state.offlinePacks); setHiddenReplies(state.hiddenReplies);
       setResult(current=>{
         const saved = current && state.history.find(item=>item.id === current.id);
         return saved && JSON.stringify(saved) !== JSON.stringify(current) ? saved : current;
@@ -406,6 +412,10 @@ export function App() {
         {result.outcome === 'not_vegan' && <Alternatives researchEnabled={alternativeResearchEnabled} key={`${result.id}:${result.identity.market}`} config={config} initialQuery={alternativeQueryForProduct(result.identity.name ?? '', result.identity.brand, result.findings.filter(finding => finding.status === 'animal').map(finding => finding.term))} category={result.category} market={result.identity.market} excludeBarcode={result.identity.barcode} research={researchAlternatives}/>}
         {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
+        {reportOrigin && <div class="actions">
+          {(result.usedAI || result.companyAssessment) && <ContentReportButton key={`ai:${result.id}`} kind="ai" locale={config.language} origin={reportOrigin} initialText={aiReportText(result)} send={contentFetch} allowSend={() => requestDataConsent(CONTENT_DATA)}/>}
+          <ContentReportButton key={`result:${result.id}`} kind="result" locale={config.language} origin={reportOrigin} result={resultReport(result, { locale: config.language, platform: 'extension', appVersion: browser.runtime.getManifest().version })} send={contentFetch} allowSend={() => requestDataConsent(CONTENT_DATA)}/>
+        </div>}
         {onlineCheck?.id === result.id && <div class="alert"><p>{t.onlineConsentHint}</p><button type="button" disabled={busy} onClick={allowOnlineCheck}>{t.allowOnlineChecks}</button></div>}
         {result.webSearchStatus === 'searched' && <p class="muted">{t.webSearched}</p>}
         {result.webSearchStatus === 'unsupported' && <p class="muted">{t.webUnsupported}</p>}
@@ -422,7 +432,8 @@ export function App() {
           setResult(current=>current?.id === original.id ? corrected : current);
           await refresh();
         })}/>
-        <CommunityRepliesSection key={communityKey} result={storedResult!} locale={config.language} fetchReplies={contentFetch}
+        <CommunityRepliesSection key={communityKey} result={storedResult!} locale={config.language} fetchReplies={contentFetch} hiddenReplies={hiddenReplies}
+          onHideReply={id => void act(async () => { await request({ type: 'hide-reply', id }); await refresh(); })}
           canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
           onReplies={(replies,complete)=>setCommunity({key:communityKey,source:JSON.stringify(storedResult),...(complete ? {replies} : {}),retrievedAt:new Date().toISOString()})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
@@ -497,6 +508,7 @@ export function App() {
             {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
             <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error(t.packSizeLimit); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
           </section>
+          <HiddenRepliesSetting count={hiddenReplies.length} locale={config.language} disabled={!ready || busy} onRestore={() => void act(async () => { await request({ type: 'restore-replies' }); await refresh(); })}/>
           <h2>{t.privacy}</h2><p class="hint"><a href="https://vegsnap.app/privacy.html" target="_blank" rel="noreferrer">{t.privacyPolicy}</a></p><label class="checkbox"><input type="checkbox" checked={config.saveHistory} onChange={event => update('saveHistory', event.currentTarget.checked)}/>{t.historySetting}</label>
         </form>
         <footer>Vegsnap · AGPL-3.0 · <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Facts / ODbL</a></footer>
