@@ -123,6 +123,7 @@ struct ResultView: View {
                     }
                 }
                 ShareLink(item: result.title + "\n" + result.outcomeLabel + "\n\n" + result.summary) { Label(L("Share result"), systemImage: "square.and.arrow.up") }
+                ContentReportButton(store: store, kind: "result", result: result)
             }
         }.navigationTitle(L("Result")).navigationBarTitleDisplayMode(.inline)
             .onAppear { market = saved.result.identity.market }

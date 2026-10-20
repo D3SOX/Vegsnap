@@ -26,6 +26,7 @@ export function call(operation: string, json: string): string {
     case 'community': return JSON.stringify(core.communityLinks(args.result, args.locale) ?? null);
     case 'communityLookup': return JSON.stringify(core.communityLookupParams(args).toString());
     case 'communityReplies': return JSON.stringify(core.parseCommunityReplyPage(JSON.parse(args)));
+    case 'resultReport': return JSON.stringify(core.resultReport(args.result, { locale: args.locale, platform: 'ios', appVersion: args.appVersion }));
     case 'communityVerdict': {
       const page = core.parseCommunityReplyPage(args.page);
       const hidden = new Set<string>(args.hidden);

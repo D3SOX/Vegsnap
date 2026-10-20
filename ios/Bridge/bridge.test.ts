@@ -294,3 +294,13 @@ test('concurrent packaging lookups wait for slots and cancelled waiters reserve 
   expect((await third).outcome).toBe('not_vegan');
   expect(searches()).toBe(3);
 });
+
+test('wrong-result reports carry only the verdict context the shared core selects', () => {
+  const app = harness();
+  const result: CheckResult = app.call('analyze', { text: 'Ingredients: milk, oats', name: ' Oat drink ', brand: 'Maker', barcode: '3017620422003', market: 'SE', locale: 'en' });
+  const report = app.call('resultReport', { result: { ...result, photos: ['private-photo'] }, locale: 'de', appVersion: '0.2.19' });
+  expect(report).toEqual({ product: 'Oat drink', brand: 'Maker', outcome: 'not_vegan', locale: 'de', platform: 'ios', appVersion: '0.2.19',
+    findings: result.findings.map(finding => ({ term: finding.term, status: finding.status, ruleId: finding.ruleId ?? '' })) });
+  expect(report.findings.some((finding: { term: string; status: string }) => finding.term === 'milk' && finding.status === 'animal')).toBe(true);
+  for (const secret of ['private-photo', 'explanation', 'evidence', '3017620422003']) expect(JSON.stringify(report)).not.toContain(secret);
+});
