@@ -257,7 +257,6 @@ impl Layout {
         let target = self.binary();
         self.register(&target, &[])?;
         remove_program(&target)?;
-        remove_program(&target.with_extension("old"))?;
         if self.os == Os::Windows {
             for directory in [
                 "Vegsnap/Companion",
@@ -352,15 +351,11 @@ fn copy_program(source: &Path, target: &Path) -> io::Result<()> {
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o755);
     io::copy(&mut File::open(source)?, &mut options.open(&staged)?)?;
-    // Windows cannot replace a running program, but it can rename it.
-    let previous = target.with_extension("old");
-    let _ = fs::remove_file(&previous);
-    if target.exists() {
-        fs::rename(target, &previous)?;
+    // Windows cannot replace a program that a browser still runs.
+    if cfg!(windows) {
+        remove_program(target)?;
     }
-    fs::rename(&staged, target)?;
-    let _ = fs::remove_file(previous);
-    Ok(())
+    fs::rename(&staged, target)
 }
 
 #[cfg(windows)]
@@ -667,7 +662,6 @@ mod tests {
         fs::write(&target, "old").unwrap();
         copy_program(&source, &target).unwrap();
         assert_eq!(fs::read_to_string(&target).unwrap(), "new");
-        assert!(!target.with_extension("old").exists());
         assert!(!target.with_extension("new").exists());
         #[cfg(unix)]
         {
