@@ -207,6 +207,15 @@ import Security
         let restored = try AppStore(root: root)
         XCTAssertEqual(restored.packs.first { $0.region == "timestamp-fixture" }?.generatedAt, "2026-10-09T11:00:00.500Z")
     }
+    func testSavedLegacyCatalogURLFollowsTheWeeklyCatalog() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try AppStore(root: root)
+        store.settings.catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"; store.saveSettings()
+        XCTAssertEqual(try AppStore(root: root).settings.catalogURL, Settings().catalogURL)
+        store.settings.catalogURL = "https://fixture.invalid/catalog.json"; store.saveSettings()
+        XCTAssertEqual(try AppStore(root: root).settings.catalogURL, "https://fixture.invalid/catalog.json")
+    }
     func testImportedHistorySortsChronologically() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

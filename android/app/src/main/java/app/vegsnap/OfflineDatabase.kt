@@ -23,7 +23,7 @@ import org.json.JSONObject
 internal const val OFFLINE_PACK_BYTES = 20_000_000
 internal const val OFFLINE_PACK_PRODUCTS = 40_000
 internal const val OFFLINE_INSTALLED_PACKS = 10
-/** Every installed pack stays parsed in memory, so their total size is bounded to three maximum packs. */
+/** Every installed pack stays parsed in memory, so imports and downloads keep their total size within three maximum packs. */
 internal const val OFFLINE_INSTALLED_BYTES = 60_000_000L
 internal fun offlineRegionId(region: String): String = MessageDigest.getInstance("SHA-256")
     .digest(region.trim().lowercase(Locale.ROOT).toByteArray()).joinToString("") { "%02x".format(it) }
@@ -60,14 +60,11 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
         bundle = try { bundled().use { parse(readBounded(it)) } } catch (_: Exception) { unavailable = true; null }
         val files = regionsDirectory.listFiles()?.filter { it.extension == "json" }?.sortedBy { it.name }.orEmpty()
         if (files.size > OFFLINE_INSTALLED_PACKS) unavailable = true
-        var bytes = 0L
         for (file in files.take(OFFLINE_INSTALLED_PACKS)) {
             currentCoroutineContext().ensureActive()
             try {
-                require(bytes + file.length() <= OFFLINE_INSTALLED_BYTES) { "Installed pack limit reached" }
                 val pack = file.inputStream().use { parse(readBounded(it)) }
                 require(file.name == "${pack.info.id}.json")
-                bytes += pack.info.bytes
                 regional[pack.info.id] = pack
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (_: Exception) { unavailable = true }

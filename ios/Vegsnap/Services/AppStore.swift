@@ -36,7 +36,9 @@ import CryptoKit
         files = try FileStore(root: root)
         engine = try CoreEngine()
         hosted = try HostedAIConnection(configuration: ServiceConfiguration.load("hosted-ai"))
-        let loadedSettings: Settings = try files.read("settings.json") ?? Settings()
+        var loadedSettings: Settings = try files.read("settings.json") ?? Settings()
+        // Releases before 20 MB packs saved the now frozen catalog.json default; those installs follow the weekly catalog instead.
+        if loadedSettings.catalogURL == "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json" { loadedSettings.catalogURL = Settings().catalogURL }
         settings = loadedSettings
         savedFallbackCountry = loadedSettings.defaultCountry
         history = try files.read("history.json") ?? []

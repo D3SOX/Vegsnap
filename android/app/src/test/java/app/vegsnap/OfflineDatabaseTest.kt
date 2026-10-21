@@ -175,6 +175,15 @@ class OfflineDatabaseTest {
         reload.initialize()
         assertEquals(3, reload.state.value.installed.size)
         assertFalse(reload.state.value.unavailable)
+        // Packs installed before the total bound existed stay loaded and removable instead of silently disappearing.
+        File(folder, "regions/${offlineRegionId("D")}.json").writeBytes(large("D"))
+        val legacy = OfflineDatabase({ document().toString().byteInputStream() }, folder)
+        legacy.initialize()
+        assertEquals(listOf("A", "B", "C", "D"), legacy.state.value.installed.map { it.region })
+        assertFalse(legacy.state.value.unavailable)
+        assertFalse(legacy.state.value.canInstall("E", 1))
+        legacy.removeImported(offlineRegionId("D"))
+        assertTrue(legacy.state.value.canInstall("E", 1))
     }
     @Test fun `offline browse searches local names and brands and retains attribution`() = withDatabase { database, _ ->
         var network = 0

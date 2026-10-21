@@ -4,6 +4,9 @@ export interface OfflinePackStorage {
   put(snapshot: OfflineSnapshot): Promise<void>;
   remove(region: string): Promise<void>;
 }
+/** Every imported pack stays parsed in memory, so their total size is bounded to three maximum packs like in the apps. */
+const MAX_INSTALLED_BYTES = 60_000_000;
+const packBytes = (pack: OfflineSnapshot) => new TextEncoder().encode(JSON.stringify(pack)).length;
 /** Serialize changes and publish a new index only after the storage transaction commits. */
 export function createOfflineLibrary(storage: OfflinePackStorage, bundled: OfflineSnapshot) {
   const base = validateOfflineSnapshot(bundled);
@@ -29,6 +32,7 @@ export function createOfflineLibrary(storage: OfflinePackStorage, bundled: Offli
       return change(async () => {
         const next = [...packs.filter(pack => pack.region !== snapshot.region), snapshot];
         if (next.length > 5) throw new Error('Remove an optional offline pack before importing another (maximum five).');
+        if (next.reduce((total, pack) => total + packBytes(pack), 0) > MAX_INSTALLED_BYTES) throw new Error('Remove an optional offline pack before importing another (60 MB in total).');
         const nextIndex = new OfflineProductIndex([base, ...next]);
         await storage.put(snapshot);
         packs = next; index = nextIndex;
