@@ -1,7 +1,7 @@
 // Isolated process: module mocks here never leak into the core's real evaluator tests.
 import { mock } from 'bun:test';
 import { strict as assert } from 'node:assert';
-import type { CheckInput, CheckOptions, ProviderConfig } from '@vegsnap/core';
+import type { CheckInput, CheckOptions, OfflineProductIndex, ProviderConfig } from '@vegsnap/core';
 import hostedConfig from '../../data/hosted-ai.json';
 import { researchVeganAlternatives, validateAlternativeSearch } from '../../packages/core/src/alternatives';
 import { countryCode } from '../../packages/core/src/market';
@@ -9,6 +9,8 @@ import { acceptsImages } from '../../packages/core/src/model-capabilities';
 import { checkProduct as realCheckProduct } from '../../packages/core/src/check';
 import { applyCommunityReplies } from '../../packages/core/src/community';
 import { retainPreviousResearch } from '../../packages/core/src/history-research';
+import { browseOfflinePage, validateBrowseSearch } from '../../packages/core/src/browse';
+import { parseResultCompanyAssessment } from '../../packages/core/src/company-assessment';
 import { defaultSettings, STORES } from '../src/settings';
 import type { CheckReply, Pending, Reply } from '../src/protocol';
 type Sender = { id: string; url: string; tab?: { id: number } };
@@ -23,7 +25,7 @@ let permissionsRemovedListener: () => void;
 const local: Record<string, unknown> = { settings: { ...defaultSettings, connection: 'openai', baseUrl: 'https://api.openai.com/v1', model: 'test-model', stores: ['dm'] } };
 const session: Record<string, unknown> = {};
 const calls: CheckOptions[] = [];
-const offlineIndex: NonNullable<CheckOptions['offlineProducts']> = { lookup: () => null };
+const offlineIndex: NonNullable<CheckOptions['offlineProducts']> & Pick<OfflineProductIndex, 'search'> = { lookup: () => null, search: () => [{ source: 'off' as const, code: '4006381333931', name: 'Oat drink', brands: 'Plant', ingredients: 'water, oats', countries_tags: ['en:germany'], last_modified_t: 1760000000, snapshotDate: '2026-10-05T10:00:00Z' }] };
 let useRealEvaluator = false;
 let providerExtractions = 0;
 const providerInputs: CheckInput[] = [];
@@ -102,7 +104,7 @@ mock.module('wxt/browser', () => ({ browser: {
 } }));
 mock.module('../src/history', () => ({ history: async (operation: string, value: unknown) => {
   if (operation !== 'list') historyOperations.push(`${operation}:start`);
-  if (operation === 'save') { await historySaveGate; saved.push(value); }
+  if (operation === 'save') { await historySaveGate; saved.push(...(Array.isArray(value) ? value : [value])); }
   if (operation === 'delete') { await historyDeleteGate; saved.splice(0); }
   if (operation !== 'list') historyOperations.push(`${operation}:end`);
   return operation === 'list' ? saved : undefined;
@@ -111,7 +113,7 @@ const evaluateProduct = realCheckProduct;
 const parseCountry = countryCode;
 mock.module('@vegsnap/core', () => ({
   applyCommunityReplies,
-  retainPreviousResearch,
+  retainPreviousResearch, browseOfflinePage, validateBrowseSearch, parseResultCompanyAssessment,
   countryCode: parseCountry, HOSTED_AI: hostedConfig,
   createHostedAIProvider: (token: string) => { hostedProviderTokens.push(token); return { supportsWebSearch: true, extract: async () => {
     hostedRemaining = Math.max(0, hostedRemaining - 1);
@@ -515,6 +517,24 @@ console.log('Companion boundaries: catalog/sign-in failures, unavailable state, 
 assert.equal((await listener!({ type: 'import-offline-pack', text: 'fixture-pack' }, page)).ok, false, 'Content scripts cannot replace offline data');
 assert.equal((await listener!({ type: 'remove-offline-pack', region: 'Sweden' }, page)).ok, false);
 assert.equal((await listener!({ type: 'import-offline-pack', text: 'fixture-pack' }, trusted)).ok, true);
+// History import: content scripts are refused; extension pages merge without duplicates under the history queue.
+assert.equal((await listener!({ type: 'import-history', text: '{}' }, page)).ok, false, 'Content scripts cannot import history');
+const transferred = { schemaVersion: 1, id: 'transferred', outcome: 'vegan', basis: 'composition', title: 'Transferred', summary: 'Transferred summary.', category: 'food',
+  identity: { name: 'Transferred', market: 'DE', match: 'unconfirmed' }, findings: [], evidence: [], questions: [], warnings: [], crossContact: [], companyConcerns: [], checkedAt: '2026-10-05T10:00:00Z', usedAI: false };
+saved.splice(0); saved.push({ ...transferred, id: 'kept', title: 'Kept', photos: ['data:image/jpeg;base64,YQ=='] });
+const beforeImport = historyOperations.length;
+const importFile = JSON.stringify({ schemaVersion: 1, exportedAt: '2026-10-05T10:00:00Z', results: [transferred, { ...transferred, id: 'kept', title: 'Replacement' }, transferred] });
+assert.deepEqual(await listener!({ type: 'import-history', text: importFile }, trusted), { ok: true, result: { added: 1, skipped: 1 } });
+assert.deepEqual(historyOperations.slice(beforeImport), ['save:start', 'save:end'], 'Imports write once under the history queue');
+assert.deepEqual(saved.map(item => (item as { id: string; title: string }).title), ['Kept', 'Transferred'], 'Saved checks keep priority over transferred copies');
+assert.equal((await listener!({ type: 'import-history', text: JSON.stringify({ schemaVersion: 2, results: [] }) }, trusted)).ok, false, 'Unsupported files are rejected');
+assert.equal((await listener!({ type: 'import-history', text: JSON.stringify({ schemaVersion: 1, results: [{ ...transferred, outcome: 'maybe' }] }) }, trusted)).ok, false, 'Invalid results are rejected');
+assert.equal(saved.length, 2, 'Rejected files change nothing');
+// Offline browsing answers from the loaded packs with the configured fallback country.
+const offlinePage = await listener!({ type: 'browse-offline', input: { source: 'off', query: 'oat drink' } }, trusted) as Reply<{ offline: boolean; records: { name: string; snapshotDate?: string }[] }>;
+assert(offlinePage.ok && offlinePage.result.offline && offlinePage.result.records[0]?.name === 'Oat drink' && offlinePage.result.records[0].snapshotDate === '2026-10-05T10:00:00Z');
+assert.equal((await listener!({ type: 'browse-offline', input: { source: 'wikidata', query: 'oat drink' } }, trusted)).ok, false, 'Only known databases can be browsed');
+assert.equal((await listener!({ type: 'browse-offline', input: { source: 'off', query: 'oat drink' } }, page)).ok, false, 'Content scripts cannot browse packs');
 assert.deepEqual(offlineImports, ['fixture-pack']);
 console.log('Offline packs: local-first indexes for explicit/background checks and trusted-page-only import/remove routing verified');
 

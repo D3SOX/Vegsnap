@@ -1,5 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vegsnap.invalid/schemas/history.schema.json",
+  "title": "Vegsnap history export",
+  "description": "A history transfer carries public analyses only: no photos, drafts, credentials or community overlays. Clients accept at most 1,000 results and 5 MB.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -12,6 +15,7 @@
     },
     "results": {
       "type": "array",
+      "maxItems": 1000,
       "items": {
         "$ref": "result.schema.json"
       }

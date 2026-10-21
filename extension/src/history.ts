@@ -19,6 +19,11 @@ export function historyExport(results: HistoryResult[]): CheckResult[] {
     return result;
   });
 }
+/** Newest first by instant: imported timestamps may carry UTC offsets, so string order is not time order. */
+export function sortHistory(results: readonly HistoryResult[]): HistoryResult[] {
+  const instant = (value: string) => { const time = Date.parse(value); return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time; };
+  return [...results].sort((a, b) => instant(b.checkedAt) - instant(a.checkedAt) || b.checkedAt.localeCompare(a.checkedAt));
+}
 const DB_NAME = 'vegsnap';
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -29,10 +34,10 @@ function database(): Promise<IDBDatabase> {
   });
 }
 export async function history(operation: 'list'): Promise<HistoryResult[]>;
-export async function history(operation: 'save', value: HistoryResult): Promise<void>;
+export async function history(operation: 'save', value: HistoryResult | HistoryResult[]): Promise<void>;
 export async function history(operation: 'delete', value?: string): Promise<void>;
 // biome-ignore lint/suspicious/noConfusingVoidType: the save and delete overloads resolve to void.
-export async function history(operation: 'list' | 'save' | 'delete', value?: HistoryResult | string): Promise<HistoryResult[] | void> {
+export async function history(operation: 'list' | 'save' | 'delete', value?: HistoryResult | HistoryResult[] | string): Promise<HistoryResult[] | void> {
   const db = await database();
   try {
     // biome-ignore lint/suspicious/noConfusingVoidType: matches the overload return types.
@@ -40,8 +45,8 @@ export async function history(operation: 'list' | 'save' | 'delete', value?: His
       const transaction = db.transaction('checks', operation === 'list' ? 'readonly' : 'readwrite');
       const store = transaction.objectStore('checks');
       let results: HistoryResult[] | undefined;
-      if (operation === 'list') { const request = store.getAll(); request.onsuccess = () => { results = (request.result as HistoryResult[]).sort((a, b) => b.checkedAt.localeCompare(a.checkedAt)); }; }
-      else if (operation === 'save' && typeof value === 'object') store.put(value);
+      if (operation === 'list') { const request = store.getAll(); request.onsuccess = () => { results = sortHistory(request.result as HistoryResult[]); }; }
+      else if (operation === 'save' && typeof value === 'object') for (const item of Array.isArray(value) ? value : [value]) store.put(item);
       else if (typeof value === 'string') store.delete(value);
       else store.clear();
       transaction.oncomplete = () => resolve(results);

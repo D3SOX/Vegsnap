@@ -74,11 +74,14 @@ export class OfflineProductIndex {
       }
     }
   }
+  /** Every word of the query must appear in the name, brand or code, as in the native offline browsers. */
   search(source: OfflineSnapshot['products'][number]['source'], query: string, offset = 0, market = 'DE') {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     const matches = [...this.products.values()].flatMap(entries => {
       const entry = rankEntries(entries.filter(item => item.product.source === source), { market })[0];
-      if (!entry || !`${entry.product.name} ${entry.product.name_de ?? ''} ${entry.product.name_en ?? ''} ${entry.product.brands} ${entry.product.code}`.toLowerCase().includes(query.toLowerCase())) return [];
-      return [{ ...entry.product, snapshotDate: entry.snapshot.generatedAt }];
+      if (!entry) return [];
+      const text = `${entry.product.name} ${entry.product.name_de ?? ''} ${entry.product.name_en ?? ''} ${entry.product.brands} ${entry.product.code}`.toLowerCase();
+      return words.every(word => text.includes(word)) ? [{ ...entry.product, snapshotDate: entry.snapshot.generatedAt }] : [];
     });
     return matches.slice(offset, offset + 20);
   }

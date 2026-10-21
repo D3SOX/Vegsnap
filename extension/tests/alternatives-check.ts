@@ -16,9 +16,9 @@ const permissionListeners = new Set<() => void>();
 mock.module('wxt/browser', () => ({ browser: { runtime: { getURL: () => 'moz-extension://fixture/' },
   permissions: { onRemoved: { addListener: (fn: () => void) => permissionListeners.add(fn), removeListener: (fn: () => void) => permissionListeners.delete(fn) }, contains: async () => true, request: async () => { consentRequests++; return consent; } } } }));
 const originalFetch = globalThis.fetch;
-const now = Date.now;
+const now = performance.now.bind(performance);
 let clock = now(), failPublic = false;
-Date.now = () => clock += 7000; // Submitted-search pacing is covered separately; no wall-clock waits here.
+performance.now = () => clock += 7000; // Submitted-search pacing is covered in core; no wall-clock waits here.
 const urls: URL[] = [];
 let holdPublic = false;
 let publicSignal: AbortSignal | undefined;
@@ -98,5 +98,5 @@ try {
   assert.equal(root.querySelector('section')?.getAttribute('aria-busy'), 'false');
   console.log('Alternative UI: optional-store query, public-first ranking, AI failure preservation, cancellation and country reset verified');
 } finally {
-  await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
+  await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; performance.now = now; await window.happyDOM.close();
 }

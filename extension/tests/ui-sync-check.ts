@@ -49,6 +49,7 @@ let communityReplyPage: { replies: unknown[]; more: boolean } = { replies: [], m
 let failCommunityLookup = false;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = Object.assign(async (url: RequestInfo | URL, options?: RequestInit) => {
+  if (String(url).includes('/cgi/search.pl')) return Response.json({ count: 1, products: [{ code: '4006381333931', product_name: 'Oat drink', brands: 'Plant', ingredients_text: 'water, oats', countries_tags: ['en:germany'] }] });
   if (String(url).includes('/api/replies?')) {
     if (failCommunityLookup) throw new Error('Fixture offline');
     return new Response(JSON.stringify(communityReplyPage));
@@ -132,7 +133,7 @@ async function until(test: () => boolean, description: string) {
   for (let count = 0; count < 30; count++) { await flush(); if (test()) return; }
   assert(test(), description);
 }
-async function tab(root: HTMLElement, name: 'scan' | 'history' | 'settings') { const button = root.querySelector<HTMLButtonElement>(`nav button[data-tab="${name}"]`); assert(button); await act(async () => { button.click(); }); await flush(); }
+async function tab(root: HTMLElement, name: 'scan' | 'browse' | 'history' | 'settings') { const button = root.querySelector<HTMLButtonElement>(`nav button[data-tab="${name}"]`); assert(button); await act(async () => { button.click(); }); await flush(); }
 const emailButton = (root: HTMLElement) => root.querySelector<HTMLButtonElement>('.account-email');
 const historyItems = (root: HTMLElement) => root.querySelectorAll('.history-item');
 const fixtureResult: HistoryResult = {
@@ -526,6 +527,25 @@ try {
   await act(async () => { rejectCache({ fixture: 'cache failure' }); });
   await until(() => roots[0]!.querySelector('.alert.error p')?.textContent === 'Der lokale Verlauf konnte nicht aktualisiert werden.', 'A delayed cache failure uses the current German language');
   console.log('Community cache failure UI: a pending English write reports its fallback in the current German language');
+  // A browsed record becomes a draft whose identity survives edits to its composition.
+  settings = { ...settings, language: 'en' }; storageChanged(['settings'], 'local'); grantConsent = true; extensionScheme = 'chrome-extension:';
+  await until(() => roots[0]!.querySelector('nav button[data-tab="settings"]')?.textContent === 'Settings', 'Back to English');
+  await tab(roots[0]!, 'browse');
+  const browseQuery = roots[0]!.querySelector<HTMLInputElement>('input[type="search"]')!;
+  await act(async () => { browseQuery.value = 'oat drink'; browseQuery.dispatchEvent(new Event('input', { bubbles: true })); });
+  await act(async () => { browseQuery.closest('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+  await until(() => roots[0]!.textContent?.includes('Results for “oat drink”') === true, 'The browse fixture answers');
+  await act(async () => { [...roots[0]!.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Use in Scan')!.click(); });
+  await until(() => roots[0]!.querySelector('textarea')?.value === 'water, oats', 'The record opens as a draft in Scan');
+  assert.equal(roots[0]!.querySelector('form .hint')?.textContent, 'Oat drink', 'The draft shows the record identity');
+  const draft = roots[0]!.querySelector<HTMLTextAreaElement>('textarea')!;
+  await act(async () => { draft.value = 'water, oats, salt'; draft.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(roots[0]!.querySelector('form .hint')?.textContent, 'Oat drink', 'Editing the composition keeps the browsed identity');
+  const checksBefore = checkRequests;
+  await act(async () => { roots[0]!.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+  await until(() => checkRequests > checksBefore, 'The draft check runs');
+  assert.deepEqual([checkedInputs.at(-1)!.text, checkedInputs.at(-1)!.name, checkedInputs.at(-1)!.brand, checkedInputs.at(-1)!.barcode], ['water, oats, salt', 'Oat drink', 'Plant', '4006381333931'], 'The check carries the edited text with the browsed identity');
+  console.log('Browse draft UI: record identity survives composition edits and reaches the check');
 } finally {
   globalThis.fetch = originalFetch;
   await act(async () => { for (const root of roots) render(null, root); });

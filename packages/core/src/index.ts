@@ -1,6 +1,10 @@
 export * from './types';
 export { alternativeQueryForProduct, alternativeSearchUrl, validateAlternativeSearch, parsePublicAlternatives, parseAIAlternatives, rankAlternatives, searchPublicAlternatives, researchVeganAlternatives } from './alternatives';
 export type { AlternativeSearch, VeganAlternative } from './alternatives';
+export { validateBrowseSearch, browseSearchUrl, parseBrowsePage, browseOfflinePage, searchBrowse, browseCheckInput, BROWSE_PAGE_SIZE } from './browse';
+export type { BrowseSearch, BrowseRecord, BrowsePage, BrowseSource } from './browse';
+export { PublicSearchError } from './public-search';
+export type { PublicSearchFailure } from './public-search';
 export { countryCode, selectProductCountry } from './market';
 export { analyzeText, parseSourceIngredients, normalizeTerm, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';

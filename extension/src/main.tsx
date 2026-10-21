@@ -6,13 +6,15 @@ import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
 import { ProductMarket } from './product-market';
 import { Alternatives } from './alternatives';
-import type { AlternativeSearch, VeganAlternative } from '@vegsnap/core';
-import { marketMessages, messages } from './i18n';
+import { Browse } from './browse';
+import type { AlternativeSearch, BrowsePage, VeganAlternative } from '@vegsnap/core';
+import { alternativeMessages, marketMessages, messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
 import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
 import { extractProducts, validGtin } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { editableInput, historyExport, type HistoryResult } from './history';
+import { HISTORY_IMPORT_MAX_BYTES, HISTORY_IMPORT_MAX_RESULTS } from './history-transfer';
 import './style.css';
 import type { HostedStatus } from './hosted';
 import { synchronizedRefresh } from './synchronization';
@@ -50,7 +52,7 @@ async function researchAlternatives(input: AlternativeSearch, signal: AbortSigna
 function safeLink(url: string | undefined): string | undefined { try { if (!url) return; const parsed = new URL(url); return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined; } catch { return; } }
 export function App() {
   const [config, setConfig] = useState<Settings>(defaultSettings);
-  const [tab, setTab] = useState<'scan' | 'alternatives' | 'history' | 'settings'>('scan');
+  const [tab, setTab] = useState<'scan' | 'browse' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
   const [editingResult, setEditingResult] = useState<HistoryResult>();
@@ -106,6 +108,7 @@ export function App() {
   const configRef = useRef(config);
   const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
   const resultHeading = useRef<HTMLHeadingElement | null>(null);
+  const browseDraft = useRef(false);
   const detailsField = useRef<HTMLTextAreaElement | null>(null);
   const t = messages[config.language];
   const mt = marketMessages[config.language];
@@ -208,9 +211,17 @@ export function App() {
     setError(''); setNotice('');
   }
   function newScan() {
-    marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
+    marketOverride.current = false; browseDraft.current = false; setMarket(configRef.current.fallbackCountry);
     setResult(undefined); setEditingResult(undefined); setInspectedIdentity(undefined);
     setText(''); setCategory('other'); setComplete(false); setImages([]); setImageUrl(undefined);
+  }
+  /** A browsed record opens as an editable draft in Scan; it is never checked automatically. */
+  function useBrowseRecord(input: CheckInput) {
+    newScan(); setError(''); setNotice('');
+    setText(input.text ?? ''); setCategory(input.category ?? 'other');
+    setInspectedIdentity({ name: input.name, brand: input.brand, barcode: input.barcode });
+    browseDraft.current = true;
+    setTab('scan');
   }
   function allowOnlineCheck() {
     if (!onlineCheck) return;
@@ -374,12 +385,16 @@ export function App() {
     setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
   }
   function exportHistory() {
-    const blob = new Blob([JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2)], { type: 'application/json' });
+    setError(''); setNotice('');
+    const json = JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2);
+    // Every client rejects larger transfers, so a file beyond the shared limits is never written.
+    if (savedHistory.length > HISTORY_IMPORT_MAX_RESULTS || new TextEncoder().encode(json).length > HISTORY_IMPORT_MAX_BYTES) { setError(t.exportTooLarge); return; }
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'vegsnap-history.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
     <header><div class="brand"><img class="brand-icon" src="/icons/vegsnap.svg" alt="" width="44" height="44"/><div><strong>Vegsnap</strong></div></div>{isPopup && <button type="button" class="icon-button" title={t.expand} aria-label={t.expand} onClick={() => { void browser.tabs.create({ url: browser.runtime.getURL('/app.html') }); }}>↗</button>}</header>
-    <nav aria-label="Vegsnap">{(['scan', 'alternatives', 'history', 'settings'] as const).map(name => <button type="button" key={name} data-tab={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
+    <nav aria-label="Vegsnap">{(['scan', 'browse', 'history', 'settings'] as const).map(name => <button type="button" key={name} data-tab={name} aria-current={tab === name ? 'page' : undefined} onClick={() => { if (result && name === 'scan') newScan(); setTab(name); setResult(undefined); setEditingResult(undefined); setError(''); setNotice(''); }}>{t[name]}{name === 'history' && savedHistory.length > 0 && <span class="count">{savedHistory.length}</span>}</button>)}</nav>
     <main aria-busy={busy}>
       {error && <div role="alert" class="alert error"><strong>{t.error}</strong><p>{error}</p></div>}
       {notice && <p role="status" class="alert">{notice}</p>}
@@ -411,12 +426,14 @@ export function App() {
           canLookup={()=>hasDataConsent(CONTENT_DATA)} allowLookup={()=>requestDataConsent(CONTENT_DATA)}
           onReplies={(replies,complete)=>setCommunity({key:communityKey,source:JSON.stringify(storedResult),...(complete ? {replies} : {}),retrievedAt:new Date().toISOString()})}/>
         <CompanyConcerns assessment={result.companyAssessment} concerns={result.companyConcerns} locale={config.language}/>
-      </section> : tab === 'alternatives' ? <Alternatives researchEnabled={alternativeResearchEnabled} config={config} market={config.fallbackCountry} research={researchAlternatives}/> : tab === 'scan' ? <section>
+      </section> : tab === 'browse' ? <Browse config={config} offlineSearch={input => request<BrowsePage>({ type: 'browse-offline', input })} onUse={useBrowseRecord}>
+        <details class="browse-alternatives"><summary>{alternativeMessages[config.language].title}</summary><Alternatives heading={false} researchEnabled={alternativeResearchEnabled} config={config} market={config.fallbackCountry} research={researchAlternatives}/></details>
+      </Browse> : tab === 'scan' ? <section>
         <h1>{editingResult ? t.editDetails : t.scan}</h1>
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
         <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(mt.invalidCountry); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
-          <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
+          <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult && !browseDraft.current) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
           <label>{mt.productCountry}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{mt.countryHint}</small></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
@@ -431,7 +448,7 @@ export function App() {
           <p class="hint">{t.providerHint}</p>
         </form>
       </section> : tab === 'history' ? <section>
-        <div class="section-title"><h1>{t.history}</h1>{savedHistory.length > 0 && <button type="button" onClick={exportHistory}>{t.export}</button>}</div>
+        <div class="section-title"><h1>{t.history}</h1><div class="actions">{savedHistory.length > 0 && <button type="button" onClick={exportHistory}>{t.export}</button>}<label class="upload">{t.import}<input type="file" accept="application/json,.json" disabled={!ready || busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > HISTORY_IMPORT_MAX_BYTES) throw new Error(t.importSizeLimit); const outcome = await request<{ added: number; skipped: number }>({ type: 'import-history', text: await file.text() }); await refresh(); setNotice(t.importDone.replace('{added}', outcome.added.toLocaleString(config.language)).replace('{skipped}', outcome.skipped.toLocaleString(config.language))); }); event.currentTarget.value = ''; }}/></label></div></div>
         {savedHistory.length === 0 ? <div class="empty"><Leaf/><h2>{t.noHistory}</h2><p>{t.noHistoryHint}</p></div> : <><label>{t.search}<input type="search" value={search} onInput={event => setSearch(event.currentTarget.value)}/></label><div class="history-list">{savedHistory.filter(item => `${item.title} ${item.identity.name ?? ''} ${item.identity.barcode ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(item => <article key={item.id}><button type="button" class="history-item" onClick={() => setResult(item)}><span class={`dot ${item.outcome}`}/>{item.photos?.[0] && <img class="history-thumbnail" src={item.photos[0]} alt=""/>}<span class="history-description"><strong>{item.identity.name ?? item.identity.barcode ?? item.title}</strong><small>{item.title} · {new Date(item.checkedAt).toLocaleDateString(config.language)}</small></span><span aria-hidden="true">›</span></button><button type="button" class="history-delete" title={t.delete} aria-label={`${t.delete}: ${item.identity.name ?? item.identity.barcode ?? item.title}`} disabled={busy} onClick={event => { event.stopPropagation(); void act(async () => { await request({ type: 'delete', id: item.id }); await refresh(); }); }}><Trash/></button></article>)}</div><button type="button" class="danger" onClick={() => { if (confirm(t.confirmDelete)) void act(async () => { await request({ type: 'delete' }); await refresh(); }); }}>{t.deleteAll}</button></>}
       </section> : <section>
         <h1>{t.settings}</h1>
