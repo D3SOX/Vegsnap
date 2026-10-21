@@ -80,6 +80,7 @@ test('wrong-result reports with invalid structure, oversized lists or private fi
     { ...resultReport, result: { ...details, photos: ['private'] } }, { ...resultReport, result: { ...details, findings: [{ term: 'milk', status: 'animal', ruleId: '', explanation: 'x' }] } },
     { ...resultReport, result: { ...details, findings: Array.from({ length: 201 }, () => ({ term: 'milk', status: 'animal', ruleId: '' })) } },
     { ...resultReport, result: { ...details, product: 'x'.repeat(301) } }, { ...resultReport, result: { ...details, locale: 'not a locale' } },
+    { ...resultReport, result: { ...details, findings: Array.from({ length: 100 }, () => ({ term: 'y'.repeat(200), status: 'unknown', ruleId: 'z'.repeat(100) })) } },
     { ...report, result: details }]) {
     expect((await submit(body)).status).toBe(400);
   }

@@ -57,6 +57,10 @@ class ContentReportsTest {
         assertEquals("Oat drink", noisy.getString("product")); assertEquals("Maker", noisy.getString("brand")); assertEquals("0.219", noisy.getString("appVersion"))
         assertEquals(1, noisy.getJSONArray("findings").length())
         assertEquals("milk", noisy.getJSONArray("findings").getJSONObject(0).getString("term")); assertEquals("rule", noisy.getJSONArray("findings").getJSONObject(0).getString("ruleId"))
+        val longFindings = JSONArray().apply { repeat(200) { put(JSONObject().put("term", "y".repeat(200)).put("status", "unknown").put("ruleId", "z".repeat(100))) } }
+        val trimmed = resultReport(JSONObject().put("outcome", "uncertain").put("findings", longFindings), "en", "0.2.19")
+        assertTrue(trimmed.getJSONArray("findings").length() in 51..199)
+        assertTrue(trimmed.toString().toByteArray(Charsets.UTF_8).size <= 24_000)
         for (report in listOf(ContentReport("result", reason = "Issue"), ContentReport("result", text = "private", reason = "Issue", result = details),
             ContentReport("ai", text = "x", reason = "Issue", result = details), ContentReport("community", contentId = id, reason = "Issue", result = details))) {
             try { report.json(); fail("Invalid report accepted") } catch (_: IllegalArgumentException) { }

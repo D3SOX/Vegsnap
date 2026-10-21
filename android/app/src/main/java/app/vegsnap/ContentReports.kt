@@ -48,22 +48,28 @@ internal data class ContentReport(val kind: String, val contentId: String = "", 
 
 private val CONTROL = Regex("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]")
 private fun clean(value: String, limit: Int) = value.replace(CONTROL, "").trim().take(limit)
+/** The service caps the whole report body at 48,000 bytes; the verdict details stay within this share of it. */
+private const val MAX_RESULT_BYTES = 24_000
 
 /** Mirrors resultReport in packages/core/src/content-reports.ts: verdict context only, never photos, evidence text or history. */
 internal fun resultReport(result: JSONObject, locale: String, appVersion: String): JSONObject {
     val identity = result.optJSONObject("identity") ?: JSONObject()
     val findings = result.optJSONArray("findings") ?: JSONArray()
-    return JSONObject()
+    val projected = JSONArray((0 until minOf(findings.length(), 200)).mapNotNull { index ->
+        val finding = findings.getJSONObject(index)
+        val term = clean(finding.optString("term"), 200)
+        if (term.isEmpty()) null
+        else JSONObject().put("term", term).put("status", finding.optString("status")).put("ruleId", clean(finding.optString("ruleId"), 100))
+    })
+    val report = JSONObject()
         .put("product", clean(identity.optString("name"), 300))
         .put("brand", clean(identity.optString("brand"), 300))
         .put("outcome", result.optString("outcome"))
-        .put("findings", JSONArray((0 until minOf(findings.length(), 200)).mapNotNull { index ->
-            val finding = findings.getJSONObject(index)
-            val term = clean(finding.optString("term"), 200)
-            if (term.isEmpty()) null
-            else JSONObject().put("term", term).put("status", finding.optString("status")).put("ruleId", clean(finding.optString("ruleId"), 100))
-        }))
+        .put("findings", projected)
         .put("locale", clean(locale, 10)).put("platform", "android").put("appVersion", clean(appVersion, 40))
+    // Long ingredient lists are trimmed from the end so the whole report stays under the service body limit.
+    while (projected.length() > 0 && report.toString().toByteArray(Charsets.UTF_8).size > MAX_RESULT_BYTES) projected.remove(projected.length() - 1)
+    return report
 }
 
 internal class ContentReportsRepository(

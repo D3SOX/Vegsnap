@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { analyzeText, resultReport, validateContentReport, SubmissionError } from '../src';
+import { analyzeText, resultReport, resultReportBytes, validateContentReport, REPORT_LIMITS, SubmissionError } from '../src';
 
 const client = { locale: 'en', platform: 'extension' as const, appVersion: '0.2.19' };
 describe('result reports', () => {
@@ -17,9 +17,15 @@ describe('result reports', () => {
     const result = analyzeText({ text: 'water', name: 'x'.repeat(400) });
     const long = { ...result, findings: Array.from({ length: 250 }, (_, index) => ({ term: 'y'.repeat(300), status: 'unknown' as const, ruleId: 'z'.repeat(150), explanation: '', evidenceId: `${index}` })) };
     const report = resultReport(long, { ...client, appVersion: 'v'.repeat(50) });
-    expect(report.product).toHaveLength(300); expect(report.findings).toHaveLength(200);
-    expect(report.findings[0]).toEqual({ term: 'y'.repeat(200), status: 'unknown', ruleId: 'z'.repeat(100) }); expect(report.appVersion).toHaveLength(40);
+    expect(report.product).toHaveLength(300); expect(report.appVersion).toHaveLength(40);
+    expect(report.findings[0]).toEqual({ term: 'y'.repeat(200), status: 'unknown', ruleId: 'z'.repeat(100) });
+    // Maximum-length findings are trimmed from the end so the serialized details fit the Worker's body limit.
+    expect(report.findings.length).toBeGreaterThan(50); expect(report.findings.length).toBeLessThan(200);
+    expect(resultReportBytes(report)).toBeLessThanOrEqual(REPORT_LIMITS.bytes);
     expect(() => validateContentReport({ kind: 'result', contentId: '', text: '', reason: 'Wrong', result: report })).not.toThrow();
+    const short = resultReport({ ...long, findings: long.findings.slice(0, 40) }, client);
+    expect(short.findings).toHaveLength(40);
+    expect(() => validateContentReport({ kind: 'result', contentId: '', text: '', reason: 'Wrong', result: { ...report, findings: Array.from({ length: 100 }, () => report.findings[0]!) } })).toThrow('too large');
   });
   test('drops control characters from database or AI values instead of failing the report', () => {
     const result = { ...analyzeText({ text: 'water' }), identity: { name: ' Oat\u0008 drink\u001f ', brand: '\u007fMaker', market: 'SE', match: 'unconfirmed' as const },

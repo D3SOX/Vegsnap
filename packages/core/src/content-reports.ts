@@ -15,7 +15,7 @@ export interface ResultReport {
   appVersion: string;
 }
 export interface ContentReport { kind: ReportKind; contentId: string; text: string; reason: string; result?: ResultReport; }
-export const REPORT_LIMITS = { reason: 2000, text: 8000, product: 300, findings: 200, term: 200, ruleId: 100, appVersion: 40 } as const;
+export const REPORT_LIMITS = { reason: 2000, text: 8000, product: 300, findings: 200, term: 200, ruleId: 100, appVersion: 40, bytes: 24_000 } as const;
 const REPORT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const OUTCOMES: Outcome[] = ['vegan', 'not_vegan', 'uncertain', 'conflicting'];
 const STATUSES: Finding['status'][] = ['animal', 'plant', 'ambiguous', 'unknown'];
@@ -23,10 +23,17 @@ const PLATFORMS: ReportPlatform[] = ['android', 'ios', 'extension'];
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 /** Database and AI values can carry control characters; the projection drops them so the report stays sendable. */
 const clean = (value: string, limit: number) => value.replace(new RegExp(CONTROL.source, 'g'), '').trim().slice(0, limit);
+function utf8Length(value: string): number {
+  let bytes = 0;
+  for (const character of value) { const code = character.codePointAt(0) ?? 0; bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4; }
+  return bytes;
+}
+/** Serialized size of the result details; the Worker caps the whole report body at 48,000 bytes. */
+export const resultReportBytes = (report: ResultReport) => utf8Length(JSON.stringify(report));
 
 /** Android mirrors this in ContentReports.kt; iOS calls it through the bridge. Keep the field set identical. */
 export function resultReport(result: Pick<CheckResult, 'identity' | 'outcome' | 'findings'>, client: { locale: string; platform: ReportPlatform; appVersion: string }): ResultReport {
-  return {
+  const report: ResultReport = {
     product: clean(result.identity.name ?? '', REPORT_LIMITS.product),
     brand: clean(result.identity.brand ?? '', REPORT_LIMITS.product),
     outcome: result.outcome,
@@ -37,6 +44,9 @@ export function resultReport(result: Pick<CheckResult, 'identity' | 'outcome' | 
     platform: client.platform,
     appVersion: clean(client.appVersion, REPORT_LIMITS.appVersion),
   };
+  // Long ingredient lists are trimmed from the end so the whole report stays under the Worker's body limit.
+  while (report.findings.length && resultReportBytes(report) > REPORT_LIMITS.bytes) report.findings.pop();
+  return report;
 }
 
 function record(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
@@ -58,7 +68,9 @@ function validateResultReport(value: unknown): ResultReport {
     if (!term?.trim() || ruleId === undefined || !STATUSES.includes(finding.status as Finding['status'])) throw invalid('Check the reported ingredients.');
     return { term, status: finding.status as Finding['status'], ruleId };
   });
-  return { product: product.trim(), brand: brand.trim(), outcome: value.outcome as Outcome, findings, locale, platform: value.platform as ReportPlatform, appVersion };
+  const report: ResultReport = { product: product.trim(), brand: brand.trim(), outcome: value.outcome as Outcome, findings, locale, platform: value.platform as ReportPlatform, appVersion };
+  if (resultReportBytes(report) > REPORT_LIMITS.bytes) throw invalid('The reported result is too large.');
+  return report;
 }
 /** Shared by the Worker and the extension so a report is rejected before it leaves the device when it would be refused. */
 export function validateContentReport(value: unknown): ContentReport {
