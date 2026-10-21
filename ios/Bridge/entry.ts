@@ -47,7 +47,7 @@ export function call(operation: string, json: string): string {
       const text = (args.text as string).match(/(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:[\s\S]*/i)?.[0];
       if (text) {
         const ocr = core.analyzeText({ ...args.input, text: text.slice(0, 30000), complete: false });
-        ocr.evidence.forEach(e => { e.kind = 'ocr'; e.title = args.input.locale === 'de' ? 'Texterkennung auf dem Gerät — am Etikett prüfen' : 'On-device text recognition — verify against the label'; });
+        ocr.evidence.forEach(e => { e.kind = 'ocr'; e.title = core.resultMessages[core.appLocale(args.input.locale)].ocrTitle; });
         return JSON.stringify(core.attachCompanyConcerns(mergeResults(result, ocr, args.input.locale), args.input.locale));
       }
       return JSON.stringify(result);

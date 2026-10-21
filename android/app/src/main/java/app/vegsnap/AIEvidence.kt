@@ -119,7 +119,6 @@ private val veganLabels = setOf("v-label", "v label", "v-label vegan", "v label 
 
 /** The model may resolve unknown terms, but cannot overwrite known local ingredient evidence. */
 internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: JSONObject, complete: Boolean, imagesSent: Boolean, assessmentEvidenceId: String = "ai-assessment"): JSONObject {
-    val de = input.locale == "de"
     val assessments = linkedMapOf<String, JSONObject>()
     val supplied = extracted.optJSONArray("ingredientAssessments") ?: JSONArray()
     val parsedTerms = parseSourceIngredients(input.text, extracted.optJSONArray("ingredients"))
@@ -133,7 +132,7 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     fun register(term: String, item: JSONObject) {
         val previous = assessments[term]
         assessments[term] = if (previous != null && previous.getString("status") != item.getString("status")) {
-            JSONObject().put("status", "ambiguous").put("explanation", ResultStrings.aiOriginConflict(de))
+            JSONObject().put("status", "ambiguous").put("explanation", ResultStrings.aiOriginConflict(input.locale))
         } else item
     }
     val composition = normalizeCompositionTerm(input.text)
@@ -157,12 +156,12 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
         val assessment = assessments[term]
         if (assessment == null) {
             if (term in parsedTerms.orEmpty() && finding.getString("status") == "unknown" && finding.optString("evidenceId") in sourceIds) finding.put("explanation",
-                ResultStrings.aiUnknownOrigin(de))
+                ResultStrings.aiUnknownOrigin(input.locale))
             continue
         }
         val translated = assessment.opt("translatedTerm") as? String
         if (!translated.isNullOrBlank() && translated.length <= 300 && normalizeCompositionTerm(assessment.optString("term")) == normalizeCompositionTerm(finding.getString("term"))) {
-            finding.put("displayTerm", translated).put("displayLocale", if (de) "de" else "en")
+            finding.put("displayTerm", translated).put("displayLocale", appLanguage(input.locale))
         }
         if (finding.getString("status") != "unknown") continue
         val parts = compositionTerms(finding.getString("term"), input.category in setOf("shoes", "clothing"))
@@ -176,27 +175,27 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
             continue
         }
         finding.put("status", assessment.getString("status")).put("evidenceId", assessmentEvidenceId)
-            .put("explanation", (ResultStrings.aiAssessmentPrefix(de)) + assessment.getString("explanation"))
+            .put("explanation", (ResultStrings.aiAssessmentPrefix(input.locale)) + assessment.getString("explanation"))
         assessed += finding
     }
     val values = (0 until findings.length()).map { findings.getJSONObject(it) }
     val animal = values.any { it.getString("status") == "animal" }
     if (assessed.isNotEmpty()) {
         result.getJSONArray("evidence").put(JSONObject().put("id", assessmentEvidenceId).put("kind", "ai_extraction")
-            .put("title", ResultStrings.aiIngredientAssessment(de))
+            .put("title", ResultStrings.aiIngredientAssessment(input.locale))
             .put("excerpt", assessed.joinToString("\n") { "${it.getString("term")}: ${it.getString("explanation")}" })
             .put("retrievedAt", result.getString("checkedAt")).put("verification", "unverified"))
-        result.getJSONArray("warnings").put(ResultStrings.aiIngredientCaution(de))
+        result.getJSONArray("warnings").put(ResultStrings.aiIngredientCaution(input.locale))
         if (animal && result.getString("outcome") != "conflicting") result.put("outcome", if (result.getString("outcome") == "vegan") "conflicting" else "not_vegan").put("basis", "composition").put("questions", JSONArray())
-            .put("summary", ResultStrings.aiAnimalCompositionSummary(de))
+            .put("summary", ResultStrings.aiAnimalCompositionSummary(input.locale))
         else if (result.getString("outcome") == "uncertain" && complete && values.isNotEmpty() && values.all { it.getString("status") == "plant" } && input.category in setOf("food", "drink", "cosmetics", "household") && !needsProcessingEvidence(input)) {
             result.put("outcome", "vegan").put("basis", "composition").put("questions", JSONArray())
-                .put("summary", ResultStrings.aiVeganCompositionSummary(de))
+                .put("summary", ResultStrings.aiVeganCompositionSummary(input.locale))
         }
     }
     if (result.getString("outcome") == "uncertain" && complete) {
         val unresolved = values.filter { it.getString("status") in setOf("unknown", "ambiguous") }.map { it.getString("term") }
-        if (unresolved.isNotEmpty()) result.put("questions", JSONArray().put((ResultStrings.originQuestionPrefix(de)) + unresolved.joinToString(", ") + "."))
+        if (unresolved.isNotEmpty()) result.put("questions", JSONArray().put((ResultStrings.originQuestionPrefix(input.locale)) + unresolved.joinToString(", ") + "."))
     }
     if (!imagesSent) return result
     val labels = extracted.optJSONArray("labelObservations") ?: JSONArray()
@@ -210,17 +209,17 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val conflict = animal || result.getString("outcome") in setOf("not_vegan", "conflicting")
     result.put("outcome", if (conflict) "conflicting" else "vegan").put("basis", if (conflict) "insufficient" else "packaging")
         .put("summary", if (conflict) {
-            ResultStrings.aiLabelConflictSummary(de)
+            ResultStrings.aiLabelConflictSummary(input.locale)
         } else {
-            ResultStrings.aiLabelSummary(de)
+            ResultStrings.aiLabelSummary(input.locale)
         })
     if (!conflict) result.put("questions", JSONArray())
     observations.forEachIndexed { index, item ->
         result.getJSONArray("evidence").put(JSONObject().put("id", "ai-label-$index").put("kind", "ai_extraction")
-            .put("title", (ResultStrings.aiLabelTitlePrefix(de)) + item.getString("name"))
+            .put("title", (ResultStrings.aiLabelTitlePrefix(input.locale)) + item.getString("name"))
             .put("excerpt", item.getString("text")).put("retrievedAt", result.getString("checkedAt"))
             .put("claim", "vegan").put("verification", "unverified"))
     }
-    result.getJSONArray("warnings").put(ResultStrings.aiLabelCaution(de))
+    result.getJSONArray("warnings").put(ResultStrings.aiLabelCaution(input.locale))
     return result
 }

@@ -66,7 +66,7 @@ internal fun chatGPTCompletionPage(template: String, returnAutomatically: Boolea
         .replace("\"", "&quot;").replace("'", "&#39;")
     val script = "<script nonce=\"vegsnap-auth-return\">history.replaceState(null,'','/auth/done');" +
         (if (returnAutomatically) "setTimeout(function(){window.location.replace('$appIntent')},350);" else "") + "</script>"
-    return template.replace("<html lang=\"en\">", "<html lang=\"${if (language == "de") "de" else "en"}\">")
+    return template.replace("<html lang=\"en\">", "<html lang=\"${appLanguage(language)}\">")
         .replace("{{TITLE}}", escape(title)).replace("{{MESSAGE}}", escape(message))
         .replace("{{ACTION}}", "<a href=\"$appIntent\">${escape(action)}</a>").replace("{{SCRIPT}}", script)
 }

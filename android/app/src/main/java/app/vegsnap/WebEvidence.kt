@@ -167,15 +167,14 @@ internal fun applyWebCompositions(initial: JSONObject, input: CheckInput, extrac
             (0 until values.length()).map { values.getString(it) }
         }).put("usedAI", true)
         val id = "web-composition-$index"
-        val de = input.locale == "de"
         composition.put("evidence", JSONArray().put(JSONObject().put("id", id).put("kind", "ai_extraction")
-            .put("title", if (item.getString("sourceType") == "manufacturer") { ResultStrings.manufacturerCompositionAi(de) }
-                else { ResultStrings.retailerCompositionAi(de) })
+            .put("title", if (item.getString("sourceType") == "manufacturer") { ResultStrings.manufacturerCompositionAi(input.locale) }
+                else { ResultStrings.retailerCompositionAi(input.locale) })
             .put("excerpt", item.getString("text")).put("url", url).put("verification", "unverified")
             .put("retrievedAt", composition.getString("checkedAt"))))
         val findings = composition.getJSONArray("findings")
         for (i in 0 until findings.length()) findings.getJSONObject(i).put("evidenceId", id)
-        composition.getJSONArray("warnings").put(ResultStrings.webIngredientsCaution(de))
+        composition.getJSONArray("warnings").put(ResultStrings.webIngredientsCaution(input.locale))
         val sourceExtraction = JSONObject(extracted.toString()).apply {
             remove("ingredients")
             item.optJSONArray("ingredients")?.let { put("ingredients", it) }
@@ -216,8 +215,8 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
             val source = sources.getJSONObject(index)
             val url = publicEvidenceUrl(source.optString("url")) ?: continue
             result.getJSONArray("evidence").put(JSONObject().put("id", "web-consulted-$index").put("kind", "ai_extraction")
-                .put("title", ResultStrings.consultedDuringWebResearch(input.locale == "de"))
-                .put("excerpt", ResultStrings.webClaimMissing(input.locale == "de"))
+                .put("title", ResultStrings.consultedDuringWebResearch(input.locale))
+                .put("excerpt", ResultStrings.webClaimMissing(input.locale))
                 .put("url", url).put("verification", "unverified").put("retrievedAt", result.getString("checkedAt")))
         }
         return result
@@ -231,7 +230,6 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
             normalizeProductIdentity(item.getString("productName")) == name && normalizeProductIdentity(item.getString("brand")) == brand
     }
     if (claims.isEmpty()) return consultedOnly()
-    val de = input.locale == "de"
     // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
     // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
     val brandKey = java.text.Normalizer.normalize(extracted.optString("brand"), java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
@@ -245,11 +243,11 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
     }
     claims.forEachIndexed { index, item ->
         result.getJSONArray("evidence").put(JSONObject().put("id", "web-claim-$index").put("kind", trust[index] ?: "ai_extraction")
-            .put("title", ResultStrings.productSourceInterpretedByAi(de))
+            .put("title", ResultStrings.productSourceInterpretedByAi(input.locale))
             .put("excerpt", item.getString("quote")).put("url", item.getString("url")).put("claim", item.getString("claim")).put("verification", "unverified")
             .put("retrievedAt", result.getString("checkedAt")))
     }
-    result.getJSONArray("warnings").put(ResultStrings.webClaimCaution(de))
+    result.getJSONArray("warnings").put(ResultStrings.webClaimCaution(input.locale))
     // Safety asymmetry: any consulted not-vegan claim may still contradict or reject.
     val settling = claims.filterIndexed { index, item -> trust[index] != null || item.getString("claim") == "not_vegan" }
     if (settling.isEmpty()) return result
@@ -261,7 +259,7 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
     val conflict = current == "conflicting" || positive && (negative || current == "not_vegan" || animal) || negative && current == "vegan"
     result.put("outcome", if (conflict) "conflicting" else if (positive) "vegan" else "not_vegan")
         .put("basis", if (conflict) "insufficient" else if ("manufacturer" in trust) "manufacturer" else "research")
-        .put("summary", if (conflict) ResultStrings.webConflictSummary(de) else if (positive) ResultStrings.webVeganSummary(de) else ResultStrings.webNotVeganSummary(de))
+        .put("summary", if (conflict) ResultStrings.webConflictSummary(input.locale) else if (positive) ResultStrings.webVeganSummary(input.locale) else ResultStrings.webNotVeganSummary(input.locale))
     if (!conflict) result.put("questions", JSONArray())
     return result
 }

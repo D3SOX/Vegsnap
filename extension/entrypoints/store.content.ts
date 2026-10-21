@@ -16,7 +16,8 @@ export default defineContentScript({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let queue = Promise.resolve();
     const badges = new Map<HTMLElement, ProductBinding>();
-    const t = storeMessages[/^de/i.test(browser.i18n.getUILanguage()) ? 'de' : 'en'];
+    const uiLanguage = browser.i18n.getUILanguage();
+    const t = storeMessages[/^de/i.test(uiLanguage) ? 'de' : /^sv/i.test(uiLanguage) ? 'sv' : 'en'];
     const checkLabel = t.check;
     const current = (host: HTMLElement, binding: ProductBinding) => active && host.isConnected && badges.get(host) === binding && isCurrentProductBinding(binding, location.href);
     const observer = new IntersectionObserver(entries => {

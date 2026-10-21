@@ -126,7 +126,7 @@ struct CommunityLinks: Codable {
     }
 }
 
-var language: String { Locale.preferredLanguages.first?.hasPrefix("de") == true ? "de" : "en" }
+var language: String { ["de", "sv"].first { Locale.preferredLanguages.first?.hasPrefix($0) == true } ?? "en" }
 func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
 struct AppError: LocalizedError { let message: String; init(_ message: String) { self.message = message }; var errorDescription: String? { message } }
 func safeURL(_ value: String?) -> URL? {

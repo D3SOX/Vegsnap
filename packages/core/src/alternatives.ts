@@ -1,6 +1,7 @@
 import type { AIExtraction, Category, Locale, ProviderAdapter } from './types';
 import { DATABASES } from './database';
 import { countryCode } from './market';
+import { locales } from './locale';
 import { analyzeText, safeSourceUrl } from './analyze';
 import { fetchPublicSearch } from './public-search';
 
@@ -31,7 +32,7 @@ export function validateAlternativeSearch(input: AlternativeSearch): Alternative
   if (!object(input) || typeof input.query !== 'string' || input.query.trim().length < 2 || input.query.length > 200 ||
     input.store !== undefined && (typeof input.store !== 'string' || input.store.length > 100) ||
     !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(input.category) || countryCode(input.market) !== input.market ||
-    input.locale !== undefined && !['en', 'de'].includes(input.locale) ||
+    input.locale !== undefined && !locales.includes(input.locale) ||
     input.excludeBarcode !== undefined && (typeof input.excludeBarcode !== 'string' || !/^\d{8,14}$/.test(input.excludeBarcode))) throw new Error('Invalid alternative search.');
   return { ...input, query: input.query.trim(), store: input.store?.trim() || undefined };
 }

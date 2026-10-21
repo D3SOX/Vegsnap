@@ -627,7 +627,7 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
     val context = LocalContext.current
     val settings by model.settings.collectAsState()
     val sendToAI = canSendBarcodeToAI(originalResult)
-    val locale = LocalConfiguration.current.locales[0].language.let { if (it == "de") "de" else "en" }
+    val locale = appLanguage(LocalConfiguration.current.locales[0].language)
     val communityState = rememberCommunityReplies(originalResult, settings.offline)
     val communityBaseUrl = remember(context) { JSONObject(context.assets.open("community-service.json").bufferedReader().use { it.readText() }).optString("baseUrl") }
     val cachedResult = cachedCommunityResult(originalResult, communityState?.hidden ?: HiddenCommunityReplies(context).ids())

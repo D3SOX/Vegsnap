@@ -176,7 +176,7 @@ assert.equal((await listener!({ type: 'update-settings', patch: { model: 'test-m
 state = await listener!({ type: 'state' }, trusted);
 assert(state.ok);
 assert.equal((state.result as { settings: { language: string } }).settings.language, 'en', 'A provider field save cannot undo the saved language on reopen');
-assert.equal((await listener!({ type: 'set-language', language: 'sv' }, trusted)).ok, false);
+assert.equal((await listener!({ type: 'set-language', language: 'fr' }, trusted)).ok, false);
 console.log('Language preference: browser default, immediate isolated save, and reopening verified');
 
 assert.equal((await listener!({ type: 'set-chatgpt-model', model: 'chosen-model' }, page)).ok, false);
@@ -544,6 +544,8 @@ delete local.settings; browserLanguage = 'de-DE';
 installedListener!(); await tick();
 assert.equal(menuTitle, 'Mit Vegsnap prüfen');
 browserLanguage = 'sv-SE'; installedListener!(); await tick();
+assert.equal(menuTitle, 'Kontrollera med Vegsnap');
+browserLanguage = 'fr-FR'; installedListener!(); await tick();
 assert.equal(menuTitle, 'Check with Vegsnap', 'Unsupported browser languages use English');
 local.settings = { ...defaultSettings, language: 'de' };
 installedListener!(); await tick();

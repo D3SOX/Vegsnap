@@ -99,7 +99,8 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
     const rule = aliasRules.get(term);
     return rule ? {
       term, status: rule.status as Finding['status'], ruleId: rule.id,
-      explanation: rule.explanation[locale], evidenceId: sourceId,
+      // Rule explanations are maintained in English and German; other locales read the English text.
+      explanation: (rule.explanation as Partial<Record<Locale, string>>)[locale] ?? rule.explanation.en, evidenceId: sourceId,
     } : { term, status: 'unknown', explanation: message.unknown, evidenceId: sourceId };
   });
   const category = input.category ?? 'other';

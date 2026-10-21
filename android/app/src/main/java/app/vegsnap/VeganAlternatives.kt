@@ -17,7 +17,7 @@ internal fun alternativeQueryForProduct(name: String, brand: String, animalTerms
 }
 internal fun validateAlternativeQuery(input: AlternativeQuery) {
     require(input.query.trim().length in 2..200 && input.store.length <= 100 && validProductMarket(input.market) &&
-        input.category in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other") && input.locale in setOf("en", "de"))
+        input.category in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other") && input.locale in appLanguages)
 }
 internal fun alternativeSource(category: String) = when (category) { "food", "drink" -> BrowseSource.FOOD; "cosmetics" -> BrowseSource.BEAUTY; else -> BrowseSource.PRODUCTS }
 internal fun alternativeUrl(input: AlternativeQuery, root: HttpUrl, storeOnly: Boolean): HttpUrl {

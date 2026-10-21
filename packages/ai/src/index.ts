@@ -62,7 +62,7 @@ function product(value: unknown): { input: CheckInput; countryContext: Parameter
   for (const [key, maximum] of [['text', 30_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
     if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > maximum)) throw new HttpError(400, `Invalid ${key}.`);
   }
-  if (value.locale !== undefined && !['en', 'de'].includes(String(value.locale)) ||
+  if (value.locale !== undefined && !['en', 'de', 'sv'].includes(String(value.locale)) ||
       value.category !== undefined && !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(String(value.category)) ||
       value.complete !== undefined && typeof value.complete !== 'boolean') throw new HttpError(400, 'Invalid product context.');
   if (value.images !== undefined && (!Array.isArray(value.images) || value.images.length > 3 || value.images.some(image =>

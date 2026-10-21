@@ -75,7 +75,8 @@ describe('privacy boundaries', () => {
   test('language follows the browser once and preserves explicit choices', () => {
     expect(parseSettings(undefined, 'de-DE').language).toBe('de');
     expect(parseSettings(undefined, 'en-GB').language).toBe('en');
-    expect(parseSettings(undefined, 'sv-SE').language).toBe('en');
+    expect(parseSettings(undefined, 'sv-SE').language).toBe('sv');
+    expect(parseSettings(undefined, 'fr-FR').language).toBe('en');
     expect(parseSettings({ language: 'en' }, 'de-DE').language).toBe('en');
     expect(parseSettings({ language: 'de' }, 'en-GB').language).toBe('de');
     expect(parseSettings({ language: 'invalid' }, 'en-GB').language).toBe('en');

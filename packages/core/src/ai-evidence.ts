@@ -16,8 +16,7 @@ export const transcriptionComplete = (extracted: Pick<AIExtraction, 'complete' |
 
 /** Model evidence stays explicitly attributed and cannot rewrite a known local ingredient rule. */
 export function applyAIEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction, complete: boolean): CheckResult {
-  const de = input.locale === 'de';
-  const t = resultMessages[de ? 'de' : 'en'];
+  const t = resultMessages[input.locale ?? 'en'];
   const sourceText = input.complete === true && input.text?.trim() ? input.text : extracted.text || input.text || '';
   const parsed = parseSourceIngredients(sourceText, extracted.ingredients);
   let compositionEvidenceId = 'composition';
@@ -95,7 +94,7 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
   }
   if (next.outcome === 'uncertain') {
     const unresolved = findings.filter(item => item.status === 'unknown' || item.status === 'ambiguous').map(item => item.term);
-    const generic = /^(?:Confirm the source of the ambiguous|Die Herkunft unklarer)/;
+    const generic = /^(?:Confirm the source of the ambiguous|Die Herkunft unklarer|Bekräfta ursprunget för oklara)/;
     next.questions = next.questions.filter(question => !generic.test(question));
     if (unresolved.length) next.questions.push(`${t.originQuestionPrefix}${unresolved.join(', ')}.`);
   }

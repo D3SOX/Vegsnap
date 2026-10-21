@@ -698,7 +698,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             finally { mutableOfflineBusy.value = false }
         }
     }
-    private fun appLocale(): String = if (getApplication<Application>().resources.configuration.locales[0].language == "de") "de" else "en"
+    private fun appLocale(): String = appLanguage(getApplication<Application>().resources.configuration.locales[0].language)
     fun export(uri: Uri) { viewModelScope.launch(Dispatchers.IO) {
         runCatching { getApplication<Application>().contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(HistoryTransfer.export(history.value, appLocale())) } }
             .onFailure { update { it.copy(message = R.string.network_error) } }

@@ -50,8 +50,8 @@ internal fun selectProductCountry(input: CheckInput, packagingCountry: String? =
     return if (unique != null) unique to "database" else input.market to "fallback"
 }
 internal fun databaseCountryWarning(market: String, markets: List<String>, locale: String): String? = when {
-    markets.isEmpty() -> ResultStrings.countryUnknownWarning(locale == "de")
-    markets.none { productCountryCode(it) == market } -> ResultStrings.countryMismatchWarning(locale == "de").replace("{market}", market)
+    markets.isEmpty() -> ResultStrings.countryUnknownWarning(locale)
+    markets.none { productCountryCode(it) == market } -> ResultStrings.countryMismatchWarning(locale).replace("{market}", market)
     else -> null
 }
 

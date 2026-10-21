@@ -185,14 +185,14 @@ object HistoryTransfer {
                     names.forEach { require(item.get(it) is String && item.getString(it).length <= 30_000) }
                     if (field == "findings" && (item.has("displayTerm") || item.has("displayLocale"))) {
                         require(item.opt("displayTerm") is String && item.getString("displayTerm").isNotBlank() && item.getString("displayTerm").length <= 300)
-                        require(item.optString("displayLocale") in setOf("en", "de"))
+                        require(item.optString("displayLocale") in appLanguages)
                     }
                 }
             }
             java.time.Instant.parse(result.getString("checkedAt"))
             val clean = publicResult(result, locale)
             if (clean.has("companyAssessment")) {
-                val notice = ResultStrings.importedAssessmentNotice(locale == "de")
+                val notice = ResultStrings.importedAssessmentNotice(locale)
                 val warnings = clean.getJSONArray("warnings")
                 val retained = (0 until warnings.length()).map { warnings.getString(it) }.filter { it != notice }.take(99)
                 clean.put("warnings", JSONArray(retained + notice))

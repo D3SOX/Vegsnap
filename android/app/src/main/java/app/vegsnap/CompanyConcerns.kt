@@ -36,7 +36,7 @@ class CompanyConcernResolver(document: JSONObject = JSONObject()) {
                     if (record.optString("category") !in setOf("animal_testing", "animal_welfare_lobbying", "animal_exploitation") ||
                         record.optString("status") !in setOf("current", "resolved", "disputed") ||
                         !validUrl(record.optString("sourceUrl")) || reviewDate(record.optString("reviewedAt")) == null) continue
-                    val description = record.optJSONObject("description")?.optString(if (locale == "de") "de" else "en").orEmpty()
+                    val description = record.optJSONObject("description")?.let { it.optString(locale).ifBlank { it.optString("en") } }.orEmpty()
                     if (description.isBlank()) continue
                     val concern = JSONObject().put("id", record.getString("id")).put("company", target.getString("name"))
                         .put("matchedBrand", entity.getString("name")).put("scope", scope)

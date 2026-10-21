@@ -1,4 +1,5 @@
 import { resultMessages } from './i18n';
+import { appLocale } from './locale';
 import service from '../../../data/community-service.json';
 import { normalizeBarcode } from './barcode';
 import { safeContactUrl } from './manufacturer-contact';
@@ -145,8 +146,7 @@ export function communityMatchRules(submission: CommunitySubmission): CommunityM
 export function applyCommunityReplies(result: CheckResult, replies: CommunityReply[], locale: string, baseUrl = service.baseUrl, now = new Date()): CheckResult {
   const eligible = replies.filter(reply => reply.scope === 'whole_product' && reply.claim !== 'inconclusive' && reply.match !== 'candidate');
   if (!eligible.length) return result;
-  const de = locale === 'de';
-  const t = resultMessages[de ? 'de' : 'en'];
+  const t = resultMessages[appLocale(locale)];
   const positive = eligible.some(reply => reply.claim === 'vegan'), negative = eligible.some(reply => reply.claim === 'not_vegan');
   const conflict = result.outcome === 'conflicting' || positive && (negative || result.outcome === 'not_vegan' || result.findings.some(item => item.status === 'animal')) || negative && result.outcome === 'vegan';
   const links = communityLinks(result, locale, baseUrl);
