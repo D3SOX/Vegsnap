@@ -19,7 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
-internal const val DEFAULT_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
+internal const val DEFAULT_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog-v2.json"
 internal const val REGIONAL_CATALOG_BYTES = 256_000
 internal data class RegionalPackDescriptor(val id: String, val region: String, val url: String, val bytes: Long,
     val sha256: String, val generatedAt: String, val products: Int)
@@ -155,7 +155,7 @@ internal class RegionalPacks(private val directory: File, private val database: 
         database.initialize()
         val installed = database.state.value.installed.firstOrNull { it.id == offlineRegionId(pack.region) }
         if (installed?.sha256 == pack.sha256) return@withLock
-        require(installed != null || database.state.value.installed.size < OFFLINE_INSTALLED_PACKS)
+        require(database.state.value.canInstall(pack.region, pack.bytes)) { "Installed pack limit reached" }
         require(installed == null || Instant.parse(pack.generatedAt) >= Instant.parse(installed.generatedAt)) { "Installed snapshot is newer" }
         mutableState.update { it.copy(downloading = id, downloadedBytes = 0) }
         val context = currentCoroutineContext()

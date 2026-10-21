@@ -308,7 +308,7 @@
     <string name="offline_download_update">Region aktualisieren</string>
     <string name="offline_imported">Installierte Regionalpakete</string>
     <string name="offline_pack_error">Dieses Paket konnte nicht importiert oder entfernt werden. Prüfe Format und Größe. Bisher installierte Daten bleiben erhalten.</string>
-    <string name="offline_pack_hint">Installiere mehrere Regionen (bis zu 10 Pakete mit je 20 MB / 40.000 Produkten). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.</string>
+    <string name="offline_pack_hint">Installiere mehrere Regionen (bis zu 10 Pakete mit je 20 MB / 40.000 Produkten, insgesamt 60 MB). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.</string>
     <string name="offline_pack_import">Regionalpaket importieren</string>
     <string name="offline_pack_remove">Regionalpaket entfernen</string>
     <string name="offline_pack_summary">%1$s · %2$d Produkte · %3$s</string>

@@ -45,5 +45,13 @@ jobs:
           if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "Weekly regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Vegsnap. See the repository README for data licenses." --latest=false
           fi
-          gh release upload offline-data pack-release/{germany,sweden,eu}.json --repo "$GITHUB_REPOSITORY" --clobber
-          gh release upload offline-data pack-release/catalog.json --repo "$GITHUB_REPOSITORY" --clobber
+          # Packs are immutable assets named after their generation time; the catalog switches to them only once they exist.
+          gh release upload offline-data pack-release/{germany,sweden,eu}-*.json --repo "$GITHUB_REPOSITORY"
+          gh release upload offline-data pack-release/catalog-v2.json --repo "$GITHUB_REPOSITORY" --clobber
+          # Drop pack generations the catalog no longer references. catalog.json and its unversioned packs stay frozen for clients released before 20 MB packs.
+          referenced=$(jq -r '.packs[].url | sub(".*/"; "")' pack-release/catalog-v2.json)
+          for asset in $(gh release view offline-data --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
+            case "$asset" in
+              germany-*.json|sweden-*.json|eu-*.json) grep -qxF "$asset" <<<"$referenced" || gh release delete-asset offline-data "$asset" --repo "$GITHUB_REPOSITORY" --yes ;;
+            esac
+          done

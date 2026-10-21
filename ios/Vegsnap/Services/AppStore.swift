@@ -371,6 +371,9 @@ import CryptoKit
         let name = "pack-" + Keychain.account(header.region.lowercased()) + ".json"
         var names: [String] = try files.read("packs.json") ?? []
         guard names.contains(name) || names.count < 12 else { throw AppError(L("Remove an offline pack before adding another.")) }
+        // Every installed pack is kept in the engine's memory, so their total size is bounded to three maximum packs.
+        let installedBytes = names.filter { $0 != name }.reduce(0) { $0 + ((((try? FileManager.default.attributesOfItem(atPath: files.url($1).path))?[.size]) as? Int) ?? 0) }
+        guard installedBytes + data.count <= 60_000_000 else { throw AppError(L("Remove an offline pack before adding another.")) }
         if let old: Header = try files.read(name) {
             guard let oldDate = HistoryTransfer.parseDate(old.generatedAt), let newDate = HistoryTransfer.parseDate(header.generatedAt) else { throw AppError(L("Invalid regional pack catalog.")) }
             if oldDate > newDate { throw AppError(L("The installed pack is newer.")) }

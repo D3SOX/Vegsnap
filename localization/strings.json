@@ -5492,9 +5492,9 @@
     ]
   },
   "offline_pack_hint": {
-    "en": "Install several regions (up to 10 packs, 20 MB / 40,000 products each). Updating one region keeps your other packs. You can also import a downloaded JSON file.",
-    "de": "Installiere mehrere Regionen (bis zu 10 Pakete mit je 20 MB / 40.000 Produkten). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.",
-    "sv": "Installera flera regioner (upp till 10 paket med 20 MB/40 000 produkter vardera). När en region uppdateras behålls dina övriga paket. Du kan också importera en nedladdad JSON-fil.",
+    "en": "Install several regions (up to 10 packs, 20 MB / 40,000 products each, 60 MB in total). Updating one region keeps your other packs. You can also import a downloaded JSON file.",
+    "de": "Installiere mehrere Regionen (bis zu 10 Pakete mit je 20 MB / 40.000 Produkten, insgesamt 60 MB). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.",
+    "sv": "Installera flera regioner (upp till 10 paket med 20 MB/40 000 produkter vardera, totalt 60 MB). När en region uppdateras behålls dina övriga paket. Du kan också importera en nedladdad JSON-fil.",
     "android": [
       "offline_pack_hint"
     ]

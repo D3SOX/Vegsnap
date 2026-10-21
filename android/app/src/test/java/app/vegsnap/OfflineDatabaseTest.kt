@@ -140,12 +140,12 @@ class OfflineDatabaseTest {
         try { database.import("x".repeat(OFFLINE_PACK_BYTES + 1).byteInputStream()); fail("Oversized import accepted") } catch (_: IllegalArgumentException) { }
         assertEquals(original, File(folder, "regions/${offlineRegionId("Sweden")}.json").readText())
     }
+    private fun gtin(index: Int): String {
+        val base = "2" + index.toString().padStart(11, '0')
+        val sum = base.reversed().withIndex().sumOf { (position, digit) -> digit.digitToInt() * if (position % 2 == 0) 3 else 1 }
+        return base + (10 - sum % 10) % 10
+    }
     @Test fun `regional pack at the maximum product count loads and serves lookups`() = withDatabase { database, _ ->
-        fun gtin(index: Int): String {
-            val base = "2" + index.toString().padStart(11, '0')
-            val sum = base.reversed().withIndex().sumOf { (position, digit) -> digit.digitToInt() * if (position % 2 == 0) 3 else 1 }
-            return base + (10 - sum % 10) % 10
-        }
         val products = JSONArray()
         for (index in 0 until OFFLINE_PACK_PRODUCTS) products.put(JSONObject().put("source", "off").put("code", gtin(index))
             .put("name", "Product $index").put("brands", "Brand").put("ingredients", "water, sugar, salt, ".repeat(10))
@@ -155,6 +155,26 @@ class OfflineDatabaseTest {
         database.import(bytes.inputStream())
         assertEquals(OFFLINE_PACK_PRODUCTS, database.state.value.installed.single().count)
         assertEquals("Product 39999", database.lookup(CheckInput(barcode = gtin(39_999)))?.first?.name)
+    }
+    @Test fun `installed packs are bounded by their total size`() = withDatabase { database, folder ->
+        fun large(region: String): ByteArray {
+            val products = JSONArray()
+            for (index in 0 until 1_600) products.put(JSONObject().put("source", "off").put("code", gtin(index)).put("name", "Product $index")
+                .put("brands", "Brand").put("ingredients", "x".repeat(12_000)).put("countries_tags", JSONArray().put("en:sweden")).put("last_modified_t", 1700000000))
+            return document(region).put("products", products).toString().toByteArray()
+        }
+        for (region in listOf("A", "B", "C")) database.import(large(region).inputStream())
+        assertTrue(database.state.value.installed.sumOf { it.bytes } in (OFFLINE_INSTALLED_BYTES - OFFLINE_PACK_BYTES)..OFFLINE_INSTALLED_BYTES)
+        try { database.import(large("D").inputStream()); fail("Total size limit ignored") } catch (_: IllegalArgumentException) { }
+        assertEquals(listOf("A", "B", "C"), database.state.value.installed.map { it.region })
+        assertFalse(File(folder, "regions/${offlineRegionId("D")}.json").exists())
+        // Replacing an installed region does not count the replaced bytes twice.
+        database.import(large("B").inputStream())
+        assertEquals(3, database.state.value.installed.size)
+        val reload = OfflineDatabase({ document().toString().byteInputStream() }, folder)
+        reload.initialize()
+        assertEquals(3, reload.state.value.installed.size)
+        assertFalse(reload.state.value.unavailable)
     }
     @Test fun `offline browse searches local names and brands and retains attribution`() = withDatabase { database, _ ->
         var network = 0
