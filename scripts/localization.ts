@@ -7,10 +7,10 @@ const languages = ['en', 'de'] as const;
 type Language = typeof languages[number];
 type Plural = { one: string; other: string };
 type Translation = string | Plural;
-type Platform = 'android' | 'ios' | 'share' | 'extension' | 'core' | 'androidResult';
+type Platform = 'android' | 'ios' | 'share' | 'extension' | 'core' | 'androidResult' | 'companion';
 type Message = Record<Language, Translation> & Partial<Record<Platform, string[]>> & { savedResult?: true };
 type Catalog = Record<string, Message>;
-const platforms: Platform[] = ['android', 'ios', 'share', 'extension', 'core', 'androidResult'];
+const platforms: Platform[] = ['android', 'ios', 'share', 'extension', 'core', 'androidResult', 'companion'];
 const extensionGroups = {
   app: 'messages', company: 'companyMessages', community: 'communityMessages', contact: 'contactMessages',
   store: 'storeMessages', background: 'backgroundMessages',
@@ -68,6 +68,7 @@ export function validateCatalog(value: unknown): Catalog {
       for (const target of targets as string[]) {
         if (platform === 'android' && !/^[a-z][a-z0-9_]*$/.test(target)) throw new Error(`Invalid Android resource: ${target}`);
         if (platform === 'androidResult' && !/^[a-z][a-zA-Z0-9]*$/.test(target)) throw new Error(`Invalid Android result binding: ${target}`);
+        if (platform === 'companion' && !/^[a-z][a-z0-9_]*$/.test(target)) throw new Error(`Invalid companion field: ${target}`);
         if (platform === 'extension' || platform === 'core') {
           const [group, key, extra] = target.split('.');
           if (!Object.hasOwn(platform === 'extension' ? extensionGroups : coreGroups, group!) ||
@@ -99,6 +100,12 @@ export function androidText(value: string): string {
 
 function swiftText(value: string): string {
   return JSON.stringify(value);
+}
+
+export function rustText(value: string): string {
+  return `"${[...value].map(character => character === '"' || character === '\\' ? `\\${character}`
+    : character === '\n' ? '\\n' : character === '\t' ? '\\t'
+    : character < ' ' ? `\\u{${character.charCodeAt(0).toString(16)}}` : character).join('')}"`;
 }
 
 export function renderCatalog(catalog: Catalog): Map<string, string> {
@@ -140,6 +147,11 @@ export function renderCatalog(catalog: Catalog): Map<string, string> {
     `    fun ${key}(german: Boolean): String = if (german) ${kotlin(message.de)} else ${kotlin(message.en)}`);
   output.set('android/app/src/main/java/app/vegsnap/ResultStrings.kt',
     `// ${generatedNotice}\npackage app.vegsnap\n\ninternal object ResultStrings {\n${androidResults.join('\n')}\n}\n`);
+  const companion = targets('companion');
+  const companionLocales = languages.map(language => `pub const ${language.toUpperCase()}: Strings = Strings {\n${
+    companion.map(({ key, message }) => `    ${key}: ${rustText(message[language] as string)},`).join('\n')}\n};`);
+  output.set('companion/src/strings.rs', `// ${generatedNotice}\npub struct Strings {\n${
+    companion.map(({ key }) => `    pub ${key}: &'static str,`).join('\n')}\n}\n\n${companionLocales.join('\n\n')}\n`);
   const terms = Object.values(catalog).filter(message => message.savedResult).map(({ en, de }) => ({ en, de }));
   output.set('data/result-translations.json', JSON.stringify({ terms }, null, 2) + '\n');
   return output;
@@ -172,5 +184,5 @@ export async function generateStrings(check = false): Promise<void> {
 if (import.meta.main) {
   if (process.argv.slice(2).some(arg => arg !== '--check')) throw new Error('Usage: bun scripts/localization.ts [--check]');
   await generateStrings(process.argv.includes('--check'));
-  console.log(process.argv.includes('--check') ? 'Generated strings are up to date.' : 'Generated UI and result strings for Android, iOS and the extensions.');
+  console.log(process.argv.includes('--check') ? 'Generated strings are up to date.' : 'Generated UI and result strings for Android, iOS, the extensions and the companion.');
 }

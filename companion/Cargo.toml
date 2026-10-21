@@ -2,13 +2,14 @@
 name = "vegsnap-companion"
 version = "0.2.19"
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.95"
 license = "AGPL-3.0-only"
-description = "Optional native messaging host for Vegsnap ChatGPT connections"
+description = "Optional native messaging host and setup for Vegsnap ChatGPT connections"
 
 [dependencies]
 base64 = "0.23"
 directories = "6"
+eframe = "0.37"
 fs2 = "0.4"
 jsonwebtoken = { version = "11.1", default-features = false, features = ["rust_crypto"] }
 rand = "0.10"
@@ -16,6 +17,7 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.11"
+sys-locale = "0.3"
 unicode-normalization = "0.1"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
@@ -29,3 +31,7 @@ keyring = { version = "3.6", features = ["apple-native"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+winreg = "0.56"
+
+[profile.release]
+strip = true

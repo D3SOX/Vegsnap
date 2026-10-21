@@ -2,7 +2,6 @@
 @font-face{font-family:"Atkinson Hyperlegible Next";src:url("/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
 /* Archivo at a fixed 65% width, weights 500–700: a static cut of the OFL variable font for label print. */
 @font-face{font-family:"Archivo Condensed";src:url("/fonts/archivo-condensed-latin-wght-normal.woff2") format("woff2");font-weight:500 700;font-style:normal;font-display:swap}
-@font-face{font-family:"Atkinson Hyperlegible Mono";src:url("/fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
 
 :root{
   color-scheme:light dark;
@@ -21,7 +20,6 @@
   --certified:#1f5e3b;--certified-tint:#d7ecdc;
   --manufacturer:#275e5b;--manufacturer-tint:#d5ebe8;
   /* Commands */
-  --code-bg:#ebf1e5;--code-command:#1f5e3b;--code-string:#3d6b4c;--code-variable:#7a4e1c;--code-option:#275e5b;--code-operator:#6e4a7e;
   /* Layout */
   --edge:clamp(20px,4.2vw,56px);--gutter:clamp(16px,2.4vw,32px);
   font-family:"Atkinson Hyperlegible Next",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -40,7 +38,6 @@
     --uncertain:#eec36a;--uncertain-tint:#392d0d;--highlight:rgb(255 200 64 / .36);
     --certified:#a9dcb7;--certified-tint:#183a24;
     --manufacturer:#93d5cd;--manufacturer-tint:#163936;
-    --code-bg:#0f1a13;--code-command:#c3e0a6;--code-string:#a9cbb3;--code-variable:#e8c48f;--code-option:#9fcfdc;--code-operator:#d1b8dc;
   }
 }
 
@@ -78,7 +75,7 @@ svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-l
 .button-glyph{width:18px;height:18px;flex-shrink:0;stroke-width:2}
 .actions{display:flex;flex-wrap:wrap;gap:10px}
 .platform-icon{display:block;width:20px;height:20px;flex-shrink:0;padding:1px;background:currentColor;mask:var(--platform-icon) center/contain no-repeat;mask-origin:content-box;mask-clip:content-box}
-.icon-android{--platform-icon:url('/icons/android.svg')}.icon-apple{--platform-icon:url('/icons/apple.svg')}.icon-brave{--platform-icon:url('/icons/brave.svg')}.icon-browser{--platform-icon:url('/icons/browser.svg')}.icon-chrome{--platform-icon:url('/icons/chrome.svg')}.icon-download{--platform-icon:url('/icons/download.svg')}.icon-edge{--platform-icon:url('/icons/edge.svg')}.icon-firefox-browser{--platform-icon:url('/icons/firefox-browser.svg')}.icon-google-play{--platform-icon:url('/icons/google-play.svg')}.icon-helium{--platform-icon:url('/icons/helium.svg')}.icon-librewolf{--platform-icon:url('/icons/librewolf.svg')}.icon-linux{--platform-icon:url('/icons/linux.svg')}.icon-obtainium{--platform-icon:url('/icons/obtainium.svg?v=2')}.icon-vivaldi{--platform-icon:url('/icons/vivaldi.svg')}.icon-windows{--platform-icon:url('/icons/windows.svg')}.icon-zen{--platform-icon:url('/icons/zen.svg')}
+.icon-android{--platform-icon:url('/icons/android.svg')}.icon-apple{--platform-icon:url('/icons/apple.svg')}.icon-brave{--platform-icon:url('/icons/brave.svg')}.icon-chrome{--platform-icon:url('/icons/chrome.svg')}.icon-download{--platform-icon:url('/icons/download.svg')}.icon-edge{--platform-icon:url('/icons/edge.svg')}.icon-firefox-browser{--platform-icon:url('/icons/firefox-browser.svg')}.icon-google-play{--platform-icon:url('/icons/google-play.svg')}.icon-helium{--platform-icon:url('/icons/helium.svg')}.icon-librewolf{--platform-icon:url('/icons/librewolf.svg')}.icon-linux{--platform-icon:url('/icons/linux.svg')}.icon-obtainium{--platform-icon:url('/icons/obtainium.svg?v=2')}.icon-vivaldi{--platform-icon:url('/icons/vivaldi.svg')}.icon-windows{--platform-icon:url('/icons/windows.svg')}.icon-zen{--platform-icon:url('/icons/zen.svg')}
 .icon-label{display:inline-flex;align-items:center;gap:10px}
 
 /* Canopy band: header and hero share one colour field */
@@ -325,23 +322,7 @@ a[aria-haspopup="dialog"]:hover{border-color:var(--canopy)}
 .companion-setup details>:not(summary){margin-inline:18px}
 .companion-setup details[open]{padding-bottom:18px}
 .companion-setup details>.hint{margin-top:4px}
-.browser-command h4{margin:20px 0 8px;font-size:1rem;font-weight:700}
-.browser-command h4 .platform-icon{width:20px;height:20px}
-pre{margin:0;padding:16px 18px;overflow-x:auto;border-radius:10px;background:var(--code-bg);font-family:"Atkinson Hyperlegible Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:.875rem;line-height:1.65;tab-size:2}
-pre code{font-family:inherit}
-.syntax-command{color:var(--code-command);font-weight:700}.syntax-string{color:var(--code-string)}.syntax-variable{color:var(--code-variable)}.syntax-option{color:var(--code-option)}.syntax-operator{color:var(--code-operator)}
-.browser-choice{position:relative;display:grid;gap:8px;width:min(100%,340px);margin:4px 0 20px}
-.browser-choice label{font-weight:700}
-.browser-select-trigger{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;padding:11px 14px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:1rem;text-align:left;cursor:pointer;transition:background-color .15s,border-color .15s}
-.browser-select-trigger:hover,.browser-select-trigger[aria-expanded="true"]{background:var(--wash);border-color:var(--canopy)}
-.browser-select-arrow{width:9px;height:9px;margin-left:auto;margin-right:3px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);flex-shrink:0}
-.browser-select-trigger[aria-expanded="true"] .browser-select-arrow{transform:translateY(2px) rotate(225deg)}
-.browser-select-menu{position:absolute;z-index:5;top:calc(100% + 6px);left:0;width:100%;max-height:min(380px,48vh);overflow-y:auto;overscroll-behavior:contain;margin:0;padding:6px;list-style:none;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);box-shadow:0 14px 36px rgb(28 51 36 / .16)}
-.browser-select-menu [role="option"]{display:flex;align-items:center;gap:10px;min-height:44px;padding:10px;border-radius:8px;cursor:pointer}
-.browser-select-menu [role="option"]:is(:hover,.active){background:var(--wash)}
-.browser-select-menu [aria-selected="true"]{font-weight:700;color:var(--link)}
-.browser-select-menu [aria-selected="true"]::after{content:"";width:6px;height:11px;margin-left:auto;margin-right:4px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg)}
-.browser-prompt{margin-top:4px;padding:12px 14px;border:1px dashed var(--line-strong);border-radius:10px;background:var(--wash)}
+.browser-list{display:flex;flex-wrap:wrap;gap:12px 24px;margin:16px 0 0;padding:0;list-style:none}
 
 .faq-list{grid-column:6/-1}
 .faq-list details{border-bottom:1px solid var(--line)}

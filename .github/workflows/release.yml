@@ -162,32 +162,30 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Test companion and installer
+      - name: Test companion
         run: |
           rustup toolchain install 1.98.1 --profile minimal
           cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
-          python -m unittest discover -s companion -p 'test_install.py' -v
       - name: Build companion
         env:
           VEGSNAP_COMPANION_PLATFORM: ${{ matrix.platform }}
         run: |
           mkdir companion-release companion-artifacts
-          cp companion/install.py LICENSE companion-release/
+          cp LICENSE companion-release/
           case "$VEGSNAP_COMPANION_PLATFORM" in
             macos-universal)
               rustup +1.98.1 target add aarch64-apple-darwin x86_64-apple-darwin
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target aarch64-apple-darwin
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
-              lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/vegsnap-companion -output companion-release/vegsnap-companion
-              codesign --force --sign - companion-release/vegsnap-companion
-              lipo companion-release/vegsnap-companion -verify_arch arm64 x86_64
-              codesign --verify companion-release/vegsnap-companion
+              lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/vegsnap-companion -output "$RUNNER_TEMP/vegsnap-companion"
+              companion/macos/bundle.sh "$RUNNER_TEMP/vegsnap-companion" companion-release
+              lipo "companion-release/Vegsnap Companion.app/Contents/MacOS/vegsnap-companion" -verify_arch arm64 x86_64
               tar -czf companion-artifacts/vegsnap-companion-macos-universal.tar.gz -C companion-release .
               ;;
             windows-x86_64)
-              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
-              cp companion/target/release/vegsnap-companion.exe companion-release/
-              python -c "import shutil; shutil.make_archive('companion-artifacts/vegsnap-companion-windows-x86_64', 'zip', 'companion-release')"
+              # A static C runtime spares users the Visual C++ Redistributable.
+              RUSTFLAGS='-C target-feature=+crt-static' cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+              cp companion/target/release/vegsnap-companion.exe companion-artifacts/vegsnap-companion-windows-x86_64.exe
               ;;
             linux-x86_64)
               cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
@@ -226,7 +224,7 @@ jobs:
             cat > "$vegsnap_notes" <<EOF
           Signed Android APK, unsigned iOS IPA, browser extensions and companions for Linux, Windows and macOS.
 
-          [Installation instructions](https://github.com/$GITHUB_REPOSITORY#install-the-browser-extension) cover the unsigned Firefox XPI and Chromium packages. [Companion registration](https://github.com/$GITHUB_REPOSITORY#install-the-chatgpt-companion) is required for ChatGPT sign-in in the extension.
+          [Installation instructions](https://github.com/$GITHUB_REPOSITORY#install-the-browser-extension) cover the unsigned Firefox XPI and Chromium packages. [Install the companion](https://github.com/$GITHUB_REPOSITORY#install-the-chatgpt-companion) for ChatGPT sign-in in the extension.
 
           The iOS IPA is unsigned and must be signed before installing on an iPhone or iPad. Signing must include the embedded share extension and its App Group entitlement.
 
@@ -251,7 +249,7 @@ jobs:
             release/submission.json \
             release/store-listing.json \
             release/vegsnap-companion-linux-x86_64.tar.gz \
-            release/vegsnap-companion-windows-x86_64.zip \
+            release/vegsnap-companion-windows-x86_64.exe \
             release/vegsnap-companion-macos-universal.tar.gz
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
 

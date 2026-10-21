@@ -54,6 +54,16 @@ jobs:
       - run: cargo +1.98.1 fmt --manifest-path companion/Cargo.toml --check
       - run: cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
       - run: cargo +1.98.1 clippy --locked --manifest-path companion/Cargo.toml --all-targets -- -D warnings
+      - name: Run the bundled executable as a native host
+        run: |
+          cargo +1.98.1 build --locked --manifest-path companion/Cargo.toml
+          companion/macos/bundle.sh companion/target/debug/vegsnap-companion "$RUNNER_TEMP"
+          # Setup copies the executable out of its signed bundle; browsers start that copy.
+          cat "$RUNNER_TEMP/Vegsnap Companion.app/Contents/MacOS/vegsnap-companion" > "$RUNNER_TEMP/vegsnap-companion"
+          chmod +x "$RUNNER_TEMP/vegsnap-companion"
+          printf '\033\000\000\000{"id":"1","command":"none"}' \
+            | "$RUNNER_TEMP/vegsnap-companion" chrome-extension://pkkfmbgdbdoccbdngnbfpjjhpldmphej/ \
+            | grep -a 'Unknown companion command'
 
   ios:
     runs-on: macos-latest
