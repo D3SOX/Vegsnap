@@ -4,42 +4,349 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/language.js"></script>
 <title>Vegsnap - Is it vegan? Start with a photo.</title><meta name="description" content="Check products with a photo or selected website content. Vegsnap is a free, open-source Android app and browser extension with optional AI.">
-<meta name="theme-color" content="#234d38"><meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2b4f35" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#1d3324" media="(prefers-color-scheme: dark)"><meta name="color-scheme" content="light dark">
 <link rel="canonical" href="https://vegsnap.app/"><link rel="alternate" hreflang="en" href="https://vegsnap.app/"><link rel="alternate" hreflang="de" href="https://vegsnap.app/de/"><link rel="alternate" hreflang="x-default" href="https://vegsnap.app/">
 <meta property="og:type" content="website"><meta property="og:title" content="Vegsnap. Is it vegan? Start with a photo."><meta property="og:description" content="Check products with a photo or selected website content. Vegsnap is a free, open-source Android app and browser extension with optional AI."><meta property="og:url" content="https://vegsnap.app/"><meta property="og:image" content="https://vegsnap.app/images/screenshots/extension-result.png"><meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/svg+xml" href="/logo.svg"><link rel="stylesheet" href="/style.css">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="preload" href="/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/fonts/archivo-condensed-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
 <script src="/setup.js" defer></script>
 <script src="/email.js" defer></script>
+<script src="/demo.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="site-header wrap"><a class="brand" href="/" aria-label="Vegsnap"><img src="/logo.svg" width="40" height="40" alt=""><span>Vegsnap</span></a><nav aria-label="Main navigation"><a href="#how">How it works</a><a href="#screenshots">Screenshots</a><a href="#privacy">Privacy</a><a href="/de/" lang="de" hreflang="de">Deutsch</a><a class="button compact" href="#download"><span class="platform-icon icon-download" aria-hidden="true"></span>Get Vegsnap</a></nav></header>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-cross" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></symbol>
+  <symbol id="i-question" viewBox="0 0 24 24"><path d="M9.2 9.2a2.9 2.9 0 1 1 4.2 2.6c-.9.5-1.4 1.1-1.4 2.2"/><path d="M12 17.6h.01"/></symbol>
+  <symbol id="i-certified" viewBox="0 0 24 24"><path d="M12 2 14.1 4.1 17 3.3 17.8 6.2 20.7 7 19.9 9.9 22 12 19.9 14.1 20.7 17 17.8 17.8 17 20.7 14.1 19.9 12 22 9.9 19.9 7 20.7 6.2 17.8 3.3 17 4.1 14.1 2 12 4.1 9.9 3.3 7 6.2 6.2 7 3.3 9.9 4.1Z"/><path d="m8.4 12.2 2.4 2.4 4.8-5"/></symbol>
+  <symbol id="i-manufacturer" viewBox="0 0 24 24"><path d="M3 20.5h18M5 20.5V4h9v16.5M14 9h5v11.5M8 7.5h3M8 11h3M8 14.5h3M16.5 12.5h.01M16.5 16h.01"/></symbol>
+  <symbol id="i-composition" viewBox="0 0 24 24"><path d="M9.5 6.5H20M9.5 12H20M9.5 17.5H20M4.6 6.5h.01M4.6 12h.01M4.6 17.5h.01"/></symbol>
+  <symbol id="i-not-vegan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="m8.8 8.8 6.4 6.4m0-6.4-6.4 6.4"/></symbol>
+  <symbol id="i-uncertain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2.9-1.2 1.8"/><path d="M12 16.6h.01"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h15m-5.5-5.5L19.5 12 14 17.5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.5 4.5h6v6M19.5 4.5l-8 8M17.5 14v5.5h-13v-13H10"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.5a2 2 0 0 1 2-2h2.3l1.6-2.3h5.2l1.6 2.3h2.3a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/><circle cx="12" cy="12.8" r="3.6"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><path d="M3.5 4.5h17v11h-6M3.5 4.5v11h4"/><path d="m10.5 11 2 9.5 2.2-3.7 3.8-.6Z"/></symbol>
+  <symbol id="i-evidence" viewBox="0 0 24 24"><path d="M6 3.5h8.5l4 4v13H6Z"/><path d="M14 3.5V8h4.5M9 12.5h6.5M9 16h4"/></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><path d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0Z"/><path d="M8 11.5C8 8 10 5.5 13.5 4.5M12.5 11.5c.3-2.3 1.7-4 4-4.7"/></symbol>
+  <symbol id="i-cosmetics" viewBox="0 0 24 24"><path d="M8.5 9.5h7v10.5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1Z"/><path d="M10 9.5V6.5h4v3M11 6.5V3.5h5"/></symbol>
+  <symbol id="i-clothes" viewBox="0 0 24 24"><path d="M9 3.5 3.5 6.5l2 4.5 2.5-1v10.5h8V10l2.5 1 2-4.5L15 3.5a3 3 0 0 1-6 0Z"/></symbol>
+  <symbol id="p-oats" viewBox="0 0 24 24"><path d="M12 21.5V6.5"/><path d="M12 6.8c-1-1.4-1-3 0-4.4 1 1.4 1 3 0 4.4Z" fill="currentColor" fill-opacity=".2"/><path d="M11.8 11.2c-2.4.1-3.9-1.2-4.3-3.3 2.2-.2 3.9 1.1 4.3 3.3Z" fill="currentColor" fill-opacity=".2"/><path d="M12.2 13.8c2.4.1 3.9-1.2 4.3-3.3-2.2-.2-3.9 1.1-4.3 3.3Z" fill="currentColor" fill-opacity=".2"/><path d="M11.8 16.6c-2.4.1-3.9-1.2-4.3-3.3 2.2-.2 3.9 1.1 4.3 3.3Z" fill="currentColor" fill-opacity=".2"/><path d="M12.2 9c2.4.1 3.9-1.2 4.3-3.3-2.2-.2-3.9 1.1-4.3 3.3Z" fill="currentColor" fill-opacity=".2"/></symbol>
+  <symbol id="p-granola" viewBox="0 0 24 24"><path d="M3.5 13h17a8.5 8 0 0 1-17 0Z" fill="currentColor" fill-opacity=".2"/><path d="M6.5 13a1.8 1.8 0 0 1 3.4-.6 2 2 0 0 1 3.8-.4 1.8 1.8 0 0 1 3.6 1"/><path d="M15.5 2.5c1.5 1.9 2.3 3.1 2.3 4.1a2.3 2.3 0 0 1-4.6 0c0-1 .8-2.2 2.3-4.1Z" fill="currentColor" fill-opacity=".2"/></symbol>
+  <symbol id="p-cream" viewBox="0 0 24 24"><path d="M6.5 3.5h11v2.5h-11Z"/><path d="M7 6h10l-2.3 11.5h-5.4Z" fill="currentColor" fill-opacity=".2"/><path d="M9.3 17.5h5.4v3.2a.8.8 0 0 1-.8.8h-3.8a.8.8 0 0 1-.8-.8Z"/><path d="M10 9.5h4"/></symbol>
+  <symbol id="p-shirt" viewBox="0 0 24 24"><path d="M9 3.5 3.5 6.5l2 4.5 2.5-1v10.5h8V10l2.5 1 2-4.5L15 3.5a3 3 0 0 1-6 0Z"/><path d="M12 11.8a1.5 1.5 0 0 0-2.6 1.2 1.6 1.6 0 0 0 .4 3 1.6 1.6 0 0 0 2.2 1 1.6 1.6 0 0 0 2.2-1 1.6 1.6 0 0 0 .4-3 1.5 1.5 0 0 0-2.6-1.2Z" fill="currentColor" fill-opacity=".2"/></symbol>
+  <symbol id="i-device-history" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.4"/><path d="M10.5 18.5h3"/><path d="M9.2 11.3a2.9 2.9 0 1 0 .9-2.1"/><path d="M9.4 7.8v1.7h1.7"/><path d="M12 9.6v1.9l1.2.8"/></symbol>
+  <symbol id="i-ai-toggle" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="16.5" cy="12" r="2.7" fill="currentColor" fill-opacity=".2"/><path d="m7.6 9.3.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7Z"/></symbol>
+  <symbol id="i-ai-off" viewBox="0 0 24 24"><path d="m12 3.5 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="currentColor" fill-opacity=".2"/><path d="M4 20 20 4"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5M13.5 5.5l-3 13"/></symbol>
+</svg>
+<header class="site-header">
+  <div class="shell header-row">
+    <a class="brand" href="/" aria-label="Vegsnap"><img src="/logo.svg" width="40" height="40" alt=""><span>Vegsnap</span></a>
+    <nav aria-label="Main navigation"><a href="#how">How it works</a><a href="#screenshots">Screenshots</a><a href="#privacy">Privacy</a><a href="/de/" lang="de" hreflang="de">Deutsch</a><a class="button compact" href="#download"><span class="platform-icon icon-download" aria-hidden="true"></span>Get Vegsnap</a></nav>
+  </div>
+</header>
 <main id="main">
-<section class="hero wrap">
-<div class="hero-copy"><p class="eyebrow pill"><span class="small-dot" aria-hidden="true"></span>Early release · Open source</p><h1>Is it vegan?<br>Start with a photo.</h1><p class="lead">Photograph a product or select text on a webpage. Vegsnap checks its ingredients and materials, then shows the evidence and any missing details.</p><div class="actions"><a class="button primary" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap.apk"><span class="platform-icon icon-android" aria-hidden="true"></span>Download for Android<span aria-hidden="true">↓</span></a><a class="button" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D" rel="noreferrer"><span class="platform-icon icon-obtainium" aria-hidden="true"></span>Add to Obtainium<span aria-hidden="true">↗</span></a><a class="button" href="#play-test"><span class="platform-icon icon-google-play" aria-hidden="true"></span>Join Google Play test<span aria-hidden="true">↓</span></a></div><div class="actions browser-actions"><a class="button" href="#browser-extension"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Get for Chrome<span aria-hidden="true">↓</span></a><a class="button" href="#browser-extension"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Get for Firefox<span aria-hidden="true">↓</span></a></div><p class="platforms">Android · Chromium · Firefox</p><p class="muted privacy-note">You don't need a Vegsnap account. Your history stays on your device.</p></div>
-<figure class="product-preview">
-      <a class="phone-capture" href="/images/screenshots/android-history.png" data-dark-href="/images/dark/screenshots/android-history.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-history.png"><img src="/images/screenshots/android-history.png" width="1080" height="2400" alt="Vegsnap Android: previous product checks in local history" fetchpriority="high"></picture></a>
-</figure>
-</section>
-<section id="how" class="section wrap"><div class="section-heading"><p class="eyebrow">How it works</p><h2>Check a label or a webpage</h2></div><div class="steps"><article class="step"><span class="step-number">01</span><h3>Take a photo</h3><p>Photograph the product or import a picture. Scan its barcode for a database match, or let a connected AI identify it and research its composition. Add more photos when needed.</p></article><article class="step"><span class="step-number">02</span><h3>Check a page</h3><p>Select text or right-click a product image in Chromium or Firefox. Opt into store badges for background database checks.</p></article><article class="step"><span class="step-number">03</span><h3>Read the evidence</h3><p>See which ingredients and sources support the result. Company concerns and AI company assessments have their own sources and stay separate from the product result.</p></article></div><div class="categories"><span>Food &amp; drinks</span><span>Cosmetics &amp; household</span><span>Clothes &amp; shoes</span></div></section>
-<section id="screenshots" class="screenshots section wrap" aria-labelledby="screenshots-heading">
-  <div class="section-heading"><p class="eyebrow">Screenshots</p><h2 id="screenshots-heading">Product checks and results</h2><p class="lead small">Check a label, read the findings or look up a past result.</p></div>
-  <h3>On Android</h3>
-  <div class="screenshot-grid android-gallery">
-    <figure><a href="/images/screenshots/android-check.png" data-dark-href="/images/dark/screenshots/android-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-check.png"><img src="/images/screenshots/android-check.png" width="1080" height="2400" alt="Android: enter a product label and add product photos" loading="lazy" decoding="async"></picture></a><figcaption>Check a product label</figcaption></figure>
-    <figure><a href="/images/screenshots/android-result.png" data-dark-href="/images/dark/screenshots/android-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-result.png"><img src="/images/screenshots/android-result.png" width="1080" height="2400" alt="Android result explaining that honey is produced by bees" loading="lazy" decoding="async"></picture></a><figcaption>Read the ingredient findings</figcaption></figure>
+<section class="hero" aria-labelledby="hero-title">
+  <div class="shell hero-grid">
+    <div class="hero-copy">
+      <div class="hero-intro">
+        <h1 id="hero-title">Is it vegan?<br>Start with a photo.</h1>
+        <p class="lead">Photograph a product or select text on a webpage. Vegsnap checks its ingredients and materials, then shows the evidence and any missing details.</p>
+      </div>
+      <div class="hero-install">
+        <div class="install">
+          <div class="install-group" role="group" aria-labelledby="install-android">
+            <p class="install-label" id="install-android">Android app</p>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap.apk"><span class="platform-icon icon-android" aria-hidden="true"></span>Download for Android<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+              <a class="button" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D" rel="noreferrer"><span class="platform-icon icon-obtainium" aria-hidden="true"></span>Add to Obtainium<svg class="button-glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+              <a class="button" href="#play-test"><span class="platform-icon icon-google-play" aria-hidden="true"></span>Join Google Play test</a>
+            </div>
+          </div>
+          <div class="install-group" role="group" aria-labelledby="install-browser">
+            <p class="install-label" id="install-browser">Browser extension for Chromium and Firefox</p>
+            <div class="actions">
+              <a class="button" href="#browser-extension"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Get for Chrome</a>
+              <a class="button" href="#browser-extension"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Get for Firefox</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="demo" data-demo aria-labelledby="demo-title">
+      <div class="demo-head">
+        <h2 id="demo-title">Example results from the app</h2>
+        <div class="demo-tabs" role="tablist" aria-labelledby="demo-title" hidden>
+          <button type="button" role="tab" id="tab-oats" aria-controls="example-oats" aria-selected="false" tabindex="-1"><svg class="tab-icon" aria-hidden="true"><use href="#p-oats"/></svg>Oat flakes</button>
+          <button type="button" role="tab" id="tab-honey" aria-controls="example-honey" aria-selected="true"><svg class="tab-icon" aria-hidden="true"><use href="#p-granola"/></svg>Honey granola</button>
+          <button type="button" role="tab" id="tab-cream" aria-controls="example-cream" aria-selected="false" tabindex="-1"><svg class="tab-icon" aria-hidden="true"><use href="#p-cream"/></svg>Hand cream</button>
+          <button type="button" role="tab" id="tab-shirt" aria-controls="example-shirt" aria-selected="false" tabindex="-1"><svg class="tab-icon" aria-hidden="true"><use href="#p-shirt"/></svg>Cotton T-shirt</button>
+        </div>
+      </div>
+      <div class="demo-panels">
+
+        <article class="example vegan" id="example-oats" aria-labelledby="example-oats-name">
+          <div class="example-label">
+            <h3 id="example-oats-name">Oat flakes</h3>
+            <p class="example-category">Food &amp; drinks</p>
+            <div class="label-print">
+              <p class="label-title">Supplied composition</p>
+              <p class="label-text"><b class="label-head">Ingredients:</b> <span class="term plant">oats<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span>, <span class="term plant">salt<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span></p>
+            </div>
+          </div>
+          <span class="example-arrow" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+          <div class="example-result">
+            <div class="result-head">
+              <p class="result-title"><svg class="result-symbol" aria-hidden="true"><use href="#i-composition"/></svg>Composition appears vegan</p>
+              <p class="result-summary">All terms in the supplied complete list are covered without identified animal content. This is not a certification.</p>
+            </div>
+            <h4>Ingredients &amp; materials</h4>
+            <ul class="findings">
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>oats</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>salt</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+            </ul>
+            <h4>Keep in mind</h4>
+            <ul class="result-notes"><li>Composition alone does not verify manufacturing aids or certification.</li></ul>
+          </div>
+        </article>
+
+        <article class="example not-vegan" id="example-honey" aria-labelledby="example-honey-name">
+          <div class="example-label">
+            <h3 id="example-honey-name">Honey granola</h3>
+            <p class="example-category">Food &amp; drinks</p>
+            <div class="label-print">
+              <p class="label-title">Supplied composition</p>
+              <p class="label-text"><b class="label-head">Ingredients:</b> <span class="term plant">oats<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span>, <span class="term animal">honey<svg class="pen pen-ring" viewBox="0 0 240 112" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M204 13C160 5 80 0 36 2 8 2.5 1 16 1 50c0 36 9 59 43 60 56 3 116 2 160-1 28-2 36-17 35-49-1-34-13-54-49-57-30-2-60-1-82 1"/></svg></span>, <span class="term plant">almonds<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span></p>
+            </div>
+          </div>
+          <span class="example-arrow" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+          <div class="example-result">
+            <div class="result-head">
+              <p class="result-title"><svg class="result-symbol" aria-hidden="true"><use href="#i-not-vegan"/></svg>Animal-derived content found</p>
+              <p class="result-summary">The supplied composition includes animal-derived content. See the matched terms and evidence.</p>
+            </div>
+            <h4>Ingredients &amp; materials</h4>
+            <ul class="findings">
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>oats</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+              <li class="finding animal"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-cross"/></svg></span><p class="finding-term"><strong>honey</strong> <span class="finding-status">Animal-derived ingredient</span></p><p class="finding-text">Honey is produced by bees.</p></li>
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>almonds</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+            </ul>
+            <h4>Keep in mind</h4>
+            <ul class="result-notes"><li>Composition alone does not verify manufacturing aids or certification.</li></ul>
+          </div>
+        </article>
+
+        <article class="example uncertain" id="example-cream" aria-labelledby="example-cream-name">
+          <div class="example-label">
+            <h3 id="example-cream-name">Hand cream</h3>
+            <p class="example-category">Cosmetics &amp; household</p>
+            <div class="label-print">
+              <p class="label-title">Supplied composition</p>
+              <p class="label-text"><b class="label-head">Ingredients:</b> <span class="term plant">water<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span>, <span class="term ambiguous">glycerin<svg class="pen pen-query" viewBox="0 0 30 52" aria-hidden="true"><path pathLength="1" d="M6.5 14.9C6.5 6.5 13 2.8 17.7 3.7c6.5.9 8.4 8.4 4.6 13S14.9 23.2 14.9 32.5"/><path class="pen-dot" pathLength="1" d="M14.9 45v1.1"/></svg></span></p>
+            </div>
+          </div>
+          <span class="example-arrow" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+          <div class="example-result">
+            <div class="result-head">
+              <p class="result-title"><svg class="result-symbol" aria-hidden="true"><use href="#i-uncertain"/></svg>More information needed</p>
+              <p class="result-summary">The available composition does not establish whether the product is vegan.</p>
+            </div>
+            <h4>Ingredients &amp; materials</h4>
+            <ul class="findings">
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>water</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+              <li class="finding ambiguous"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-question"/></svg></span><p class="finding-term"><strong>glycerin</strong> <span class="finding-status">Ingredient origin unclear</span></p><p class="finding-text">Glycerin can have different origins; confirm its source.</p></li>
+            </ul>
+            <h4>What would help</h4>
+            <ul class="result-notes"><li>Confirm the source of the ambiguous or unrecognized ingredients/materials.</li></ul>
+            <h4>Keep in mind</h4>
+            <ul class="result-notes"><li>Composition alone does not verify manufacturing aids or certification.</li></ul>
+          </div>
+        </article>
+
+        <article class="example uncertain" id="example-shirt" aria-labelledby="example-shirt-name">
+          <div class="example-label">
+            <h3 id="example-shirt-name">Cotton T-shirt</h3>
+            <p class="example-category">Clothes &amp; shoes</p>
+            <div class="label-print">
+              <p class="label-title">Supplied composition</p>
+              <p class="label-text"><b class="label-head">Materials:</b> <span class="term plant">cotton<svg class="pen pen-tick" viewBox="0 0 52 52" aria-hidden="true"><path pathLength="1" d="M7.6 28.2c4.3 3.3 8.7 8.7 11.9 16.3C24.9 29.3 33.6 16.3 45.5 6.5"/></svg></span></p>
+            </div>
+          </div>
+          <span class="example-arrow" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+          <div class="example-result">
+            <div class="result-head">
+              <p class="result-title"><svg class="result-symbol" aria-hidden="true"><use href="#i-uncertain"/></svg>More information needed</p>
+              <p class="result-summary">The available composition does not establish whether the product is vegan.</p>
+            </div>
+            <h4>Ingredients &amp; materials</h4>
+            <ul class="findings">
+              <li class="finding plant"><span class="finding-mark" aria-hidden="true"><svg><use href="#i-check"/></svg></span><p class="finding-term"><strong>cotton</strong> <span class="finding-status">Vegan ingredient</span></p><p class="finding-text">No animal-derived ingredient or material is identified by this term; production details remain separate.</p></li>
+            </ul>
+            <h4>What would help</h4>
+            <ul class="result-notes"><li>Ask the manufacturer about lining, glue, coatings, and trims.</li></ul>
+            <h4>Keep in mind</h4>
+            <ul class="result-notes"><li>Composition alone does not verify manufacturing aids or certification.</li></ul>
+          </div>
+        </article>
+
+      </div>
+    </section>
   </div>
-  <h3>In your browser</h3>
-  <div class="screenshot-grid extension-gallery">
-    <figure><a href="/images/screenshots/extension-check.png" data-dark-href="/images/dark/screenshots/extension-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/extension-check.png"><img src="/images/screenshots/extension-check.png" width="760" height="880" alt="Browser extension checking an ingredient list" loading="lazy" decoding="async"></picture></a><figcaption>Enter a label</figcaption></figure>
-    <figure><a href="/images/screenshots/extension-result.png" data-dark-href="/images/dark/screenshots/extension-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/extension-result.png"><img src="/images/screenshots/extension-result.png" width="760" height="880" alt="Browser extension explaining ingredient findings and their limits" loading="lazy" decoding="async"></picture></a><figcaption>Read the ingredient findings</figcaption></figure>
-  </div>
-  <p class="hint">Select any image to explore the screenshots in full screen.</p>
 </section>
-<section class="clarity section wrap"><div><p class="eyebrow">The evidence</p><h2>See what supports<br>the result</h2><p class="lead small">A shoe's material list may omit its glue. Vegsnap points out missing details and distinguishes ingredient checks from vegan claims on a label.</p></div><ul class="status-list"><li class="status certified"><span class="status-mark" aria-hidden="true">✦</span><div><strong>Certified vegan</strong><p>Product-specific certification evidence supports it.</p></div></li><li class="status manufacturer"><span class="status-mark" aria-hidden="true">▣</span><div><strong>Manufacturer says vegan</strong><p>A matching statement from the maker supports it.</p></div></li><li class="status vegan"><span class="status-mark" aria-hidden="true">✓</span><div><strong>Composition appears vegan</strong><p>The supplied ingredients or materials support it.</p></div></li><li class="status not-vegan"><span class="status-mark" aria-hidden="true">×</span><div><strong>Animal-derived content found</strong><p>See the specific ingredient or material.</p></div></li><li class="status uncertain"><span class="status-mark" aria-hidden="true">?</span><div><strong>More information needed</strong><p>Missing details and conflicting sources stay visible.</p></div></li></ul></section>
-<section id="privacy" class="privacy section"><div class="wrap privacy-layout"><div><p class="eyebrow">Privacy</p><h2>Choose whether to connect AI</h2><p class="lead small">Database checks and local rules work without an AI account. If you connect a provider, Vegsnap explains which content a check sends to it.</p><a class="text-link" href="https://github.com/D3SOX/vegsnap">Source code <span aria-hidden="true">↗</span></a></div><div class="privacy-grid"><article><h3>Local history</h3><p>Vegsnap saves your history on your device. You can delete saved checks and photos.</p></article><article><h3>Optional AI</h3><p>Vegsnap AI offers limited free checks without a subscription or API key. Selected product text and photos pass through Cloudflare to OpenAI. You can also connect your ChatGPT Plus or Pro plan, an API provider or a compatible local model.</p></article><article><h3>No background AI</h3><p>Store integrations use product databases in the background. AI runs when you start a check.</p></article><article><h3>Open source</h3><p>The app, extension and companion use the AGPL-3.0 license. They have no ads or analytics.</p></article></div></div></section>
-<section id="download" class="section wrap"><div class="section-heading"><p class="eyebrow">Download</p><h2>Get Vegsnap</h2><p class="lead small">Download the Android app or set up the browser extension.</p></div><div class="downloads"><article class="download-card"><h3>Android</h3><p>A native app with camera and barcode scanning, manual checks, database browsing and local photo history. Checks can continue in the background.</p><p class="muted">Android 8 or later · Signed APK</p><div class="actions"><a class="button primary" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap.apk"><span class="platform-icon icon-android" aria-hidden="true"></span>Download for Android<span aria-hidden="true">↓</span></a><a class="button" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D" rel="noreferrer"><span class="platform-icon icon-obtainium" aria-hidden="true"></span>Add to Obtainium<span aria-hidden="true">↗</span></a></div><div id="play-test" class="play-test"><h4>Google Play closed test</h4><p>Help test Vegsnap before its Play Store release.</p><ol><li><a href="https://groups.google.com/g/d3sox-apps-testers">Join the tester group</a></li><li><a href="https://play.google.com/apps/testing/app.vegsnap">Opt in and install on Google Play</a></li></ol><p class="hint">Use the same Google account for both steps. Please stay opted in for at least 14 days and send feedback via <a href="https://github.com/D3SOX/vegsnap/issues">GitHub Issues</a> or by email: <button class="email-reveal" type="button" data-email-reveal hidden>Show email address</button><noscript>Enable JavaScript to view the email address</noscript>.</p><p class="hint">Google Play and GitHub APKs use different signing keys. To switch, export your history, uninstall the current app and install the other version. Import your history and reconnect AI. Exports do not include photos or credentials.</p></div></article><article id="browser-extension" class="download-card"><h3 class="browser-heading"><span class="icon-label"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Chromium</span> &amp; <span class="icon-label"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox</span></h3><p>Install the extension in Chrome, Chromium, Brave, Helium, Vivaldi or Microsoft Edge through the Chrome Web Store, or in Firefox, Zen or LibreWolf through Firefox Add-ons. Check selected text and product images across ordinary websites. Store integrations are optional.</p><div class="store-actions" role="group" aria-label="Browser stores"><a class="button store-button" href="https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej"><span class="platform-icon icon-chrome" aria-hidden="true"></span><span class="store-button-label">Chrome Web Store<span class="store-button-description">Install extension</span></span><svg class="store-link-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a><a class="button store-button" href="https://addons.mozilla.org/addon/vegsnap/"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span><span class="store-button-label">Firefox Add-ons<span class="store-button-description">Install extension</span></span><svg class="store-link-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div><p class="muted">Or install manually:</p><div class="actions"><a class="button" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-chromium.zip"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Chromium ZIP<span aria-hidden="true">↓</span></a><a class="button" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-firefox.xpi"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox XPI<span aria-hidden="true">↓</span></a></div><p class="hint">Extract the ZIP and load its folder in developer mode on chrome://extensions (brave://extensions in Brave, helium://extensions in Helium, vivaldi://extensions in Vivaldi or edge://extensions in Edge). Firefox, Zen and LibreWolf require Firefox 140 or later. The GitHub release XPI is unsigned; load it temporarily through about:debugging. The browser removes it when it closes. Use Firefox Add-ons for permanent installation and automatic updates. <a href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-chromium.crx">Download CRX</a>. Some browsers restrict direct CRX installation.</p></article></div></section>
-<section id="companion" class="section wrap"><div class="section-heading"><h2>Connect ChatGPT in your browser</h2><p class="lead small">The desktop companion connects the extension to your ChatGPT Plus or Pro plan. Vegsnap AI, API-key connections and Android ChatGPT sign-in work without it.</p></div><div class="downloads companion-setup"><article class="download-card"><h3>Install the companion</h3><p>Download the archive for your operating system to your Downloads folder. Install <a href="https://www.python.org/downloads/">Python 3</a>, then run these commands in a terminal. Keep the extracted files in this location.</p><div class="actions"><a class="button" data-download-os="linux" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-linux-x86_64.tar.gz"><span class="platform-icon icon-linux" aria-hidden="true"></span>Linux<span aria-hidden="true">↓</span></a><a class="button" data-download-os="windows" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-windows-x86_64.zip"><span class="platform-icon icon-windows" aria-hidden="true"></span>Windows<span aria-hidden="true">↓</span></a><a class="button" data-download-os="macos" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-macos-universal.tar.gz"><span class="platform-icon icon-apple" aria-hidden="true"></span>macOS<span aria-hidden="true">↓</span></a></div>
+
+<section id="how" class="section how" aria-labelledby="how-title">
+  <div class="shell grid">
+    <h2 id="how-title" class="section-title">Check a label or a webpage</h2>
+    <div class="ways">
+      <article class="way">
+        <svg class="way-icon" aria-hidden="true"><use href="#i-camera"/></svg>
+        <h3>Take a photo</h3>
+        <p>Photograph the product or import a picture. Scan its barcode for a database match, or let a connected AI identify it and research its composition. Add more photos when needed.</p>
+      </article>
+      <p class="way-or" aria-hidden="true"><span>or</span></p>
+      <article class="way">
+        <svg class="way-icon" aria-hidden="true"><use href="#i-select"/></svg>
+        <h3>Check a page</h3>
+        <p>Select text or right-click a product image in Chromium or Firefox. Opt into store badges for background database checks.</p>
+      </article>
+    </div>
+    <span class="how-arrow" aria-hidden="true"><svg><use href="#i-arrow"/></svg></span>
+    <article class="way way-result">
+      <svg class="way-icon" aria-hidden="true"><use href="#i-evidence"/></svg>
+      <h3>Read the evidence</h3>
+      <p>See which ingredients and sources support the result. Company concerns and AI company assessments have their own sources and stay separate from the product result.</p>
+    </article>
+    <ul class="categories" aria-label="Product categories">
+      <li><svg aria-hidden="true"><use href="#i-food"/></svg>Food &amp; drinks</li>
+      <li><svg aria-hidden="true"><use href="#i-cosmetics"/></svg>Cosmetics &amp; household</li>
+      <li><svg aria-hidden="true"><use href="#i-clothes"/></svg>Clothes &amp; shoes</li>
+    </ul>
+  </div>
+</section>
+
+<section id="screenshots" class="section screenshots" aria-labelledby="screenshots-heading">
+  <div class="shell grid">
+    <div class="section-intro">
+      <h2 id="screenshots-heading">Product checks and results</h2>
+      <p class="lead">Check a label, read the findings or look up a past result.</p>
+    </div>
+    <div class="gallery-group android-gallery">
+      <h3>On Android</h3>
+      <div class="shots">
+        <figure><a href="/images/screenshots/android-check.png" data-dark-href="/images/dark/screenshots/android-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-check.png"><img src="/images/screenshots/android-check.png" width="1080" height="2400" alt="Android: enter a product label and add product photos" loading="lazy" decoding="async"></picture></a><figcaption>Check a product label</figcaption></figure>
+        <figure><a href="/images/screenshots/android-result.png" data-dark-href="/images/dark/screenshots/android-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-result.png"><img src="/images/screenshots/android-result.png" width="1080" height="2400" alt="Android result explaining that honey is produced by bees" loading="lazy" decoding="async"></picture></a><figcaption>Read the ingredient findings</figcaption></figure>
+        <figure><a href="/images/screenshots/android-history.png" data-dark-href="/images/dark/screenshots/android-history.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/android-history.png"><img src="/images/screenshots/android-history.png" width="1080" height="2400" alt="Vegsnap Android: previous product checks in local history" loading="lazy" decoding="async"></picture></a><figcaption>Look up a past result</figcaption></figure>
+      </div>
+    </div>
+    <div class="gallery-group extension-gallery">
+      <h3>In your browser</h3>
+      <div class="shots">
+        <figure><a href="/images/screenshots/extension-check.png" data-dark-href="/images/dark/screenshots/extension-check.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/extension-check.png"><img src="/images/screenshots/extension-check.png" width="760" height="880" alt="Browser extension checking an ingredient list" loading="lazy" decoding="async"></picture></a><figcaption>Enter a label</figcaption></figure>
+        <figure><a href="/images/screenshots/extension-result.png" data-dark-href="/images/dark/screenshots/extension-result.png"><picture><source media="(prefers-color-scheme: dark)" srcset="/images/dark/screenshots/extension-result.png"><img src="/images/screenshots/extension-result.png" width="760" height="880" alt="Browser extension explaining ingredient findings and their limits" loading="lazy" decoding="async"></picture></a><figcaption>Read the ingredient findings</figcaption></figure>
+      </div>
+    </div>
+    <p class="hint gallery-hint">Select any image to explore the screenshots in full screen.</p>
+  </div>
+</section>
+
+<section id="evidence" class="section evidence" aria-labelledby="evidence-title">
+  <div class="shell grid">
+    <div class="section-intro">
+      <h2 id="evidence-title">See what supports the result</h2>
+      <p class="lead">A shoe's material list may omit its glue. Vegsnap points out missing details and distinguishes ingredient checks from vegan claims on a label.</p>
+    </div>
+    <div class="ladder-block">
+      <h3 class="ladder-label" id="ladder-vegan">Vegan results, from strongest to weakest evidence</h3>
+      <ol class="ladder" aria-labelledby="ladder-vegan">
+        <li class="rung certified"><span class="rung-symbol"><svg aria-hidden="true"><use href="#i-certified"/></svg></span><div class="rung-text"><strong>Certified vegan</strong><p>Product-specific certification evidence supports it.</p></div><span class="strength" aria-hidden="true"><i></i><i></i><i></i></span></li>
+        <li class="rung manufacturer"><span class="rung-symbol"><svg aria-hidden="true"><use href="#i-manufacturer"/></svg></span><div class="rung-text"><strong>Manufacturer says vegan</strong><p>A matching statement from the maker supports it.</p></div><span class="strength" aria-hidden="true"><i></i><i></i><i></i></span></li>
+        <li class="rung vegan"><span class="rung-symbol"><svg aria-hidden="true"><use href="#i-composition"/></svg></span><div class="rung-text"><strong>Composition appears vegan</strong><p>The supplied ingredients or materials support it.</p></div><span class="strength" aria-hidden="true"><i></i><i></i><i></i></span></li>
+      </ol>
+      <h3 class="ladder-label" id="ladder-other">Other results</h3>
+      <ul class="outcomes" aria-labelledby="ladder-other">
+        <li class="outcome not-vegan"><span class="rung-symbol"><svg aria-hidden="true"><use href="#i-not-vegan"/></svg></span><div class="rung-text"><strong>Animal-derived content found</strong><p>See the specific ingredient or material.</p></div></li>
+        <li class="outcome uncertain"><span class="rung-symbol"><svg aria-hidden="true"><use href="#i-uncertain"/></svg></span><div class="rung-text"><strong>More information needed</strong><p>Missing details and conflicting sources stay visible.</p></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="privacy" class="section privacy" aria-labelledby="privacy-title">
+  <div class="shell grid">
+    <div class="section-intro">
+      <h2 id="privacy-title">Choose whether to connect AI</h2>
+      <p class="lead">Database checks and local rules work without an AI account. If you connect a provider, Vegsnap explains which content a check sends to it.</p>
+      <a class="text-link" href="https://github.com/D3SOX/vegsnap">Source code<svg aria-hidden="true"><use href="#i-external"/></svg></a>
+    </div>
+    <div class="privacy-points">
+      <article><svg class="point-icon" aria-hidden="true"><use href="#i-device-history"/></svg><h3>Local history</h3><p>Vegsnap saves your history on your device. You can delete saved checks and photos.</p></article>
+      <article><svg class="point-icon" aria-hidden="true"><use href="#i-ai-toggle"/></svg><h3>Optional AI</h3><p>Vegsnap AI offers limited free checks without a subscription or API key. Selected product text and photos pass through Cloudflare to OpenAI. You can also connect your ChatGPT Plus or Pro plan, an API provider or a compatible local model.</p></article>
+      <article><svg class="point-icon" aria-hidden="true"><use href="#i-ai-off"/></svg><h3>No background AI</h3><p>Store integrations use product databases in the background. AI runs when you start a check.</p></article>
+      <article><svg class="point-icon" aria-hidden="true"><use href="#i-code"/></svg><h3>Open source</h3><p>The app, extension and companion use the AGPL-3.0 license. They have no ads or analytics.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="section download" aria-labelledby="download-title">
+  <div class="shell grid">
+    <div class="section-intro">
+      <h2 id="download-title">Get Vegsnap</h2>
+      <p class="lead">Download the Android app or set up the browser extension.</p>
+    </div>
+    <article class="download-card android-card">
+      <h3 class="icon-label"><span class="platform-icon icon-android" aria-hidden="true"></span>Android</h3>
+      <p>A native app with camera and barcode scanning, manual checks, database browsing and local photo history. Checks can continue in the background.</p>
+      <ul class="specs"><li>Android 8 or later</li><li>Signed APK</li></ul>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap.apk"><span class="platform-icon icon-android" aria-hidden="true"></span>Download for Android<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+        <a class="button" href="https://apps.obtainium.imranr.dev/redirect?r=obtainium%3A%2F%2Fapp%2F%257B%2522id%2522%253A%2522app.vegsnap%2522%252C%2522url%2522%253A%2522https%253A%252F%252Fgithub.com%252FD3SOX%252Fvegsnap%2522%252C%2522author%2522%253A%2522D3SOX%2522%252C%2522name%2522%253A%2522Vegsnap%2522%257D" rel="noreferrer"><span class="platform-icon icon-obtainium" aria-hidden="true"></span>Add to Obtainium<svg class="button-glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+      </div>
+      <div id="play-test" class="play-test">
+        <h4 class="icon-label"><span class="platform-icon icon-google-play" aria-hidden="true"></span>Google Play closed test</h4>
+        <p>Help test Vegsnap before its Play Store release.</p>
+        <ol class="play-steps"><li><a href="https://groups.google.com/g/d3sox-apps-testers">Join the tester group</a></li><li><a href="https://play.google.com/apps/testing/app.vegsnap">Opt in and install on Google Play</a></li></ol>
+        <p class="hint">Use the same Google account for both steps. Please stay opted in for at least 14 days and send feedback via <a href="https://github.com/D3SOX/vegsnap/issues">GitHub Issues</a> or by email: <button class="email-reveal" type="button" data-email-reveal hidden>Show email address</button><noscript>Enable JavaScript to view the email address</noscript>.</p>
+        <p class="hint">Google Play and GitHub APKs use different signing keys. To switch, export your history, uninstall the current app and install the other version. Import your history and reconnect AI. Exports do not include photos or credentials.</p>
+      </div>
+    </article>
+    <article id="browser-extension" class="download-card browser-card">
+      <h3 class="browser-heading"><span class="icon-label"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Chromium</span> &amp; <span class="icon-label"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox</span></h3>
+      <p>Install the extension in Chrome, Chromium, Brave, Helium, Vivaldi or Microsoft Edge through the Chrome Web Store, or in Firefox, Zen or LibreWolf through Firefox Add-ons. Check selected text and product images across ordinary websites. Store integrations are optional.</p>
+      <div class="store-actions" role="group" aria-label="Browser stores">
+        <a class="button store-button" href="https://chromewebstore.google.com/detail/vegsnap/pkkfmbgdbdoccbdngnbfpjjhpldmphej"><span class="platform-icon icon-chrome" aria-hidden="true"></span><span class="store-button-label">Chrome Web Store<span class="store-button-description">Install extension</span></span><svg class="button-glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+        <a class="button store-button" href="https://addons.mozilla.org/addon/vegsnap/"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span><span class="store-button-label">Firefox Add-ons<span class="store-button-description">Install extension</span></span><svg class="button-glyph" aria-hidden="true"><use href="#i-external"/></svg></a>
+      </div>
+      <p class="manual-label">Or install manually:</p>
+      <div class="actions">
+        <a class="button" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-chromium.zip"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Chromium ZIP<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+        <a class="button" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-firefox.xpi"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox XPI<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+      </div>
+      <p class="hint">Extract the ZIP and load its folder in developer mode on chrome://extensions (brave://extensions in Brave, helium://extensions in Helium, vivaldi://extensions in Vivaldi or edge://extensions in Edge). Firefox, Zen and LibreWolf require Firefox 140 or later. The GitHub release XPI is unsigned; load it temporarily through about:debugging. The browser removes it when it closes. Use Firefox Add-ons for permanent installation and automatic updates. <a href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-chromium.crx">Download CRX</a>. Some browsers restrict direct CRX installation.</p>
+    </article>
+  </div>
+</section>
+
+<section id="companion" class="section companion" aria-labelledby="companion-title">
+  <div class="shell grid">
+    <div class="section-intro">
+      <h2 id="companion-title">Connect ChatGPT in your browser</h2>
+      <p class="lead">The desktop companion connects the extension to your ChatGPT Plus or Pro plan. Vegsnap AI, API-key connections and Android ChatGPT sign-in work without it.</p>
+    </div>
+    <ol class="companion-setup">
+      <li class="setup-step">
+        <h3 class="step-title">Install the companion</h3>
+        <div class="step-body">
+          <p>Download the archive for your operating system to your Downloads folder. Install <a href="https://www.python.org/downloads/">Python 3</a>, then run these commands in a terminal. Keep the extracted files in this location.</p>
+          <div class="actions">
+            <a class="button" data-download-os="linux" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-linux-x86_64.tar.gz"><span class="platform-icon icon-linux" aria-hidden="true"></span>Linux<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+            <a class="button" data-download-os="windows" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-windows-x86_64.zip"><span class="platform-icon icon-windows" aria-hidden="true"></span>Windows<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+            <a class="button" data-download-os="macos" href="https://github.com/D3SOX/vegsnap/releases/latest/download/vegsnap-companion-macos-universal.tar.gz"><span class="platform-icon icon-apple" aria-hidden="true"></span>macOS<svg class="button-glyph" aria-hidden="true"><use href="#i-download"/></svg></a>
+          </div>
 <details name="companion-install" data-os="linux"><summary><span class="icon-label"><span class="platform-icon icon-linux" aria-hidden="true"></span>Linux</span></summary><p class="hint">For Linux x86_64. Credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.</p><pre><code><span class="syntax-command">mkdir</span> <span class="syntax-option">-p</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap&quot;</span>
 <span class="syntax-command">tar</span> <span class="syntax-option">-xzf</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/Downloads/vegsnap-companion-linux-x86_64.tar.gz&quot;</span> <span class="syntax-operator">\</span>
   <span class="syntax-option">-C</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap&quot;</span>
@@ -53,7 +360,16 @@
 <span class="syntax-command">Expand-Archive</span> <span class="syntax-option">-Force</span> <span class="syntax-operator">`</span>
   <span class="syntax-option">-Path</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>\Downloads\vegsnap-companion-windows-x86_64.zip&quot;</span> <span class="syntax-operator">`</span>
   <span class="syntax-option">-DestinationPath</span> <span class="syntax-variable">$vegsnapDirectory</span></code></pre></details>
-<p>Next, register the companion for each browser you use below. These commands do not need administrator access.</p></article><article class="download-card browser-registration"><h3>Register your browsers</h3><p>Choose your browser and operating system, then run the command for each browser you use. Install the companion with the commands above first.</p><div class="browser-choice" hidden><label id="companion-browser-label" for="companion-browser">Browser</label><select id="companion-browser" data-browser-select><option value="">Choose your browser</option><option value="firefox">Firefox</option><option value="chromium">Chromium</option><option value="chrome">Google Chrome</option><option value="brave">Brave</option><option value="helium">Helium</option><option value="vivaldi">Vivaldi</option><option value="edge">Microsoft Edge</option><option value="zen">Zen</option><option value="librewolf">LibreWolf</option></select></div><details name="companion-register" data-os="linux"><summary><span class="icon-label"><span class="platform-icon icon-linux" aria-hidden="true"></span>Linux</span></summary><p class="hint browser-prompt" hidden>Select your browser above to see the registration command.</p><div class="browser-command" data-browser="firefox"><h4 class="icon-label"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox</h4><pre><code><span class="syntax-command">python3</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap/install.py&quot;</span> <span class="syntax-operator">\</span>
+
+          <p>Next, register the companion for each browser you use below. These commands do not need administrator access.</p>
+        </div>
+      </li>
+      <li class="setup-step browser-registration">
+        <h3 class="step-title">Register your browsers</h3>
+        <div class="step-body">
+          <p>Choose your browser and operating system, then run the command for each browser you use. Install the companion with the commands above first.</p>
+          <div class="browser-choice" hidden><label id="companion-browser-label" for="companion-browser">Browser</label><select id="companion-browser" data-browser-select><option value="">Choose your browser</option><option value="firefox">Firefox</option><option value="chromium">Chromium</option><option value="chrome">Google Chrome</option><option value="brave">Brave</option><option value="helium">Helium</option><option value="vivaldi">Vivaldi</option><option value="edge">Microsoft Edge</option><option value="zen">Zen</option><option value="librewolf">LibreWolf</option></select></div>
+<details name="companion-register" data-os="linux"><summary><span class="icon-label"><span class="platform-icon icon-linux" aria-hidden="true"></span>Linux</span></summary><p class="hint browser-prompt" hidden>Select your browser above to see the registration command.</p><div class="browser-command" data-browser="firefox"><h4 class="icon-label"><span class="platform-icon icon-firefox-browser" aria-hidden="true"></span>Firefox</h4><pre><code><span class="syntax-command">python3</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap/install.py&quot;</span> <span class="syntax-operator">\</span>
   <span class="syntax-option">--binary</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap/vegsnap-companion&quot;</span> <span class="syntax-operator">\</span>
   <span class="syntax-option">--browser</span> firefox <span class="syntax-option">--extension-id</span> vegsnap@vegsnap.app</code></pre></div><div class="browser-command" data-browser="chromium"><h4 class="icon-label"><span class="platform-icon icon-chrome" aria-hidden="true"></span>Chromium</h4><pre><code><span class="syntax-command">python3</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap/install.py&quot;</span> <span class="syntax-operator">\</span>
   <span class="syntax-option">--binary</span> <span class="syntax-string">&quot;<span class="syntax-variable">$HOME</span>/.local/lib/vegsnap/vegsnap-companion&quot;</span> <span class="syntax-operator">\</span>
@@ -116,13 +432,30 @@
   <span class="syntax-option">--browser</span> zen <span class="syntax-option">--extension-id</span> vegsnap@vegsnap.app</code></pre></div><div class="browser-command" data-browser="librewolf"><h4 class="icon-label"><span class="platform-icon icon-librewolf" aria-hidden="true"></span>LibreWolf</h4><pre><code><span class="syntax-variable">$vegsnapDirectory</span> <span class="syntax-operator">=</span> <span class="syntax-command">Join-Path</span> <span class="syntax-variable">$env:LOCALAPPDATA</span> <span class="syntax-string">&quot;Vegsnap\Companion&quot;</span>
 <span class="syntax-command">py</span> -3 <span class="syntax-string">&quot;<span class="syntax-variable">$vegsnapDirectory</span>\install.py&quot;</span> <span class="syntax-operator">`</span>
   <span class="syntax-option">--binary</span> <span class="syntax-string">&quot;<span class="syntax-variable">$vegsnapDirectory</span>\vegsnap-companion.exe&quot;</span> <span class="syntax-operator">`</span>
-  <span class="syntax-option">--browser</span> librewolf <span class="syntax-option">--extension-id</span> vegsnap@vegsnap.app</code></pre></div></details><p>Register each browser you use. After registration, restart your browser, open the extension's settings and choose Connect ChatGPT. The Chromium commands use the Chrome Web Store extension ID. Firefox, Zen and LibreWolf use the Firefox extension. For the manually installed ZIP or CRX, use the ID shown on chrome://extensions instead.</p></article></div></section>
-<section class="faq section wrap"><h2>Questions about Vegsnap</h2><div><details><summary>Is Vegsnap free?</summary><p>Yes. Vegsnap is free and open source. Database checks and local rules need no AI account. Vegsnap AI offers limited free checks. Other cloud AI providers have their own usage limits and charges.</p></details><details><summary>How do free AI checks work?</summary><p>In Settings, choose Vegsnap AI and select Connect to free AI. Complete verification in your browser, then return to Vegsnap to see your remaining allowance. You need no subscription, API key or desktop companion. Access expires after 24 hours and allowances reset at midnight UTC. A shared service limit can make free checks unavailable. A failed AI request can count as a check. Selected product input passes through Cloudflare to OpenAI. Read the <a href="/privacy.html">privacy policy</a> for storage and retention details.</p></details><details><summary>Does it work for every product?</summary><p>You can check any product category, including clothes and shoes. Some products have too little information for an answer. Vegsnap then shows what is missing.</p></details><details><summary>Can I use my ChatGPT plan?</summary><p>ChatGPT sign-in on Android and in the browser extension requires a <a href="https://developers.openai.com/siwc/quickstart">ChatGPT Plus or Pro plan</a>. Free ChatGPT accounts are not supported for this connection. Android connects directly and lets you save and switch between ChatGPT accounts in Settings. The browser extension needs the desktop companion. Vegsnap AI and API-key connections work without it.</p></details><details><summary>Where does product information come from?</summary><p>Open Food Facts, Open Beauty Facts and Open Products Facts provide community product data. The Android Browse tab also searches Barnivore for drinks and Wikidata for product information. Downloadable regional packs contain a partial selection of product records. Vegsnap AI, ChatGPT and the official OpenAI API can research web sources. Other compatible API connections do not currently support web search. Community data and AI-read claims are not independent certification checks.</p></details><details><summary>How are company concerns selected?</summary><p>Vegsnap shows reviewed records of animal testing, opposition to animal-welfare protections and other documented animal exploitation. Connected AI can also assess the company using searched sources. Its assessment is labeled separately and may be inconclusive. Parent-company concerns need ownership evidence. Neither changes the product's vegan result. Selling animal products alone does not qualify, and no concerns found is not an ethical endorsement.</p></details><details><summary>What if the evidence is incomplete?</summary><p>Vegsnap explains what is missing. When AI finds a manufacturer contact, you can draft a question in English, German or Swedish. Copy it or open an email draft to ask for clarification.</p></details><details><summary>Can I read manufacturer replies?</summary><p>Look up reviewed replies in the Android app or open the community service from the extension. To contribute a reply, use the submission form and redact personal details before sending it. Approved replies stay separate from the product verdict. Opening a product result does not upload your history.</p></details><details><summary>What about iPhone?</summary><p>A native iOS app is planned for later. This release focuses on Android and desktop browsers.</p></details></div></section>
+  <span class="syntax-option">--browser</span> librewolf <span class="syntax-option">--extension-id</span> vegsnap@vegsnap.app</code></pre></div></details>
+          <p>Register each browser you use. After registration, restart your browser, open the extension's settings and choose Connect ChatGPT. The Chromium commands use the Chrome Web Store extension ID. Firefox, Zen and LibreWolf use the Firefox extension. For the manually installed ZIP or CRX, use the ID shown on chrome://extensions instead.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="section faq" aria-labelledby="faq-title">
+  <div class="shell grid">
+    <h2 id="faq-title" class="section-title">Questions about Vegsnap</h2>
+    <div class="faq-list"><details><summary>Is Vegsnap free?</summary><p>Yes. Vegsnap is free and open source. Database checks and local rules need no AI account. Vegsnap AI offers limited free checks. Other cloud AI providers have their own usage limits and charges.</p></details><details><summary>How do free AI checks work?</summary><p>In Settings, choose Vegsnap AI and select Connect to free AI. Complete verification in your browser, then return to Vegsnap to see your remaining allowance. You need no subscription, API key or desktop companion. Access expires after 24 hours and allowances reset at midnight UTC. A shared service limit can make free checks unavailable. A failed AI request can count as a check. Selected product input passes through Cloudflare to OpenAI. Read the <a href="/privacy.html">privacy policy</a> for storage and retention details.</p></details><details><summary>Does it work for every product?</summary><p>You can check any product category, including clothes and shoes. Some products have too little information for an answer. Vegsnap then shows what is missing.</p></details><details><summary>Can I use my ChatGPT plan?</summary><p>ChatGPT sign-in on Android and in the browser extension requires a <a href="https://developers.openai.com/siwc/quickstart">ChatGPT Plus or Pro plan</a>. Free ChatGPT accounts are not supported for this connection. Android connects directly and lets you save and switch between ChatGPT accounts in Settings. The browser extension needs the desktop companion. Vegsnap AI and API-key connections work without it.</p></details><details><summary>Where does product information come from?</summary><p>Open Food Facts, Open Beauty Facts and Open Products Facts provide community product data. The Android Browse tab also searches Barnivore for drinks and Wikidata for product information. Downloadable regional packs contain a partial selection of product records. Vegsnap AI, ChatGPT and the official OpenAI API can research web sources. Other compatible API connections do not currently support web search. Community data and AI-read claims are not independent certification checks.</p></details><details><summary>How are company concerns selected?</summary><p>Vegsnap shows reviewed records of animal testing, opposition to animal-welfare protections and other documented animal exploitation. Connected AI can also assess the company using searched sources. Its assessment is labeled separately and may be inconclusive. Parent-company concerns need ownership evidence. Neither changes the product's vegan result. Selling animal products alone does not qualify, and no concerns found is not an ethical endorsement.</p></details><details><summary>What if the evidence is incomplete?</summary><p>Vegsnap explains what is missing. When AI finds a manufacturer contact, you can draft a question in English, German or Swedish. Copy it or open an email draft to ask for clarification.</p></details><details><summary>Can I read manufacturer replies?</summary><p>Look up reviewed replies in the Android app or open the community service from the extension. To contribute a reply, use the submission form and redact personal details before sending it. Approved replies stay separate from the product verdict. Opening a product result does not upload your history.</p></details><details><summary>What about iPhone?</summary><p>A native iOS app is planned for later. This release focuses on Android and desktop browsers.</p></details></div>
+  </div>
+</section>
 </main>
-<footer class="site-footer wrap"><div class="footer-top"><div><a class="brand" href="/"><img src="/logo.svg" alt="" width="32" height="32"><span>Vegsnap</span></a><p>Open-source vegan product checks</p></div><nav aria-label="More links"><a href="https://github.com/D3SOX/vegsnap">Source code</a><a href="https://github.com/D3SOX/vegsnap/releases">Releases</a><a href="https://github.com/D3SOX/vegsnap/issues">Report an issue</a><a href="/privacy.html">Privacy policy</a><a href="https://github.com/D3SOX/vegsnap/blob/main/LICENSE">AGPL-3.0</a></nav></div><p class="hint">No analytics, tracking cookies or remote fonts on this site.</p></footer>
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-top"><div><a class="brand" href="/"><img src="/logo.svg" alt="" width="32" height="32"><span>Vegsnap</span></a><p>Open-source vegan product checks</p></div><nav aria-label="More links"><a href="https://github.com/D3SOX/vegsnap">Source code</a><a href="https://github.com/D3SOX/vegsnap/releases">Releases</a><a href="https://github.com/D3SOX/vegsnap/issues">Report an issue</a><a href="/privacy.html">Privacy policy</a><a href="https://github.com/D3SOX/vegsnap/blob/main/LICENSE">AGPL-3.0</a></nav></div>
+    <p class="hint">No analytics, tracking cookies or remote fonts on this site.</p>
+  </div>
+</footer>
 <dialog id="image-viewer" class="image-viewer" aria-labelledby="image-viewer-title" aria-describedby="image-viewer-caption">
   <header class="image-viewer-header">
-    <div class="image-viewer-brand"><img src="/logo.svg" width="40" height="40" alt=""><div><strong>Vegsnap</strong><p id="image-viewer-title" class="eyebrow">Screenshots</p></div></div>
+    <div class="image-viewer-brand"><img src="/logo.svg" width="40" height="40" alt=""><div><strong>Vegsnap</strong><p id="image-viewer-title">Screenshots</p></div></div>
     <button class="button" type="button" data-viewer-close autofocus><span>Close</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
   </header>
   <div class="image-viewer-stage"><img class="image-viewer-image" alt=""></div>
