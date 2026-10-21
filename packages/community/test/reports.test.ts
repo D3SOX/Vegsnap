@@ -90,11 +90,14 @@ test('repeated reports from one client reach the per-minute limit', async () => 
   for (let i = 0; i < 5; i++) expect((await submit(report, headers)).status).toBe(201);
   expect((await submit(report, headers)).status).toBe(429);
 });
-test('cross-origin reports oversized bodies and the daily cap are rejected', async () => {
+test('cross-origin reports oversized bodies and the daily cap are rejected while extension origins are accepted', async () => {
   expect((await submit(report, { Origin: 'https://other.example' })).status).toBe(403);
+  expect((await submit(report, { Origin: 'chrome-extension://evil.example' })).status).toBe(403);
+  expect((await submit(report, { Origin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop' })).status).toBe(201);
+  expect((await submit(report, { Origin: 'moz-extension://3fa85f64-5717-4562-b3fc-2c963f66afa6' })).status).toBe(201);
   expect((await submit({ ...report, text: 'x'.repeat(48_000) })).status).toBe(413);
   const db = await mf.getD1Database('DB');
-  await db.prepare('INSERT INTO report_budget VALUES (?,200)').bind(new Date().toISOString().slice(0, 10)).run();
+  await db.prepare('INSERT OR REPLACE INTO report_budget VALUES (?,200)').bind(new Date().toISOString().slice(0, 10)).run();
   expect((await submit()).status).toBe(429);
 });
 test('hourly cleanup removes expired reports and old budgets', async () => {

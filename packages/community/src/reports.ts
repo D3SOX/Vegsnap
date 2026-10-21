@@ -6,11 +6,13 @@ export class ReportError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+// Extension pages send their own per-installation origin on POST requests; web pages cannot use these schemes.
+const extensionOrigin = /^(?:chrome|moz|safari-web)-extension:\/\/[a-z0-9-]+$/i;
 
 /** Native reports contain only explicitly reviewed text or verdict context, never attachments or credentials. */
 export async function submitReport(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get('Origin');
-  if (origin && origin !== env.PUBLIC_ORIGIN) throw new ReportError(403, 'Use Vegsnap to report content.');
+  if (origin && origin !== env.PUBLIC_ORIGIN && !extensionOrigin.test(origin)) throw new ReportError(403, 'Use Vegsnap to report content.');
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) throw new ReportError(415, 'Use a JSON request.');
   const { success } = await env.SUBMISSION_LIMIT.limit({ key: `report:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
   if (!success) throw new ReportError(429, 'Too many reports. Try again in a minute.');
