@@ -152,8 +152,8 @@
 "Looking up product…" = "Slår upp produkt…";
 "Manufacturer" = "Tillverkare";
 "Manufacturer question" = "Fråga till tillverkaren";
-"Manufacturer says not vegan" = "Tillverkaren anger inte vegansk";
-"Manufacturer says vegan" = "Tillverkaren anger vegansk";
+"Manufacturer says not vegan" = "Inte vegansk enligt tillverkaren";
+"Manufacturer says vegan" = "Vegansk enligt tillverkaren";
 "Market" = "Marknad";
 "Message language" = "Meddelandespråk";
 "Model ID" = "Modell-ID";

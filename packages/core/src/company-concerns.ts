@@ -12,7 +12,7 @@ export interface CompanyConcernRecord {
   id: string;
   companyId: string;
   category: CompanyConcern['category'];
-  description: { en: string } & Partial<Record<Locale, string>>;
+  description: Record<'en' | 'de', string> & Partial<Record<Locale, string>>;
   sourceUrl: string;
   sourceDate?: string;
   reviewedAt: string;

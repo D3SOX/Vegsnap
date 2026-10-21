@@ -4654,7 +4654,7 @@
     "android": [
       "intro"
     ],
-    "sv": "Vet vad som finns i."
+    "sv": "Vet vad den innehåller."
   },
   "invalid_history_result": {
     "en": "Invalid history result.",
@@ -4916,7 +4916,7 @@
     "ios": [
       "Manufacturer says not vegan"
     ],
-    "sv": "Tillverkaren anger inte vegansk"
+    "sv": "Inte vegansk enligt tillverkaren"
   },
   "market": {
     "en": "Product defaults",
@@ -5115,7 +5115,7 @@
     "androidResult": [
       "manufacturerSaysNotVegan"
     ],
-    "sv": "Tillverkaren anger inte vegansk"
+    "sv": "Inte vegansk enligt tillverkaren"
   },
   "ocr_bundled": {
     "en": "Included with app · %1$s",
@@ -7051,7 +7051,7 @@
     "core": [
       "result.certificationSourceSaysVegan"
     ],
-    "sv": "Certifieringskällan anger vegansk"
+    "sv": "Vegansk enligt certifieringskällan"
   },
   "result_community_confirmation_summary": {
     "en": "A reviewed community contribution contains manufacturer confirmation for this product. Check the response date and coverage.",
@@ -7259,7 +7259,7 @@
     "androidResult": [
       "manufacturerSaysVegan"
     ],
-    "sv": "Tillverkaren anger vegansk"
+    "sv": "Vegansk enligt tillverkaren"
   },
   "result_market_mismatch_caution": {
     "en": "This record lists other markets. Compare its composition with your package.",
@@ -7444,7 +7444,7 @@
     "core": [
       "result.sourceSaysNotVegan"
     ],
-    "sv": "Källan anger inte vegansk"
+    "sv": "Inte vegansk enligt källan"
   },
   "result_supplied_composition": {
     "en": "Supplied composition",
@@ -8513,7 +8513,7 @@
     "android": [
       "tour_maker"
     ],
-    "sv": "Tillverkaren anger vegansk"
+    "sv": "Vegansk enligt tillverkaren"
   },
   "tour_maker_body": {
     "en": "A statement must refer to this product and variant. A vegan brand name alone is not enough.",
@@ -8723,7 +8723,7 @@
     "android": [
       "vegan_certification_source"
     ],
-    "sv": "Certifieringskällan anger vegansk"
+    "sv": "Vegansk enligt certifieringskällan"
   },
   "vegan_certified": {
     "en": "Certified vegan",
@@ -8758,7 +8758,7 @@
     "ios": [
       "Manufacturer says vegan"
     ],
-    "sv": "Tillverkaren anger vegansk"
+    "sv": "Vegansk enligt tillverkaren"
   },
   "vegsnap_ai_free": {
     "en": "Vegsnap AI (free)",

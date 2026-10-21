@@ -126,7 +126,8 @@ struct CommunityLinks: Codable {
     }
 }
 
-var language: String { ["de", "sv"].first { Locale.preferredLanguages.first?.hasPrefix($0) == true } ?? "en" }
+// The localization iOS selected for the app, so result copy matches the interface language.
+var language: String { ["de", "sv"].first { Bundle.main.preferredLocalizations.first?.hasPrefix($0) == true } ?? "en" }
 func L(_ key: String) -> String { NSLocalizedString(key, comment: "") }
 struct AppError: LocalizedError { let message: String; init(_ message: String) { self.message = message }; var errorDescription: String? { message } }
 func safeURL(_ value: String?) -> URL? {

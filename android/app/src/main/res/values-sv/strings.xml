@@ -252,7 +252,7 @@
     <string name="ingredient_status_animal">Ingrediens av animaliskt ursprung</string>
     <string name="ingredient_status_unknown">Ingrediensens ursprung är okänt</string>
     <string name="ingredient_status_vegan">Vegansk ingrediens</string>
-    <string name="intro">Vet vad som finns i.</string>
+    <string name="intro">Vet vad den innehåller.</string>
     <string name="invalid_settings">Använd HTTPS (eller HTTP localhost), ett modellnamn och en giltig API-adress.</string>
     <string name="last_tab">Senaste fliken</string>
     <string name="load_models">Läs in modeller</string>
@@ -266,7 +266,7 @@
     <string name="no_concerns">Inga granskade företagsanmärkningar registrerade. Detta är inget etiskt godkännande.</string>
     <string name="no_photos">Inga foton valda</string>
     <string name="not_vegan">Inte vegansk</string>
-    <string name="not_vegan_manufacturer">Tillverkaren anger inte vegansk</string>
+    <string name="not_vegan_manufacturer">Inte vegansk enligt tillverkaren</string>
     <string name="ocr_bundled">Ingår i appen · %1$s</string>
     <string name="ocr_download">Ladda ned och aktivera</string>
     <string name="ocr_download_hint">Ladda ned fler språkpaket från GitHub. Minst ett språk måste vara aktiverat; färre språk ger snabbare skanningar.</string>
@@ -431,7 +431,7 @@
     <string name="tour_evidence_body">Varje beläggsnivå har en egen ikon och färg, som även visas i Historik. Öppna ett resultat för att se dess källor.</string>
     <string name="tour_local">Lokal historik, uttrycklig AI</string>
     <string name="tour_local_body">Historik och foton stannar på den här enheten. Uttryckliga AI-kontroller skickar valt innehåll till din leverantör. Databassökningar skickar produktidentifierare eller sökord, aldrig kamerabilder.</string>
-    <string name="tour_maker">Tillverkaren anger vegansk</string>
+    <string name="tour_maker">Vegansk enligt tillverkaren</string>
     <string name="tour_maker_body">Ett uttalande måste gälla den här produkten och varianten. Ett veganskt varumärkesnamn räcker inte ensamt.</string>
     <string name="tour_next">Nästa</string>
     <string name="tour_nonvegan">Inte vegansk</string>
@@ -451,10 +451,10 @@
     <string name="tour_unknown_body">En ofullständig etikett, en osäker källa eller en misslyckad förfrågan kan lämna svaret öppet. Lägg till belägg med Redigera, eller försök igen med samma produkt via Kontrollera igen.</string>
     <string name="uncertain">Mer information behövs</string>
     <string name="vegan">Ingredienserna/materialen verkar veganska</string>
-    <string name="vegan_certification_source">Certifieringskällan anger vegansk</string>
+    <string name="vegan_certification_source">Vegansk enligt certifieringskällan</string>
     <string name="vegan_certified">Certifierat vegansk</string>
     <string name="vegan_label_visible">Veganmärkning synlig</string>
-    <string name="vegan_manufacturer">Tillverkaren anger vegansk</string>
+    <string name="vegan_manufacturer">Vegansk enligt tillverkaren</string>
     <string name="vision">Den här modellen tar emot bilder</string>
     <string name="vision_unknown">Bildstöd anges inte; fotokontroller provar den här modellen.</string>
     <string name="vision_unsupported">Den valda modellen stöder inte bilder. Välj en bildmodell för fotokontroller.</string>

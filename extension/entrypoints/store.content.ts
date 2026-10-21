@@ -16,9 +16,26 @@ export default defineContentScript({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let queue = Promise.resolve();
     const badges = new Map<HTMLElement, ProductBinding>();
+    const languages = ['en', 'de', 'sv'] as const;
+    type Language = typeof languages[number];
     const uiLanguage = browser.i18n.getUILanguage();
-    const t = storeMessages[/^de/i.test(uiLanguage) ? 'de' : /^sv/i.test(uiLanguage) ? 'sv' : 'en'];
-    const checkLabel = t.check;
+    let language: Language = /^de/i.test(uiLanguage) ? 'de' : /^sv/i.test(uiLanguage) ? 'sv' : 'en';
+    let t = storeMessages[language];
+    // Badges follow the language saved in Vegsnap, like the results they show; the browser language is only the first-launch default.
+    function applyLanguage(value: unknown) {
+      if (!languages.includes(value as Language) || value === language) return;
+      const previous = t;
+      language = value as Language; t = storeMessages[language];
+      for (const host of badges.keys()) {
+        const label = host.shadowRoot?.querySelector('span');
+        if (label?.textContent === previous.check) label.textContent = t.check;
+        else if (label?.textContent === previous.checking) label.textContent = t.checking;
+      }
+    }
+    const savedLanguage = (settings: unknown) => (settings as { language?: unknown } | undefined)?.language;
+    void browser.storage.local.get('settings').then(stored => applyLanguage(savedLanguage(stored.settings))).catch(() => {});
+    const settingsChanged = (changes: Record<string, { newValue?: unknown }>, area: string) => { if (area === 'local' && changes.settings) applyLanguage(savedLanguage(changes.settings.newValue)); };
+    browser.storage.onChanged.addListener(settingsChanged);
     const current = (host: HTMLElement, binding: ProductBinding) => active && host.isConnected && badges.get(host) === binding && isCurrentProductBinding(binding, location.href);
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) if (entry.isIntersecting) {
@@ -33,9 +50,9 @@ export default defineContentScript({
           try {
             const response = await browser.runtime.sendMessage({ type: 'background-check', barcode: binding.product.barcode }) as Reply<CheckResult>;
             if (!current(host, binding)) return;
-            if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : checkLabel;
+            if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : t.check;
             host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
-          } catch { if (label && current(host, binding)) label.textContent = checkLabel; }
+          } catch { if (label && current(host, binding)) label.textContent = t.check; }
           await new Promise(resolve => setTimeout(resolve, 1600));
         }).catch(() => {});
       }
@@ -47,7 +64,7 @@ export default defineContentScript({
       const style = document.createElement('style');
       style.textContent = ':host{display:block;margin:6px 0;font:13px/1.4 system-ui;color:#234536}button{font:inherit;color:inherit;background:#edf5e9;border:1px solid #a3b89b;border-radius:12px;padding:8px 12px;cursor:pointer;min-height:44px;text-align:left}button:hover{background:#dfebd9}button:focus-visible{outline:2px solid #234536;outline-offset:2px}';
       const button = document.createElement('button'); button.type = 'button';
-      const label = document.createElement('span'); label.textContent = checkLabel; button.append(label);
+      const label = document.createElement('span'); label.textContent = t.check; button.append(label);
       button.addEventListener('click', event => {
         event.preventDefault(); event.stopPropagation();
         if (!current(host, binding)) { scan(); return; }
@@ -79,6 +96,7 @@ export default defineContentScript({
       if (!active) return;
       active = false; ctx.abort(); clearTimeout(timer); mutations.disconnect(); observer.disconnect();
       browser.runtime.onMessage.removeListener(disabled);
+      browser.storage.onChanged.removeListener(settingsChanged);
       document.removeEventListener('change', rescan);
       window.removeEventListener('popstate', rescan);
       for (const host of badges.keys()) host.remove(); badges.clear();

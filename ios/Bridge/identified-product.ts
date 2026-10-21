@@ -1,4 +1,4 @@
-import { analyzeText, countryCode, DATABASES, normalizeBarcode, resultMessages } from '../../packages/core/src/index';
+import { analyzeText, appLocale, countryCode, DATABASES, normalizeBarcode, resultMessages } from '../../packages/core/src/index';
 import { applyAIEvidence } from '../../packages/core/src/ai-evidence';
 import { readBoundedText } from '../../packages/core/src/http';
 import { databaseCountryWarning } from '../../packages/core/src/market';
@@ -86,7 +86,7 @@ export async function identifiedProduct(extraction: AIExtraction, input: CheckIn
     url: `${source.origin}/product/${text(product.code)}`, retrievedAt: result.checkedAt, license: 'ODbL-1.0 (database); DBCL-1.0 (contents)' }];
   result.findings = result.findings.map(finding => ({ ...finding, evidenceId: evidenceID }));
   result.identity.match = 'unconfirmed';
-  result.warnings.push(resultMessages[input.locale ?? 'en'].communityRecordCaution);
+  result.warnings.push(resultMessages[appLocale(input.locale)].communityRecordCaution);
   const countryWarning = databaseCountryWarning(result.identity.market, countries(product), input.locale);
   if (countryWarning) result.warnings.push(countryWarning);
   // Preserve the full database split; partial model parsing cannot remove an ingredient.

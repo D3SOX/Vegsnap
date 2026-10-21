@@ -44,8 +44,11 @@ function context() {
   };
   return { ctx, invalidate() { ctx.abort(); } };
 }
+type StorageListener = (changes: Record<string, { newValue?: unknown }>, area: string) => void;
+const storageListeners = new Set<StorageListener>();
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => 'en-GB' },
+  storage: { local: { async get() { return { settings: { language: 'en' } }; } }, onChanged: { addListener(listener: StorageListener) { storageListeners.add(listener); }, removeListener(listener: StorageListener) { storageListeners.delete(listener); } } },
   runtime: { id: 'vegsnap', async sendMessage(message: Record<string, unknown>) { messages.push(message); return respond(message); }, onMessage: { addListener(listener: RuntimeListener) { runtimeListeners.add(listener); }, removeListener(listener: RuntimeListener) { runtimeListeners.delete(listener); } } },
 } }));
 mock.module('wxt/utils/define-content-script', () => ({ defineContentScript: (definition: unknown) => definition }));
@@ -60,6 +63,10 @@ try {
   document.body.insertAdjacentHTML('beforeend', '<script type="application/ld+json">{"@type":"Product","name":"Example Oat Drink 1L","brand":"Example Brand","url":"https://www.amazon.de/dp/B0ABC12345"}</script>');
   const first = context(); script.main(first.ctx);
   assert.equal(badges().length, 2, 'Amazon cards without barcodes still show explicit check buttons');
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'Idle badges follow the language saved in Vegsnap');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
   assert(badges().every(host => !host.closest('a')), 'Check buttons are never nested in store product links');
   assert.equal(messages.length, 0, 'Barcodeless cards do not start background lookups');
