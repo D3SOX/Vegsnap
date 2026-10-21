@@ -2505,6 +2505,97 @@
       "community_view_all"
     ]
   },
+  "companion_browsers": {
+    "en": "Browsers",
+    "de": "Browser",
+    "companion": [
+      "browsers"
+    ]
+  },
+  "companion_failed": {
+    "en": "Setup failed: {error}",
+    "de": "Einrichtung fehlgeschlagen: {error}",
+    "companion": [
+      "failed"
+    ]
+  },
+  "companion_install": {
+    "en": "Install",
+    "de": "Installieren",
+    "companion": [
+      "install"
+    ]
+  },
+  "companion_installed": {
+    "en": "Done. Open Vegsnap's settings in your browser and choose Connect ChatGPT.",
+    "de": "Fertig. Öffne die Vegsnap-Einstellungen in deinem Browser und wähle ChatGPT verbinden.",
+    "companion": [
+      "installed"
+    ]
+  },
+  "companion_intro": {
+    "en": "Connects the Vegsnap browser extension to your ChatGPT Plus or Pro plan. Choose the browsers where you use Vegsnap.",
+    "de": "Verbindet die Vegsnap-Browsererweiterung mit deinem ChatGPT-Plus- oder Pro-Tarif. Wähle die Browser, in denen du Vegsnap nutzt.",
+    "companion": [
+      "intro"
+    ]
+  },
+  "companion_location": {
+    "en": "Installed in {path}",
+    "de": "Installiert in {path}",
+    "companion": [
+      "location"
+    ]
+  },
+  "companion_registered": {
+    "en": "Set up",
+    "de": "Eingerichtet",
+    "companion": [
+      "registered"
+    ]
+  },
+  "companion_removed": {
+    "en": "The desktop companion is no longer installed.",
+    "de": "Der Desktop-Begleiter ist nicht mehr installiert.",
+    "companion": [
+      "removed"
+    ]
+  },
+  "companion_saved_accounts": {
+    "en": "Uninstalling keeps saved ChatGPT accounts in your system's credential store. Remove them in Vegsnap's settings first.",
+    "de": "Gespeicherte ChatGPT-Konten bleiben nach der Deinstallation im Anmeldespeicher deines Systems. Entferne sie vorher in den Vegsnap-Einstellungen.",
+    "companion": [
+      "saved_accounts"
+    ]
+  },
+  "companion_title": {
+    "en": "Vegsnap desktop companion",
+    "de": "Vegsnap Desktop-Begleiter",
+    "companion": [
+      "title"
+    ]
+  },
+  "companion_uninstall": {
+    "en": "Uninstall",
+    "de": "Deinstallieren",
+    "companion": [
+      "uninstall"
+    ]
+  },
+  "companion_update": {
+    "en": "Update",
+    "de": "Aktualisieren",
+    "companion": [
+      "update"
+    ]
+  },
+  "companion_wallet": {
+    "en": "ChatGPT credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.",
+    "de": "Die Zugangsdaten benötigen eine entsperrte Secret-Service-Wallet, etwa KDE Wallet mit aktiviertem Secret Service.",
+    "companion": [
+      "wallet"
+    ]
+  },
   "company_ai_concerns": {
     "en": "Supported concerns found",
     "de": "Belegte Bedenken gefunden",

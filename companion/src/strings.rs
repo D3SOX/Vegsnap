@@ -1,0 +1,48 @@
+// Generated from localization/strings.json by bun run strings:generate. Do not edit.
+pub struct Strings {
+    pub browsers: &'static str,
+    pub failed: &'static str,
+    pub install: &'static str,
+    pub installed: &'static str,
+    pub intro: &'static str,
+    pub location: &'static str,
+    pub registered: &'static str,
+    pub removed: &'static str,
+    pub saved_accounts: &'static str,
+    pub title: &'static str,
+    pub uninstall: &'static str,
+    pub update: &'static str,
+    pub wallet: &'static str,
+}
+
+pub const EN: Strings = Strings {
+    browsers: "Browsers",
+    failed: "Setup failed: {error}",
+    install: "Install",
+    installed: "Done. Open Vegsnap's settings in your browser and choose Connect ChatGPT.",
+    intro: "Connects the Vegsnap browser extension to your ChatGPT Plus or Pro plan. Choose the browsers where you use Vegsnap.",
+    location: "Installed in {path}",
+    registered: "Set up",
+    removed: "The desktop companion is no longer installed.",
+    saved_accounts: "Uninstalling keeps saved ChatGPT accounts in your system's credential store. Remove them in Vegsnap's settings first.",
+    title: "Vegsnap desktop companion",
+    uninstall: "Uninstall",
+    update: "Update",
+    wallet: "ChatGPT credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.",
+};
+
+pub const DE: Strings = Strings {
+    browsers: "Browser",
+    failed: "Einrichtung fehlgeschlagen: {error}",
+    install: "Installieren",
+    installed: "Fertig. Öffne die Vegsnap-Einstellungen in deinem Browser und wähle ChatGPT verbinden.",
+    intro: "Verbindet die Vegsnap-Browsererweiterung mit deinem ChatGPT-Plus- oder Pro-Tarif. Wähle die Browser, in denen du Vegsnap nutzt.",
+    location: "Installiert in {path}",
+    registered: "Eingerichtet",
+    removed: "Der Desktop-Begleiter ist nicht mehr installiert.",
+    saved_accounts: "Gespeicherte ChatGPT-Konten bleiben nach der Deinstallation im Anmeldespeicher deines Systems. Entferne sie vorher in den Vegsnap-Einstellungen.",
+    title: "Vegsnap Desktop-Begleiter",
+    uninstall: "Deinstallieren",
+    update: "Aktualisieren",
+    wallet: "Die Zugangsdaten benötigen eine entsperrte Secret-Service-Wallet, etwa KDE Wallet mit aktiviertem Secret Service.",
+};
