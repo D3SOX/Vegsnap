@@ -390,6 +390,7 @@
 				"$(SRCROOT)/../packages/core/src/community.ts",
 				"$(SRCROOT)/../packages/core/src/company-assessment.ts",
 				"$(SRCROOT)/../packages/core/src/company-concerns.ts",
+				"$(SRCROOT)/../packages/core/src/content-reports.ts",
 				"$(SRCROOT)/../packages/core/src/database.ts",
 				"$(SRCROOT)/../packages/core/src/history-research.ts",
 				"$(SRCROOT)/../packages/core/src/hosted-ai.ts",
