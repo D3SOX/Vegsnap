@@ -21,6 +21,13 @@ describe('result reports', () => {
     expect(report.findings[0]).toEqual({ term: 'y'.repeat(200), status: 'unknown', ruleId: 'z'.repeat(100) }); expect(report.appVersion).toHaveLength(40);
     expect(() => validateContentReport({ kind: 'result', contentId: '', text: '', reason: 'Wrong', result: report })).not.toThrow();
   });
+  test('drops control characters from database or AI values instead of failing the report', () => {
+    const result = { ...analyzeText({ text: 'water' }), identity: { name: ' Oat\u0008 drink\u001f ', brand: '\u007fMaker', market: 'SE', match: 'unconfirmed' as const },
+      findings: [{ term: 'mi\u0000lk', status: 'animal' as const, ruleId: 'ru\u001fle', explanation: '', evidenceId: 'e1' }, { term: '\u0001\u0002', status: 'unknown' as const, explanation: '', evidenceId: 'e2' }] };
+    const report = resultReport(result, { ...client, appVersion: '0.2\u000019' });
+    expect(report).toMatchObject({ product: 'Oat drink', brand: 'Maker', appVersion: '0.219', findings: [{ term: 'milk', status: 'animal', ruleId: 'rule' }] });
+    expect(() => validateContentReport({ kind: 'result', contentId: '', text: '', reason: 'Wrong', result: report })).not.toThrow();
+  });
   test.each([
     ['unknown report field', { kind: 'ai', contentId: '', text: 'excerpt', reason: 'Issue', credentials: 'private' }],
     ['result on an AI report', { kind: 'ai', contentId: '', text: 'excerpt', reason: 'Issue', result: resultReport(analyzeText({ text: 'water' }), client) }],

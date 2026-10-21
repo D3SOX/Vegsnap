@@ -21,18 +21,21 @@ const OUTCOMES: Outcome[] = ['vegan', 'not_vegan', 'uncertain', 'conflicting'];
 const STATUSES: Finding['status'][] = ['animal', 'plant', 'ambiguous', 'unknown'];
 const PLATFORMS: ReportPlatform[] = ['android', 'ios', 'extension'];
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+/** Database and AI values can carry control characters; the projection drops them so the report stays sendable. */
+const clean = (value: string, limit: number) => value.replace(new RegExp(CONTROL.source, 'g'), '').trim().slice(0, limit);
 
 /** Android mirrors this in ContentReports.kt; iOS calls it through the bridge. Keep the field set identical. */
 export function resultReport(result: Pick<CheckResult, 'identity' | 'outcome' | 'findings'>, client: { locale: string; platform: ReportPlatform; appVersion: string }): ResultReport {
   return {
-    product: (result.identity.name ?? '').trim().slice(0, REPORT_LIMITS.product),
-    brand: (result.identity.brand ?? '').trim().slice(0, REPORT_LIMITS.product),
+    product: clean(result.identity.name ?? '', REPORT_LIMITS.product),
+    brand: clean(result.identity.brand ?? '', REPORT_LIMITS.product),
     outcome: result.outcome,
-    findings: result.findings.slice(0, REPORT_LIMITS.findings).map(finding => ({
-      term: finding.term.slice(0, REPORT_LIMITS.term), status: finding.status, ruleId: (finding.ruleId ?? '').slice(0, REPORT_LIMITS.ruleId) })),
-    locale: client.locale.slice(0, 10),
+    findings: result.findings.slice(0, REPORT_LIMITS.findings)
+      .map(finding => ({ term: clean(finding.term, REPORT_LIMITS.term), status: finding.status, ruleId: clean(finding.ruleId ?? '', REPORT_LIMITS.ruleId) }))
+      .filter(finding => finding.term),
+    locale: clean(client.locale, 10),
     platform: client.platform,
-    appVersion: client.appVersion.slice(0, REPORT_LIMITS.appVersion),
+    appVersion: clean(client.appVersion, REPORT_LIMITS.appVersion),
   };
 }
 
