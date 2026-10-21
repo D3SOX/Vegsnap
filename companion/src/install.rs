@@ -218,28 +218,32 @@ impl Layout {
 
     /// Registers `selected` browsers and removes every other registration.
     /// A shared location stays registered while any browser using it is selected.
+    /// Every location is attempted, so one failure cannot block the other browsers.
     pub fn register(&self, binary: &Path, selected: &[Browser]) -> io::Result<()> {
+        let mut outcome = Ok(());
         for browser in Browser::ALL {
             let path = self.manifest(browser);
-            if selected.iter().any(|choice| self.manifest(*choice) == path) {
-                fs::create_dir_all(path.parent().expect("manifest directory"))?;
-                let data = serde_json::to_string_pretty(&manifest_json(binary, browser)?)?;
-                fs::write(&path, data + "\n")?;
-            } else {
-                remove(&path)?;
-            }
+            outcome = outcome.and(
+                if selected.iter().any(|choice| self.manifest(*choice) == path) {
+                    write_manifest(&path, binary, browser)
+                } else {
+                    remove(&path)
+                },
+            );
         }
         #[cfg(windows)]
         if self.os == Os::Windows {
             for browser in Browser::ALL {
                 let key = browser.registry_key();
-                match selected.iter().find(|choice| choice.registry_key() == key) {
-                    Some(choice) => registry::set(&key, &self.manifest(*choice))?,
-                    None => registry::delete(&key)?,
-                }
+                outcome = outcome.and(
+                    match selected.iter().find(|choice| choice.registry_key() == key) {
+                        Some(choice) => registry::set(&key, &self.manifest(*choice)),
+                        None => registry::delete(&key),
+                    },
+                );
             }
         }
-        Ok(())
+        outcome
     }
 
     /// Copies the running program to [`Self::binary`] and registers it.
@@ -276,6 +280,12 @@ fn chromium_directory(browser: Browser) -> &'static str {
         Browser::Edge => "microsoft-edge",
         _ => "chromium",
     }
+}
+
+fn write_manifest(path: &Path, binary: &Path, browser: Browser) -> io::Result<()> {
+    fs::create_dir_all(path.parent().expect("manifest directory"))?;
+    let data = serde_json::to_string_pretty(&manifest_json(binary, browser)?)?;
+    fs::write(path, data + "\n")
 }
 
 fn manifest_json(binary: &Path, browser: Browser) -> io::Result<Value> {
@@ -602,6 +612,30 @@ mod tests {
         layout.register(&layout.binary(), &[]).unwrap();
         assert!(directory.join("org.example.json").is_file());
         assert!(!layout.registered(Browser::Chrome));
+    }
+
+    // Root ignores directory permissions, so only unprivileged runs reach the failure.
+    #[cfg(unix)]
+    #[test]
+    fn a_locked_location_does_not_block_other_browsers() {
+        use std::os::unix::fs::PermissionsExt;
+        let fixture = Fixture::new("locked");
+        let layout = fixture.layout(Os::Linux);
+        let binary = layout.binary();
+        layout.register(&binary, &[Browser::Chrome]).unwrap();
+        let locked = layout
+            .manifest(Browser::Chrome)
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o555)).unwrap();
+        let result = layout.register(&binary, &[Browser::LibreWolf]);
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        // LibreWolf comes after Chrome, so stopping at the first error would skip it.
+        assert!(layout.registered(Browser::LibreWolf));
+        if layout.registered(Browser::Chrome) {
+            assert!(result.is_err());
+        }
     }
 
     #[test]
