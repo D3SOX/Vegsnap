@@ -156,7 +156,7 @@ private fun CommunityReplyCard(reply: CommunityReply, links: CommunityLinks, ope
             CommunityReplyField(R.string.community_reviewed, reply.reviewedAt.take(10))
             TextButton(onClick = { expanded = !expanded }) { Text(stringResource(if (expanded) R.string.community_hide_reply else R.string.community_read_reply)) }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                ContentReportButton("community", offline, contentId = reply.id)
+                ContentReportButton(ReportSubject.Reply(reply.id), offline)
                 TextButton(onClick = block) { Text(stringResource(R.string.community_block_reply)) }
             }
             if (expanded) {

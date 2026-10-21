@@ -51,6 +51,12 @@ class ContentReportsTest {
         assertEquals(setOf("term", "status", "ruleId"), findings.getJSONObject(0).keys().asSequence().toSet())
         assertEquals("milk", findings.getJSONObject(0).getString("ruleId")); assertEquals("", findings.getJSONObject(1).getString("ruleId"))
         for (secret in listOf("private", "3017620422003", "explanation", "excerpt")) assertFalse(secret, json.toString().contains(secret))
+        val noisy = resultReport(JSONObject().put("outcome", "uncertain").put("identity", JSONObject().put("name", " Oat\u0008 drink\u001f ").put("brand", "\u007fMaker"))
+            .put("findings", JSONArray().put(JSONObject().put("term", "mi\u0000lk").put("status", "animal").put("ruleId", "ru\u001fle"))
+                .put(JSONObject().put("term", "\u0001\u0002").put("status", "unknown"))), "de", "0.2\u000019")
+        assertEquals("Oat drink", noisy.getString("product")); assertEquals("Maker", noisy.getString("brand")); assertEquals("0.219", noisy.getString("appVersion"))
+        assertEquals(1, noisy.getJSONArray("findings").length())
+        assertEquals("milk", noisy.getJSONArray("findings").getJSONObject(0).getString("term")); assertEquals("rule", noisy.getJSONArray("findings").getJSONObject(0).getString("ruleId"))
         for (report in listOf(ContentReport("result", reason = "Issue"), ContentReport("result", text = "private", reason = "Issue", result = details),
             ContentReport("ai", text = "x", reason = "Issue", result = details), ContentReport("community", contentId = id, reason = "Issue", result = details))) {
             try { report.json(); fail("Invalid report accepted") } catch (_: IllegalArgumentException) { }

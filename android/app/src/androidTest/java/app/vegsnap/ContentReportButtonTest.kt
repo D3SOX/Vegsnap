@@ -16,7 +16,7 @@ class ContentReportButtonTest {
     @Test fun reportAllowsRedactionAndSendsOnlyAfterExplicitConfirmation() {
         var sent: ContentReport? = null
         compose.setContent { MaterialTheme {
-            ContentReportButton("ai", false, initialText = "Private text") { sent = it; reference }
+            ContentReportButton(ReportSubject.AIOutput("Private text"), false) { sent = it; reference }
         } }
         compose.onNodeWithText("Report AI output").performClick()
         compose.onNodeWithText("Send report").assertIsNotEnabled()
@@ -32,7 +32,7 @@ class ContentReportButtonTest {
     @Test fun failedReportsRemainEditableAndCanBeRetried() {
         var calls = 0
         compose.setContent { MaterialTheme {
-            ContentReportButton("community", false, contentId = reference) { if (++calls == 1) throw IOException("unavailable") else reference }
+            ContentReportButton(ReportSubject.Reply(reference), false) { if (++calls == 1) throw IOException("unavailable") else reference }
         } }
         compose.onNodeWithText("Report this reply").performClick()
         compose.onNodeWithText("Why are you reporting this content?").performTextInput("Personal information")
@@ -46,7 +46,7 @@ class ContentReportButtonTest {
         val offline = mutableStateOf(false)
         var calls = 0
         compose.setContent { MaterialTheme {
-            ContentReportButton("community", offline.value, contentId = reference) { calls++; reference }
+            ContentReportButton(ReportSubject.Reply(reference), offline.value) { calls++; reference }
         } }
         compose.onNodeWithText("Report this reply").performClick()
         compose.onNodeWithText("Why are you reporting this content?").performTextInput("Issue")

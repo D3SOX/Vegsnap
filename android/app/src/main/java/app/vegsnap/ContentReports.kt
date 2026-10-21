@@ -26,6 +26,13 @@ internal fun contentServiceOrigin(context: Context): HttpUrl? {
 
 private val REPORT_ID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
 
+/** What a report is about; each subject sends only its own reviewed text, reply reference or verdict context. */
+internal sealed class ReportSubject {
+    data class AIOutput(val text: String) : ReportSubject()
+    data class Reply(val id: String) : ReportSubject()
+    data class Result(val result: JSONObject) : ReportSubject()
+}
+
 internal data class ContentReport(val kind: String, val contentId: String = "", val text: String = "", val reason: String, val result: JSONObject? = null) {
     fun json(): JSONObject {
         require(kind in setOf("ai", "community", "result") && reason.isNotBlank() && reason.length <= 2000 && text.length <= 8000)
@@ -39,19 +46,24 @@ internal data class ContentReport(val kind: String, val contentId: String = "", 
     }
 }
 
+private val CONTROL = Regex("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]")
+private fun clean(value: String, limit: Int) = value.replace(CONTROL, "").trim().take(limit)
+
 /** Mirrors resultReport in packages/core/src/content-reports.ts: verdict context only, never photos, evidence text or history. */
 internal fun resultReport(result: JSONObject, locale: String, appVersion: String): JSONObject {
     val identity = result.optJSONObject("identity") ?: JSONObject()
     val findings = result.optJSONArray("findings") ?: JSONArray()
     return JSONObject()
-        .put("product", identity.optString("name").trim().take(300))
-        .put("brand", identity.optString("brand").trim().take(300))
+        .put("product", clean(identity.optString("name"), 300))
+        .put("brand", clean(identity.optString("brand"), 300))
         .put("outcome", result.optString("outcome"))
-        .put("findings", JSONArray((0 until minOf(findings.length(), 200)).map { index ->
+        .put("findings", JSONArray((0 until minOf(findings.length(), 200)).mapNotNull { index ->
             val finding = findings.getJSONObject(index)
-            JSONObject().put("term", finding.optString("term").take(200)).put("status", finding.optString("status")).put("ruleId", finding.optString("ruleId").take(100))
+            val term = clean(finding.optString("term"), 200)
+            if (term.isEmpty()) null
+            else JSONObject().put("term", term).put("status", finding.optString("status")).put("ruleId", clean(finding.optString("ruleId"), 100))
         }))
-        .put("locale", locale.take(10)).put("platform", "android").put("appVersion", appVersion.take(40))
+        .put("locale", clean(locale, 10)).put("platform", "android").put("appVersion", clean(appVersion, 40))
 }
 
 internal class ContentReportsRepository(

@@ -23,11 +23,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 @Composable
-internal fun ContentReportButton(kind: String, offline: Boolean, contentId: String = "", initialText: String = "", result: JSONObject? = null,
-    submit: (suspend (ContentReport) -> String)? = null) {
+internal fun ContentReportButton(subject: ReportSubject, offline: Boolean, submit: (suspend (ContentReport) -> String)? = null) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0].language
     val origin = remember(context) { contentServiceOrigin(context) }
@@ -43,19 +41,21 @@ internal fun ContentReportButton(kind: String, offline: Boolean, contentId: Stri
     val scope = rememberCoroutineScope()
     LaunchedEffect(offline) { if (offline) job?.cancel() }
     fun close() { job?.cancel(); open = false }
-    val title = stringResource(when (kind) { "ai" -> R.string.report_ai; "result" -> R.string.report_result; else -> R.string.report_reply })
-    TextButton(onClick = { text = initialText.take(8000); reason = ""; failed = false; reference = null; open = true },
+    val title = stringResource(when (subject) { is ReportSubject.AIOutput -> R.string.report_ai; is ReportSubject.Result -> R.string.report_result; is ReportSubject.Reply -> R.string.report_reply })
+    TextButton(onClick = { text = (subject as? ReportSubject.AIOutput)?.text.orEmpty().take(8000); reason = ""; failed = false; reference = null; open = true },
         enabled = !offline, modifier = Modifier.heightIn(min = 48.dp)) { Text(title) }
     if (open) AlertDialog(onDismissRequest = ::close, title = { Text(title) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (reference != null) {
                 Text(stringResource(R.string.report_sent, reference!!), Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             } else {
-                Text(stringResource(when (kind) { "ai" -> R.string.report_ai_notice; "result" -> R.string.report_result_notice; else -> R.string.report_reply_notice }))
-                if (kind == "ai") OutlinedTextField(text, { text = it.take(8000) },
+                Text(stringResource(when (subject) {
+                    is ReportSubject.AIOutput -> R.string.report_ai_notice; is ReportSubject.Result -> R.string.report_result_notice; is ReportSubject.Reply -> R.string.report_reply_notice
+                }))
+                if (subject is ReportSubject.AIOutput) OutlinedTextField(text, { text = it.take(8000) },
                     label = { Text(stringResource(R.string.report_text)) }, modifier = Modifier.fillMaxWidth(),
                     minLines = 3, maxLines = 6, enabled = !sending)
-                OutlinedTextField(reason, { reason = it.take(2000) }, label = { Text(stringResource(if (kind == "result") R.string.report_result_reason else R.string.report_reason)) },
+                OutlinedTextField(reason, { reason = it.take(2000) }, label = { Text(stringResource(if (subject is ReportSubject.Result) R.string.report_result_reason else R.string.report_reason)) },
                     modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, enabled = !sending)
                 if (offline) Text(stringResource(R.string.report_offline))
                 if (failed) Text(stringResource(R.string.report_failed), color = MaterialTheme.colorScheme.error,
@@ -63,12 +63,16 @@ internal fun ContentReportButton(kind: String, offline: Boolean, contentId: Stri
             }
         }
     }, confirmButton = {
-        if (reference == null) TextButton(enabled = !sending && !offline && reason.isNotBlank() && (kind != "ai" || text.isNotBlank()), onClick = {
+        if (reference == null) TextButton(enabled = !sending && !offline && reason.isNotBlank() && (subject !is ReportSubject.AIOutput || text.isNotBlank()), onClick = {
             sending = true; failed = false
             job = scope.launch {
                 try {
-                    val details = if (kind == "result") resultReport(requireNotNull(result), locale, appVersion(context)) else null
-                    reference = (submit ?: { report -> repository!!.submit(report) })(ContentReport(kind, contentId, text, reason, details))
+                    val report = when (subject) {
+                        is ReportSubject.AIOutput -> ContentReport("ai", text = text, reason = reason)
+                        is ReportSubject.Reply -> ContentReport("community", contentId = subject.id, reason = reason)
+                        is ReportSubject.Result -> ContentReport("result", reason = reason, result = resultReport(subject.result, locale, appVersion(context)))
+                    }
+                    reference = (submit ?: { report -> repository!!.submit(report) })(report)
                 }
                 catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: Exception) { failed = true }
