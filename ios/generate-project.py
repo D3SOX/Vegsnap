@@ -3,7 +3,6 @@
 import hashlib
 import json
 from pathlib import Path
-import plistlib
 
 root = Path(__file__).resolve().parent
 objects = {}

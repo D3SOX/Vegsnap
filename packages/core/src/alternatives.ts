@@ -46,7 +46,7 @@ export function alternativeSearchUrl(raw: AlternativeSearch, storeOnly = false):
     fields: 'code,product_name,product_name_de,brands,ingredients_text,ingredients_text_de,labels_tags,ingredients_analysis_tags,countries_tags,stores,stores_tags,categories_tags',
     lc: input.locale ?? 'en' };
   if (storeOnly && input.store) Object.assign(params, { tagtype_1: 'stores', tag_contains_1: 'contains', tag_1: input.store });
-  Object.entries(params).forEach(([name, value]) => url.searchParams.set(name, value));
+  for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
   return url.href;
 }
 export function parsePublicAlternatives(document: unknown, raw: AlternativeSearch): VeganAlternative[] {

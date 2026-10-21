@@ -1,6 +1,6 @@
 import { backgroundMessages } from '../src/i18n';
 import { browser } from 'wxt/browser';
-import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, retainPreviousResearch, HOSTED_AI, type CheckInput, type CheckResult } from '@vegsnap/core';
+import { countryCode, acceptsImages, checkProduct, createOpenAIProvider, createHostedAIProvider, retainPreviousResearch, HOSTED_AI, type CheckInput, type CheckResult, type ProviderAdapter } from '@vegsnap/core';
 import { researchVeganAlternatives, validateAlternativeSearch, type AlternativeSearch } from '@vegsnap/core';
 import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
@@ -185,7 +185,7 @@ export default defineBackground(() => {
             const trustedStore = typeof message.input.sourceUrl === 'string' && allowBackground(message.input.sourceUrl, STORES.flatMap(store => store.origins));
             const input: CheckInput = { ...message.input, locale: config.language, market: message.input.market ?? (trustedStore ? storeMarket(message.input.sourceUrl!) : config.fallbackCountry), autoMarket: message.input.autoMarket ?? (trustedStore ? false : config.autoCountry) };
             let onlineConsent: CheckReply['onlineConsent'];
-            let provider;
+            let provider: ProviderAdapter | undefined;
             if (config.connection === 'chatgpt' && config.model) {
               const catalog = (await browser.storage.session.get('chatGPTModelCatalog')).chatGPTModelCatalog;
               const metadata = Array.isArray(catalog) ? catalog.find(item => isRecord(item) && item.id === config.model) : undefined;

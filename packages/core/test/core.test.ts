@@ -2,7 +2,7 @@ import { describe, expect, test, mock } from 'bun:test';
 import fixtures from '../../../fixtures/composition.json';
 import prompts from '../../../contracts/ai-extraction-prompt.json';
 import { analyzeText, checkProduct, createOpenAIProvider, lookupProduct, normalizeBarcode, parseAIExtraction } from '../src';
-import type { Basis, CheckInput, Evidence, Outcome, ProviderAdapter } from '../src';
+import type { Basis, CheckInput, Outcome, ProviderAdapter } from '../src';
 import { readBoundedText } from '../src/http';
 
 const now = () => new Date('2026-10-05T10:00:00Z');

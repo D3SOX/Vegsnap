@@ -139,12 +139,12 @@ def capture_android(output, serial, avd):
             for command in commands:
                 try:
                     run(command)
-                except subprocess.CalledProcessError:
+                except subprocess.CalledProcessError as failure:
                     message = 'Emulator disconnected; its settings could not be fully restored.'
                     if error:
                         print(message, file=sys.stderr)
                         break
-                    raise RuntimeError(message)
+                    raise RuntimeError(message) from failure
 
 
 def capture_source(root=ROOT):

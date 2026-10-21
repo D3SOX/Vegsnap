@@ -56,7 +56,7 @@ export function createCompanyConcernResolver(value: unknown): (brand?: string, l
     let current = entity;
     while (current.parent) {
       const parent = entities.get(current.parent.id);
-      if (!parent || parent.kind !== 'company' || seen.has(parent.id)) throw new Error('Invalid or circular company ownership.');
+      if (parent?.kind !== 'company' || seen.has(parent.id)) throw new Error('Invalid or circular company ownership.');
       seen.add(parent.id); current = parent;
     }
   }

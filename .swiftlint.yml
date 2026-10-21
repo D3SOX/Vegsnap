@@ -1,0 +1,10 @@
+# Lint only: formatting rules stay off because the Swift sources use long lines on purpose.
+included:
+  - ios
+disabled_rules:
+  - line_length
+  - statement_position
+  - colon
+  - comma
+# Existing findings are recorded here; new code must be clean.
+baseline: ios/.swiftlint-baseline.json

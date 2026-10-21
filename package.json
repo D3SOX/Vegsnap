@@ -11,9 +11,10 @@
   "scripts": {
     "test": "bun test packages scripts && bun run --filter @vegsnap/extension test",
     "test:package": "bun run --filter @vegsnap/extension test:package",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run --filter '*' typecheck && tsc -p scripts/tsconfig.json",
+    "lint": "biome lint --error-on-warnings .",
     "check:companion": "cargo test --manifest-path companion/Cargo.toml",
-    "check:android": "cd android && ./gradlew testDebugUnitTest lintDebug",
+    "check:android": "cd android && ./gradlew detekt testDebugUnitTest lintDebug",
     "data:offline": "bun scripts/offline-snapshot.ts",
     "screenshots": "python3 scripts/screenshots.py capture",
     "screenshots:apply": "python3 scripts/screenshots.py apply",
@@ -26,6 +27,7 @@
     "strings:check": "bun scripts/localization.ts --check"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/bun": "latest",
     "playwright": "1.64.1",
     "typescript": "^7.0.2"

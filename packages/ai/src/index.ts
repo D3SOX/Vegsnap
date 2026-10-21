@@ -186,7 +186,8 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
   let calls = 0;
   let billed = false;
   let upstreamStatus: number | undefined;
-  const boundedFetch: typeof fetch = async (url, init) => {
+  // Bun's type definitions add fetch.preconnect, which the core adapter never calls.
+  const boundedFetch: typeof fetch = Object.assign(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (++calls > 2 || String(url) !== 'https://api.openai.com/v1/responses') throw new Error('Unexpected AI request.');
     const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
     payload.model = HOSTED_AI.model;
@@ -204,10 +205,10 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     upstreamStatus = response.status;
     billed ||= response.ok;
     return response;
-  };
+  }, { preconnect: fetch.preconnect });
   try {
     // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
-    const extraction = await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, (url, init) => fetch(url, { ...init, redirect: 'manual' })).extract(input, request.signal, countryContext);
+    const extraction = await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, Object.assign((url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, redirect: 'manual' }), { preconnect: fetch.preconnect })).extract(input, request.signal, countryContext);
     // Released clients reject unknown extraction fields. Alternatives are opt-in.
     if (!input.alternativeSearch) delete extraction.alternatives;
     return json(extraction);

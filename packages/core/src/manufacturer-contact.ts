@@ -17,9 +17,10 @@ export function safeContactUrl(value: unknown): value is string {
 export function safeContactEmail(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 254 || value.includes('..')) return false;
   // A conservative ASCII mailbox subset, excluding URI/header characters and quoted local parts.
-  if (!/^[A-Za-z0-9](?:[A-Za-z0-9._+\-]{0,62}[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?)+$/.test(value)) return false;
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9._+-]{0,62}[A-Za-z0-9])?@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/.test(value)) return false;
   const [local, domain] = value.split('@');
-  return Boolean(local && local.length <= 64 && domain && domain.split('.').every(part => part.length <= 63));
+  if (!local || !domain) return false;
+  return local.length <= 64 && domain.split('.').every(part => part.length <= 63);
 }
 /** Invalid optional contact data is ignored without discarding a useful product assessment. */
 export function parseManufacturerContact(value: unknown): ManufacturerContact | undefined {
