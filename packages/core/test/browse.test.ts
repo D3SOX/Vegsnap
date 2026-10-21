@@ -74,8 +74,7 @@ describe('database browsing', () => {
     expect(browseCheckInput({ ...record, source: 'obf', barcode: '', brand: '' })).toEqual({ text: 'Wasser, Hafer', name: 'Haferdrink', category: 'cosmetics', complete: false });
   });
   test('submitted searches classify failures and share one paced cache with alternative searches', async () => {
-    // Pacing state is shared across the process; start beyond the alternatives test's advanced clock.
-    let clock = Date.now() + 86_400_000, requests = 0, status = 200, networkFailure = false;
+    let clock = Date.now(), requests = 0, status = 200, networkFailure = false;
     const time = spyOn(Date, 'now').mockImplementation(() => clock += 7000);
     const fetcher = Object.assign(async () => {
       requests++;

@@ -21,7 +21,9 @@ export async function fetchPublicSearch(url: string, fetcher: typeof fetch, sign
     signal?.throwIfAborted();
     const cached = cache.get(url);
     if (cached && cached.expires > Date.now()) return cached.document;
-    const wait = Math.max(0, 6100 - (Date.now() - lastStarted));
+    // A clock that moved backwards cannot prove a recent request; only a measured gap delays the search.
+    const elapsed = Date.now() - lastStarted;
+    const wait = elapsed >= 0 && elapsed < 6100 ? 6100 - elapsed : 0;
     if (wait) await new Promise<void>(resolve => setTimeout(resolve, wait));
     signal?.throwIfAborted(); lastStarted = Date.now();
     try {
