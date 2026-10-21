@@ -345,17 +345,24 @@ fn copy_program(source: &Path, target: &Path) -> io::Result<()> {
         return Ok(());
     }
     fs::create_dir_all(target.parent().expect("installation directory"))?;
-    let staged = target.with_extension("new");
+    // A separate staging file keeps concurrent setup windows from replacing each other's copy.
+    let staged = target.with_extension(format!("{}.new", uuid::Uuid::new_v4()));
     let mut options = OpenOptions::new();
-    options.write(true).create(true).truncate(true);
+    options.write(true).create_new(true);
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o755);
-    io::copy(&mut File::open(source)?, &mut options.open(&staged)?)?;
-    // Windows cannot replace a program that a browser still runs.
-    if cfg!(windows) {
-        remove_program(target)?;
+    let result = (|| {
+        io::copy(&mut File::open(source)?, &mut options.open(&staged)?)?;
+        // Windows cannot replace a program that a browser still runs.
+        if cfg!(windows) {
+            remove_program(target)?;
+        }
+        fs::rename(&staged, target)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&staged);
     }
-    fs::rename(&staged, target)
+    result
 }
 
 #[cfg(windows)]
@@ -662,7 +669,8 @@ mod tests {
         fs::write(&target, "old").unwrap();
         copy_program(&source, &target).unwrap();
         assert_eq!(fs::read_to_string(&target).unwrap(), "new");
-        assert!(!target.with_extension("new").exists());
+        let files: Vec<_> = fs::read_dir(target.parent().unwrap()).unwrap().collect();
+        assert_eq!(files.len(), 1, "only the installed program remains");
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
