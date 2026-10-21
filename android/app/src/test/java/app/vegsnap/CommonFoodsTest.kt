@@ -35,8 +35,11 @@ class CommonFoodsTest {
         for (text in listOf("Gemüse - Milch", "Gurken (Milch)", "Säuerungsmittel: Milch", "Verdickungsmittel (Gelatine)", "Kartoffeln, hönsägg", "grönsaker, nötkött", "Tomaten, Fischsauce", "water, shellfish", "Vegetables - paprika with milk")) {
             assertEquals(text, "not_vegan", check(text).getString("outcome"))
         }
-        for (text in listOf("Paprikazubereitung", "margarine", "chocolate", "cheese flavour", "soy milk", "sojadryck")) {
+        for (text in listOf("Paprikazubereitung", "margarine", "chocolate", "cheese flavour")) {
             assertEquals(text, "uncertain", check(text).getString("outcome"))
+        }
+        for (text in listOf("soy milk", "sojadryck", "Hafermilch, Kakaobutter")) {
+            assertEquals(text, "vegan", check(text).getString("outcome"))
         }
         for (ingredient in listOf("E471", "lecithin", "natural flavouring", "vitamin D", "glycerin")) {
             val findings = check("Gurken, $ingredient").getJSONArray("findings")

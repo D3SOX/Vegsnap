@@ -220,8 +220,8 @@
       "category": "food"
     },
     "expected": {
-      "outcome": "uncertain",
-      "basis": "insufficient"
+      "outcome": "vegan",
+      "basis": "composition"
     }
   },
   {
@@ -602,6 +602,140 @@
     "expected": {
       "outcome": "not_vegan",
       "basis": "composition"
+    }
+  },
+  {
+    "id": "additives-resolve-to-vegan",
+    "input": {
+      "text": "Zutaten: Wasser, Zucker, Säuerungsmittel: Citronensäure, Konservierungsstoff: Kaliumsorbat, Farbstoff: E160a, Süßungsmittel: Sucralose",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lactic-acid-stays-ambiguous",
+    "input": {
+      "text": "Ingredients: water, lactic acid",
+      "category": "food",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "e441-is-gelatine",
+    "input": {
+      "text": "Ingredients: sugar, E 441",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "whey-permeate-is-dairy",
+    "input": {
+      "text": "Ingredients: sugar, whey permeate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeydew-melon-is-plant",
+    "input": {
+      "text": "Zutaten: Honigmelone, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-soy-drink-components",
+    "input": {
+      "text": "Ingredienser: sojadryck (vatten, sojabönor), kakaosmör, havssalt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-inci-shea-is-plant",
+    "input": {
+      "text": "Ingredients: aqua, butyrospermum parkii butter, cocos nucifera oil, tocopherol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-keratin",
+    "input": {
+      "text": "Ingredients: aqua, hydrolyzed keratin",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-lanolin-alcohol",
+    "input": {
+      "text": "Ingredients: aqua, lanolin alcohol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-fatty-derivatives-ambiguous",
+    "input": {
+      "text": "Ingredients: aqua, cetearyl alcohol, glyceryl stearate",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "clothing-alpaca-blend",
+    "input": {
+      "text": "Material: 70% Baumwolle, 30% Alpaka",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "clothing-faux-fur-never-vetoed",
+    "input": {
+      "text": "Material: Kunstpelz (100% Polyester)",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
     }
   }
 ]
