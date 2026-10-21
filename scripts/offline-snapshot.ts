@@ -219,7 +219,8 @@ export async function refreshSnapshot(options: { output: string; region?: Region
   fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }): Promise<'cached' | 'updated' | 'stale'> {
   const region = options.region ?? 'de-eu', now = options.now ?? new Date(), log = options.log ?? console.log;
   const existing = await readSnapshot(options.output, region);
-  if (existing && !options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
+  if (!options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
+    if (!existing) throw new Error(`No usable ${region} snapshot at ${options.output} for VEGSNAP_OFFLINE_SNAPSHOT=cached`);
     log(`Offline ${region}: using ${existing.products.length} products from ${existing.generatedAt} (VEGSNAP_OFFLINE_SNAPSHOT=cached).`); return 'cached';
   }
   const age = existing ? now.getTime() - Date.parse(existing.generatedAt) : Infinity;
