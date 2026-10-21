@@ -49,18 +49,33 @@ class AIIngredientsTest {
         }
     }
 
+    @Test fun `role headings resolve capsule and ink animal ingredients locally before any AI request`() = runBlocking {
+        val repository = CheckRepository(evaluator, "Extract ingredients")
+        val result = repository.check(CheckInput(text, "other", true), emptyList(), AppSettings(connection = "api", aiEnabled = true, baseUrl = "https://api.example.org/v1", model = "test"), "")
+        assertEquals("not_vegan", result.getString("outcome"))
+        assertFalse(result.getBoolean("usedAI"))
+        assertEquals(listOf("gelatin", "shellac"), findings(result).filter { it.getString("status") == "animal" }.map { it.getString("ruleId") })
+    }
+
     @Test fun `explicit text check replaces same source fragments and applies AI ingredient names`() = runBlocking {
+        val tablet = "Der Wirkstoff ist: Metformin.\nDie sonstigen Bestandteile sind:\nTablettenkern: Povidon, Magnesiumstearat\nFilmüberzug: Hypromellose, Macrogol"
+        val tabletTerms = listOf("Metformin", "Povidon", "Magnesiumstearat", "Hypromellose", "Macrogol")
+        val tabletTranslations = listOf("Metformin", "Povidone", "Magnesium stearate", "Hypromellose", "Macrogol")
+        val extracted = JSONObject().put("text", tablet).put("complete", true).put("category", "other")
+            .put("ingredients", JSONArray(tabletTerms)).put("ingredientAssessments", JSONArray(tabletTerms.mapIndexed { index, term ->
+                JSONObject().put("term", term).put("translatedTerm", tabletTranslations[index]).put("status", if (index == 2) "ambiguous" else "plant").put("explanation", "Origin of this ingredient assessed.")
+            }))
         MockWebServer().use { server ->
             val body = JSONObject().put("choices", JSONArray().put(JSONObject().put("finish_reason", "stop")
-                .put("message", JSONObject().put("content", extraction().toString()))))
+                .put("message", JSONObject().put("content", extracted.toString()))))
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(body.toString()))
             val repository = CheckRepository(evaluator, "Extract ingredients")
-            val result = repository.check(CheckInput(text, "other", true), emptyList(),
+            val result = repository.check(CheckInput(tablet, "other", true), emptyList(),
                 AppSettings(connection = "api", aiEnabled = true, baseUrl = server.url("/v1").toString(), model = "test"), "")
-            assertEquals("not_vegan", result.getString("outcome"))
-            assertEquals(terms.map(::normalizeCompositionTerm), findings(result).map { it.getString("term") })
+            assertEquals("uncertain", result.getString("outcome"))
+            assertEquals(tabletTerms.map(::normalizeCompositionTerm), findings(result).map { it.getString("term") })
             assertTrue(result.getBoolean("usedAI"))
-            assertEquals("Shellac", findings(result)[3].getString("displayTerm"))
+            assertEquals("Povidone", findings(result)[1].getString("displayTerm"))
         }
     }
 

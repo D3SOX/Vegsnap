@@ -20,10 +20,10 @@ describe('common food composition coverage', () => {
     expect(check('Säuerungsmittel (Zitronensäure), Wasser').outcome).toBe('vegan');
   });
   test('heads and compound ingredients never hide milk, eggs, meat, fish, or source-dependent additives', () => {
-    for (const text of ['Gemüse - Milch', 'Gurken (Milch)', 'Säuerungsmittel: Milch', 'Verdickungsmittel (Gelatine)', 'Kartoffeln, hönsägg', 'grönsaker, nötkött', 'Tomaten, Fischsauce', 'water, shellfish']) {
+    for (const text of ['Gemüse - Milch', 'Gurken (Milch)', 'Säuerungsmittel: Milch', 'Verdickungsmittel (Gelatine)', 'Kartoffeln, hönsägg', 'grönsaker, nötkött', 'Tomaten, Fischsauce', 'water, shellfish', 'Vegetables - paprika with milk']) {
       expect(check(text).outcome).toBe('not_vegan');
     }
-    for (const text of ['Vegetables - paprika with milk', 'Paprikazubereitung', 'margarine', 'chocolate', 'cheese flavour', 'soy milk', 'sojadryck']) expect(check(text).outcome).toBe('uncertain');
+    for (const text of ['Paprikazubereitung', 'margarine', 'chocolate', 'cheese flavour', 'soy milk', 'sojadryck']) expect(check(text).outcome).toBe('uncertain');
     for (const ingredient of ['E471', 'lecithin', 'natural flavouring', 'vitamin D', 'glycerin']) {
       expect(check(`Gurken, ${ingredient}`).findings.some(f => f.status === 'ambiguous')).toBe(true);
     }

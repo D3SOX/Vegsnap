@@ -32,10 +32,10 @@ class CommonFoodsTest {
     }
 
     @Test fun headingCleanupPreservesAnimalIngredientsAndUnknownCompoundRecipes() {
-        for (text in listOf("Gemüse - Milch", "Gurken (Milch)", "Säuerungsmittel: Milch", "Verdickungsmittel (Gelatine)", "Kartoffeln, hönsägg", "grönsaker, nötkött", "Tomaten, Fischsauce", "water, shellfish")) {
+        for (text in listOf("Gemüse - Milch", "Gurken (Milch)", "Säuerungsmittel: Milch", "Verdickungsmittel (Gelatine)", "Kartoffeln, hönsägg", "grönsaker, nötkött", "Tomaten, Fischsauce", "water, shellfish", "Vegetables - paprika with milk")) {
             assertEquals(text, "not_vegan", check(text).getString("outcome"))
         }
-        for (text in listOf("Vegetables - paprika with milk", "Paprikazubereitung", "margarine", "chocolate", "cheese flavour", "soy milk", "sojadryck")) {
+        for (text in listOf("Paprikazubereitung", "margarine", "chocolate", "cheese flavour", "soy milk", "sojadryck")) {
             assertEquals(text, "uncertain", check(text).getString("outcome"))
         }
         for (ingredient in listOf("E471", "lecithin", "natural flavouring", "vitamin D", "glycerin")) {

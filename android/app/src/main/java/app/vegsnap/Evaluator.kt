@@ -51,13 +51,42 @@ internal fun needsProcessingEvidence(input: CheckInput): Boolean = input.categor
     // Swedish beer names remain protected without treating German oil ingredients as beer.
     Regex("(?:^|[^\\p{L}\\p{N}])öl(?=$|[^\\p{L}\\p{N}])", RegexOption.IGNORE_CASE).containsMatchIn(input.name)
 
+private val wordCharacter = Regex("[\\p{L}\\p{N}]")
+internal fun containsWord(text: String, word: String): Boolean {
+    var start = text.indexOf(word)
+    while (start >= 0) {
+        val before = text.getOrNull(start - 1)?.toString().orEmpty()
+        val after = text.getOrNull(start + word.length)?.toString().orEmpty()
+        if (!wordCharacter.containsMatchIn(before) && !wordCharacter.containsMatchIn(after)) return true
+        start = text.indexOf(word, start + 1)
+    }
+    return false
+}
+// A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
+private val exactOnly = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|flavou?r\\w*|aroma\\w*|arom\\w*|geschmack\\w*|smak\\w*)(?:$|[^\\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak)(?:$|[^\\p{L}])")
+
 class Evaluator(private val rulesDocument: JSONObject) {
     private val rules = rulesDocument.getJSONArray("rules")
+    private val aliasRules: Map<String, JSONObject> = LinkedHashMap<String, JSONObject>().apply {
+        for (index in 0 until rules.length()) {
+            val rule = rules.getJSONObject(index)
+            val aliases = rule.getJSONArray("aliases")
+            for (alias in 0 until aliases.length()) put(normalizeCompositionTerm(aliases.getString(alias)), rule)
+        }
+    }
+    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.sortedByDescending { it.length }
+    private val extendedMatching = rulesDocument.getJSONObject("extendedMatching")
+    private val compoundStems = extendedMatching.getJSONArray("compoundStems").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
+    private val plantExceptions = extendedMatching.getJSONArray("plantExceptions").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }.sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
-    private fun ruleForTerm(term: String): JSONObject? = (0 until rules.length()).map { rules.getJSONObject(it) }.firstOrNull { rule ->
-        val aliases = rule.getJSONArray("aliases")
-        (0 until aliases.length()).any { normalizeCompositionTerm(aliases.getString(it)) == term }
+    /** An exact alias wins; otherwise an animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+    private fun ruleForTerm(term: String): JSONObject? {
+        val exact = aliasRules[term]
+        if (exact != null || exactOnly.containsMatchIn(term)) return exact
+        val remainder = plantExceptions.fold(term) { value, exception -> value.replace(exception, " ") }
+        val alias = animalAliases.firstOrNull { containsWord(remainder, it) } ?: compoundStems.firstOrNull { it in remainder }
+        return alias?.let { aliasRules[it] }
     }
     fun evaluate(input: CheckInput, parsedIngredients: List<String>? = null): JSONObject {
         val now = Instant.now().toString()
@@ -74,11 +103,11 @@ class Evaluator(private val rulesDocument: JSONObject) {
         val crossContact = JSONArray().apply { precaution?.let { put(body.substring(it.range.first).trim()) } }
         // A barcode identifies a product; it is not a composition term.
         val identityOnly = headingMatch == null && input.complete != true && input.name.isNotBlank() &&
-            normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && ruleForTerm(normalizeCompositionTerm(composition)) == null
+            normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && aliasRules[normalizeCompositionTerm(composition)] == null
         val fallback = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
         val parsed = parsedIngredients?.let { parseSourceIngredients(input.text, JSONArray(it)) }
         // AI supplies the split; omissions and misleading compound assessments cannot erase known origins.
-        val guards = fallback.flatMap { term -> listOf(term) + if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':'))) else emptyList() }
+        val guards = fallback.map { term -> if (':' in term) normalizeCompositionTerm(term.substringAfterLast(':')) else term }
             .filter { ruleForTerm(it)?.optString("status") in setOf("animal", "ambiguous") }
         val tokens = if (parsed != null) (parsed + guards).distinct() else fallback
         val findings = JSONArray()

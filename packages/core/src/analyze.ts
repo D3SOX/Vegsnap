@@ -37,24 +37,23 @@ export function compositionTerms(text: string, materialContext = false): string[
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
 }
 
+function containsWord(text: string, word: string): boolean {
+  let start = text.indexOf(word);
+  while (start >= 0) {
+    if (!/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') && !/[\p{L}\p{N}]/u.test(text[start + word.length] ?? '')) return true;
+    start = text.indexOf(word, start + 1);
+  }
+  return false;
+}
+
 /** Preserve chemical punctuation and verify every AI term against intentional source composition. */
 export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
   if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
   const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
   const precautionMatch = precaution.exec(source);
   const intentional = precautionMatch ? source.slice(0, precautionMatch.index) : source;
-  const contains = (term: string) => {
-    let start = intentional.indexOf(term);
-    while (start >= 0) {
-      const before = intentional[start - 1] ?? '';
-      const after = intentional[start + term.length] ?? '';
-      if (!/[\p{L}\p{N}]/u.test(before) && !/[\p{L}\p{N}]/u.test(after)) return true;
-      start = intentional.indexOf(term, start + 1);
-    }
-    return false;
-  };
   const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
-  return terms.every(contains) ? [...new Set(terms.map(normalizeTerm))] : undefined;
+  return terms.every(term => containsWord(intentional, term)) ? [...new Set(terms.map(normalizeTerm))] : undefined;
 }
 
 /** Alcoholic/fermented beverage processing needs evidence; ordinary plant drinks do not inherit that veto. */
@@ -65,6 +64,19 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
+const animalAliases = [...aliasRules].filter(([, rule]) => rule.status === 'animal').map(([alias]) => alias).sort((a, b) => b.length - a.length);
+const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm);
+const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
+// A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
+const exactOnly = /(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|flavou?r\w*|aroma\w*|arom\w*|geschmack\w*|smak\w*)(?:$|[^\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak)(?:$|[^\p{L}])/u;
+/** An exact alias wins; otherwise an animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
+  const exact = aliasRules.get(term);
+  if (exact || exactOnly.test(term)) return exact;
+  const remainder = plantExceptions.reduce((value, exception) => value.replaceAll(exception, ' '), term);
+  const alias = animalAliases.find(item => containsWord(remainder, item)) ?? compoundStems.find(stem => remainder.includes(stem));
+  return alias ? aliasRules.get(alias) : undefined;
+}
 const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i;
 const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von)\b/i;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
@@ -92,11 +104,11 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const parsed = parseSourceIngredients(text, parsedIngredients);
   // AI selects the actual ingredients; local animal/ambiguous rules remain a veto
   // even when an ingredient is omitted or hidden inside a misleading compound.
-  const guards = fallback.flatMap(term => [term, ...(term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1))] : [])])
-    .filter(term => ['animal', 'ambiguous'].includes(aliasRules.get(term)?.status ?? ''));
+  const guards = fallback.map(term => term.includes(':') ? normalizeTerm(term.slice(term.lastIndexOf(':') + 1)) : term)
+    .filter(term => ['animal', 'ambiguous'].includes(ruleForTerm(term)?.status ?? ''));
   const tokens = parsed ? [...parsed, ...guards] : fallback;
   const findings: Finding[] = [...new Set(tokens)].map(term => {
-    const rule = aliasRules.get(term);
+    const rule = ruleForTerm(term);
     return rule ? {
       term, status: rule.status as Finding['status'], ruleId: rule.id,
       // Rule explanations are maintained in English and German; other locales read the English text.

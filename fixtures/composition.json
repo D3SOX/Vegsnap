@@ -492,5 +492,116 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "extended-whole-word-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder from alpine milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-german-compound-milk",
+    "input": {
+      "text": "Zutaten: Zucker, Alpenmilchpulver, Haselnüsse",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-swedish-compound-milk",
+    "input": {
+      "text": "Ingredienser: socker, mjölkchokladbitar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-plant-compounds-never-vetoed",
+    "input": {
+      "text": "Zutaten: Hafermilchkonzentrat, Kakaobutter, Erdnussbutter, Honigmelone",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-english-plant-phrases-never-vetoed",
+    "input": {
+      "text": "Ingredients: soy milk base, cream of tartar, butterfly pea extract, lamb's lettuce, oyster mushroom powder",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-negation-and-substitute-only-match-exactly",
+    "input": {
+      "text": "Ingredients: water, salt, vegan cheese alternative, non-dairy creamer, milk-free chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-lactose-free-milk-is-still-milk",
+    "input": {
+      "text": "Zutaten: Wasser, laktosefreie Milch, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-organic-cotton-is-not-wool",
+    "input": {
+      "text": "Material: 100% Bio-Baumwolle",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-leather-look-is-not-leather",
+    "input": {
+      "text": "Obermaterial: Lederoptik\nInnenmaterial: Textil",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-compound-leather-and-wool",
+    "input": {
+      "text": "Obermaterial: Rindsleder\nFutter: Schurwolle",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
