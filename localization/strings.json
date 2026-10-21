@@ -3793,6 +3793,9 @@
     "de": "Der Verlauf ist zu groß für den Export (maximal 1.000 Ergebnisse und 5 MB). Es wurde keine Datei erstellt.",
     "ios": [
       "History is too large to export (maximum 1,000 results and 5 MB). No file was created."
+    ],
+    "extension": [
+      "app.exportTooLarge"
     ]
   },
   "history_notice": {

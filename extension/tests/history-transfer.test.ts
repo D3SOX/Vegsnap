@@ -105,8 +105,16 @@ describe('history transfer', () => {
     expect(imported[0]).not.toHaveProperty('input');
     expect(imported[0]).not.toHaveProperty('surprise');
     expect(imported[0]).not.toHaveProperty('companyAssessment');
-    expect(imported[0]?.warnings).toEqual([notice]);
+    expect(imported[0]?.warnings).toEqual([]);
     expect(imported[0]?.title).toBe(first!.title);
+  });
+
+  test('a notice from another language is replaced by one local notice only while an assessment is kept', () => {
+    const german = 'Importierte Unternehmensbewertung: Quellen und Zitate wurden auf diesem Gerät nicht überprüft.';
+    const [first] = exported().results;
+    const file = (warnings: string[], assessment = true) => JSON.stringify({ schemaVersion: 1, results: [{ ...first, warnings, ...(assessment ? {} : { companyAssessment: undefined }) }] });
+    expect(parseHistoryImport(file(['Keep me', german, notice]), notice, [german])[0]?.warnings).toEqual(['Keep me', notice]);
+    expect(parseHistoryImport(file(['Keep me', german], false), notice, [german])[0]?.warnings).toEqual(['Keep me']);
   });
 
   test('rejects unsupported files and invalid results before anything is saved', () => {
@@ -120,6 +128,9 @@ describe('history transfer', () => {
     expect(() => parseHistoryImport(document([{ ...first, outcome: 'maybe' }]), notice)).toThrow('Invalid history result.');
     expect(() => parseHistoryImport(document([{ ...first, id: '' }]), notice)).toThrow('Invalid history result.');
     expect(() => parseHistoryImport(document([{ ...first, checkedAt: 'yesterday' }]), notice)).toThrow('Invalid history result.');
+    expect(() => parseHistoryImport(document([{ ...first, checkedAt: 'Oct 5, 2026' }]), notice)).toThrow('Invalid history result.');
+    expect(() => parseHistoryImport(document([{ ...first, checkedAt: '2026/10/05' }]), notice)).toThrow('Invalid history result.');
+    expect(() => parseHistoryImport(document([{ ...first, evidence: [{ ...first!.evidence[0], retrievedAt: '2026-10-05' }] }]), notice)).toThrow('Invalid history result.');
     expect(() => parseHistoryImport(document([{ ...first, usedAI: 'yes' }]), notice)).toThrow('Invalid history result.');
     expect(() => parseHistoryImport(document([{ ...first, identity: { ...first!.identity, barcode: '123' } }]), notice)).toThrow('Invalid history result.');
     expect(() => parseHistoryImport(document([{ ...first, findings: [{ term: 'x', status: 'plant', explanation: 'y', evidenceId: 'z', displayTerm: 'only' }] }]), notice)).toThrow('Invalid history result.');

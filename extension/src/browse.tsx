@@ -41,8 +41,9 @@ export function Browse({ config, offlineSearch, onUse, children }: {
       const reason = cause instanceof PublicSearchError ? cause.reason : undefined;
       setError(reason === 'rate_limited' ? t.rateLimited : reason === 'temporarily_unavailable' ? t.temporarilyUnavailable : reason === 'timeout' ? t.timeout
         : reason === 'connection' ? t.connectionError : reason === 'unavailable' ? t.error : cause instanceof Error ? cause.message : t.error);
-      // Without network access or data sharing, the bundled and imported packs answer instead.
-      if (reason === 'connection' || reason === undefined) result = await offlineSearch(input).catch(() => undefined);
+      // While the database is unreachable, slow or down, or data sharing is declined, the bundled and
+      // imported packs answer instead. Deliberate responses such as a rate limit do not.
+      if (reason === undefined || reason === 'connection' || reason === 'timeout' || reason === 'temporarily_unavailable') result = await offlineSearch(input).catch(() => undefined);
     }
     if (id !== generation.current) return;
     if (result) { setPage(result); setSubmitted(term); setCursor(target); }

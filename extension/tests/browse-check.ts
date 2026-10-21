@@ -16,8 +16,8 @@ mock.module('wxt/browser', () => ({ browser: { runtime: { getURL: () => 'moz-ext
   permissions: { onRemoved: { addListener: (fn: () => void) => permissionListeners.add(fn), removeListener: (fn: () => void) => permissionListeners.delete(fn) }, contains: async () => consent, request: async () => consent } } }));
 const originalFetch = globalThis.fetch;
 const now = Date.now;
-let clock = now() + 86_400_000; // Pacing state is shared across checks; the advanced clock skips the 6 s wait between submitted searches.
-Date.now = () => clock += 7000;
+let clock = now();
+Date.now = () => clock += 7000; // Submitted-search pacing is covered in core; no wall-clock waits here.
 const urls: URL[] = [];
 let status = 200, networkDown = false, hold = false;
 let release: ((response: Response) => void) | undefined;
@@ -89,15 +89,18 @@ try {
   await until(() => root.textContent?.includes('request limit') === true, 'Rate limits are explained');
   assert.equal(urls.at(-1)!.origin, 'https://world.openbeautyfacts.org');
   assert.equal(offlineRequests.length, 0, 'A reachable but limited database does not fall back to offline packs');
+  status = 503; await type('oat outage'); await submit();
+  await until(() => offlineRequests.length === 1, 'A database outage falls back to offline packs');
+  assert(root.textContent?.includes('temporarily unavailable') && root.textContent.includes('Offline oat drink'));
   status = 200; networkDown = true;
   await type('oat pack'); await submit();
-  await until(() => root.textContent?.includes('Offline oat drink') === true, 'An unreachable database falls back to offline packs');
+  await until(() => offlineRequests.length === 2, 'An unreachable database falls back to offline packs');
   assert(root.textContent?.includes('Could not connect to the database') && root.textContent.includes('limited selection of public product records') && root.textContent.includes('Offline snapshot: 2026-10-05'));
-  assert.deepEqual(offlineRequests, [{ source: 'obf', query: 'oat pack', cursor: 0, locale: 'en' }]);
+  assert.deepEqual(offlineRequests.at(-1), { source: 'obf', query: 'oat pack', cursor: 0, locale: 'en' });
   networkDown = false; consent = false;
   const requestsBefore = urls.length;
   await submit();
-  await until(() => offlineRequests.length === 2, 'Declined data sharing also answers from offline packs');
+  await until(() => offlineRequests.length === 3, 'Declined data sharing also answers from offline packs');
   assert.equal(urls.length, requestsBefore, 'No network request without data sharing');
   assert(root.textContent?.includes('Allow data sharing to search.'));
   consent = true; hold = true;
@@ -109,7 +112,7 @@ try {
   await flush();
   assert(!root.textContent?.includes('Stale record'), 'A cancelled search never shows late results');
   hold = false; release = undefined;
-  console.log('Browse UI: submitted search, paging, cache, draft hand-off, rate limit, offline fallback, consent and cancellation verified');
+  console.log('Browse UI: submitted search, paging, cache, draft hand-off, rate limit, outage/offline fallback, consent and cancellation verified');
 } finally {
   await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
 }

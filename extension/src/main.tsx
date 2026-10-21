@@ -14,7 +14,7 @@ import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, typ
 import { extractProducts, validGtin } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { editableInput, historyExport, type HistoryResult } from './history';
-import { HISTORY_IMPORT_MAX_BYTES } from './history-transfer';
+import { HISTORY_IMPORT_MAX_BYTES, HISTORY_IMPORT_MAX_RESULTS } from './history-transfer';
 import './style.css';
 import type { HostedStatus } from './hosted';
 import { synchronizedRefresh } from './synchronization';
@@ -108,6 +108,7 @@ export function App() {
   const configRef = useRef(config);
   const sharedRefresh = useRef<() => Promise<void>>(() => Promise.resolve());
   const resultHeading = useRef<HTMLHeadingElement | null>(null);
+  const browseDraft = useRef(false);
   const detailsField = useRef<HTMLTextAreaElement | null>(null);
   const t = messages[config.language];
   const mt = marketMessages[config.language];
@@ -210,7 +211,7 @@ export function App() {
     setError(''); setNotice('');
   }
   function newScan() {
-    marketOverride.current = false; setMarket(configRef.current.fallbackCountry);
+    marketOverride.current = false; browseDraft.current = false; setMarket(configRef.current.fallbackCountry);
     setResult(undefined); setEditingResult(undefined); setInspectedIdentity(undefined);
     setText(''); setCategory('other'); setComplete(false); setImages([]); setImageUrl(undefined);
   }
@@ -219,6 +220,7 @@ export function App() {
     newScan(); setError(''); setNotice('');
     setText(input.text ?? ''); setCategory(input.category ?? 'other');
     setInspectedIdentity({ name: input.name, brand: input.brand, barcode: input.barcode });
+    browseDraft.current = true;
     setTab('scan');
   }
   function allowOnlineCheck() {
@@ -383,7 +385,11 @@ export function App() {
     setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
   }
   function exportHistory() {
-    const blob = new Blob([JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2)], { type: 'application/json' });
+    setError(''); setNotice('');
+    const json = JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), results: historyExport(savedHistory) }, null, 2);
+    // Every client rejects larger transfers, so a file beyond the shared limits is never written.
+    if (savedHistory.length > HISTORY_IMPORT_MAX_RESULTS || new TextEncoder().encode(json).length > HISTORY_IMPORT_MAX_BYTES) { setError(t.exportTooLarge); return; }
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'vegsnap-history.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <div class={`shell ${isPopup ? 'popup' : ''}`}>
@@ -427,7 +433,7 @@ export function App() {
         {editingResult && <p class="hint">{t.editDetailsHint}</p>}
         <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(mt.invalidCountry); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
-          <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
+          <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult && !browseDraft.current) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
           <label>{mt.productCountry}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{mt.countryHint}</small></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>

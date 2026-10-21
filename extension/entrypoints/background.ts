@@ -111,7 +111,7 @@ export default defineBackground(() => {
           }
           case 'import-history': {
             if (typeof message.text !== 'string') throw new Error('Unsupported history file.');
-            const imported = parseHistoryImport(message.text, messages[config.language].importedAssessment);
+            const imported = parseHistoryImport(message.text, messages[config.language].importedAssessment, Object.values(messages).map(language => language.importedAssessment));
             let outcome = { added: 0, skipped: 0 };
             await changeHistory(async () => {
               const merged = mergeHistoryImport(await history('list'), imported);

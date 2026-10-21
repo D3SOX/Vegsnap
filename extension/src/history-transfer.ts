@@ -32,9 +32,10 @@ function oneOf<T extends string>(value: unknown, values: readonly T[]): T {
   if (!values.includes(value as T)) throw invalid();
   return value as T;
 }
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 function timestamp(value: unknown): string {
   const time = text(value, 40);
-  if (!Number.isFinite(Date.parse(time))) throw invalid();
+  if (!ISO_DATE_TIME.test(time) || !Number.isFinite(Date.parse(time))) throw invalid();
   return time;
 }
 function link(value: unknown): string {
@@ -75,29 +76,33 @@ function identity(value: unknown): CheckResult['identity'] {
     market: text(value.market, 10, 1), marketSource: optional(value.marketSource, item => oneOf(item, MARKET_SOURCES)), match: oneOf(value.match, MATCHES) });
 }
 /** Only the public analysis fields transfer. Provider error copy and contact details never do; drafts and photos stay on their device. */
-function result(item: Record<string, unknown>, assessmentNotice: string): HistoryResult {
+function result(item: Record<string, unknown>, assessmentNotice: string, knownNotices: ReadonlySet<string>): HistoryResult {
   if (item.schemaVersion !== 1 || typeof item.usedAI !== 'boolean') throw invalid();
   const parsed: HistoryResult = defined({ schemaVersion: 1, id: text(item.id, 100, 1), outcome: oneOf(item.outcome, OUTCOMES), basis: oneOf(item.basis, BASES), title: text(item.title, 500),
     summary: text(item.summary, LONG), category: oneOf(item.category, CATEGORIES), identity: identity(item.identity), findings: items(item.findings, 1000, finding),
     evidence: items(item.evidence, 1000, evidence), questions: texts(item.questions, 100), warnings: texts(item.warnings, 100), crossContact: texts(item.crossContact, 100),
     companyConcerns: items(item.companyConcerns, 1000, concern), checkedAt: timestamp(item.checkedAt), usedAI: item.usedAI,
     aiStatus: optional(item.aiStatus, value => oneOf(value, AI_STATUSES)), webSearchStatus: optional(item.webSearchStatus, value => oneOf(value, WEB_STATUSES)) });
+  // A notice from an earlier import, in any language, only stays when this import keeps an assessment.
+  parsed.warnings = parsed.warnings.filter(warning => !knownNotices.has(warning));
   const assessment = item.companyAssessment === undefined ? undefined : parseResultCompanyAssessment(item.companyAssessment);
   if (assessment && identityKey(assessment.brand) === identityKey(parsed.identity.brand)) {
     parsed.companyAssessment = assessment;
-    parsed.warnings = [...parsed.warnings.filter(warning => warning !== assessmentNotice).slice(0, 99), assessmentNotice];
+    parsed.warnings = [...parsed.warnings.slice(0, 99), assessmentNotice];
   }
   return parsed;
 }
-export function parseHistoryImport(content: string, assessmentNotice: string): HistoryResult[] {
+/** `knownNotices` lists the imported-assessment notice in every language a transferred file may carry. */
+export function parseHistoryImport(content: string, assessmentNotice: string, knownNotices: readonly string[] = [assessmentNotice]): HistoryResult[] {
   if (new TextEncoder().encode(content).length > HISTORY_IMPORT_MAX_BYTES) throw new Error('History files must be smaller than 5 MB.');
   let document: unknown;
   try { document = JSON.parse(content); } catch { throw unsupported(); }
   if (!record(document) || document.schemaVersion !== 1 || !Array.isArray(document.results) || document.results.length > HISTORY_IMPORT_MAX_RESULTS) throw unsupported();
   const results = new Map<string, HistoryResult>();
+  const notices = new Set([assessmentNotice, ...knownNotices]);
   for (const item of document.results) {
     if (!record(item)) throw invalid();
-    const parsed = result(item, assessmentNotice);
+    const parsed = result(item, assessmentNotice, notices);
     if (!results.has(parsed.id)) results.set(parsed.id, parsed);
   }
   return [...results.values()];
