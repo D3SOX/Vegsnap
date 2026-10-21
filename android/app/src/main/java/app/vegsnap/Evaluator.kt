@@ -63,7 +63,7 @@ internal fun containsWord(text: String, word: String): Boolean {
     return false
 }
 // A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
-private val exactOnly = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|cultures?|vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|flavou?r\\w*|aroma\\w*|arom\\w*|geschmack\\w*|smak\\w*)(?:$|[^\\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak|kultur\\w*)(?:$|[^\\p{L}])")
+private val exactOnly = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|cultures?|vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*)(?:$|[^\\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak|kultur\\w*)(?:$|[^\\p{L}])")
 
 class Evaluator(private val rulesDocument: JSONObject) {
     private val rules = rulesDocument.getJSONArray("rules")
