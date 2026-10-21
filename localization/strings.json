@@ -2540,6 +2540,20 @@
       "intro"
     ]
   },
+  "companion_license": {
+    "en": "License",
+    "de": "Lizenz",
+    "companion": [
+      "license"
+    ]
+  },
+  "companion_license_notice": {
+    "en": "Vegsnap is free software under the GNU Affero General Public License 3.0 and comes without any warranty.",
+    "de": "Vegsnap ist freie Software unter der GNU Affero General Public License 3.0 und kommt ohne jede Gewährleistung.",
+    "companion": [
+      "license_notice"
+    ]
+  },
   "companion_location": {
     "en": "Installed in {path}",
     "de": "Installiert in {path}",

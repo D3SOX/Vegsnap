@@ -159,6 +159,16 @@ impl eframe::App for Setup {
                         ui.weak(text.wallet);
                     }
                 }
+                // Recipients of the single Windows executable get no separate license file.
+                ui.add_space(12.0);
+                ui.weak(text.license_notice);
+                egui::CollapsingHeader::new(text.license).show(ui, |ui| {
+                    ui.label(
+                        egui::RichText::new(include_str!("../../LICENSE"))
+                            .monospace()
+                            .small(),
+                    );
+                });
             });
         });
     }
