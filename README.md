@@ -116,7 +116,7 @@ On macOS, download `vegsnap-companion-macos-universal.tar.gz` and open **Vegsnap
 
 On Windows x86_64, download and open `vegsnap-companion-windows-x86_64.exe`. Microsoft Defender SmartScreen may warn about an unrecognized app. Choose **More info**, then **Run anyway**.
 
-Then open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. Open the companion again to add a browser, update it or uninstall it. Uninstalling keeps saved ChatGPT accounts in the credential store, so remove them in the extension's settings first.
+Then open the extension's settings, choose **Connect ChatGPT** and allow the native-messaging permission. Complete sign-in in the browser. To add a browser, update or uninstall, download the companion again and open it. Uninstalling keeps saved ChatGPT accounts in the credential store, so remove them in the extension's settings first.
 
 ### Registration details
 
