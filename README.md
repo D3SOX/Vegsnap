@@ -110,7 +110,7 @@ The desktop companion connects the browser extension to your ChatGPT Plus or Pro
 
 Download the companion for your computer from the [latest release](https://github.com/D3SOX/vegsnap/releases/latest) and open it. Choose the browsers where you use Vegsnap, then select **Install**. Setup copies the companion into your user folder, so you can delete the download afterwards. It does not need administrator access. The companion supports Firefox, Zen, LibreWolf, Google Chrome, Chromium, Brave, Helium, Vivaldi and Microsoft Edge.
 
-On Linux x86_64, download `vegsnap-companion-linux-x86_64.tar.gz`, extract it and open `vegsnap-companion`. If your file manager does not start it, run it from a terminal. ChatGPT credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
+On Linux x86_64, download `vegsnap-companion-linux-x86_64.tar.gz`, extract it and open `vegsnap-companion`. ChatGPT credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.
 
 On macOS, download `vegsnap-companion-macos-universal.tar.gz` and open **Vegsnap Companion**. It runs on Apple silicon and Intel. Apple has not notarized the app, so macOS may block it the first time. Choose **Open Anyway** in System Settings under Privacy & Security.
 
