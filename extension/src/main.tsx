@@ -61,8 +61,10 @@ export function App() {
   const [community, setCommunity] = useState<{ key: string; source: string; replies?: CommunityReply[]; retrievedAt: string }>();
   const [hiddenReplies, setHiddenReplies] = useState<string[]>([]);
   const communityKey = storedResult ? `${storedResult.id}:${JSON.stringify(storedResult.identity)}` : '';
-  const result = storedResult && community?.key === communityKey && community.source === JSON.stringify(storedResult) && community.replies
-    ? applyCommunityHistory(storedResult, community.replies, config.language, new Date(community.retrievedAt))
+  // A reply hidden a moment ago can still sit in the last lookup until the section reports the filtered list.
+  const visibleCommunityReplies = community?.replies?.filter(reply => !hiddenReplies.includes(reply.id));
+  const result = storedResult && community?.key === communityKey && community.source === JSON.stringify(storedResult) && visibleCommunityReplies
+    ? applyCommunityHistory(storedResult, visibleCommunityReplies, config.language, new Date(community.retrievedAt))
     : storedResult && hidesCommunityHistory(storedResult, hiddenReplies) ? withoutCommunityHistory(storedResult) : storedResult;
   const storedJSON = JSON.stringify(storedResult), resultJSON = JSON.stringify(result);
   useEffect(() => {
