@@ -68,7 +68,7 @@ const animalAliases = [...aliasRules].filter(([, rule]) => rule.status === 'anim
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
 // A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
-const exactOnly = /(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|flavou?r\w*|aroma\w*|arom\w*|geschmack\w*|smak\w*)(?:$|[^\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak)(?:$|[^\p{L}])/u;
+const exactOnly = /(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|cultures?|vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|flavou?r\w*|aroma\w*|arom\w*|geschmack\w*|smak\w*)(?:$|[^\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak|kultur\w*)(?:$|[^\p{L}])/u;
 /** An exact alias wins; otherwise an animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
 export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
   const exact = aliasRules.get(term);

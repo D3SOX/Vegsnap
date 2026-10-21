@@ -47,7 +47,6 @@
       "grädde",
       "kött",
       "fisk",
-      "läder",
       "silke"
     ],
     "plantExceptions": [
@@ -183,7 +182,27 @@
       "kokosgrädde",
       "äggplanta",
       "honungsmelon",
-      "ostronskivling"
+      "ostronskivling",
+      "kernel butter",
+      "fruit butter",
+      "butyrospermum parkii butter",
+      "butyrospermum parkii (shea) butter",
+      "butyrospermum parkii (shea butter)",
+      "theobroma cacao butter",
+      "theobroma cacao seed butter",
+      "theobroma cacao (cocoa) seed butter",
+      "mangifera indica (mango) seed butter",
+      "garcinia indica seed butter",
+      "astrocaryum murumuru seed butter",
+      "theobroma grandiflorum seed butter",
+      "shorea robusta seed butter",
+      "shorea stenoptera seed butter",
+      "plant butter",
+      "vegetable butter",
+      "pflanzliche butter",
+      "zea mays silk",
+      "majssilke",
+      "tillägg"
     ]
   },
   "sources": [
@@ -246,6 +265,31 @@
       "id": "efsa-cysteine-fermentation",
       "url": "https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2025.9689",
       "title": "EFSA: L-cysteine production from fermentation-derived L-cystine"
+    },
+    {
+      "id": "eu-food-additives-regulation",
+      "url": "https://eur-lex.europa.eu/eli/reg/2008/1333/oj",
+      "title": "Regulation (EC) No 1333/2008: Union list of approved food additives and their E-numbers"
+    },
+    {
+      "id": "off-additives",
+      "url": "https://world.openfoodfacts.org/additives",
+      "title": "Open Food Facts additives taxonomy: E-numbers with English, German and Swedish names"
+    },
+    {
+      "id": "peta-animal-ingredients",
+      "url": "https://www.peta.org/living/food/animal-ingredients-list/",
+      "title": "PETA list of animal-derived ingredients and their plant or synthetic alternatives"
+    },
+    {
+      "id": "cosing",
+      "url": "https://ec.europa.eu/growth/tools-databases/cosing/",
+      "title": "European Commission CosIng database of cosmetic ingredient (INCI) names, origins and functions"
+    },
+    {
+      "id": "eu-textile-fibre-names",
+      "url": "https://eur-lex.europa.eu/eli/reg/2011/1007/oj",
+      "title": "Regulation (EU) No 1007/2011: textile fibre names, including animal hair, wool and silk"
     }
   ],
   "rules": [
@@ -2015,7 +2059,60 @@
         "cultures",
         "syrningskultur",
         "hapate",
-        "joghurtkulturen"
+        "joghurtkulturen",
+        "yogurt cultures",
+        "yoghurt cultures",
+        "yogurt culture",
+        "yoghurt culture",
+        "yoghurtkulturer",
+        "yogurtkulturer",
+        "cheese cultures",
+        "cheese culture",
+        "käsereikulturen",
+        "käsekulturen",
+        "ostkulturer",
+        "lactic cultures",
+        "lactic acid cultures",
+        "milchsäurekulturen",
+        "mjölksyrakultur",
+        "mjölksyrakulturer",
+        "lactic acid bacteria",
+        "milchsäurebakterien",
+        "mjölksyrabakterier",
+        "bacterial cultures",
+        "bakterienkulturen",
+        "bakteriekulturer",
+        "live cultures",
+        "lebende kulturen",
+        "levande kulturer",
+        "kulturen",
+        "kulturer",
+        "kultur",
+        "ferments",
+        "fermente",
+        "ferment",
+        "lactobacillus",
+        "lactobacillus acidophilus",
+        "l. acidophilus",
+        "l. bulgaricus",
+        "lactobacillus bulgaricus",
+        "streptococcus thermophilus",
+        "s. thermophilus",
+        "bifidobacterium",
+        "bifidobacterium lactis",
+        "bifidus",
+        "probiotic cultures",
+        "probiotische kulturen",
+        "probiotiska kulturer",
+        "kefir cultures",
+        "kefirkulturen",
+        "kefirkulturer",
+        "vegan cultures",
+        "vegane kulturen",
+        "veganska kulturer",
+        "selected cultures",
+        "ausgewählte kulturen",
+        "utvalda kulturer"
       ],
       "explanation": {
         "en": "Starter organisms are microbial, but this term alone does not establish the origin of culture carriers or growth media.",
@@ -3966,6 +4063,4713 @@
       },
       "sourceIds": [
         "v-label"
+      ]
+    },
+    {
+      "id": "curcumin",
+      "status": "plant",
+      "aliases": [
+        "curcumin",
+        "kurkumin",
+        "curcumine",
+        "e100",
+        "e 100",
+        "e-100"
+      ],
+      "explanation": {
+        "en": "Curcumin is a pigment extracted from turmeric root.",
+        "de": "Curcumin ist ein Farbstoff aus der Kurkumawurzel."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "tartrazine",
+      "status": "plant",
+      "aliases": [
+        "tartrazine",
+        "tartrazin",
+        "e102",
+        "e 102",
+        "e-102"
+      ],
+      "explanation": {
+        "en": "Tartrazine is a synthetic colour without animal-derived content.",
+        "de": "Tartrazin ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "quinoline-yellow",
+      "status": "plant",
+      "aliases": [
+        "quinoline yellow",
+        "chinolingelb",
+        "kinolingult",
+        "e104",
+        "e 104",
+        "e-104"
+      ],
+      "explanation": {
+        "en": "Quinoline yellow is a synthetic colour without animal-derived content.",
+        "de": "Chinolingelb ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sunset-yellow",
+      "status": "plant",
+      "aliases": [
+        "sunset yellow",
+        "sunset yellow fcf",
+        "gelborange s",
+        "gelborange",
+        "para-orange",
+        "e110",
+        "e 110",
+        "e-110"
+      ],
+      "explanation": {
+        "en": "Sunset yellow FCF is a synthetic colour without animal-derived content.",
+        "de": "Gelborange S ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "azorubine",
+      "status": "plant",
+      "aliases": [
+        "azorubine",
+        "azorubin",
+        "carmoisine",
+        "carmoisin",
+        "karmoisin",
+        "e122",
+        "e 122",
+        "e-122"
+      ],
+      "explanation": {
+        "en": "Azorubine (carmoisine) is a synthetic colour without animal-derived content.",
+        "de": "Azorubin (Carmoisin) ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "amaranth-colour",
+      "status": "plant",
+      "aliases": [
+        "amaranth red",
+        "amaranthrot",
+        "e123",
+        "e 123",
+        "e-123"
+      ],
+      "explanation": {
+        "en": "Amaranth (E123) is a synthetic colour without animal-derived content.",
+        "de": "Amaranth (E123) ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ponceau-4r",
+      "status": "plant",
+      "aliases": [
+        "ponceau 4r",
+        "cochineal red a",
+        "cochenillerot a",
+        "nykockin",
+        "ponceau",
+        "e124",
+        "e 124",
+        "e-124"
+      ],
+      "explanation": {
+        "en": "Ponceau 4R is a synthetic colour without animal-derived content.",
+        "de": "Ponceau 4R ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "erythrosine",
+      "status": "plant",
+      "aliases": [
+        "erythrosine",
+        "erythrosin",
+        "erytrosin",
+        "e127",
+        "e 127",
+        "e-127"
+      ],
+      "explanation": {
+        "en": "Erythrosine is a synthetic colour without animal-derived content.",
+        "de": "Erythrosin ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "allura-red",
+      "status": "plant",
+      "aliases": [
+        "allura red",
+        "allura red ac",
+        "allurarot",
+        "allurarot ac",
+        "allurarött",
+        "e129",
+        "e 129",
+        "e-129"
+      ],
+      "explanation": {
+        "en": "Allura red AC is a synthetic colour without animal-derived content.",
+        "de": "Allurarot AC ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "patent-blue",
+      "status": "plant",
+      "aliases": [
+        "patent blue",
+        "patent blue v",
+        "patentblau",
+        "patentblau v",
+        "patentblått",
+        "patentblått v",
+        "e131",
+        "e 131",
+        "e-131"
+      ],
+      "explanation": {
+        "en": "Patent blue V is a synthetic colour without animal-derived content.",
+        "de": "Patentblau V ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "indigotine",
+      "status": "plant",
+      "aliases": [
+        "indigotine",
+        "indigotin",
+        "indigo carmine",
+        "indigokarmin",
+        "indigocarmin",
+        "e132",
+        "e 132",
+        "e-132"
+      ],
+      "explanation": {
+        "en": "Indigotine (indigo carmine) is a synthetic colour without animal-derived content.",
+        "de": "Indigotin (Indigokarmin) ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "brilliant-blue",
+      "status": "plant",
+      "aliases": [
+        "brilliant blue",
+        "brilliant blue fcf",
+        "brillantblau",
+        "brillantblau fcf",
+        "briljantblått",
+        "briljantblått fcf",
+        "e133",
+        "e 133",
+        "e-133"
+      ],
+      "explanation": {
+        "en": "Brilliant blue FCF is a synthetic colour without animal-derived content.",
+        "de": "Brillantblau FCF ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "chlorophyll",
+      "status": "plant",
+      "aliases": [
+        "chlorophyll",
+        "chlorophylls",
+        "chlorophyllin",
+        "chlorophyllins",
+        "chlorophylle",
+        "chlorophylline",
+        "klorofyll",
+        "klorofyller",
+        "copper chlorophyllin",
+        "copper complexes of chlorophylls",
+        "kupferchlorophyllin",
+        "kupferkomplexe der chlorophylle",
+        "kupferkomplexe der chlorophylline",
+        "kopparklorofyllin",
+        "e140",
+        "e 140",
+        "e-140",
+        "e141",
+        "e 141",
+        "e-141"
+      ],
+      "explanation": {
+        "en": "Chlorophylls and their copper complexes are green pigments from plants.",
+        "de": "Chlorophylle und ihre Kupferkomplexe sind grüne Pflanzenfarbstoffe."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "green-s",
+      "status": "plant",
+      "aliases": [
+        "green s",
+        "grün s",
+        "gruen s",
+        "grön s",
+        "e142",
+        "e 142",
+        "e-142"
+      ],
+      "explanation": {
+        "en": "Green S is a synthetic colour without animal-derived content.",
+        "de": "Grün S ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "caramel-colour",
+      "status": "plant",
+      "aliases": [
+        "caramel colour",
+        "caramel color",
+        "caramel colours",
+        "caramel colors",
+        "plain caramel",
+        "zuckerkulör",
+        "zuckercouleur",
+        "ammoniak-zuckerkulör",
+        "ammonsulfit-zuckerkulör",
+        "sulfite ammonia caramel",
+        "ammonia caramel",
+        "caustic sulphite caramel",
+        "sockerkulör",
+        "karamellfarbe",
+        "caramel e150a",
+        "e150",
+        "e 150",
+        "e150a",
+        "e 150a",
+        "e-150a",
+        "e150b",
+        "e 150b",
+        "e-150b",
+        "e150c",
+        "e 150c",
+        "e-150c",
+        "e150d",
+        "e 150d",
+        "e-150d"
+      ],
+      "explanation": {
+        "en": "Caramel colours are made by heating sugars, without animal-derived content.",
+        "de": "Zuckerkulör wird durch Erhitzen von Zuckern hergestellt und enthält keine tierischen Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "caramelised-sugar",
+      "status": "plant",
+      "aliases": [
+        "caramelised sugar",
+        "caramelized sugar",
+        "caramelised sugar syrup",
+        "caramelized sugar syrup",
+        "caramel sugar syrup",
+        "caramel syrup",
+        "karamellzucker",
+        "karamellzuckersirup",
+        "karamellsirup",
+        "karamellisierter zucker",
+        "karamelliserat socker",
+        "karamellsirap",
+        "burnt sugar",
+        "gebrannter zucker"
+      ],
+      "explanation": {
+        "en": "Caramelised sugar and caramel syrups are made from sugar alone.",
+        "de": "Karamellzucker und Karamellsirup bestehen nur aus erhitztem Zucker."
+      },
+      "sourceIds": [
+        "nordic-plant-foods"
+      ]
+    },
+    {
+      "id": "caramel",
+      "status": "ambiguous",
+      "aliases": [
+        "caramel",
+        "karamell",
+        "karamel",
+        "caramel pieces",
+        "karamellstücke",
+        "karamellbitar",
+        "caramel sauce",
+        "karamellsauce",
+        "karamellsås",
+        "toffee",
+        "toffees",
+        "toffeestücke",
+        "fudge"
+      ],
+      "explanation": {
+        "en": "Caramel can be plain cooked sugar or a recipe with butter, cream or milk; the label needs to list its components.",
+        "de": "Karamell kann reiner erhitzter Zucker oder eine Zubereitung mit Butter, Sahne oder Milch sein; das Etikett muss die Bestandteile nennen."
+      },
+      "sourceIds": [
+        "v-label"
+      ]
+    },
+    {
+      "id": "brilliant-black",
+      "status": "plant",
+      "aliases": [
+        "brilliant black",
+        "brilliant black bn",
+        "brilliant black pn",
+        "brillantschwarz",
+        "brillantschwarz bn",
+        "briljantsvart",
+        "briljantsvart bn",
+        "black pn",
+        "e151",
+        "e 151",
+        "e-151"
+      ],
+      "explanation": {
+        "en": "Brilliant black BN is a synthetic colour without animal-derived content.",
+        "de": "Brillantschwarz BN ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "vegetable-carbon",
+      "status": "plant",
+      "aliases": [
+        "vegetable carbon",
+        "vegetable carbon black",
+        "pflanzenkohle",
+        "vegetabiliskt kol",
+        "carbon black",
+        "activated charcoal",
+        "activated carbon",
+        "aktivkohle",
+        "aktivt kol",
+        "charcoal powder",
+        "bamboo charcoal",
+        "bambuskohle",
+        "ci 77266",
+        "ci 77268",
+        "e153",
+        "e 153",
+        "e-153"
+      ],
+      "explanation": {
+        "en": "Vegetable carbon and activated charcoal are made by charring plant material such as wood or coconut shells.",
+        "de": "Pflanzenkohle und Aktivkohle entstehen durch Verkohlen von Pflanzenmaterial wie Holz oder Kokosschalen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "brown-ht",
+      "status": "plant",
+      "aliases": [
+        "brown ht",
+        "braun ht",
+        "brun ht",
+        "e155",
+        "e 155",
+        "e-155"
+      ],
+      "explanation": {
+        "en": "Brown HT is a synthetic colour without animal-derived content.",
+        "de": "Braun HT ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "carotene",
+      "status": "plant",
+      "aliases": [
+        "carotene",
+        "carotenes",
+        "beta-carotene",
+        "beta carotene",
+        "β-carotene",
+        "b-carotene",
+        "mixed carotenes",
+        "natural carotenes",
+        "carotin",
+        "carotine",
+        "beta-carotin",
+        "beta carotin",
+        "β-carotin",
+        "gemischte carotine",
+        "karotin",
+        "karotiner",
+        "betakaroten",
+        "beta-karoten",
+        "provitamin a",
+        "e160a",
+        "e 160a",
+        "e-160a"
+      ],
+      "explanation": {
+        "en": "Carotenes are produced from plants, algae or by synthesis, without animal-derived content.",
+        "de": "Carotine werden aus Pflanzen, Algen oder synthetisch hergestellt und enthalten keine tierischen Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "annatto",
+      "status": "plant",
+      "aliases": [
+        "annatto",
+        "annatto extract",
+        "bixin",
+        "norbixin",
+        "annattoextrakt",
+        "annatto-extrakt",
+        "anatto",
+        "e160b",
+        "e 160b",
+        "e-160b"
+      ],
+      "explanation": {
+        "en": "Annatto is a pigment from the seeds of the achiote tree.",
+        "de": "Annatto ist ein Farbstoff aus den Samen des Orleanstrauchs."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "paprika-extract",
+      "status": "plant",
+      "aliases": [
+        "paprika extract",
+        "paprika oleoresin",
+        "paprikaextrakt",
+        "paprika-extrakt",
+        "paprikaoleoresin",
+        "capsanthin",
+        "capsorubin",
+        "paprikaextrakt (farbstoff)",
+        "extrakt aus paprika",
+        "e160c",
+        "e 160c",
+        "e-160c"
+      ],
+      "explanation": {
+        "en": "Paprika extract is a pigment pressed from paprika pods.",
+        "de": "Paprikaextrakt ist ein Farbstoff aus Paprikaschoten."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lycopene",
+      "status": "plant",
+      "aliases": [
+        "lycopene",
+        "lycopin",
+        "lykopen",
+        "e160d",
+        "e 160d",
+        "e-160d"
+      ],
+      "explanation": {
+        "en": "Lycopene is a pigment from tomatoes or produced by fermentation or synthesis.",
+        "de": "Lycopin ist ein Farbstoff aus Tomaten oder aus Fermentation oder Synthese."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "apocarotenal",
+      "status": "plant",
+      "aliases": [
+        "beta-apo-8'-carotenal",
+        "apocarotenal",
+        "apocarotinal",
+        "e160e",
+        "e 160e",
+        "e-160e"
+      ],
+      "explanation": {
+        "en": "Beta-apo-8'-carotenal is a synthetic carotenoid colour.",
+        "de": "Beta-Apo-8'-Carotinal ist ein synthetischer Carotinoid-Farbstoff."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lutein",
+      "status": "plant",
+      "aliases": [
+        "lutein",
+        "xanthophyll",
+        "xanthophylls",
+        "marigold extract",
+        "tagetes extract",
+        "tagetesextrakt",
+        "e161b",
+        "e 161b",
+        "e-161b"
+      ],
+      "explanation": {
+        "en": "Lutein is a pigment extracted from marigold petals.",
+        "de": "Lutein ist ein Farbstoff aus Tagetesblüten."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "canthaxanthin",
+      "status": "plant",
+      "aliases": [
+        "canthaxanthin",
+        "canthaxanthine",
+        "e161g",
+        "e 161g",
+        "e-161g"
+      ],
+      "explanation": {
+        "en": "Canthaxanthin used as a colour is produced synthetically.",
+        "de": "Canthaxanthin als Farbstoff wird synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "beetroot-red",
+      "status": "plant",
+      "aliases": [
+        "beetroot red",
+        "betanin",
+        "betanine",
+        "rote-bete-rot",
+        "betenrot",
+        "rödbetsrött",
+        "beetroot extract",
+        "rote-bete-extrakt",
+        "rödbetsextrakt",
+        "beetroot powder",
+        "rote-bete-pulver",
+        "rödbetspulver",
+        "beetroot concentrate",
+        "rote-bete-saftkonzentrat",
+        "rödbetsjuicekoncentrat",
+        "e162",
+        "e 162",
+        "e-162"
+      ],
+      "explanation": {
+        "en": "Beetroot red is a pigment from beetroot.",
+        "de": "Betanin ist ein Farbstoff aus Roter Bete."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "anthocyanins",
+      "status": "plant",
+      "aliases": [
+        "anthocyanins",
+        "anthocyanin",
+        "anthocyane",
+        "anthocyan",
+        "antocyaner",
+        "antocyaniner",
+        "e163",
+        "e 163",
+        "e-163"
+      ],
+      "explanation": {
+        "en": "Anthocyanins are pigments from fruit and vegetables.",
+        "de": "Anthocyane sind Farbstoffe aus Obst und Gemüse."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "calcium-carbonate",
+      "status": "plant",
+      "aliases": [
+        "calcium carbonate",
+        "calcium carbonates",
+        "calciumcarbonat",
+        "calciumcarbonate",
+        "kalziumkarbonat",
+        "kalziumcarbonat",
+        "kalciumkarbonat",
+        "ci 77220",
+        "e170",
+        "e 170",
+        "e-170"
+      ],
+      "explanation": {
+        "en": "Calcium carbonate is a mineral or synthetic substance without animal content.",
+        "de": "Calciumcarbonat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "titanium-dioxide",
+      "status": "plant",
+      "aliases": [
+        "titanium dioxide",
+        "titandioxid",
+        "ci 77891",
+        "e171",
+        "e 171",
+        "e-171"
+      ],
+      "explanation": {
+        "en": "Titanium dioxide is a mineral or synthetic substance without animal content.",
+        "de": "Titandioxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "aluminium",
+      "status": "plant",
+      "aliases": [
+        "aluminium",
+        "aluminum",
+        "aluminium powder",
+        "ci 77000",
+        "e173",
+        "e 173",
+        "e-173"
+      ],
+      "explanation": {
+        "en": "Aluminium is a mineral or synthetic substance without animal content.",
+        "de": "Aluminium ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "silver",
+      "status": "plant",
+      "aliases": [
+        "silver",
+        "silber",
+        "ci 77820",
+        "e174",
+        "e 174",
+        "e-174"
+      ],
+      "explanation": {
+        "en": "Silver is a mineral or synthetic substance without animal content.",
+        "de": "Silber ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "gold",
+      "status": "plant",
+      "aliases": [
+        "gold",
+        "guld",
+        "blattgold",
+        "gold leaf",
+        "ci 77480",
+        "e175",
+        "e 175",
+        "e-175"
+      ],
+      "explanation": {
+        "en": "Gold is a mineral or synthetic substance without animal content.",
+        "de": "Gold ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "litholrubine",
+      "status": "plant",
+      "aliases": [
+        "litholrubine bk",
+        "litholrubin bk",
+        "litolrubin bk",
+        "e180",
+        "e 180",
+        "e-180"
+      ],
+      "explanation": {
+        "en": "Litholrubine BK is a synthetic colour without animal-derived content.",
+        "de": "Litholrubin BK ist ein synthetischer Farbstoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sorbates",
+      "status": "plant",
+      "aliases": [
+        "sorbic acid",
+        "sorbinsäure",
+        "sorbinsyra",
+        "potassium sorbate",
+        "kaliumsorbat",
+        "calcium sorbate",
+        "calciumsorbat",
+        "kalciumsorbat",
+        "sorbate",
+        "sorbates",
+        "e200",
+        "e 200",
+        "e-200",
+        "e202",
+        "e 202",
+        "e-202",
+        "e203",
+        "e 203",
+        "e-203"
+      ],
+      "explanation": {
+        "en": "Sorbic acid and sorbates are produced synthetically.",
+        "de": "Sorbinsäure und Sorbate werden synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "benzoates",
+      "status": "plant",
+      "aliases": [
+        "benzoic acid",
+        "benzoesäure",
+        "bensoesyra",
+        "sodium benzoate",
+        "natriumbenzoat",
+        "natriumbensoat",
+        "potassium benzoate",
+        "kaliumbenzoat",
+        "kaliumbensoat",
+        "calcium benzoate",
+        "calciumbenzoat",
+        "kalciumbensoat",
+        "benzoate",
+        "benzoates",
+        "e210",
+        "e 210",
+        "e-210",
+        "e211",
+        "e 211",
+        "e-211",
+        "e212",
+        "e 212",
+        "e-212",
+        "e213",
+        "e 213",
+        "e-213"
+      ],
+      "explanation": {
+        "en": "Benzoic acid and benzoates are produced synthetically.",
+        "de": "Benzoesäure und Benzoate werden synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "parabens",
+      "status": "plant",
+      "aliases": [
+        "parabens",
+        "paraben",
+        "parabene",
+        "parabener",
+        "methylparaben",
+        "ethylparaben",
+        "propylparaben",
+        "butylparaben",
+        "sodium methylparaben",
+        "sodium ethylparaben",
+        "ethyl p-hydroxybenzoate",
+        "methyl p-hydroxybenzoate",
+        "phb-ester",
+        "phb-ethylester",
+        "phb-methylester",
+        "e214",
+        "e 214",
+        "e-214",
+        "e215",
+        "e 215",
+        "e-215",
+        "e218",
+        "e 218",
+        "e-218",
+        "e219",
+        "e 219",
+        "e-219"
+      ],
+      "explanation": {
+        "en": "Parabens are synthetic preservatives.",
+        "de": "Parabene sind synthetische Konservierungsstoffe."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sulphites",
+      "status": "plant",
+      "aliases": [
+        "sulphur dioxide",
+        "sulfur dioxide",
+        "schwefeldioxid",
+        "svaveldioxid",
+        "sulphites",
+        "sulfites",
+        "sulphite",
+        "sulfite",
+        "sulfit",
+        "sodium sulphite",
+        "sodium sulfite",
+        "natriumsulfit",
+        "sodium bisulphite",
+        "sodium bisulfite",
+        "sodium hydrogen sulphite",
+        "natriumhydrogensulfit",
+        "natriumbisulfit",
+        "sodium metabisulphite",
+        "sodium metabisulfite",
+        "natriummetabisulfit",
+        "natriumdisulfit",
+        "potassium metabisulphite",
+        "potassium metabisulfite",
+        "kaliummetabisulfit",
+        "kaliumdisulfit",
+        "calcium sulphite",
+        "calciumsulfit",
+        "calcium hydrogen sulphite",
+        "calciumhydrogensulfit",
+        "potassium hydrogen sulphite",
+        "kaliumhydrogensulfit",
+        "sulfiter",
+        "e220",
+        "e 220",
+        "e-220",
+        "e221",
+        "e 221",
+        "e-221",
+        "e222",
+        "e 222",
+        "e-222",
+        "e223",
+        "e 223",
+        "e-223",
+        "e224",
+        "e 224",
+        "e-224",
+        "e226",
+        "e 226",
+        "e-226",
+        "e227",
+        "e 227",
+        "e-227",
+        "e228",
+        "e 228",
+        "e-228"
+      ],
+      "explanation": {
+        "en": "Sulphur dioxide and sulphites are mineral preservatives.",
+        "de": "Schwefeldioxid und Sulfite sind mineralische Konservierungsstoffe."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "nisin",
+      "status": "ambiguous",
+      "aliases": [
+        "nisin",
+        "e234",
+        "e 234",
+        "e-234"
+      ],
+      "explanation": {
+        "en": "Nisin is produced by bacterial fermentation, often on a dairy-based medium; the manufacturer can confirm the medium.",
+        "de": "Nisin wird durch bakterielle Fermentation gewonnen, häufig auf einem Nährmedium aus Milch; der Hersteller kann das Medium bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "natamycin",
+      "status": "plant",
+      "aliases": [
+        "natamycin",
+        "natamycine",
+        "pimaricin",
+        "e235",
+        "e 235",
+        "e-235"
+      ],
+      "explanation": {
+        "en": "Natamycin is produced by fermentation with a soil bacterium.",
+        "de": "Natamycin wird durch Fermentation mit einem Bodenbakterium gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "hexamethylene-tetramine",
+      "status": "plant",
+      "aliases": [
+        "hexamethylene tetramine",
+        "hexamethylenetetramine",
+        "hexamethylentetramin",
+        "e239",
+        "e 239",
+        "e-239"
+      ],
+      "explanation": {
+        "en": "Hexamethylene tetramine is a synthetic preservative.",
+        "de": "Hexamethylentetramin ist ein synthetischer Konservierungsstoff."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "dimethyl-dicarbonate",
+      "status": "plant",
+      "aliases": [
+        "dimethyl dicarbonate",
+        "dimethyldicarbonat",
+        "dimetyldikarbonat",
+        "velcorin",
+        "e242",
+        "e 242",
+        "e-242"
+      ],
+      "explanation": {
+        "en": "Dimethyl dicarbonate is a synthetic beverage preservative.",
+        "de": "Dimethyldicarbonat ist ein synthetischer Konservierungsstoff für Getränke."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "nitrites-nitrates",
+      "status": "plant",
+      "aliases": [
+        "potassium nitrite",
+        "kaliumnitrit",
+        "sodium nitrite",
+        "natriumnitrit",
+        "sodium nitrate",
+        "natriumnitrat",
+        "potassium nitrate",
+        "kaliumnitrat",
+        "nitrite",
+        "nitrites",
+        "nitrit",
+        "nitrat",
+        "nitrate",
+        "nitrates",
+        "nitrite curing salt",
+        "nitritpökelsalz",
+        "pökelsalz",
+        "nitritsalt",
+        "saltpetre",
+        "saltpeter",
+        "salpeter",
+        "e249",
+        "e 249",
+        "e-249",
+        "e250",
+        "e 250",
+        "e-250",
+        "e251",
+        "e 251",
+        "e-251",
+        "e252",
+        "e 252",
+        "e-252"
+      ],
+      "explanation": {
+        "en": "Nitrites and nitrates, including curing salt, are mineral salts.",
+        "de": "Nitrite und Nitrate, auch Pökelsalz, sind mineralische Salze."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "acetic-acid",
+      "status": "plant",
+      "aliases": [
+        "acetic acid",
+        "essigsäure",
+        "ättiksyra",
+        "potassium acetate",
+        "kaliumacetat",
+        "calcium acetate",
+        "calciumacetat",
+        "kalciumacetat",
+        "acetate",
+        "acetates",
+        "e260",
+        "e 260",
+        "e-260",
+        "e261",
+        "e 261",
+        "e-261",
+        "e263",
+        "e 263",
+        "e-263"
+      ],
+      "explanation": {
+        "en": "Acetic acid and its salts are produced by fermentation or synthesis.",
+        "de": "Essigsäure und ihre Salze werden durch Fermentation oder Synthese hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lactic-acid",
+      "status": "ambiguous",
+      "aliases": [
+        "lactic acid",
+        "l-lactic acid",
+        "milchsäure",
+        "l-milchsäure",
+        "mjölksyra",
+        "l-mjölksyra",
+        "e270",
+        "e 270",
+        "e-270"
+      ],
+      "explanation": {
+        "en": "Lactic acid is usually made by fermenting plant sugars, but the fermentation medium can be dairy-based; the manufacturer can confirm the source.",
+        "de": "Milchsäure wird meist durch Fermentation pflanzlicher Zucker gewonnen, das Nährmedium kann aber Milch enthalten; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "propionates",
+      "status": "plant",
+      "aliases": [
+        "propionic acid",
+        "propionsäure",
+        "propionsyra",
+        "sodium propionate",
+        "natriumpropionat",
+        "calcium propionate",
+        "calciumpropionat",
+        "kalciumpropionat",
+        "potassium propionate",
+        "kaliumpropionat",
+        "propionate",
+        "propionates",
+        "e280",
+        "e 280",
+        "e-280",
+        "e281",
+        "e 281",
+        "e-281",
+        "e282",
+        "e 282",
+        "e-282",
+        "e283",
+        "e 283",
+        "e-283"
+      ],
+      "explanation": {
+        "en": "Propionic acid and propionates are produced synthetically or by fermentation.",
+        "de": "Propionsäure und Propionate werden synthetisch oder durch Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "borates",
+      "status": "plant",
+      "aliases": [
+        "boric acid",
+        "borsäure",
+        "borsyra",
+        "borax",
+        "sodium tetraborate",
+        "natriumtetraborat",
+        "e284",
+        "e 284",
+        "e-284",
+        "e285",
+        "e 285",
+        "e-285"
+      ],
+      "explanation": {
+        "en": "Boric acid and borax is a mineral or synthetic substance without animal content.",
+        "de": "Borsäure und Borax ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "carbon-dioxide",
+      "status": "plant",
+      "aliases": [
+        "carbon dioxide",
+        "kohlendioxid",
+        "kohlensäure",
+        "koldioxid",
+        "kolsyra",
+        "carbonic acid",
+        "e290",
+        "e 290",
+        "e-290"
+      ],
+      "explanation": {
+        "en": "Carbon dioxide is a mineral or synthetic substance without animal content.",
+        "de": "Kohlendioxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "malic-acid",
+      "status": "plant",
+      "aliases": [
+        "malic acid",
+        "äpfelsäure",
+        "apfelsäure",
+        "äppelsyra",
+        "sodium malate",
+        "natriummalat",
+        "potassium malate",
+        "kaliummalat",
+        "calcium malate",
+        "calciummalat",
+        "malate",
+        "malates",
+        "e296",
+        "e 296",
+        "e-296",
+        "e350",
+        "e 350",
+        "e-350",
+        "e351",
+        "e 351",
+        "e-351",
+        "e352",
+        "e 352",
+        "e-352"
+      ],
+      "explanation": {
+        "en": "Malic acid and malates are produced synthetically or from fruit.",
+        "de": "Äpfelsäure und Malate werden synthetisch oder aus Früchten gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "fumaric-acid",
+      "status": "plant",
+      "aliases": [
+        "fumaric acid",
+        "fumarsäure",
+        "fumarsyra",
+        "e297",
+        "e 297",
+        "e-297"
+      ],
+      "explanation": {
+        "en": "Fumaric acid is produced synthetically or by fermentation.",
+        "de": "Fumarsäure wird synthetisch oder durch Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ascorbic-acid",
+      "status": "plant",
+      "aliases": [
+        "ascorbic acid",
+        "l-ascorbic acid",
+        "ascorbinsäure",
+        "l-ascorbinsäure",
+        "askorbinsäure",
+        "askorbinsyra",
+        "vitamin c",
+        "c-vitamin",
+        "sodium ascorbate",
+        "natriumascorbat",
+        "natriumaskorbat",
+        "calcium ascorbate",
+        "calciumascorbat",
+        "kalciumaskorbat",
+        "ascorbate",
+        "ascorbates",
+        "e300",
+        "e 300",
+        "e-300",
+        "e301",
+        "e 301",
+        "e-301",
+        "e302",
+        "e 302",
+        "e-302"
+      ],
+      "explanation": {
+        "en": "Ascorbic acid (vitamin C) and ascorbates are produced from glucose.",
+        "de": "Ascorbinsäure (Vitamin C) und Ascorbate werden aus Glukose hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ascorbyl-palmitate",
+      "status": "ambiguous",
+      "aliases": [
+        "ascorbyl palmitate",
+        "ascorbylpalmitat",
+        "askorbylpalmitat",
+        "fatty acid esters of ascorbic acid",
+        "fettsäureester der ascorbinsäure",
+        "ascorbyl stearate",
+        "ascorbylstearat",
+        "e304",
+        "e 304",
+        "e-304"
+      ],
+      "explanation": {
+        "en": "Ascorbyl palmitate combines vitamin C with palmitic acid, which can come from plant oils or animal fat.",
+        "de": "Ascorbylpalmitat verbindet Vitamin C mit Palmitinsäure, die aus Pflanzenölen oder tierischem Fett stammen kann."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "gallates",
+      "status": "plant",
+      "aliases": [
+        "propyl gallate",
+        "propylgallat",
+        "octyl gallate",
+        "octylgallat",
+        "dodecyl gallate",
+        "dodecylgallat",
+        "gallate",
+        "gallates",
+        "e310",
+        "e 310",
+        "e-310",
+        "e311",
+        "e 311",
+        "e-311",
+        "e312",
+        "e 312",
+        "e-312"
+      ],
+      "explanation": {
+        "en": "Gallates are synthetic antioxidants.",
+        "de": "Gallate sind synthetische Antioxidationsmittel."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "erythorbates",
+      "status": "plant",
+      "aliases": [
+        "erythorbic acid",
+        "isoascorbic acid",
+        "isoascorbinsäure",
+        "erythorbinsäure",
+        "sodium erythorbate",
+        "sodium isoascorbate",
+        "natriumerythorbat",
+        "natriumisoascorbat",
+        "natriumisoaskorbat",
+        "e315",
+        "e 315",
+        "e-315",
+        "e316",
+        "e 316",
+        "e-316"
+      ],
+      "explanation": {
+        "en": "Erythorbic acid and sodium erythorbate are produced from sugars.",
+        "de": "Isoascorbinsäure und Natriumisoascorbat werden aus Zuckern hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "synthetic-antioxidants",
+      "status": "plant",
+      "aliases": [
+        "tbhq",
+        "tert-butylhydroquinone",
+        "tert-butylhydrochinon",
+        "bha",
+        "butylated hydroxyanisole",
+        "butylhydroxyanisol",
+        "bht",
+        "butylated hydroxytoluene",
+        "butylhydroxytoluol",
+        "butylhydroxytoluen",
+        "e319",
+        "e 319",
+        "e-319",
+        "e320",
+        "e 320",
+        "e-320",
+        "e321",
+        "e 321",
+        "e-321"
+      ],
+      "explanation": {
+        "en": "TBHQ, BHA and BHT are synthetic antioxidants.",
+        "de": "TBHQ, BHA und BHT sind synthetische Antioxidationsmittel."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lactates",
+      "status": "ambiguous",
+      "aliases": [
+        "sodium lactate",
+        "natriumlactat",
+        "natriumlaktat",
+        "potassium lactate",
+        "kaliumlactat",
+        "kaliumlaktat",
+        "magnesium lactate",
+        "magnesiumlactat",
+        "magnesiumlaktat",
+        "ferrous lactate",
+        "iron lactate",
+        "eisen(ii)-lactat",
+        "eisenlactat",
+        "järnlaktat",
+        "lactate",
+        "lactates",
+        "laktat",
+        "laktater",
+        "e325",
+        "e 325",
+        "e-325",
+        "e326",
+        "e 326",
+        "e-326",
+        "e329",
+        "e 329",
+        "e-329",
+        "e585",
+        "e 585",
+        "e-585"
+      ],
+      "explanation": {
+        "en": "Lactates are salts of lactic acid, which is usually fermented from plant sugars but can use a dairy-based medium.",
+        "de": "Lactate sind Salze der Milchsäure, die meist aus pflanzlichen Zuckern fermentiert wird, aber ein Nährmedium aus Milch nutzen kann."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "citrates",
+      "status": "plant",
+      "aliases": [
+        "sodium citrate",
+        "sodium citrates",
+        "trisodium citrate",
+        "natriumcitrat",
+        "natriumcitrate",
+        "trinatriumcitrat",
+        "natriumcitrater",
+        "potassium citrate",
+        "potassium citrates",
+        "kaliumcitrat",
+        "kaliumcitrate",
+        "kaliumcitrater",
+        "calcium citrate",
+        "calcium citrates",
+        "tricalcium citrate",
+        "calciumcitrat",
+        "calciumcitrate",
+        "kalciumcitrat",
+        "triammonium citrate",
+        "triammoniumcitrat",
+        "citrate",
+        "citrates",
+        "citrat",
+        "citrater",
+        "e331",
+        "e 331",
+        "e-331",
+        "e332",
+        "e 332",
+        "e-332",
+        "e333",
+        "e 333",
+        "e-333",
+        "e380",
+        "e 380",
+        "e-380"
+      ],
+      "explanation": {
+        "en": "Citrates are salts of citric acid, which is produced by fermentation of sugars.",
+        "de": "Citrate sind Salze der Zitronensäure, die durch Fermentation von Zuckern gewonnen wird."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "tartrates",
+      "status": "plant",
+      "aliases": [
+        "tartaric acid",
+        "l(+)-tartaric acid",
+        "weinsäure",
+        "l(+)-weinsäure",
+        "vinsyra",
+        "sodium tartrate",
+        "sodium tartrates",
+        "natriumtartrat",
+        "potassium tartrate",
+        "potassium tartrates",
+        "kaliumtartrat",
+        "monopotassium tartrate",
+        "monokaliumtartrat",
+        "potassium bitartrate",
+        "potassium hydrogen tartrate",
+        "kaliumhydrogentartrat",
+        "kaliumbitartrat",
+        "cream of tartar",
+        "weinstein",
+        "weinsteinpulver",
+        "vinsten",
+        "sodium potassium tartrate",
+        "kaliumnatriumtartrat",
+        "calcium tartrate",
+        "calciumtartrat",
+        "metatartaric acid",
+        "metaweinsäure",
+        "tartrate",
+        "tartrates",
+        "e334",
+        "e 334",
+        "e-334",
+        "e335",
+        "e 335",
+        "e-335",
+        "e336",
+        "e 336",
+        "e-336",
+        "e337",
+        "e 337",
+        "e-337",
+        "e353",
+        "e 353",
+        "e-353",
+        "e354",
+        "e 354",
+        "e-354"
+      ],
+      "explanation": {
+        "en": "Tartaric acid and tartrates, including cream of tartar, come from grape processing.",
+        "de": "Weinsäure und Tartrate, auch Weinstein, stammen aus der Traubenverarbeitung."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "phosphates",
+      "status": "plant",
+      "aliases": [
+        "phosphoric acid",
+        "phosphorsäure",
+        "fosforsyra",
+        "phosphate",
+        "phosphates",
+        "phosphat",
+        "fosfat",
+        "fosfater",
+        "sodium phosphate",
+        "sodium phosphates",
+        "natriumphosphat",
+        "natriumphosphate",
+        "dinatriumphosphat",
+        "disodium phosphate",
+        "natriumfosfat",
+        "natriumfosfater",
+        "potassium phosphate",
+        "potassium phosphates",
+        "kaliumphosphat",
+        "kaliumphosphate",
+        "kaliumfosfat",
+        "kaliumfosfater",
+        "calcium phosphate",
+        "calcium phosphates",
+        "calciumphosphat",
+        "calciumphosphate",
+        "tricalcium phosphate",
+        "tricalciumphosphat",
+        "dicalcium phosphate",
+        "dicalciumphosphat",
+        "calcium hydrogen phosphate",
+        "calciumhydrogenphosphat",
+        "monocalcium phosphate",
+        "monocalciumphosphat",
+        "kalciumfosfat",
+        "kalciumfosfater",
+        "magnesium phosphate",
+        "magnesium phosphates",
+        "magnesiumphosphat",
+        "magnesiumfosfat",
+        "diphosphate",
+        "diphosphates",
+        "diphosphat",
+        "difosfat",
+        "difosfater",
+        "disodium diphosphate",
+        "dinatriumdiphosphat",
+        "sodium acid pyrophosphate",
+        "pyrophosphate",
+        "pyrophosphates",
+        "natriumpyrophosphat",
+        "tetrasodium pyrophosphate",
+        "tetranatriumdiphosphat",
+        "triphosphate",
+        "triphosphates",
+        "triphosphat",
+        "trifosfat",
+        "trifosfater",
+        "pentasodium triphosphate",
+        "pentanatriumtriphosphat",
+        "polyphosphate",
+        "polyphosphates",
+        "polyphosphat",
+        "polyfosfat",
+        "polyfosfater",
+        "sodium aluminium phosphate",
+        "natriumaluminiumphosphat",
+        "e338",
+        "e 338",
+        "e-338",
+        "e339",
+        "e 339",
+        "e-339",
+        "e340",
+        "e 340",
+        "e-340",
+        "e341",
+        "e 341",
+        "e-341",
+        "e343",
+        "e 343",
+        "e-343",
+        "e450",
+        "e 450",
+        "e-450",
+        "e451",
+        "e 451",
+        "e-451",
+        "e452",
+        "e 452",
+        "e-452",
+        "e541",
+        "e 541",
+        "e-541"
+      ],
+      "explanation": {
+        "en": "Phosphoric acid and phosphates is a mineral or synthetic substance without animal content.",
+        "de": "Phosphorsäure und Phosphate ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "adipates",
+      "status": "plant",
+      "aliases": [
+        "adipic acid",
+        "adipinsäure",
+        "adipinsyra",
+        "sodium adipate",
+        "natriumadipat",
+        "potassium adipate",
+        "kaliumadipat",
+        "adipate",
+        "adipates",
+        "e355",
+        "e 355",
+        "e-355",
+        "e356",
+        "e 356",
+        "e-356",
+        "e357",
+        "e 357",
+        "e-357"
+      ],
+      "explanation": {
+        "en": "Adipic acid and adipates are synthetic.",
+        "de": "Adipinsäure und Adipate sind synthetisch."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "succinic-acid",
+      "status": "plant",
+      "aliases": [
+        "succinic acid",
+        "bernsteinsäure",
+        "bärnstenssyra",
+        "e363",
+        "e 363",
+        "e-363"
+      ],
+      "explanation": {
+        "en": "Succinic acid is produced synthetically or by fermentation.",
+        "de": "Bernsteinsäure wird synthetisch oder durch Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "edta",
+      "status": "plant",
+      "aliases": [
+        "edta",
+        "calcium disodium edta",
+        "calciumdinatrium-edta",
+        "calcium-dinatrium-edta",
+        "kalciumdinatrium-edta",
+        "disodium edta",
+        "tetrasodium edta",
+        "trisodium edta",
+        "dinatrium-edta",
+        "tetranatrium-edta",
+        "ethylenediaminetetraacetic acid",
+        "ethylendiamintetraessigsäure",
+        "e385",
+        "e 385",
+        "e-385"
+      ],
+      "explanation": {
+        "en": "EDTA and its salts are synthetic chelating agents.",
+        "de": "EDTA und seine Salze sind synthetische Komplexbildner."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "rosemary-extract",
+      "status": "plant",
+      "aliases": [
+        "rosemary extract",
+        "extract of rosemary",
+        "extracts of rosemary",
+        "rosmarinextrakt",
+        "extrakt aus rosmarin",
+        "rosmarinsextrakt",
+        "rosmarinus officinalis leaf extract",
+        "rosmarinus officinalis extract",
+        "e392",
+        "e 392",
+        "e-392"
+      ],
+      "explanation": {
+        "en": "Rosemary extract is an antioxidant from rosemary leaves.",
+        "de": "Rosmarinextrakt ist ein Antioxidationsmittel aus Rosmarinblättern."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "alginates",
+      "status": "plant",
+      "aliases": [
+        "alginic acid",
+        "alginsäure",
+        "alginsyra",
+        "alginate",
+        "alginates",
+        "alginat",
+        "alginater",
+        "sodium alginate",
+        "natriumalginat",
+        "potassium alginate",
+        "kaliumalginat",
+        "ammonium alginate",
+        "ammoniumalginat",
+        "calcium alginate",
+        "calciumalginat",
+        "kalciumalginat",
+        "propylene glycol alginate",
+        "propane-1,2-diol alginate",
+        "propylenglycolalginat",
+        "propylenglykolalginat",
+        "e400",
+        "e 400",
+        "e-400",
+        "e401",
+        "e 401",
+        "e-401",
+        "e402",
+        "e 402",
+        "e-402",
+        "e403",
+        "e 403",
+        "e-403",
+        "e404",
+        "e 404",
+        "e-404",
+        "e405",
+        "e 405",
+        "e-405"
+      ],
+      "explanation": {
+        "en": "Alginates are extracted from brown seaweed.",
+        "de": "Alginate werden aus Braunalgen gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "carrageenan",
+      "status": "plant",
+      "aliases": [
+        "carrageenan",
+        "carrageen",
+        "carragenan",
+        "carrageenans",
+        "karrageen",
+        "karragenan",
+        "processed eucheuma seaweed",
+        "verarbeitete euchema-algen",
+        "verarbeitete eucheuma-algen",
+        "bearbetad euchemaalg",
+        "irish moss",
+        "irisch moos",
+        "e407",
+        "e 407",
+        "e-407",
+        "e407a",
+        "e 407a",
+        "e-407a"
+      ],
+      "explanation": {
+        "en": "Carrageenan is extracted from red seaweed.",
+        "de": "Carrageen wird aus Rotalgen gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "tragacanth",
+      "status": "plant",
+      "aliases": [
+        "tragacanth",
+        "gum tragacanth",
+        "tragant",
+        "traganth",
+        "tragakant",
+        "dragant",
+        "e413",
+        "e 413",
+        "e-413"
+      ],
+      "explanation": {
+        "en": "Tragacanth is a gum from the sap of Astragalus shrubs.",
+        "de": "Tragant ist ein Gummi aus dem Saft von Astragalus-Sträuchern."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "gum-arabic",
+      "status": "plant",
+      "aliases": [
+        "gum arabic",
+        "gum acacia",
+        "acacia gum",
+        "arabic gum",
+        "gummi arabicum",
+        "gummiarabicum",
+        "gummi arabikum",
+        "akaziengummi",
+        "akaziefaser",
+        "akazienfaser",
+        "acacia fibre",
+        "acacia fiber",
+        "gummi arabicum (akazienfaser)",
+        "arabiskt gummi",
+        "akaciagummi",
+        "akaciafiber",
+        "acacia senegal gum",
+        "e414",
+        "e 414",
+        "e-414"
+      ],
+      "explanation": {
+        "en": "Gum arabic is the dried sap of acacia trees.",
+        "de": "Gummi arabicum ist der getrocknete Saft von Akazien."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "karaya-gum",
+      "status": "plant",
+      "aliases": [
+        "karaya gum",
+        "gum karaya",
+        "karayagummi",
+        "karaya",
+        "e416",
+        "e 416",
+        "e-416"
+      ],
+      "explanation": {
+        "en": "Karaya gum is the dried sap of Sterculia trees.",
+        "de": "Karayagummi ist der getrocknete Saft von Sterculia-Bäumen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "tara-gum",
+      "status": "plant",
+      "aliases": [
+        "tara gum",
+        "taragummi",
+        "tarakernmehl",
+        "tara",
+        "tarakärnmjöl",
+        "e417",
+        "e 417",
+        "e-417"
+      ],
+      "explanation": {
+        "en": "Tara gum is milled from the seeds of the tara tree.",
+        "de": "Taragummi wird aus den Samen des Tarabaums gemahlen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "gellan-gum",
+      "status": "plant",
+      "aliases": [
+        "gellan gum",
+        "gellan",
+        "gellangummi",
+        "e418",
+        "e 418",
+        "e-418"
+      ],
+      "explanation": {
+        "en": "Gellan gum is produced by bacterial fermentation of sugars.",
+        "de": "Gellan wird durch bakterielle Fermentation von Zuckern gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sorbitol",
+      "status": "plant",
+      "aliases": [
+        "sorbitol",
+        "sorbit",
+        "sorbitol syrup",
+        "sorbitsirup",
+        "sorbitolsirap",
+        "d-sorbitol",
+        "e420",
+        "e 420",
+        "e-420"
+      ],
+      "explanation": {
+        "en": "Sorbitol is made from glucose.",
+        "de": "Sorbit wird aus Glukose hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "mannitol",
+      "status": "plant",
+      "aliases": [
+        "mannitol",
+        "mannit",
+        "e421",
+        "e 421",
+        "e-421"
+      ],
+      "explanation": {
+        "en": "Mannitol is made from sugars by hydrogenation or fermentation.",
+        "de": "Mannit wird aus Zuckern durch Hydrierung oder Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "konjac",
+      "status": "plant",
+      "aliases": [
+        "konjac",
+        "konjak",
+        "konjac gum",
+        "konjac glucomannan",
+        "konjakmehl",
+        "konjakgummi",
+        "konjakglucomannan",
+        "glucomannan",
+        "konjac flour",
+        "konjakwurzel",
+        "konjac root",
+        "konjakrot",
+        "konjakmjöl",
+        "e425",
+        "e 425",
+        "e-425"
+      ],
+      "explanation": {
+        "en": "Konjac gum and glucomannan come from the konjac root.",
+        "de": "Konjakgummi und Glucomannan stammen aus der Konjakwurzel."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "soybean-hemicellulose",
+      "status": "plant",
+      "aliases": [
+        "soybean hemicellulose",
+        "sojabohnen-polyose",
+        "sojabohnenpolyose",
+        "sojabönshemicellulosa",
+        "e426",
+        "e 426",
+        "e-426"
+      ],
+      "explanation": {
+        "en": "Soybean hemicellulose is extracted from soy fibre.",
+        "de": "Sojabohnen-Polyose wird aus Sojafasern gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "cassia-gum",
+      "status": "plant",
+      "aliases": [
+        "cassia gum",
+        "cassiagummi",
+        "cassia",
+        "e427",
+        "e 427",
+        "e-427"
+      ],
+      "explanation": {
+        "en": "Cassia gum is milled from the seeds of Cassia tora.",
+        "de": "Cassiagummi wird aus den Samen von Cassia tora gemahlen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "polysorbates",
+      "status": "ambiguous",
+      "aliases": [
+        "polysorbate",
+        "polysorbates",
+        "polysorbat",
+        "polysorbat 20",
+        "polysorbat 60",
+        "polysorbat 65",
+        "polysorbat 80",
+        "polysorbate 20",
+        "polysorbate 40",
+        "polysorbate 60",
+        "polysorbate 65",
+        "polysorbate 80",
+        "tween 80",
+        "tween 20",
+        "polyoxyethylene (40) stearate",
+        "polyoxyethylen(40)stearat",
+        "polyoxyethylenstearat",
+        "peg-100 stearate",
+        "peg-40 stearate",
+        "peg-8 stearate",
+        "e431",
+        "e 431",
+        "e-431",
+        "e432",
+        "e 432",
+        "e-432",
+        "e433",
+        "e 433",
+        "e-433",
+        "e434",
+        "e 434",
+        "e-434",
+        "e435",
+        "e 435",
+        "e-435",
+        "e436",
+        "e 436",
+        "e-436"
+      ],
+      "explanation": {
+        "en": "Polysorbates and polyoxyethylene stearates are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Polysorbate und Polyoxyethylenstearate werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "gelatin-e441",
+      "status": "animal",
+      "aliases": [
+        "gelatine (e441)",
+        "gelatina",
+        "gelatin powder",
+        "gelatinepulver",
+        "gelatin hydrolysate",
+        "gelatinehydrolysat",
+        "hydrolyzed gelatin",
+        "hydrolysed gelatin",
+        "hydrolysiertes kollagen",
+        "kollagenhydrolysat",
+        "collagen hydrolysate",
+        "hydrolyzed collagen",
+        "hydrolysed collagen",
+        "collagen peptides",
+        "kollagenpeptide",
+        "kollagenpeptider",
+        "speisegelatine",
+        "blattgelatine",
+        "gelatinblad",
+        "leaf gelatine",
+        "leaf gelatin",
+        "e441",
+        "e 441",
+        "e-441"
+      ],
+      "explanation": {
+        "en": "E441 gelatine is made by boiling animal skin, bones and connective tissue.",
+        "de": "Gelatine (E441) wird durch Auskochen tierischer Haut, Knochen und Bindegewebe gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "ammonium-phosphatides",
+      "status": "plant",
+      "aliases": [
+        "ammonium phosphatides",
+        "ammoniumphosphatide",
+        "ammoniumsalze der phosphatidsäure",
+        "ammonium salts of phosphatidic acid",
+        "ammoniumfosfatider",
+        "e442",
+        "e 442",
+        "e-442"
+      ],
+      "explanation": {
+        "en": "Ammonium phosphatides are made from rapeseed oil.",
+        "de": "Ammoniumphosphatide werden aus Rapsöl hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "sucrose-acetate-isobutyrate",
+      "status": "plant",
+      "aliases": [
+        "sucrose acetate isobutyrate",
+        "saccharoseacetatisobutyrat",
+        "sackarosacetatisobutyrat",
+        "e444",
+        "e 444",
+        "e-444"
+      ],
+      "explanation": {
+        "en": "Sucrose acetate isobutyrate is a synthetic sugar ester.",
+        "de": "Saccharoseacetatisobutyrat ist ein synthetischer Zuckerester."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "glycerol-esters-wood-rosin",
+      "status": "ambiguous",
+      "aliases": [
+        "glycerol esters of wood rosin",
+        "glycerol ester of wood rosin",
+        "glycerinester aus wurzelharz",
+        "glycerinester des wurzelharzes",
+        "ester gum",
+        "glycerolestrar av trähartser",
+        "e445",
+        "e 445",
+        "e-445"
+      ],
+      "explanation": {
+        "en": "Glycerol esters of wood rosin are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Glycerinester aus Wurzelharz werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "beta-cyclodextrin",
+      "status": "plant",
+      "aliases": [
+        "beta-cyclodextrin",
+        "β-cyclodextrin",
+        "cyclodextrin",
+        "cyclodextrine",
+        "betacyklodextrin",
+        "e459",
+        "e 459",
+        "e-459"
+      ],
+      "explanation": {
+        "en": "Cyclodextrins are made from starch by enzymatic conversion.",
+        "de": "Cyclodextrine werden enzymatisch aus Stärke hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "cellulose-ethers",
+      "status": "plant",
+      "aliases": [
+        "ethyl cellulose",
+        "ethylcellulose",
+        "etylcellulosa",
+        "hydroxypropyl cellulose",
+        "hydroxypropylcellulose",
+        "hydroxipropylcellulosa",
+        "ethyl methyl cellulose",
+        "ethylmethylcellulose",
+        "cross-linked sodium carboxymethyl cellulose",
+        "croscarmellose",
+        "croscarmellose sodium",
+        "vernetzte carboxymethylcellulose",
+        "enzymatically hydrolysed carboxymethyl cellulose",
+        "sodium carboxymethyl cellulose",
+        "natriumcarboxymethylcellulose",
+        "cellulose gum",
+        "cellulosegummi",
+        "cellulosagummi",
+        "cellulose powder",
+        "cellulosepulver",
+        "cellulosapulver",
+        "cellulosefaser",
+        "cellulose fibre",
+        "cellulose fiber",
+        "cellulosafiber",
+        "hydroxyethylcellulose",
+        "hydroxyethyl cellulose",
+        "hpmc",
+        "cmc",
+        "e462",
+        "e 462",
+        "e-462",
+        "e463",
+        "e 463",
+        "e-463",
+        "e465",
+        "e 465",
+        "e-465",
+        "e468",
+        "e 468",
+        "e-468",
+        "e469",
+        "e 469",
+        "e-469"
+      ],
+      "explanation": {
+        "en": "Cellulose ethers are made from plant cellulose.",
+        "de": "Celluloseether werden aus pflanzlicher Cellulose hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "fatty-acid-salts",
+      "status": "ambiguous",
+      "aliases": [
+        "salts of fatty acids",
+        "sodium, potassium and calcium salts of fatty acids",
+        "sodium salts of fatty acids",
+        "potassium salts of fatty acids",
+        "calcium salts of fatty acids",
+        "magnesium salts of fatty acids",
+        "natrium-, kalium- und calciumsalze der speisefettsäuren",
+        "natriumsalze der speisefettsäuren",
+        "calciumsalze der speisefettsäuren",
+        "magnesiumsalze der speisefettsäuren",
+        "salze der speisefettsäuren",
+        "fettsyrasalter",
+        "natrium-, kalium- och kalciumsalter av fettsyror",
+        "magnesiumsalter av fettsyror",
+        "sodium stearate",
+        "natriumstearat",
+        "potassium stearate",
+        "kaliumstearat",
+        "calcium stearate",
+        "calciumstearat",
+        "kalciumstearat",
+        "zinc stearate",
+        "zinkstearat",
+        "aluminium stearate",
+        "aluminum stearate",
+        "e470a",
+        "e 470a",
+        "e-470a",
+        "e470b",
+        "e 470b",
+        "e-470b",
+        "e470",
+        "e 470",
+        "e-470"
+      ],
+      "explanation": {
+        "en": "Salts of fatty acids are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Salze von Speisefettsäuren werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "e472",
+      "status": "ambiguous",
+      "aliases": [
+        "acetic acid esters of mono- and diglycerides of fatty acids",
+        "acetic acid esters of mono- and diglycerides",
+        "lactic acid esters of mono- and diglycerides of fatty acids",
+        "lactic acid esters of mono- and diglycerides",
+        "citric acid esters of mono- and diglycerides of fatty acids",
+        "citric acid esters of mono- and diglycerides",
+        "tartaric acid esters of mono- and diglycerides",
+        "mono- and diacetyl tartaric acid esters of mono- and diglycerides of fatty acids",
+        "diacetyl tartaric acid esters of mono- and diglycerides",
+        "datem",
+        "mixed acetic and tartaric acid esters of mono- and diglycerides",
+        "essigsäureester von mono- und diglyceriden von speisefettsäuren",
+        "milchsäureester von mono- und diglyceriden von speisefettsäuren",
+        "citronensäureester von mono- und diglyceriden von speisefettsäuren",
+        "zitronensäureester von mono- und diglyceriden von speisefettsäuren",
+        "weinsäureester von mono- und diglyceriden von speisefettsäuren",
+        "mono- und diacetylweinsäureester von mono- und diglyceriden von speisefettsäuren",
+        "gemischte wein- und essigsäureester von mono- und diglyceriden von speisefettsäuren",
+        "ättiksyraestrar av mono- och diglycerider av fettsyror",
+        "mjölksyraestrar av mono- och diglycerider av fettsyror",
+        "citronsyraestrar av mono- och diglycerider av fettsyror",
+        "vinsyraestrar av mono- och diglycerider av fettsyror",
+        "mono- och diacetylvinsyraestrar av mono- och diglycerider av fettsyror",
+        "glyceryl stearate citrate",
+        "glyceryl stearate lactate",
+        "e472a",
+        "e 472a",
+        "e-472a",
+        "e472b",
+        "e 472b",
+        "e-472b",
+        "e472c",
+        "e 472c",
+        "e-472c",
+        "e472d",
+        "e 472d",
+        "e-472d",
+        "e472e",
+        "e 472e",
+        "e-472e",
+        "e472f",
+        "e 472f",
+        "e-472f",
+        "e472",
+        "e 472",
+        "e-472"
+      ],
+      "explanation": {
+        "en": "Esters of mono- and diglycerides are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Ester von Mono- und Diglyceriden werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "sucrose-esters",
+      "status": "ambiguous",
+      "aliases": [
+        "sucrose esters of fatty acids",
+        "sucrose esters",
+        "sucrose fatty acid esters",
+        "zuckerester von speisefettsäuren",
+        "zuckerester",
+        "saccharoseester",
+        "sockerestrar av fettsyror",
+        "sucroglycerides",
+        "zuckerglyceride",
+        "sockerglycerider",
+        "sucrose stearate",
+        "sucrose palmitate",
+        "sucrose laurate",
+        "sucrose cocoate",
+        "e473",
+        "e 473",
+        "e-473",
+        "e474",
+        "e 474",
+        "e-474"
+      ],
+      "explanation": {
+        "en": "Sucrose esters and sucroglycerides are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Zuckerester und Zuckerglyceride werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "polyglycerol-esters",
+      "status": "ambiguous",
+      "aliases": [
+        "polyglycerol esters of fatty acids",
+        "polyglycerol esters",
+        "polyglycerinester von speisefettsäuren",
+        "polyglycerinester",
+        "polyglycerolestrar av fettsyror",
+        "polyglyceryl-3 diisostearate",
+        "polyglyceryl-4 caprate",
+        "polyglyceryl-3 caprylate",
+        "polyglyceryl-6 distearate",
+        "polyglyceryl-10 laurate",
+        "polyglyceryl-2 dipolyhydroxystearate",
+        "polyglyceryl-3 polyricinoleate",
+        "polyglycerol polyricinoleate",
+        "pgpr",
+        "polyglycerin-polyricinoleat",
+        "polyglycerinpolyricinoleat",
+        "polyglycerolpolyricinoleat",
+        "e475",
+        "e 475",
+        "e-475",
+        "e476",
+        "e 476",
+        "e-476"
+      ],
+      "explanation": {
+        "en": "Polyglycerol esters are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Polyglycerinester werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "propylene-glycol-esters",
+      "status": "ambiguous",
+      "aliases": [
+        "propylene glycol esters of fatty acids",
+        "propane-1,2-diol esters of fatty acids",
+        "propylenglycolester von speisefettsäuren",
+        "propylenglykolester von speisefettsäuren",
+        "propylenglykolestrar av fettsyror",
+        "propylene glycol stearate",
+        "propylene glycol monostearate",
+        "propylenglycolmonostearat",
+        "e477",
+        "e 477",
+        "e-477"
+      ],
+      "explanation": {
+        "en": "Propylene glycol esters of fatty acids are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Propylenglycolester von Speisefettsäuren werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "thermally-oxidised-soya-oil",
+      "status": "ambiguous",
+      "aliases": [
+        "thermally oxidised soya bean oil interacted with mono- and diglycerides of fatty acids",
+        "thermooxidiertes sojaöl mit mono- und diglyceriden von speisefettsäuren",
+        "e479b",
+        "e 479b",
+        "e-479b"
+      ],
+      "explanation": {
+        "en": "Thermally oxidised soya bean oil with mono- and diglycerides are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Thermooxidiertes Sojaöl mit Mono- und Diglyceriden werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "stearoyl-lactylates",
+      "status": "ambiguous",
+      "aliases": [
+        "sodium stearoyl-2-lactylate",
+        "sodium stearoyl lactylate",
+        "sodium stearoyl-lactylate",
+        "natriumstearoyl-2-lactylat",
+        "natriumstearoyllactylat",
+        "natriumstearoyllaktylat",
+        "natriumstearoyl-2-laktylat",
+        "calcium stearoyl-2-lactylate",
+        "calcium stearoyl lactylate",
+        "calciumstearoyl-2-lactylat",
+        "calciumstearoyllactylat",
+        "kalciumstearoyl-2-laktylat",
+        "stearoyl lactylate",
+        "stearyl tartrate",
+        "stearyltartrat",
+        "ssl",
+        "csl",
+        "e481",
+        "e 481",
+        "e-481",
+        "e482",
+        "e 482",
+        "e-482",
+        "e483",
+        "e 483",
+        "e-483"
+      ],
+      "explanation": {
+        "en": "Stearoyl lactylates are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Stearoyllactylate werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "sorbitan-esters",
+      "status": "ambiguous",
+      "aliases": [
+        "sorbitan monostearate",
+        "sorbitanmonostearat",
+        "sorbitan tristearate",
+        "sorbitantristearat",
+        "sorbitan monolaurate",
+        "sorbitanmonolaurat",
+        "sorbitan monooleate",
+        "sorbitanmonooleat",
+        "sorbitan monopalmitate",
+        "sorbitanmonopalmitat",
+        "sorbitan stearate",
+        "sorbitan laurate",
+        "sorbitan oleate",
+        "sorbitan olivate",
+        "sorbitan sesquioleate",
+        "sorbitan isostearate",
+        "sorbitan ester",
+        "sorbitan esters",
+        "sorbitanester",
+        "span 60",
+        "span 80",
+        "e491",
+        "e 491",
+        "e-491",
+        "e492",
+        "e 492",
+        "e-492",
+        "e493",
+        "e 493",
+        "e-493",
+        "e494",
+        "e 494",
+        "e-494",
+        "e495",
+        "e 495",
+        "e-495"
+      ],
+      "explanation": {
+        "en": "Sorbitan esters are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Sorbitanester werden aus Fettsäuren hergestellt, die aus Pflanzenölen oder tierischem Fett stammen können; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "potassium-carbonates",
+      "status": "plant",
+      "aliases": [
+        "potassium carbonate",
+        "potassium carbonates",
+        "potassium hydrogen carbonate",
+        "potassium bicarbonate",
+        "kaliumcarbonat",
+        "kaliumcarbonate",
+        "kaliumhydrogencarbonat",
+        "kaliumbicarbonat",
+        "kaliumkarbonat",
+        "kaliumkarbonater",
+        "kaliumvätekarbonat",
+        "pottasche",
+        "potash",
+        "e501",
+        "e 501",
+        "e-501"
+      ],
+      "explanation": {
+        "en": "Potassium carbonate is a mineral or synthetic substance without animal content.",
+        "de": "Kaliumcarbonat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ammonium-carbonates",
+      "status": "plant",
+      "aliases": [
+        "ammonium carbonate",
+        "ammonium carbonates",
+        "ammonium hydrogen carbonate",
+        "ammonium bicarbonate",
+        "ammoniumcarbonat",
+        "ammoniumcarbonate",
+        "ammoniumhydrogencarbonat",
+        "ammoniumbicarbonat",
+        "ammoniumkarbonat",
+        "ammoniumkarbonater",
+        "ammoniumvätekarbonat",
+        "hirschhornsalz",
+        "hjorthornssalt",
+        "baker's ammonia",
+        "bakers ammonia",
+        "e503",
+        "e 503",
+        "e-503"
+      ],
+      "explanation": {
+        "en": "Ammonium carbonate is a mineral or synthetic substance without animal content.",
+        "de": "Ammoniumcarbonat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "magnesium-carbonates",
+      "status": "plant",
+      "aliases": [
+        "magnesium carbonate",
+        "magnesium carbonates",
+        "magnesium hydroxide carbonate",
+        "magnesiumcarbonat",
+        "magnesiumcarbonate",
+        "magnesiumkarbonat",
+        "magnesiumkarbonater",
+        "magnesiumhydroxidcarbonat",
+        "e504",
+        "e 504",
+        "e-504"
+      ],
+      "explanation": {
+        "en": "Magnesium carbonate is a mineral or synthetic substance without animal content.",
+        "de": "Magnesiumcarbonat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "hydrochloric-acid",
+      "status": "plant",
+      "aliases": [
+        "hydrochloric acid",
+        "salzsäure",
+        "saltsyra",
+        "e507",
+        "e 507",
+        "e-507"
+      ],
+      "explanation": {
+        "en": "Hydrochloric acid is a mineral or synthetic substance without animal content.",
+        "de": "Salzsäure ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "potassium-chloride",
+      "status": "plant",
+      "aliases": [
+        "potassium chloride",
+        "kaliumchlorid",
+        "kaliumklorid",
+        "kaliumsalz",
+        "kaliumsalt",
+        "potassium salt",
+        "e508",
+        "e 508",
+        "e-508"
+      ],
+      "explanation": {
+        "en": "Potassium chloride is a mineral or synthetic substance without animal content.",
+        "de": "Kaliumchlorid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "calcium-chloride",
+      "status": "plant",
+      "aliases": [
+        "calcium chloride",
+        "calciumchlorid",
+        "kalziumchlorid",
+        "kalciumklorid",
+        "e509",
+        "e 509",
+        "e-509"
+      ],
+      "explanation": {
+        "en": "Calcium chloride is a mineral or synthetic substance without animal content.",
+        "de": "Calciumchlorid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "magnesium-chloride",
+      "status": "plant",
+      "aliases": [
+        "magnesium chloride",
+        "magnesiumchlorid",
+        "magnesiumklorid",
+        "nigari",
+        "e511",
+        "e 511",
+        "e-511"
+      ],
+      "explanation": {
+        "en": "Magnesium chloride is a mineral or synthetic substance without animal content.",
+        "de": "Magnesiumchlorid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "stannous-chloride",
+      "status": "plant",
+      "aliases": [
+        "stannous chloride",
+        "zinn(ii)-chlorid",
+        "zinnchlorid",
+        "tenn(ii)klorid",
+        "e512",
+        "e 512",
+        "e-512"
+      ],
+      "explanation": {
+        "en": "Stannous chloride is a mineral or synthetic substance without animal content.",
+        "de": "Zinn(II)-chlorid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sulphuric-acid",
+      "status": "plant",
+      "aliases": [
+        "sulphuric acid",
+        "sulfuric acid",
+        "schwefelsäure",
+        "svavelsyra",
+        "e513",
+        "e 513",
+        "e-513"
+      ],
+      "explanation": {
+        "en": "Sulphuric acid is a mineral or synthetic substance without animal content.",
+        "de": "Schwefelsäure ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sulphates",
+      "status": "plant",
+      "aliases": [
+        "sodium sulphate",
+        "sodium sulfate",
+        "sodium sulphates",
+        "sodium sulfates",
+        "natriumsulfat",
+        "natriumsulfate",
+        "natriumsulfater",
+        "sodium hydrogen sulphate",
+        "sodium bisulfate",
+        "natriumhydrogensulfat",
+        "potassium sulphate",
+        "potassium sulfate",
+        "potassium sulphates",
+        "kaliumsulfat",
+        "kaliumsulfate",
+        "kaliumsulfater",
+        "calcium sulphate",
+        "calcium sulfate",
+        "calciumsulfat",
+        "kalziumsulfat",
+        "kalciumsulfat",
+        "gips",
+        "gypsum",
+        "ammonium sulphate",
+        "ammonium sulfate",
+        "ammoniumsulfat",
+        "magnesium sulphate",
+        "magnesium sulfate",
+        "magnesiumsulfat",
+        "bittersalz",
+        "epsom salt",
+        "aluminium sulphate",
+        "aluminium sulfate",
+        "aluminum sulfate",
+        "aluminiumsulfat",
+        "sodium aluminium sulphate",
+        "natriumaluminiumsulfat",
+        "potassium aluminium sulphate",
+        "kaliumaluminiumsulfat",
+        "alum",
+        "alaun",
+        "sulphate",
+        "sulfate",
+        "sulphates",
+        "sulfates",
+        "e514",
+        "e 514",
+        "e-514",
+        "e515",
+        "e 515",
+        "e-515",
+        "e516",
+        "e 516",
+        "e-516",
+        "e517",
+        "e 517",
+        "e-517",
+        "e518",
+        "e 518",
+        "e-518",
+        "e520",
+        "e 520",
+        "e-520",
+        "e521",
+        "e 521",
+        "e-521",
+        "e522",
+        "e 522",
+        "e-522",
+        "e523",
+        "e 523",
+        "e-523"
+      ],
+      "explanation": {
+        "en": "Sulphates is a mineral or synthetic substance without animal content.",
+        "de": "Sulfate ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sodium-hydroxide",
+      "status": "plant",
+      "aliases": [
+        "sodium hydroxide",
+        "natriumhydroxid",
+        "natronlauge",
+        "caustic soda",
+        "lye",
+        "lut",
+        "ätznatron",
+        "e524",
+        "e 524",
+        "e-524"
+      ],
+      "explanation": {
+        "en": "Sodium hydroxide is a mineral or synthetic substance without animal content.",
+        "de": "Natriumhydroxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "potassium-hydroxide",
+      "status": "plant",
+      "aliases": [
+        "potassium hydroxide",
+        "kaliumhydroxid",
+        "kalilauge",
+        "caustic potash",
+        "e525",
+        "e 525",
+        "e-525"
+      ],
+      "explanation": {
+        "en": "Potassium hydroxide is a mineral or synthetic substance without animal content.",
+        "de": "Kaliumhydroxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "calcium-hydroxide",
+      "status": "plant",
+      "aliases": [
+        "calcium hydroxide",
+        "calciumhydroxid",
+        "kalziumhydroxid",
+        "kalciumhydroxid",
+        "slaked lime",
+        "gelöschter kalk",
+        "kalkwasser",
+        "släckt kalk",
+        "e526",
+        "e 526",
+        "e-526"
+      ],
+      "explanation": {
+        "en": "Calcium hydroxide is a mineral or synthetic substance without animal content.",
+        "de": "Calciumhydroxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ammonium-hydroxide",
+      "status": "plant",
+      "aliases": [
+        "ammonium hydroxide",
+        "ammoniumhydroxid",
+        "ammonia",
+        "ammoniak",
+        "ammoniaklösung",
+        "e527",
+        "e 527",
+        "e-527"
+      ],
+      "explanation": {
+        "en": "Ammonium hydroxide is a mineral or synthetic substance without animal content.",
+        "de": "Ammoniumhydroxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "magnesium-hydroxide",
+      "status": "plant",
+      "aliases": [
+        "magnesium hydroxide",
+        "magnesiumhydroxid",
+        "milk of magnesia",
+        "magnesiummilch",
+        "e528",
+        "e 528",
+        "e-528"
+      ],
+      "explanation": {
+        "en": "Magnesium hydroxide is a mineral or synthetic substance without animal content.",
+        "de": "Magnesiumhydroxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "calcium-oxide",
+      "status": "plant",
+      "aliases": [
+        "calcium oxide",
+        "calciumoxid",
+        "kalziumoxid",
+        "kalciumoxid",
+        "quicklime",
+        "branntkalk",
+        "bränd kalk",
+        "e529",
+        "e 529",
+        "e-529"
+      ],
+      "explanation": {
+        "en": "Calcium oxide is a mineral or synthetic substance without animal content.",
+        "de": "Calciumoxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "magnesium-oxide",
+      "status": "plant",
+      "aliases": [
+        "magnesium oxide",
+        "magnesiumoxid",
+        "magnesia",
+        "e530",
+        "e 530",
+        "e-530"
+      ],
+      "explanation": {
+        "en": "Magnesium oxide is a mineral or synthetic substance without animal content.",
+        "de": "Magnesiumoxid ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "ferrocyanides",
+      "status": "plant",
+      "aliases": [
+        "sodium ferrocyanide",
+        "natriumferrocyanid",
+        "natriumhexacyanoferrat",
+        "potassium ferrocyanide",
+        "kaliumferrocyanid",
+        "kaliumhexacyanoferrat",
+        "calcium ferrocyanide",
+        "calciumferrocyanid",
+        "ferrocyanide",
+        "ferrocyanid",
+        "e535",
+        "e 535",
+        "e-535",
+        "e536",
+        "e 536",
+        "e-536",
+        "e538",
+        "e 538",
+        "e-538"
+      ],
+      "explanation": {
+        "en": "Ferrocyanides is a mineral or synthetic substance without animal content.",
+        "de": "Ferrocyanide ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "bone-phosphate",
+      "status": "animal",
+      "aliases": [
+        "bone phosphate",
+        "edible bone phosphate",
+        "knochenphosphat",
+        "benfosfat",
+        "bone meal",
+        "knochenmehl",
+        "benmjöl",
+        "bone ash",
+        "knochenasche",
+        "bone powder",
+        "knochenpulver",
+        "calcium phosphate from bone",
+        "bone calcium",
+        "knochencalcium",
+        "e542",
+        "e 542",
+        "e-542"
+      ],
+      "explanation": {
+        "en": "Bone phosphate (E542) and bone meal are ground animal bones.",
+        "de": "Knochenphosphat (E542) und Knochenmehl sind gemahlene Tierknochen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "silica",
+      "status": "plant",
+      "aliases": [
+        "silicon dioxide",
+        "silica",
+        "siliciumdioxid",
+        "siliziumdioxid",
+        "kieselsäure",
+        "kiseldioxid",
+        "hydrated silica",
+        "silica gel",
+        "kieselgel",
+        "colloidal silica",
+        "fumed silica",
+        "silica dimethyl silylate",
+        "kieselerde",
+        "diatomaceous earth",
+        "kieselgur",
+        "kiselgur",
+        "e551",
+        "e 551",
+        "e-551"
+      ],
+      "explanation": {
+        "en": "Silicon dioxide (silica) is a mineral or synthetic substance without animal content.",
+        "de": "Siliciumdioxid (Kieselsäure) ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "silicates",
+      "status": "plant",
+      "aliases": [
+        "calcium silicate",
+        "calciumsilicat",
+        "calciumsilikat",
+        "kalciumsilikat",
+        "magnesium silicate",
+        "magnesiumsilicat",
+        "magnesiumsilikat",
+        "magnesium trisilicate",
+        "magnesiumtrisilikat",
+        "talc",
+        "talcum",
+        "talkum",
+        "talk",
+        "ci 77718",
+        "sodium aluminium silicate",
+        "natriumaluminiumsilicat",
+        "natriumaluminiumsilikat",
+        "potassium aluminium silicate",
+        "kaliumaluminiumsilicat",
+        "kaliumaluminiumsilikat",
+        "mica",
+        "glimmer",
+        "ci 77019",
+        "calcium aluminium silicate",
+        "calciumaluminiumsilicat",
+        "aluminium silicate",
+        "aluminiumsilicat",
+        "aluminiumsilikat",
+        "kaolin",
+        "bentonite",
+        "bentonit",
+        "china clay",
+        "kaolinite",
+        "kaolinit",
+        "white clay",
+        "weiße tonerde",
+        "tonerde",
+        "clay",
+        "ton",
+        "lera",
+        "silicate",
+        "silicates",
+        "silikat",
+        "silikate",
+        "silikater",
+        "zeolite",
+        "zeolith",
+        "e552",
+        "e 552",
+        "e-552",
+        "e553a",
+        "e 553a",
+        "e-553a",
+        "e553b",
+        "e 553b",
+        "e-553b",
+        "e554",
+        "e 554",
+        "e-554",
+        "e555",
+        "e 555",
+        "e-555",
+        "e556",
+        "e 556",
+        "e-556",
+        "e558",
+        "e 558",
+        "e-558",
+        "e559",
+        "e 559",
+        "e-559"
+      ],
+      "explanation": {
+        "en": "Silicates is a mineral or synthetic substance without animal content.",
+        "de": "Silikate ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "fatty-acids",
+      "status": "ambiguous",
+      "aliases": [
+        "fatty acids",
+        "fatty acid",
+        "fettsäuren",
+        "fettsäure",
+        "speisefettsäuren",
+        "fettsyror",
+        "fettsyra",
+        "palmitic acid",
+        "palmitinsäure",
+        "palmitinsyra",
+        "oleic acid",
+        "ölsäure",
+        "oljesyra",
+        "myristic acid",
+        "myristinsäure",
+        "myristinsyra",
+        "lauric acid",
+        "laurinsäure",
+        "laurinsyra",
+        "capric acid",
+        "caprinsäure",
+        "kaprinsyra",
+        "caprylic acid",
+        "caprylsäure",
+        "kaprylsyra",
+        "linoleic acid",
+        "linolsäure",
+        "linolsyra",
+        "hydrogenated fatty acids",
+        "gehärtete fettsäuren",
+        "stearate",
+        "stearates",
+        "stearat",
+        "e570",
+        "e 570",
+        "e-570"
+      ],
+      "explanation": {
+        "en": "Fatty acids such as stearic, palmitic or oleic acid can be made from plant oils or animal fat; the manufacturer can confirm the source.",
+        "de": "Fettsäuren wie Stearin-, Palmitin- oder Ölsäure können aus Pflanzenölen oder tierischem Fett stammen; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "gluconates",
+      "status": "plant",
+      "aliases": [
+        "gluconic acid",
+        "gluconsäure",
+        "glukonsyra",
+        "glucono-delta-lactone",
+        "glucono delta-lactone",
+        "glucono-δ-lactone",
+        "glucono-delta-lacton",
+        "gluconsäure-delta-lacton",
+        "glukonsyra-delta-lakton",
+        "gdl",
+        "sodium gluconate",
+        "natriumgluconat",
+        "natriumglukonat",
+        "potassium gluconate",
+        "kaliumgluconat",
+        "kaliumglukonat",
+        "calcium gluconate",
+        "calciumgluconat",
+        "kalciumglukonat",
+        "ferrous gluconate",
+        "iron gluconate",
+        "eisen(ii)-gluconat",
+        "eisengluconat",
+        "järnglukonat",
+        "zinc gluconate",
+        "zinkgluconat",
+        "zinkglukonat",
+        "magnesium gluconate",
+        "magnesiumgluconat",
+        "gluconate",
+        "gluconates",
+        "gluconat",
+        "glukonat",
+        "e574",
+        "e 574",
+        "e-574",
+        "e575",
+        "e 575",
+        "e-575",
+        "e576",
+        "e 576",
+        "e-576",
+        "e577",
+        "e 577",
+        "e-577",
+        "e578",
+        "e 578",
+        "e-578",
+        "e579",
+        "e 579",
+        "e-579"
+      ],
+      "explanation": {
+        "en": "Gluconic acid, glucono-delta-lactone and gluconates are produced from glucose by fermentation.",
+        "de": "Gluconsäure, Glucono-delta-lacton und Gluconate werden aus Glukose durch Fermentation gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "hexylresorcinol",
+      "status": "plant",
+      "aliases": [
+        "4-hexylresorcinol",
+        "hexylresorcinol",
+        "hexylresorcin",
+        "e586",
+        "e 586",
+        "e-586"
+      ],
+      "explanation": {
+        "en": "Hexylresorcinol is a synthetic anti-browning agent.",
+        "de": "Hexylresorcin ist ein synthetisches Mittel gegen Verbräunung."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "glutamates",
+      "status": "plant",
+      "aliases": [
+        "glutamic acid",
+        "glutaminsäure",
+        "glutaminsyra",
+        "monosodium glutamate",
+        "mononatriumglutamat",
+        "natriumglutamat",
+        "msg",
+        "sodium glutamate",
+        "glutamate",
+        "glutamates",
+        "glutamat",
+        "glutamater",
+        "monopotassium glutamate",
+        "monokaliumglutamat",
+        "kaliumglutamat",
+        "calcium diglutamate",
+        "calciumdiglutamat",
+        "kalciumdiglutamat",
+        "monoammonium glutamate",
+        "monoammoniumglutamat",
+        "magnesium diglutamate",
+        "magnesiumdiglutamat",
+        "e620",
+        "e 620",
+        "e-620",
+        "e621",
+        "e 621",
+        "e-621",
+        "e622",
+        "e 622",
+        "e-622",
+        "e623",
+        "e 623",
+        "e-623",
+        "e624",
+        "e 624",
+        "e-624",
+        "e625",
+        "e 625",
+        "e-625"
+      ],
+      "explanation": {
+        "en": "Glutamic acid and glutamates are produced by fermentation of plant sugars.",
+        "de": "Glutaminsäure und Glutamate werden durch Fermentation pflanzlicher Zucker gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "nucleotides",
+      "status": "ambiguous",
+      "aliases": [
+        "guanylic acid",
+        "guanylsäure",
+        "guanylsyra",
+        "disodium guanylate",
+        "dinatriumguanylat",
+        "natriumguanylat",
+        "dipotassium guanylate",
+        "dikaliumguanylat",
+        "calcium guanylate",
+        "calciumguanylat",
+        "inosinic acid",
+        "inosinsäure",
+        "inosinsyra",
+        "disodium inosinate",
+        "dinatriuminosinat",
+        "natriuminosinat",
+        "dipotassium inosinate",
+        "dikaliuminosinat",
+        "calcium inosinate",
+        "calciuminosinat",
+        "calcium 5'-ribonucleotides",
+        "calcium-5'-ribonucleotid",
+        "disodium 5'-ribonucleotides",
+        "disodium ribonucleotides",
+        "dinatrium-5'-ribonucleotid",
+        "dinatriumribonucleotid",
+        "dinatrium-5-ribonukleotider",
+        "ribonucleotides",
+        "ribonukleotide",
+        "ribonukleotider",
+        "guanylate",
+        "inosinate",
+        "guanylat",
+        "inosinat",
+        "flavour enhancer e631",
+        "e627 and e631",
+        "e626",
+        "e 626",
+        "e-626",
+        "e627",
+        "e 627",
+        "e-627",
+        "e628",
+        "e 628",
+        "e-628",
+        "e629",
+        "e 629",
+        "e-629",
+        "e630",
+        "e 630",
+        "e-630",
+        "e631",
+        "e 631",
+        "e-631",
+        "e632",
+        "e 632",
+        "e-632",
+        "e633",
+        "e 633",
+        "e-633",
+        "e634",
+        "e 634",
+        "e-634",
+        "e635",
+        "e 635",
+        "e-635"
+      ],
+      "explanation": {
+        "en": "Guanylates, inosinates and ribonucleotides can be made from yeast or from meat and fish; the manufacturer can confirm the source.",
+        "de": "Guanylate, Inosinate und Ribonukleotide können aus Hefe oder aus Fleisch und Fisch gewonnen werden; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "glycine",
+      "status": "ambiguous",
+      "aliases": [
+        "glycine",
+        "glycin",
+        "glycine and its sodium salt",
+        "glycin und dessen natriumsalz",
+        "sodium glycinate",
+        "natriumglycinat",
+        "aminoessigsäure",
+        "e640",
+        "e 640",
+        "e-640"
+      ],
+      "explanation": {
+        "en": "Glycine is mostly synthetic, but it can also be obtained from gelatine; the manufacturer can confirm the source.",
+        "de": "Glycin wird meist synthetisch hergestellt, kann aber auch aus Gelatine gewonnen werden; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "zinc-acetate",
+      "status": "plant",
+      "aliases": [
+        "zinc acetate",
+        "zinkacetat",
+        "e650",
+        "e 650",
+        "e-650"
+      ],
+      "explanation": {
+        "en": "Zinc acetate is a mineral or synthetic substance without animal content.",
+        "de": "Zinkacetat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "dimethylpolysiloxane",
+      "status": "plant",
+      "aliases": [
+        "dimethyl polysiloxane",
+        "dimethylpolysiloxane",
+        "dimethylpolysiloxan",
+        "dimetylpolysiloxan",
+        "polydimethylsiloxane",
+        "simethicone",
+        "simeticon",
+        "dimethicone",
+        "dimethiconol",
+        "cyclomethicone",
+        "cyclopentasiloxane",
+        "cyclohexasiloxane",
+        "amodimethicone",
+        "phenyl trimethicone",
+        "silicone",
+        "silikon",
+        "silikone",
+        "silikoner",
+        "silicones",
+        "silicone oil",
+        "silikonöl",
+        "e900",
+        "e 900",
+        "e-900"
+      ],
+      "explanation": {
+        "en": "Dimethylpolysiloxane and other silicones are synthetic.",
+        "de": "Dimethylpolysiloxan und andere Silikone sind synthetisch."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "candelilla-wax",
+      "status": "plant",
+      "aliases": [
+        "candelilla wax",
+        "candelillawachs",
+        "candelilla-wachs",
+        "candelillavax",
+        "euphorbia cerifera wax",
+        "euphorbia cerifera cera",
+        "candelilla cera",
+        "e902",
+        "e 902",
+        "e-902"
+      ],
+      "explanation": {
+        "en": "Candelilla wax is harvested from the candelilla shrub.",
+        "de": "Candelillawachs wird vom Candelilla-Strauch gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "carnauba-wax",
+      "status": "plant",
+      "aliases": [
+        "carnauba wax",
+        "carnaubawachs",
+        "carnauba-wachs",
+        "karnaubawachs",
+        "karnaubavax",
+        "carnaubavax",
+        "copernicia cerifera wax",
+        "copernicia cerifera cera",
+        "carnauba cera",
+        "e903",
+        "e 903",
+        "e-903"
+      ],
+      "explanation": {
+        "en": "Carnauba wax comes from the leaves of the carnauba palm.",
+        "de": "Carnaubawachs stammt von den Blättern der Carnaubapalme."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "mineral-waxes",
+      "status": "plant",
+      "aliases": [
+        "microcrystalline wax",
+        "mikrokristallines wachs",
+        "mikrokristallint vax",
+        "cera microcristallina",
+        "microcristallina cera",
+        "paraffin",
+        "paraffin wax",
+        "paraffinwachs",
+        "paraffinvax",
+        "paraffinum liquidum",
+        "liquid paraffin",
+        "mineral oil",
+        "mineralöl",
+        "mineralolja",
+        "petrolatum",
+        "vaseline",
+        "vaselin",
+        "petroleum jelly",
+        "ozokerite",
+        "ozokerit",
+        "ceresin",
+        "ceresine",
+        "synthetic wax",
+        "synthetisches wachs",
+        "syntetiskt vax",
+        "polyethylene",
+        "polyethylen",
+        "polyeten",
+        "oxidised polyethylene wax",
+        "oxidiertes polyethylenwachs",
+        "hydrogenated poly-1-decene",
+        "hydriertes poly-1-decen",
+        "montan acid esters",
+        "montansäureester",
+        "montanvax",
+        "e905",
+        "e 905",
+        "e-905",
+        "e907",
+        "e 907",
+        "e-907",
+        "e912",
+        "e 912",
+        "e-912",
+        "e914",
+        "e 914",
+        "e-914"
+      ],
+      "explanation": {
+        "en": "Mineral and synthetic waxes are refined from petroleum or made synthetically.",
+        "de": "Mineralische und synthetische Wachse werden aus Erdöl raffiniert oder synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lanolin-e913",
+      "status": "animal",
+      "aliases": [
+        "e913",
+        "e 913",
+        "e-913",
+        "lanolin alcohol",
+        "lanolinalkohol",
+        "lanolin oil",
+        "lanolinöl",
+        "hydrogenated lanolin",
+        "hydriertes lanolin",
+        "lanolin wax",
+        "lanolinwachs",
+        "wollfett",
+        "wool fat",
+        "wool grease",
+        "ullfett",
+        "lanolin cera",
+        "lanolin alcohols",
+        "acetylated lanolin",
+        "peg-75 lanolin",
+        "lanolinum",
+        "adeps lanae"
+      ],
+      "explanation": {
+        "en": "Lanolin (E913) is the wax from sheep's wool.",
+        "de": "Lanolin (E913) ist das Wachs aus Schafwolle."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "urea",
+      "status": "plant",
+      "aliases": [
+        "urea",
+        "carbamide",
+        "harnstoff",
+        "karbamid",
+        "urea (synthetic)",
+        "e927b",
+        "e 927b",
+        "e-927b"
+      ],
+      "explanation": {
+        "en": "Urea used in foods and cosmetics is produced synthetically from ammonia and carbon dioxide.",
+        "de": "Harnstoff für Lebensmittel und Kosmetik wird synthetisch aus Ammoniak und Kohlendioxid hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "eu-additive-specifications"
+      ]
+    },
+    {
+      "id": "packaging-gases",
+      "status": "plant",
+      "aliases": [
+        "argon",
+        "helium",
+        "nitrogen",
+        "stickstoff",
+        "kväve",
+        "nitrous oxide",
+        "distickstoffmonoxid",
+        "lachgas",
+        "lustgas",
+        "dikväveoxid",
+        "butane",
+        "butan",
+        "isobutane",
+        "isobutan",
+        "propane",
+        "propan",
+        "oxygen",
+        "sauerstoff",
+        "syre",
+        "hydrogen",
+        "wasserstoff",
+        "väte",
+        "schutzgas",
+        "schutzatmosphäre",
+        "protective atmosphere",
+        "skyddande atmosfär",
+        "packgas",
+        "treibgas",
+        "propellant",
+        "drivgas",
+        "e938",
+        "e 938",
+        "e-938",
+        "e939",
+        "e 939",
+        "e-939",
+        "e941",
+        "e 941",
+        "e-941",
+        "e942",
+        "e 942",
+        "e-942",
+        "e943a",
+        "e 943a",
+        "e-943a",
+        "e943b",
+        "e 943b",
+        "e-943b",
+        "e944",
+        "e 944",
+        "e-944",
+        "e948",
+        "e 948",
+        "e-948",
+        "e949",
+        "e 949",
+        "e-949"
+      ],
+      "explanation": {
+        "en": "Packaging and propellant gases is a mineral or synthetic substance without animal content.",
+        "de": "Pack- und Treibgase ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "acesulfame-k",
+      "status": "plant",
+      "aliases": [
+        "acesulfame k",
+        "acesulfame potassium",
+        "acesulfame-k",
+        "acesulfam k",
+        "acesulfam-k",
+        "acesulfam",
+        "acesulfame",
+        "acesulfamkalium",
+        "e950",
+        "e 950",
+        "e-950"
+      ],
+      "explanation": {
+        "en": "Acesulfame K is a synthetic sweetener.",
+        "de": "Acesulfam K ist ein synthetischer Süßstoff."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "aspartame",
+      "status": "plant",
+      "aliases": [
+        "aspartame",
+        "aspartam",
+        "salt of aspartame-acesulfame",
+        "aspartam-acesulfamsalz",
+        "aspartame-acesulfame salt",
+        "neotame",
+        "neotam",
+        "advantame",
+        "advantam",
+        "e951",
+        "e 951",
+        "e-951",
+        "e961",
+        "e 961",
+        "e-961",
+        "e962",
+        "e 962",
+        "e-962",
+        "e969",
+        "e 969",
+        "e-969"
+      ],
+      "explanation": {
+        "en": "Aspartame and related sweeteners are synthesised from amino acids produced by fermentation.",
+        "de": "Aspartam und verwandte Süßstoffe werden aus fermentativ gewonnenen Aminosäuren synthetisiert."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "cyclamate",
+      "status": "plant",
+      "aliases": [
+        "cyclamate",
+        "cyclamates",
+        "cyclamat",
+        "cyklamat",
+        "sodium cyclamate",
+        "natriumcyclamat",
+        "natriumcyklamat",
+        "calcium cyclamate",
+        "calciumcyclamat",
+        "cyclamic acid",
+        "cyclohexansulfamidsäure",
+        "e952",
+        "e 952",
+        "e-952"
+      ],
+      "explanation": {
+        "en": "Cyclamate is a synthetic sweetener.",
+        "de": "Cyclamat ist ein synthetischer Süßstoff."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "isomalt",
+      "status": "plant",
+      "aliases": [
+        "isomalt",
+        "isomaltitol",
+        "isomaltulose",
+        "palatinose",
+        "e953",
+        "e 953",
+        "e-953"
+      ],
+      "explanation": {
+        "en": "Isomalt is made from beet sugar.",
+        "de": "Isomalt wird aus Rübenzucker hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "saccharin",
+      "status": "plant",
+      "aliases": [
+        "saccharin",
+        "sacharin",
+        "sackarin",
+        "sodium saccharin",
+        "natriumsaccharin",
+        "natriumsackarin",
+        "saccharin sodium",
+        "calcium saccharin",
+        "potassium saccharin",
+        "saccharine",
+        "e954",
+        "e 954",
+        "e-954"
+      ],
+      "explanation": {
+        "en": "Saccharin is a synthetic sweetener.",
+        "de": "Saccharin ist ein synthetischer Süßstoff."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sucralose",
+      "status": "plant",
+      "aliases": [
+        "sucralose",
+        "sukralos",
+        "sucralos",
+        "e955",
+        "e 955",
+        "e-955"
+      ],
+      "explanation": {
+        "en": "Sucralose is made from sugar by chlorination.",
+        "de": "Sucralose wird aus Zucker durch Chlorierung hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "thaumatin",
+      "status": "plant",
+      "aliases": [
+        "thaumatin",
+        "taumatin",
+        "e957",
+        "e 957",
+        "e-957"
+      ],
+      "explanation": {
+        "en": "Thaumatin is a sweet protein from the katemfe fruit.",
+        "de": "Thaumatin ist ein süßes Protein aus der Katemfe-Frucht."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "neohesperidine",
+      "status": "plant",
+      "aliases": [
+        "neohesperidine dc",
+        "neohesperidine dihydrochalcone",
+        "neohesperidin dc",
+        "neohesperidin-dihydrochalcon",
+        "neohesperidin",
+        "nhdc",
+        "e959",
+        "e 959",
+        "e-959"
+      ],
+      "explanation": {
+        "en": "Neohesperidine DC is made from bitter orange peel.",
+        "de": "Neohesperidin DC wird aus Bitterorangenschalen hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "stevia",
+      "status": "plant",
+      "aliases": [
+        "steviol glycosides",
+        "steviolglycoside",
+        "steviolglykoside",
+        "steviolglykosider",
+        "stevia",
+        "stevia extract",
+        "steviaextrakt",
+        "rebaudioside a",
+        "rebaudiosid a",
+        "rebaudioside m",
+        "stevia rebaudiana",
+        "stevia leaf extract",
+        "steviablattextrakt",
+        "e960",
+        "e 960",
+        "e-960",
+        "e960a",
+        "e 960a",
+        "e-960a",
+        "e960c",
+        "e 960c",
+        "e-960c"
+      ],
+      "explanation": {
+        "en": "Steviol glycosides are extracted from stevia leaves or produced by fermentation.",
+        "de": "Steviolglycoside werden aus Steviablättern gewonnen oder durch Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "sugar-alcohols",
+      "status": "plant",
+      "aliases": [
+        "maltitol",
+        "maltit",
+        "maltitol syrup",
+        "maltitsirup",
+        "maltitolsirap",
+        "xylitol",
+        "xylit",
+        "birkenzucker",
+        "björksocker",
+        "erythritol",
+        "erythrit",
+        "erytritol",
+        "polyglycitol syrup",
+        "polyglycitolsirup",
+        "polyglycitolsirap",
+        "hydrogenated starch hydrolysate",
+        "hydrierte stärkehydrolysate",
+        "sugar alcohol",
+        "sugar alcohols",
+        "zuckeralkohol",
+        "zuckeralkohole",
+        "sockeralkohol",
+        "sockeralkoholer",
+        "polyols",
+        "polyole",
+        "polyoler",
+        "e964",
+        "e 964",
+        "e-964",
+        "e965",
+        "e 965",
+        "e-965",
+        "e967",
+        "e 967",
+        "e-967",
+        "e968",
+        "e 968",
+        "e-968"
+      ],
+      "explanation": {
+        "en": "Maltitol, xylitol and erythritol are made from plant sugars or starch.",
+        "de": "Maltit, Xylit und Erythrit werden aus pflanzlichen Zuckern oder Stärke hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lactitol",
+      "status": "animal",
+      "aliases": [
+        "lactitol",
+        "lactit",
+        "laktit",
+        "laktitol",
+        "e966",
+        "e 966",
+        "e-966"
+      ],
+      "explanation": {
+        "en": "Lactitol is made from lactose, the sugar of milk.",
+        "de": "Lactit wird aus Laktose, dem Milchzucker, hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "quillaia",
+      "status": "plant",
+      "aliases": [
+        "quillaia extract",
+        "quillaja extract",
+        "quillajaextrakt",
+        "quillaia-extrakt",
+        "quillaja saponaria extract",
+        "quillaja",
+        "quillaia",
+        "kvillajaextrakt",
+        "seifenrindenextrakt",
+        "e999",
+        "e 999",
+        "e-999"
+      ],
+      "explanation": {
+        "en": "Quillaia extract comes from the bark of the soap bark tree.",
+        "de": "Quillajaextrakt stammt aus der Rinde des Seifenrindenbaums."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "amylase",
+      "status": "ambiguous",
+      "aliases": [
+        "amylase",
+        "amylases",
+        "amylasen",
+        "amylas",
+        "alpha-amylase",
+        "α-amylase",
+        "enzyme",
+        "enzymes",
+        "enzym",
+        "enzymer",
+        "lipase",
+        "lipasen",
+        "lipas",
+        "protease",
+        "proteasen",
+        "proteas",
+        "papain",
+        "bromelain",
+        "transglutaminase",
+        "xylanase",
+        "glucose oxidase",
+        "glucoseoxidase",
+        "mehlbehandlungsmittel",
+        "mjölbehandlingsmedel",
+        "flour treatment agent",
+        "flour treatment agents",
+        "e1100",
+        "e 1100",
+        "e-1100",
+        "e1104",
+        "e 1104",
+        "e-1104"
+      ],
+      "explanation": {
+        "en": "Enzymes such as amylase or lipase can be produced by microbes or taken from animal organs; the manufacturer can confirm the source.",
+        "de": "Enzyme wie Amylase oder Lipase können mikrobiell hergestellt oder aus tierischen Organen gewonnen werden; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "invertase",
+      "status": "plant",
+      "aliases": [
+        "invertase",
+        "invertas",
+        "saccharase",
+        "e1103",
+        "e 1103",
+        "e-1103"
+      ],
+      "explanation": {
+        "en": "Invertase is produced from yeast.",
+        "de": "Invertase wird aus Hefe gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "lysozyme",
+      "status": "animal",
+      "aliases": [
+        "lysozyme",
+        "lysozym",
+        "lysozim",
+        "egg white lysozyme",
+        "lysozym aus hühnereiweiß",
+        "lysozym (aus ei)",
+        "lysozyme (from egg)",
+        "e1105",
+        "e 1105",
+        "e-1105"
+      ],
+      "explanation": {
+        "en": "Lysozyme (E1105) is extracted from egg white.",
+        "de": "Lysozym (E1105) wird aus Hühnereiweiß gewonnen."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "polydextrose",
+      "status": "plant",
+      "aliases": [
+        "polydextrose",
+        "polydextros",
+        "e1200",
+        "e 1200",
+        "e-1200"
+      ],
+      "explanation": {
+        "en": "Polydextrose is made from glucose and sorbitol.",
+        "de": "Polydextrose wird aus Glukose und Sorbit hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "polyvinyl-compounds",
+      "status": "plant",
+      "aliases": [
+        "polyvinylpyrrolidone",
+        "polyvinylpyrrolidon",
+        "polyvinylpolypyrrolidone",
+        "polyvinylpolypyrrolidon",
+        "pvp",
+        "pvpp",
+        "povidone",
+        "povidon",
+        "crospovidone",
+        "crospovidon",
+        "polyvinyl alcohol",
+        "polyvinylalkohol",
+        "pva",
+        "pullulan",
+        "polyvinyl acetate",
+        "polyvinylacetat",
+        "pvp/va copolymer",
+        "vp/va copolymer",
+        "e1201",
+        "e 1201",
+        "e-1201",
+        "e1202",
+        "e 1202",
+        "e-1202",
+        "e1203",
+        "e 1203",
+        "e-1203",
+        "e1204",
+        "e 1204",
+        "e-1204",
+        "e1205",
+        "e 1205",
+        "e-1205",
+        "e1206",
+        "e 1206",
+        "e-1206",
+        "e1208",
+        "e 1208",
+        "e-1208",
+        "e1209",
+        "e 1209",
+        "e-1209"
+      ],
+      "explanation": {
+        "en": "Polyvinyl compounds such as povidone are synthetic polymers; pullulan is made by fermentation.",
+        "de": "Polyvinylverbindungen wie Povidon sind synthetische Polymere; Pullulan wird durch Fermentation hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "modified-starch",
+      "status": "plant",
+      "aliases": [
+        "oxidised starch",
+        "oxidized starch",
+        "oxidierte stärke",
+        "oxiderad stärkelse",
+        "monostarch phosphate",
+        "monostärkephosphat",
+        "distarch phosphate",
+        "distärkephosphat",
+        "distärkelsefosfat",
+        "phosphated distarch phosphate",
+        "phosphatiertes distärkephosphat",
+        "acetylated distarch phosphate",
+        "acetyliertes distärkephosphat",
+        "acetylerat distärkelsefosfat",
+        "acetylated starch",
+        "acetylierte stärke",
+        "acetylerad stärkelse",
+        "acetylated distarch adipate",
+        "acetyliertes distärkeadipat",
+        "acetylerat distärkelseadipat",
+        "hydroxypropyl starch",
+        "hydroxypropylstärke",
+        "hydroxipropylstärkelse",
+        "hydroxypropyl distarch phosphate",
+        "hydroxypropyldistärkephosphat",
+        "hydroxipropyldistärkelsefosfat",
+        "starch sodium octenyl succinate",
+        "stärkenatriumoctenylsuccinat",
+        "stärkelsenatriumoktenylsuccinat",
+        "acetylated oxidised starch",
+        "acetylierte oxidierte stärke",
+        "starch aluminium octenyl succinate",
+        "modified corn starch",
+        "modified maize starch",
+        "modifizierte maisstärke",
+        "modifierad majsstärkelse",
+        "modified potato starch",
+        "modifizierte kartoffelstärke",
+        "modifierad potatisstärkelse",
+        "modified tapioca starch",
+        "modifizierte tapiokastärke",
+        "modifierad tapiokastärkelse",
+        "modified waxy maize starch",
+        "modifizierte wachsmaisstärke",
+        "waxy maize starch",
+        "wachsmaisstärke",
+        "vaxmajsstärkelse",
+        "pregelatinised starch",
+        "pregelatinized starch",
+        "vorverkleisterte stärke",
+        "förklistrad stärkelse",
+        "dextrin",
+        "dextrine",
+        "dextriner",
+        "resistant dextrin",
+        "resistentes dextrin",
+        "e1404",
+        "e 1404",
+        "e-1404",
+        "e1410",
+        "e 1410",
+        "e-1410",
+        "e1412",
+        "e 1412",
+        "e-1412",
+        "e1413",
+        "e 1413",
+        "e-1413",
+        "e1414",
+        "e 1414",
+        "e-1414",
+        "e1420",
+        "e 1420",
+        "e-1420",
+        "e1422",
+        "e 1422",
+        "e-1422",
+        "e1440",
+        "e 1440",
+        "e-1440",
+        "e1442",
+        "e 1442",
+        "e-1442",
+        "e1450",
+        "e 1450",
+        "e-1450",
+        "e1451",
+        "e 1451",
+        "e-1451"
+      ],
+      "explanation": {
+        "en": "Modified starches are made from plant starch by physical, enzymatic or chemical treatment.",
+        "de": "Modifizierte Stärken werden aus pflanzlicher Stärke durch physikalische, enzymatische oder chemische Behandlung hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "triethyl-citrate",
+      "status": "plant",
+      "aliases": [
+        "triethyl citrate",
+        "triethylcitrat",
+        "trietylcitrat",
+        "e1505",
+        "e 1505",
+        "e-1505"
+      ],
+      "explanation": {
+        "en": "Triethyl citrate is made from citric acid and ethanol.",
+        "de": "Triethylcitrat wird aus Zitronensäure und Ethanol hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "glyceryl-acetates",
+      "status": "ambiguous",
+      "aliases": [
+        "glyceryl diacetate",
+        "diacetin",
+        "glycerindiacetat",
+        "glyceryl triacetate",
+        "triacetin",
+        "glycerintriacetat",
+        "triacetine",
+        "e1517",
+        "e 1517",
+        "e-1517",
+        "e1518",
+        "e 1518",
+        "e-1518"
+      ],
+      "explanation": {
+        "en": "Glyceryl acetates are made from glycerol, which can come from plant oils or animal fat.",
+        "de": "Glycerinacetate werden aus Glycerin hergestellt, das aus Pflanzenölen oder tierischem Fett stammen kann."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "benzyl-alcohol",
+      "status": "plant",
+      "aliases": [
+        "benzyl alcohol",
+        "benzylalkohol",
+        "bensylalkohol",
+        "e1519",
+        "e 1519",
+        "e-1519"
+      ],
+      "explanation": {
+        "en": "Benzyl alcohol is produced synthetically.",
+        "de": "Benzylalkohol wird synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
+      ]
+    },
+    {
+      "id": "propylene-glycol",
+      "status": "plant",
+      "aliases": [
+        "propylene glycol",
+        "propane-1,2-diol",
+        "propylenglycol",
+        "propylenglykol",
+        "1,2-propandiol",
+        "propandiol",
+        "propanediol",
+        "1,3-propanediol",
+        "polyethylene glycol",
+        "polyethylenglycol",
+        "polyethylenglykol",
+        "polyetylenglykol",
+        "macrogol",
+        "peg",
+        "peg-8",
+        "peg-32",
+        "peg-40",
+        "peg-75",
+        "peg-100",
+        "peg-150",
+        "peg-4",
+        "peg-6",
+        "peg-12",
+        "peg-20",
+        "peg-200",
+        "butylene glycol",
+        "butylenglycol",
+        "butylenglykol",
+        "pentylene glycol",
+        "pentylenglycol",
+        "hexylene glycol",
+        "caprylyl glycol",
+        "ethylhexylglycerin",
+        "dipropylene glycol",
+        "dipropylenglycol",
+        "e1520",
+        "e 1520",
+        "e-1520",
+        "e1521",
+        "e 1521",
+        "e-1521"
+      ],
+      "explanation": {
+        "en": "Propylene glycol, polyethylene glycols and related glycols are synthetic.",
+        "de": "Propylenglycol, Polyethylenglycole und verwandte Glykole sind synthetisch."
+      },
+      "sourceIds": [
+        "eu-food-additives-regulation",
+        "off-additives"
       ]
     }
   ]

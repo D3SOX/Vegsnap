@@ -33,9 +33,9 @@ describe('rule data', () => {
     }
     expect(collisions).toEqual([]);
   });
-  test('compound stems are animal aliases and plant exceptions are not', () => {
+  test('compound stems are animal aliases and plant exceptions never are', () => {
     for (const stem of rules.extendedMatching.compoundStems) expect(aliasRule.get(normalizeTerm(stem))?.status).toBe('animal');
-    for (const exception of rules.extendedMatching.plantExceptions) expect(aliasRule.get(normalizeTerm(exception))?.status ?? 'plant').toBe('plant');
+    for (const exception of rules.extendedMatching.plantExceptions) expect(aliasRule.get(normalizeTerm(exception))?.status ?? 'plant').not.toBe('animal');
   });
 });
 
@@ -50,7 +50,7 @@ describe('extended animal matching', () => {
   test('plant exceptions, negations, substitutes and flavours never match an animal rule', () => {
     for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'milchsäurebakterien',
       "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'ei sisällä maitoa']) {
-      expect(ruleForTerm(term)).toBeUndefined();
+      expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
   test('plant and ambiguous rules only match exactly', () => {
