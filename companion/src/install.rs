@@ -252,10 +252,14 @@ impl Layout {
     pub fn uninstall(&self) -> io::Result<()> {
         let target = self.binary();
         self.register(&target, &[])?;
-        remove(&target)?;
-        remove(&target.with_extension("old"))?;
+        remove_program(&target)?;
+        remove_program(&target.with_extension("old"))?;
         if self.os == Os::Windows {
-            for directory in ["Vegsnap/NativeMessagingHosts", "Vegsnap"] {
+            for directory in [
+                "Vegsnap/Companion",
+                "Vegsnap/NativeMessagingHosts",
+                "Vegsnap",
+            ] {
                 let _ = fs::remove_dir(join(&self.local, directory));
             }
         }
@@ -307,6 +311,21 @@ fn remove(path: &Path) -> io::Result<()> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error),
     }
+}
+
+/// Windows cannot delete a running program, such as this setup or a browser's host,
+/// but it can move it. Its temporary folder cleanup removes the moved copy later.
+fn remove_program(path: &Path) -> io::Result<()> {
+    let result = remove(path);
+    #[cfg(windows)]
+    if result.is_err() {
+        let moved =
+            std::env::temp_dir().join(format!("vegsnap-companion-{}.old", uuid::Uuid::new_v4()));
+        if fs::rename(path, moved).is_ok() {
+            return Ok(());
+        }
+    }
+    result
 }
 
 /// Writes a fresh file, so download quarantine attributes stay on the downloaded copy.
