@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { editableInput, historyExport, type HistoryResult } from '../src/history';
+import { editableInput, historyExport, sortHistory, type HistoryResult } from '../src/history';
 import { applyCommunityHistory, withoutCommunityHistory } from '../src/community-history';
 import type { CommunityReply } from '@vegsnap/core';
 
@@ -49,6 +49,12 @@ describe('local history export', () => {
     expect(historyExport([stored])).toEqual([result()]);
     expect(stored.input.text).toBe('Original label');
   });
+});
+
+test('history lists newest first by instant, not by timestamp text', () => {
+  const at = (id: string, checkedAt: string) => ({ ...result(), id, checkedAt });
+  const sorted = sortHistory([at('utc-early', '2026-10-05T09:00:00Z'), at('offset-late', '2026-10-05T12:00:00+02:00'), at('utc-late', '2026-10-05T11:00:00Z'), at('broken', 'yesterday')]);
+  expect(sorted.map(item => item.id)).toEqual(['utc-late', 'offset-late', 'utc-early', 'broken']);
 });
 
 describe('editing a checked product', () => {

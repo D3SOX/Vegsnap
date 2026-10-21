@@ -34,7 +34,7 @@ function validate(value: unknown, schema: Schema, root: Schema, path = '$'): str
       case 'properties': if (isObject(value)) for (const [key, sub] of Object.entries(rule as Record<string, Schema>)) if (key in value) errors.push(...validate(value[key], sub, root, `${path}.${key}`)); break;
       case 'required': if (isObject(value)) for (const key of rule as string[]) if (!(key in value)) fail(`missing ${key}`); break;
       case 'additionalProperties': if (rule === false && isObject(value)) for (const key of Object.keys(value)) if (!(key in ((schema.properties as Schema | undefined) ?? {}))) fail(`unexpected property ${key}`); break;
-      case 'items': if (Array.isArray(value)) value.forEach((item, index) => errors.push(...validate(item, rule as Schema, root, `${path}[${index}]`))); break;
+      case 'items': if (Array.isArray(value)) for (const [index, item] of value.entries()) errors.push(...validate(item, rule as Schema, root, `${path}[${index}]`)); break;
       case 'minItems': if (Array.isArray(value) && value.length < (rule as number)) fail('too few items'); break;
       case 'maxItems': if (Array.isArray(value) && value.length > (rule as number)) fail('too many items'); break;
       case 'uniqueItems': if (rule === true && Array.isArray(value) && new Set(value.map(item => JSON.stringify(item))).size !== value.length) fail('duplicate items'); break;
