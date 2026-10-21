@@ -65,6 +65,24 @@ jobs:
             | "$RUNNER_TEMP/vegsnap-companion" chrome-extension://pkkfmbgdbdoccbdngnbfpjjhpldmphej/ \
             | grep -a 'Unknown companion command'
 
+  companion-msrv:
+    # Each platform pulls a different keyring backend, so check the minimum Rust version on every released OS.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check the declared minimum Rust version
+        run: |
+          msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' companion/Cargo.toml)
+          rustup toolchain install "$msrv" --profile minimal
+          cargo "+$msrv" check --locked --manifest-path companion/Cargo.toml --all-targets
+
   ios:
     runs-on: macos-latest
     timeout-minutes: 30
