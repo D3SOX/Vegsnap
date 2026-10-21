@@ -31,7 +31,7 @@ export function browseSearchUrl(raw: BrowseSearch): string {
   const url = new URL('/cgi/search.pl', database(input.source).origin);
   const params = { search_terms: input.query, search_simple: '1', action: 'process', json: '1', page: String(input.cursor + 1), page_size: String(BROWSE_PAGE_SIZE),
     fields: `code,product_name,product_name_${input.locale},brands,ingredients_text,ingredients_text_${input.locale},countries,countries_tags,quantity,labels,last_modified_t`, lc: input.locale };
-  Object.entries(params).forEach(([name, value]) => url.searchParams.set(name, value));
+  for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
   return url.href;
 }
 /** Community records are drafts: never a complete label, a certification, or a vegan verdict. */

@@ -14,8 +14,8 @@ describe('vegan alternatives', () => {
     expect(alternativeQueryForProduct('Milk', '', ['milk'])).toBe('Milk');
   });
   test('public search falls back after a store outage and preserves store matches after a general outage', async () => {
-    let clock = Date.now(), requests = 0;
-    const time = spyOn(Date, 'now').mockImplementation(() => clock += 7000);
+    let clock = performance.now(), requests = 0;
+    const time = spyOn(performance, 'now').mockImplementation(() => clock += 7000);
     try {
       const fetcher = (failStore: boolean) => Object.assign(async (url: string | URL | Request) => {
         requests++;

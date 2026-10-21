@@ -15,9 +15,9 @@ const permissionListeners = new Set<() => void>();
 mock.module('wxt/browser', () => ({ browser: { runtime: { getURL: () => 'moz-extension://fixture/' },
   permissions: { onRemoved: { addListener: (fn: () => void) => permissionListeners.add(fn), removeListener: (fn: () => void) => permissionListeners.delete(fn) }, contains: async () => consent, request: async () => consent } } }));
 const originalFetch = globalThis.fetch;
-const now = Date.now;
+const now = performance.now.bind(performance);
 let clock = now();
-Date.now = () => clock += 7000; // Submitted-search pacing is covered in core; no wall-clock waits here.
+performance.now = () => clock += 7000; // Submitted-search pacing is covered in core; no wall-clock waits here.
 const urls: URL[] = [];
 let status = 200, networkDown = false, hold = false;
 let release: ((response: Response) => void) | undefined;
@@ -114,5 +114,5 @@ try {
   hold = false; release = undefined;
   console.log('Browse UI: submitted search, paging, cache, draft hand-off, rate limit, outage/offline fallback, consent and cancellation verified');
 } finally {
-  await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; Date.now = now; await window.happyDOM.close();
+  await act(() => render(null, root)); assert.equal(permissionListeners.size, 0, 'Unmount removes the revocation listener'); globalThis.fetch = originalFetch; performance.now = now; await window.happyDOM.close();
 }

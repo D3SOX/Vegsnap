@@ -14,18 +14,19 @@ function classify(error: unknown): PublicSearchError {
 // Open Facts search endpoints allow 10 searches/minute per client. Every submitted search
 // (alternatives and browsing alike) shares one queue, is paced, and is cached briefly.
 let queue = Promise.resolve();
-let lastStarted = 0;
+let lastStarted = -Infinity;
 const cache = new Map<string, { expires: number; document: unknown }>();
 export async function fetchPublicSearch(url: string, fetcher: typeof fetch, signal: AbortSignal | undefined, validate: (document: unknown) => void): Promise<unknown> {
   const run = queue.catch(() => {}).then(async () => {
     signal?.throwIfAborted();
     const cached = cache.get(url);
     if (cached && cached.expires > Date.now()) return cached.document;
-    // A clock that moved backwards cannot prove a recent request; only a measured gap delays the search.
-    const elapsed = Date.now() - lastStarted;
+    // performance.now() is monotonic, so pacing survives wall-clock adjustments; a negative gap can only
+    // come from a replaced clock and never stalls a search.
+    const elapsed = performance.now() - lastStarted;
     const wait = elapsed >= 0 && elapsed < 6100 ? 6100 - elapsed : 0;
     if (wait) await new Promise<void>(resolve => setTimeout(resolve, wait));
-    signal?.throwIfAborted(); lastStarted = Date.now();
+    signal?.throwIfAborted(); lastStarted = performance.now();
     try {
       const response = await fetcher(url, { credentials: 'omit', redirect: 'error', headers: { Accept: 'application/json' },
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(35000)]) : AbortSignal.timeout(35000) });

@@ -74,8 +74,8 @@ describe('database browsing', () => {
     expect(browseCheckInput({ ...record, source: 'obf', barcode: '', brand: '' })).toEqual({ text: 'Wasser, Hafer', name: 'Haferdrink', category: 'cosmetics', complete: false });
   });
   test('submitted searches classify failures and share one paced cache with alternative searches', async () => {
-    let clock = Date.now(), requests = 0, status = 200, networkFailure = false;
-    const time = spyOn(Date, 'now').mockImplementation(() => clock += 7000);
+    let clock = performance.now(), requests = 0, status = 200, networkFailure = false;
+    const time = spyOn(performance, 'now').mockImplementation(() => clock += 7000);
     const fetcher = Object.assign(async () => {
       requests++;
       if (networkFailure) throw new TypeError('fetch failed');
