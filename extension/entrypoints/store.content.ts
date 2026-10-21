@@ -24,12 +24,13 @@ export default defineContentScript({
     // Badges follow the language saved in Vegsnap, like the results they show; the browser language is only the first-launch default.
     function applyLanguage(value: unknown) {
       if (!languages.includes(value as Language) || value === language) return;
-      const previous = t;
       language = value as Language; t = storeMessages[language];
-      for (const host of badges.keys()) {
+      // Completed lookups carry result text in the old language, so every badge starts over.
+      for (const [host, binding] of badges) {
         const label = host.shadowRoot?.querySelector('span');
-        if (label?.textContent === previous.check) label.textContent = t.check;
-        else if (label?.textContent === previous.checking) label.textContent = t.checking;
+        if (label) label.textContent = t.check;
+        host.removeAttribute('title');
+        if (binding.product.barcode) { observer.unobserve(host); observer.observe(host); }
       }
     }
     const savedLanguage = (settings: unknown) => (settings as { language?: unknown } | undefined)?.language;

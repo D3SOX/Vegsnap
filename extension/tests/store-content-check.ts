@@ -130,7 +130,28 @@ try {
   assert.equal(badges().length, 0);
   assert.equal(runtimeListeners.size, 0);
   assert.equal(domListeners.size, 0);
-  console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, reinjection and disable cleanup verified');
+
+  document.body.innerHTML = await fixture('dm-current');
+  const lookups: ((response: unknown) => void)[] = [];
+  respond = message => message.type === 'background-check' ? new Promise(resolve => { lookups.push(resolve); }) : Promise.resolve({ ok: true, result: null });
+  const fourth = context(); script.main(fourth.ctx);
+  const languageHost = badges()[0]!;
+  const visibility = VisibilityObserver.instances.at(-1)!;
+  visibility.show(languageHost);
+  await settle();
+  lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Composition appears vegan', summary: 'Database evidence' } });
+  await settle();
+  assert.equal(button(languageHost).textContent, 'Vegsnap · Composition appears vegan');
+  assert.equal(languageHost.title, 'Database evidence');
+  assert(!visibility.observed.has(languageHost), 'A completed lookup is not repeated while the language stays the same');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  assert.equal(button(languageHost).textContent, 'Vegsnap · Kontrollera', 'A language switch resets completed badges');
+  assert.equal(languageHost.title, '');
+  assert(visibility.observed.has(languageHost), 'A reset badge is checked again in the new language once visible');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
+  fourth.invalidate();
+  assert.equal(badges().length, 0);
+  console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, language switches, reinjection and disable cleanup verified');
 } finally {
   const shared = globalThis as typeof globalThis & { __vegsnapStoreCleanup?: () => void };
   shared.__vegsnapStoreCleanup?.();

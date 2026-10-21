@@ -2920,6 +2920,7 @@
   "companion_browsers": {
     "en": "Browsers",
     "de": "Browser",
+    "sv": "Webbläsare",
     "companion": [
       "browsers"
     ]
@@ -2927,6 +2928,7 @@
   "companion_failed": {
     "en": "Setup failed: {error}",
     "de": "Einrichtung fehlgeschlagen: {error}",
+    "sv": "Installationen misslyckades: {error}",
     "companion": [
       "failed"
     ]
@@ -2934,6 +2936,7 @@
   "companion_install": {
     "en": "Install",
     "de": "Installieren",
+    "sv": "Installera",
     "companion": [
       "install"
     ]
@@ -2941,6 +2944,7 @@
   "companion_installed": {
     "en": "Done. Open Vegsnap's settings in your browser and choose Connect ChatGPT.",
     "de": "Fertig. Öffne die Vegsnap-Einstellungen in deinem Browser und wähle ChatGPT verbinden.",
+    "sv": "Klart. Öppna Vegsnaps inställningar i webbläsaren och välj Anslut ChatGPT.",
     "companion": [
       "installed"
     ]
@@ -2948,6 +2952,7 @@
   "companion_intro": {
     "en": "Connects the Vegsnap browser extension to your ChatGPT Plus or Pro plan. Choose the browsers where you use Vegsnap.",
     "de": "Verbindet die Vegsnap-Browsererweiterung mit deinem ChatGPT-Plus- oder Pro-Tarif. Wähle die Browser, in denen du Vegsnap nutzt.",
+    "sv": "Kopplar Vegsnaps webbläsartillägg till din ChatGPT Plus- eller Pro-prenumeration. Välj de webbläsare där du använder Vegsnap.",
     "companion": [
       "intro"
     ]
@@ -2955,6 +2960,7 @@
   "companion_license": {
     "en": "License",
     "de": "Lizenz",
+    "sv": "Licens",
     "companion": [
       "license"
     ]
@@ -2962,6 +2968,7 @@
   "companion_license_notice": {
     "en": "Vegsnap is free software under the GNU Affero General Public License 3.0 and comes without any warranty.",
     "de": "Vegsnap ist freie Software unter der GNU Affero General Public License 3.0 und kommt ohne jede Gewährleistung.",
+    "sv": "Vegsnap är fri programvara under GNU Affero General Public License 3.0 och levereras utan någon garanti.",
     "companion": [
       "license_notice"
     ]
@@ -2969,6 +2976,7 @@
   "companion_location": {
     "en": "Installed in {path}",
     "de": "Installiert in {path}",
+    "sv": "Installerad i {path}",
     "companion": [
       "location"
     ]
@@ -2976,6 +2984,7 @@
   "companion_registered": {
     "en": "Set up",
     "de": "Eingerichtet",
+    "sv": "Konfigurerad",
     "companion": [
       "registered"
     ]
@@ -2983,6 +2992,7 @@
   "companion_removed": {
     "en": "The desktop companion is no longer installed.",
     "de": "Der Desktop-Begleiter ist nicht mehr installiert.",
+    "sv": "Datorhjälparen är inte längre installerad.",
     "companion": [
       "removed"
     ]
@@ -2990,6 +3000,7 @@
   "companion_saved_accounts": {
     "en": "Uninstalling keeps saved ChatGPT accounts in your system's credential store. Remove them in Vegsnap's settings first.",
     "de": "Gespeicherte ChatGPT-Konten bleiben nach der Deinstallation im Anmeldespeicher deines Systems. Entferne sie vorher in den Vegsnap-Einstellungen.",
+    "sv": "Vid avinstallation finns sparade ChatGPT-konton kvar i systemets lösenordshanterare. Ta bort dem i Vegsnaps inställningar först.",
     "companion": [
       "saved_accounts"
     ]
@@ -2997,6 +3008,7 @@
   "companion_title": {
     "en": "Vegsnap desktop companion",
     "de": "Vegsnap Desktop-Begleiter",
+    "sv": "Vegsnaps datorhjälpare",
     "companion": [
       "title"
     ]
@@ -3004,6 +3016,7 @@
   "companion_uninstall": {
     "en": "Uninstall",
     "de": "Deinstallieren",
+    "sv": "Avinstallera",
     "companion": [
       "uninstall"
     ]
@@ -3011,6 +3024,7 @@
   "companion_update": {
     "en": "Update",
     "de": "Aktualisieren",
+    "sv": "Uppdatera",
     "companion": [
       "update"
     ]
@@ -3018,6 +3032,7 @@
   "companion_wallet": {
     "en": "ChatGPT credentials need an unlocked Secret Service wallet, such as KDE Wallet with Secret Service enabled.",
     "de": "Die Zugangsdaten benötigen eine entsperrte Secret-Service-Wallet, etwa KDE Wallet mit aktiviertem Secret Service.",
+    "sv": "ChatGPT-inloggningen kräver en upplåst Secret Service-plånbok, till exempel KDE Wallet med Secret Service aktiverat.",
     "companion": [
       "wallet"
     ]
