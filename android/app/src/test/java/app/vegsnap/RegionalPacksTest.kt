@@ -184,6 +184,14 @@ class RegionalPacksTest {
         custom.initialize()
         assertEquals("https://other.example/catalog.json", custom.state.value.catalogUrl)
     }
+    @Test fun `catalog cached before the weekly catalog is dropped on upgrade`() = withDatabase { database, folder ->
+        val directory = File(folder, "downloads").apply { mkdirs() }
+        val legacy = File(directory, "catalog.json").apply { writeBytes(catalog(descriptor(snapshot("Sweden")))) }
+        val packs = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        packs.initialize()
+        assertTrue(packs.state.value.packs.isEmpty())
+        assertFalse(legacy.exists())
+    }
     @Test fun `HTTPS release redirect follows without credentials and HTTP downgrade is rejected`() = runBlocking {
         MockWebServer().use { server ->
             val http = OkHttpClient.Builder().followRedirects(false).addInterceptor { chain ->

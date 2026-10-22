@@ -117,11 +117,14 @@ internal class RegionalPacks(private val directory: File, private val database: 
     private val mutableState = MutableStateFlow(RegionalPacksState())
     val state = mutableState.asStateFlow()
     private val settingsFile get() = File(directory, "catalog-source")
-    private val catalogFile get() = File(directory, "catalog.json")
+    // Caches written before catalog-v2 list frozen pack generations, so a new file name drops them on upgrade.
+    private val catalogFile get() = File(directory, "catalog-v2.json")
+    private val legacyCatalogFile get() = File(directory, "catalog.json")
 
     suspend fun initialize() = withContext(Dispatchers.IO) { lock.withLock { initializeLocked() } }
     private fun initializeLocked() {
         if (state.value.ready) return
+        legacyCatalogFile.delete()
         val source = settingsFile.takeIf { it.isFile && it.length() <= 2000 }?.readText()?.takeIf(::validPackUrl)
             ?.takeUnless { it == LEGACY_REGIONAL_CATALOG } ?: DEFAULT_REGIONAL_CATALOG
         val packs = runCatching {
