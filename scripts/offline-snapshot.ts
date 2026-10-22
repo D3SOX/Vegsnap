@@ -227,6 +227,7 @@ export async function selectFood(region: Region, rows: AsyncIterable<string>): P
     });
   }
   if (!columns) throw new Error('Empty food export');
+  if (groups.every(group => !group.length)) throw new Error('Export did not contain usable products');
   return groups.map((group, index) => group.sort(rank).slice(0, recipes[index]!.limit).map(entry => entry.row));
 }
 async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Promise<{ path: string; retrievedAt: string }> {
@@ -269,7 +270,13 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     log(`Offline ${region}: preparing off food export.`);
     const food = await foodExport(cache, now, options.fetcher ?? fetch);
     // The decompressed export is about 10 GB, so it is read line by line.
-    const groups = await selectFood(region, createInterface({ input: createReadStream(food.path).pipe(createGunzip()), crlfDelay: Infinity }));
+    let groups: unknown[][];
+    try { groups = await selectFood(region, createInterface({ input: createReadStream(food.path).pipe(createGunzip()), crlfDelay: Infinity })); }
+    catch (error) {
+      // A truncated or unusable download must not be reused from the cache on the next run.
+      await rm(`${food.path}.json`, { force: true }); await rm(food.path, { force: true });
+      throw error;
+    }
     const extra: { source: 'obf' | 'opf'; rows: unknown[]; retrievedAt: string }[] = [];
     if (options.includeNonfood !== false) {
       for (const source of ['obf', 'opf'] as const) {

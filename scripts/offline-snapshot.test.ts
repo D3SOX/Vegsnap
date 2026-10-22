@@ -116,8 +116,9 @@ describe('offline snapshot build', () => {
       const output = join(folder, 'pack.json');
       await expect(refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now: date, fetcher: (async () => new Response('', { status: 503 })), log: () => {} })).rejects.toThrow('HTTP 503');
       await expect(refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now: date, fetcher: (async () => exported([])), log: () => {} })).rejects.toThrow('usable');
+      await expect(refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now: date, fetcher: (async () => new Response(Bun.gzipSync(tsv([row])).subarray(0, 40))), log: () => {} })).rejects.toThrow();
       expect(await readdir(folder)).toEqual([]);
-      await rm(sourceCache, { recursive: true, force: true });
+      expect(await readdir(sourceCache)).toEqual([]);
       let requests = 0;
       const fetcher = (async () => { requests++; return exported([row]); });
       expect(await refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now: date, fetcher, log: () => {} })).toBe('updated');
