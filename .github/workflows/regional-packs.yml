@@ -48,13 +48,6 @@ jobs:
           # Packs are immutable assets named after their generation time; the catalog switches to them only once they exist.
           gh release upload offline-data pack-release/{germany,sweden,eu}-*.json --repo "$GITHUB_REPOSITORY"
           gh release upload offline-data pack-release/catalog-v2.json --repo "$GITHUB_REPOSITORY" --clobber
-          # Pack generations the catalog no longer references stay for four weekly cycles so catalogs cached by the apps keep downloading. catalog.json and its unversioned packs stay frozen for clients released before 20 MB packs.
-          referenced=$(jq -r '.packs[].url | sub(".*/"; "")' pack-release/catalog-v2.json)
-          cutoff=$(date -u -d '28 days ago' +%Y%m%d%H%M%S)
-          for asset in $(gh release view offline-data --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
-            case "$asset" in
-              germany-*.json|sweden-*.json|eu-*.json)
-                generation=${asset##*-}; generation=${generation%.json}
-                grep -qxF "$asset" <<<"$referenced" || [ "$generation" -ge "$cutoff" ] || gh release delete-asset offline-data "$asset" --repo "$GITHUB_REPOSITORY" --yes ;;
-            esac
-          done
+          # Published pack generations are never deleted: apps cache catalogs without an expiry, so any
+          # catalog a device has seen must keep downloading. catalog.json and its unversioned packs stay
+          # frozen for clients released before 20 MB packs.
