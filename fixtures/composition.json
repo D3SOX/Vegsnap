@@ -1974,5 +1974,71 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "generic-dashi-is-source-dependent",
+    "input": {
+      "text": "Ingredients: kombu dashi, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "fish-dashi-is-animal",
+    "input": {
+      "text": "Ingredients: katsuo dashi, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "unsourced-calcium-carbonate-is-source-dependent",
+    "input": {
+      "text": "Ingredients: sugar, calcium carbonate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "e170-and-chalk-are-mineral",
+    "input": {
+      "text": "Ingredients: sugar, E170, chalk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-activated-charcoal-is-source-dependent",
+    "input": {
+      "text": "Ingredients: sugar, activated charcoal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "vegetable-carbon-and-coconut-charcoal-are-plant",
+    "input": {
+      "text": "Ingredients: sugar, vegetable carbon, coconut charcoal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

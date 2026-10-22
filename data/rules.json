@@ -1518,7 +1518,6 @@
         "anchovy extract",
         "sardellenextrakt",
         "ansjovisextrakt",
-        "dashi",
         "fish paste",
         "fischpaste",
         "fiskpasta",
@@ -1575,7 +1574,13 @@
         "skaldjur och fisk",
         "omega-3 fish oil",
         "omega-3-fischöl",
-        "omega-3 fiskolja"
+        "omega-3 fiskolja",
+        "katsuo dashi",
+        "bonito dashi",
+        "niboshi dashi",
+        "fish dashi",
+        "fischdashi",
+        "fiskdashi"
       ],
       "explanation": {
         "en": "Fish and fish oil are animal-derived.",
@@ -6935,26 +6940,53 @@
         "pflanzenkohle",
         "vegetabiliskt kol",
         "carbon black",
-        "activated charcoal",
-        "activated carbon",
-        "aktivkohle",
-        "aktivt kol",
-        "charcoal powder",
         "bamboo charcoal",
         "bambuskohle",
         "ci 77266",
         "ci 77268",
         "e153",
         "e 153",
-        "e-153"
+        "e-153",
+        "coconut charcoal",
+        "activated coconut charcoal",
+        "coconut shell activated carbon",
+        "kokoskohle",
+        "kokosaktivkohle",
+        "wood charcoal",
+        "holzkohle",
+        "träkol"
       ],
       "explanation": {
-        "en": "Vegetable carbon and activated charcoal are made by charring plant material such as wood or coconut shells.",
-        "de": "Pflanzenkohle und Aktivkohle entstehen durch Verkohlen von Pflanzenmaterial wie Holz oder Kokosschalen."
+        "en": "Vegetable carbon (E153) and coconut, bamboo or wood charcoal are made by charring plant material.",
+        "de": "Pflanzenkohle (E153) sowie Kokos-, Bambus- oder Holzkohle entstehen durch Verkohlen von Pflanzenmaterial."
       },
       "sourceIds": [
         "eu-food-additives-regulation",
         "off-additives"
+      ]
+    },
+    {
+      "id": "activated-charcoal",
+      "status": "ambiguous",
+      "aliases": [
+        "activated charcoal",
+        "activated carbon",
+        "aktivkohle",
+        "aktivt kol",
+        "charcoal powder",
+        "activated charcoal powder",
+        "aktivkohlepulver",
+        "charcoal",
+        "carbo activatus",
+        "carbo medicinalis"
+      ],
+      "explanation": {
+        "en": "Activated charcoal is mostly made from coconut shells, wood or peat, but bone charcoal is also sold as activated carbon; the label needs to name the source.",
+        "de": "Aktivkohle wird meist aus Kokosschalen, Holz oder Torf hergestellt, aber auch Knochenkohle wird als Aktivkohle verkauft; das Etikett muss die Quelle nennen."
+      },
+      "sourceIds": [
+        "off-additives",
+        "peta-animal-ingredients"
       ]
     },
     {
@@ -7246,14 +7278,6 @@
       "id": "calcium-carbonate",
       "status": "plant",
       "aliases": [
-        "calcium carbonate",
-        "calcium carbonates",
-        "calciumcarbonat",
-        "calciumcarbonate",
-        "kalziumkarbonat",
-        "kalziumcarbonat",
-        "kalciumkarbonat",
-        "ci 77220",
         "e170",
         "e 170",
         "e-170",
@@ -7282,8 +7306,8 @@
         "slammad krita"
       ],
       "explanation": {
-        "en": "Calcium carbonate is a mineral or synthetic substance without animal content.",
-        "de": "Calciumcarbonat ist ein mineralischer oder synthetischer Stoff ohne tierische Bestandteile."
+        "en": "E170, chalk, limestone, calcite and precipitated calcium carbonate are mined or synthetic calcium carbonate without animal content.",
+        "de": "E170, Kreide, Kalkstein, Calcit und gefälltes Calciumcarbonat sind abgebautes oder synthetisches Calciumcarbonat ohne tierische Bestandteile."
       },
       "sourceIds": [
         "eu-food-additives-regulation",
@@ -12399,11 +12423,19 @@
         "kalsium",
         "calcium salts",
         "calciumsalze",
-        "kalciumsalter"
+        "kalciumsalter",
+        "calcium carbonate",
+        "calcium carbonates",
+        "calciumcarbonat",
+        "calciumcarbonate",
+        "kalziumkarbonat",
+        "kalziumcarbonat",
+        "kalciumkarbonat",
+        "ci 77220"
       ],
       "explanation": {
-        "en": "Calcium can be added as a mineral salt, from algae, or from milk, bones or shells; the label usually names the compound.",
-        "de": "Calcium kann als mineralisches Salz, aus Algen oder aus Milch, Knochen oder Schalen zugesetzt werden; das Etikett nennt meist die Verbindung."
+        "en": "Calcium can be added as a mineral salt, from algae, or from milk, bones or shells, and unsourced calcium carbonate is also made from oyster shells; the label needs to name the compound and its source.",
+        "de": "Calcium kann als mineralisches Salz, aus Algen oder aus Milch, Knochen oder Schalen zugesetzt werden, und Calciumcarbonat ohne Quellenangabe wird auch aus Austernschalen gewonnen; das Etikett muss Verbindung und Quelle nennen."
       },
       "sourceIds": [
         "eu-fortification-regulation",
@@ -12759,7 +12791,8 @@
         "sambal",
         "pâté",
         "pastete",
-        "pastej"
+        "pastej",
+        "dashi"
       ],
       "explanation": {
         "en": "Stock, sauces, dressings, fillings and prepared components can contain meat, fish, egg or dairy; the label needs to list their components.",
