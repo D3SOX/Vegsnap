@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { checkProduct, createOpenAIProvider, selectProductCountry, type AIExtraction } from '../src';
+import { checkProduct, createOpenAIProvider, packRegionName, selectProductCountry, type AIExtraction } from '../src';
 import { OfflineProductIndex, type OfflineSnapshot } from '../src/offline';
 import { lookupProduct } from '../src/database';
 
@@ -149,4 +149,11 @@ test('remote research cannot assess a different country selected from a local ba
   expect(result.basis).not.toBe('manufacturer');
   expect(result.manufacturerContact).toBeUndefined();
   expect(result.warnings.join(' ')).toContain('Web evidence was not used');
+});
+
+test('pack regions read as localized country names, keeping unknown regions verbatim', () => {
+  expect(['united-kingdom', 'switzerland', 'eu', 'de-eu', 'fixture'].map(region => packRegionName(region, 'en')))
+    .toEqual(['United Kingdom', 'Switzerland', 'European Union', 'Germany + European Union', 'fixture']);
+  expect(['united-states', 'de-eu'].map(region => packRegionName(region, 'de'))).toEqual(['Vereinigte Staaten', 'Deutschland + Europäische Union']);
+  expect(packRegionName('netherlands', 'sv')).toBe('Nederländerna');
 });

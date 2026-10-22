@@ -99,7 +99,7 @@ struct SettingsView: View {
             Section {
                 ForEach(Array(store.packs.enumerated()), id: \.offset) { index, pack in
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(pack.region).font(.headline)
+                        Text(packRegionName(pack.region)).font(.headline)
                         Text("\(pack.count) " + L("products") + " · " + String(pack.generatedAt.prefix(10))).font(.caption).foregroundStyle(.secondary)
                         if index > 0 { Button(L("Remove pack"), role: .destructive) { store.removePack(pack.region) } }
                         else { Text(L("Bundled snapshot")).font(.caption).foregroundStyle(.secondary) }
@@ -109,7 +109,7 @@ struct SettingsView: View {
                 TextField(L("Regional catalog URL"), text: $store.settings.catalogURL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button(L("Refresh regional catalog")) { store.refreshCatalog() }.disabled(store.settings.offline || store.packBusy)
                 if store.packBusy { ProgressView(L("Loading pack…")); Button(L("Cancel")) { store.cancelPack() } }
-                ForEach(store.catalog) { pack in Button { store.downloadPack(pack) } label: { VStack(alignment: .leading) { Text(pack.region); Text("\(pack.products) " + L("products") + " · " + ByteCountFormatter.string(fromByteCount: Int64(pack.bytes), countStyle: .file)).font(.caption).foregroundStyle(.secondary) } }.disabled(store.settings.offline || store.packBusy) }
+                ForEach(store.catalog) { pack in Button { store.downloadPack(pack) } label: { VStack(alignment: .leading) { Text(packRegionName(pack.region)); Text("\(pack.products) " + L("products") + " · " + ByteCountFormatter.string(fromByteCount: Int64(pack.bytes), countStyle: .file)).font(.caption).foregroundStyle(.secondary) } }.disabled(store.settings.offline || store.packBusy) }
             } header: { Text(L("Offline product databases")) } footer: { Text(L("Partial snapshots can be outdated. Open Facts data: ODbL-1.0; individual contents: DBCL-1.0.")) }
             Section(L("Community manufacturer replies")) {
                 Button(L("Restore hidden replies")) { store.restoreReplies() }.disabled(store.hiddenReplies.isEmpty)

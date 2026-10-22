@@ -116,6 +116,20 @@ struct CheckJob: Codable, Identifiable {
 struct PackInfo: Codable, Identifiable { var region: String; var generatedAt: String; var count: Int; var id: String { region } }
 struct PackDescriptor: Codable, Identifiable { var id: String; var region: String; var url: String; var bytes: Int; var sha256: String; var generatedAt: String; var products: Int }
 struct PackCatalog: Codable { var schemaVersion: Int; var packs: [PackDescriptor] }
+private let regionCodes = Locale.Region.isoRegions.map(\.identifier).filter { $0.count == 2 }
+private func regionKey(_ value: String) -> String { value.lowercased().filter(\.isLetter) }
+private let englishRegionCodes = Dictionary(regionCodes.compactMap { code in Locale(identifier: "en").localizedString(forRegionCode: code).map { (regionKey($0), code) } }, uniquingKeysWith: { first, _ in first })
+private func packRegionCode(_ value: String) -> String? {
+    let code = value.uppercased()
+    return code == "EU" || regionCodes.contains(code) ? code : englishRegionCodes[regionKey(value)]
+}
+/// Pack regions are Open Food Facts country names ("united-kingdom"), "eu" or code pairs such as the bundled "de-eu"; other regions keep their own text. Keep in sync with core/market.ts.
+func packRegionName(_ region: String, locale: Locale = .current) -> String {
+    let name = { (code: String) in locale.localizedString(forRegionCode: code) ?? code }
+    if let code = packRegionCode(region) { return name(code) }
+    let parts = region.split(separator: "-").map { $0.count == 2 ? packRegionCode(String($0)) : nil }
+    return parts.count > 1 && parts.allSatisfy { $0 != nil } ? parts.compactMap { $0 }.map(name).joined(separator: " + ") : region
+}
 struct ManufacturerMessage: Codable { var subject: String; var body: String; var mailto: String? }
 struct CommunityLinks: Codable {
     var submit: String; var replies: String

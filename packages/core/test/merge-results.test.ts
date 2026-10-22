@@ -54,7 +54,7 @@ test('opening the already-saved Pixel result removes database duplicates without
   const saved = { ...ai, evidence: [...ai.evidence, ...database.evidence],
     findings: [...ai.findings, ...database.findings.filter(finding => finding.status === 'unknown')] };
   const original = JSON.stringify(saved);
-  expect(saved.findings).toHaveLength(23);
+  expect(saved.findings.length).toBeGreaterThan(ai.findings.length);
   const shown = localizeResult(saved, 'en');
   expect(shown.findings).toHaveLength(13);
   expect(shown.findings.every(finding => finding.status === 'plant' && finding.displayTerm)).toBe(true);

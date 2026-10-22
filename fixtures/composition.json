@@ -2161,5 +2161,335 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "fr-skimmed-milk-powder",
+    "input": {
+      "text": "Ingrédients : farine de blé, sucre, lait écrémé en poudre, sel",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "es-eggs",
+    "input": {
+      "text": "Ingredientes: harina de trigo, azúcar, huevos, sal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "it-honey",
+    "input": {
+      "text": "Ingredienti: fiocchi di avena, miele, olio di girasole",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "nl-compound-milk-powder",
+    "input": {
+      "text": "Ingrediënten: suiker, cacaoboter, volle melkpoeder, emulgator: sojalecithine",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "nl-anchovy-extract-compound",
+    "input": {
+      "text": "Ingrediënten: sojasaus, ansjovisextract, suiker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-organic-footnote-keeps-milk",
+    "input": {
+      "text": "Ingrédients : lait entier issu de l'agriculture biologique, ferments lactiques",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "aquaculture-is-not-a-culture-modifier",
+    "input": {
+      "text": "Ingredients: salmon from aquaculture, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-dash-list-keeps-eggs-after-vegetable-oil",
+    "input": {
+      "text": "Ingrédients : farine de blé - huile végétale de colza - oeufs entiers - sel",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "us-oil-choice-is-not-a-precaution",
+    "input": {
+      "text": "Ingredients: wheat flour, vegetable oil (may contain one or more of the following: canola, soybean), buttermilk, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-coconut-milk-and-cocoa-butter",
+    "input": {
+      "text": "Ingrédients : eau, lait de coco, beurre de cacao, sucre",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "nl-peanut-butter",
+    "input": {
+      "text": "Ingrediënten: pinda's, zout, pindakaas",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-precaution",
+    "input": {
+      "text": "Ingrédients : farine de blé, eau, sel. Peut contenir des traces de lait.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "nl-precaution",
+    "input": {
+      "text": "Ingrediënten: tarwebloem, water, zout, gist. Kan sporen van melk en ei bevatten.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-accented-additive-role-group",
+    "input": {
+      "text": "Ingrédients : sucre, émulsifiant (lécithine de soja), cacao",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "it-html-quoted-flour-type",
+    "input": {
+      "text": "Ingredienti: farina di grano tenero tipo &quot;00&quot;, acqua, sale",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "footnote-digits",
+    "input": {
+      "text": "Ingredients: cocoa mass1, cocoa butter1, sugar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "es-e-number-spellings",
+    "input": {
+      "text": "Ingredientes: agua, azúcar, e-330, e500ii",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "au-bare-ins-number",
+    "input": {
+      "text": "Ingredients: wheat flour, water, food acid (330), salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "au-bare-ins-number-ambiguous",
+    "input": {
+      "text": "Ingredients: wheat flour, water, emulsifier (471), salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "acid-role-before-colon",
+    "input": {
+      "text": "Ingredients: water, acid : citric acid, sugar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "no-milk-powder-compound",
+    "input": {
+      "text": "Ingredienser: hvetemel, sukker, helmelkpulver, rapsolje, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "da-egg-yolk",
+    "input": {
+      "text": "Ingredienser: hvedemel, vand, æggeblomme, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fi-skimmed-milk-powder",
+    "input": {
+      "text": "Ainesosat: vehnäjauho, sokeri, rasvaton maitojauhe, suola",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fi-butter-alone",
+    "input": {
+      "text": "Ainesosat: vehnäjauho, voi, sokeri",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "no-precaution",
+    "input": {
+      "text": "Ingredienser: hvetemel, vann, gjær, salt. Kan inneholde spor av egg og melk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "da-precaution",
+    "input": {
+      "text": "Ingredienser: rugmel, vand, gær, salt. Kan indeholde spor af mælk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fi-precaution-voi-is-may",
+    "input": {
+      "text": "Ainesosat: kaurahiutale, sokeri, rypsiöljy, suola. Voi sisältää pieniä määriä maitoa.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fi-caraway-is-not-cheese",
+    "input": {
+      "text": "Ainesosat: suola, juustokumina, valkosipuli, mustapippuri",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fi-bold-allergen-note-is-not-meat",
+    "input": {
+      "text": "Ainesosat: vehnäjauho, vesi, hiiva, suola. Lihavoidut ainesosat ovat allergeeneja.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "no-cocoa-butter",
+    "input": {
+      "text": "Ingredienser: sukker, kakaomasse, kakaosmør, soyalecitin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

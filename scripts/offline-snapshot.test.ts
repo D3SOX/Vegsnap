@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CACHE_TTL_MS, createSnapshot, normalizeProduct, refreshSnapshot, regionQueries, parseTsv, selectFood } from './offline-snapshot';
+import { CACHE_TTL_MS, createSnapshot, normalizeProduct, refreshSnapshot, refreshSnapshots, regionQueries, parseTsv, selectFood } from './offline-snapshot';
 
 const row = { code: '4000417025005', product_name: 'Fixture chocolate', brands: 'Fixture', ingredients_text: 'Cocoa, sugar',
   countries_tags: 'en:germany', last_modified_t: 1_700_000_000 };
@@ -47,12 +47,25 @@ describe('offline snapshot build', () => {
       swedish,
       { ...row, code: '5000112548167', countries_tags: 'en:france', unique_scans_n: 40 },
     ]);
-    const [germany, sweden, eu] = await selectFood('de-eu', lines(text));
+    const [germany, sweden, eu] = (await selectFood(['de-eu'], lines(text)))[0]!;
     expect(germany!.map(item => (item as { code: string }).code)).toEqual(['4000417025203', '4000417025005', '4000417025104']);
     expect((germany![1] as { product_name: string }).product_name).toBe('"Bio" Schokolade');
     expect(sweden!.map(item => (item as { code: string }).code)).toEqual(['7310865004703']);
     expect(eu!.map(item => (item as { code: string }).code)).toEqual(['5000112548167']);
-    await expect(selectFood('germany', lines('code\tproduct_name\n'))).rejects.toThrow('Missing food export columns');
+    await expect(selectFood(['germany'], lines('code\tproduct_name\n'))).rejects.toThrow('Missing food export columns');
+  });
+  test('one export pass fills every requested pack with its own countries', async () => {
+    const text = tsv([
+      { ...row, unique_scans_n: 5 },
+      { ...row, code: '5000112548167', countries_tags: 'en:ireland,en:united-kingdom', unique_scans_n: 9 },
+      { ...row, code: '7310865004703', countries_tags: 'en:switzerland', unique_scans_n: 7 },
+      { ...row, code: '4000417025104', countries_tags: 'en:japan', unique_scans_n: 99 },
+    ]);
+    const codes = (groups: unknown[][]) => groups.map(group => group.map(item => (item as { code: string }).code));
+    const [germany, kingdom, ireland, switzerland, eu] = await selectFood(['germany', 'united-kingdom', 'ireland', 'switzerland', 'eu'], lines(text));
+    expect([germany, kingdom, ireland, switzerland, eu].map(groups => codes(groups!))).toEqual([
+      [['4000417025005']], [['5000112548167']], [['5000112548167']], [['7310865004703']], [['5000112548167', '4000417025005']]]);
+    expect(createSnapshot('switzerland', switzerland!, date).products.map(product => product.countries_tags)).toEqual([['en:switzerland']]);
   });
   test('non-food sources keep individual retrieval dates and original composition', () => {
     const older = '2026-10-04T12:00:00.000Z';
@@ -129,6 +142,21 @@ describe('offline snapshot build', () => {
       expect(requests).toBe(1);
       expect(refreshed.products[0].code).toBe(row.code);
       expect(await readdir(folder)).toEqual(['pack.json']);
+    } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
+  });
+  test('several packs share one export download and keep their cached siblings', async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-')), sourceCache = await mkdtemp(join(tmpdir(), 'vegsnap-offline-cache-'));
+    try {
+      const cached = createSnapshot('sweden', [[{ ...row, code: '7310865004703', countries_tags: 'en:sweden' }]], date);
+      await writeFile(join(folder, 'sweden.json'), JSON.stringify(cached));
+      let requests = 0;
+      const fetcher = (async () => { requests++; return exported([row, { ...row, code: '5000112548167', countries_tags: 'en:united-kingdom' }]); });
+      const packs = (['germany', 'united-kingdom', 'sweden'] as const).map(region => ({ region, output: join(folder, `${region}.json`) }));
+      expect(await refreshSnapshots(packs, { sourceCache, includeNonfood: false, now: new Date(+date + 60_000), fetcher, log: () => {} })).toEqual(['updated', 'updated', 'cached']);
+      expect(requests).toBe(1);
+      const kingdom = JSON.parse(await readFile(join(folder, 'united-kingdom.json'), 'utf8'));
+      expect([kingdom.region, kingdom.products.map((product: { code: string }) => product.code)]).toEqual(['united-kingdom', ['5000112548167']]);
+      expect(JSON.parse(await readFile(join(folder, 'sweden.json'), 'utf8'))).toEqual(cached);
     } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
   });
 });

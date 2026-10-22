@@ -13,8 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.Instant
@@ -113,7 +114,7 @@ internal fun RegionalPacksSheet(
                 val current = installed?.sha256 == pack.sha256 || installed != null && Instant.parse(installed.generatedAt) > Instant.parse(pack.generatedAt)
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(pack.region, style = MaterialTheme.typography.titleMedium)
+                        Text(packRegionName(pack.region, LocalConfiguration.current.locales[0]), style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(R.string.offline_download_summary, pack.products, pack.bytes / 1_000_000.0, pack.generatedAt.take(10)), style = MaterialTheme.typography.bodySmall)
                         if (downloads.downloading == pack.id) {
                             LinearProgressIndicator(progress = { (downloads.downloadedBytes.toFloat() / pack.bytes).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -134,6 +135,6 @@ internal fun RegionalPacksSheet(
 
 @Composable
 private fun PackSummary(info: OfflinePackInfo) {
-    Text(stringResource(R.string.offline_pack_summary, info.region, info.count, info.generatedAt.take(10)), style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.offline_pack_summary, packRegionName(info.region, LocalConfiguration.current.locales[0]), info.count, info.generatedAt.take(10)), style = MaterialTheme.typography.bodySmall)
     Text(info.sources + " · ODbL-1.0", style = MaterialTheme.typography.bodySmall)
 }
