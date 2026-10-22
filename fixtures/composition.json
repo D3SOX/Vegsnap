@@ -1432,5 +1432,129 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "slash-ends-a-flavour-phrase-for-the-ai-guard",
+    "input": {
+      "text": "Ingredients: sugar, natural flavouring / milk powder",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "sugar"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "slash-ends-a-modifier-phrase",
+    "input": {
+      "text": "Ingredients: sugar, natural flavouring / milk powder, milk powder/natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "hyphen-slash-shares-one-animal-head",
+    "input": {
+      "text": "Ingredienser: socker, mjölk-/mælkepulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "hyphen-slash-shares-one-modifier-head",
+    "input": {
+      "text": "Zutaten: Zucker, Huhn-/Pouletgeschmack, Milch-/Mjölkaroma",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-astaxanthin-is-source-dependent",
+    "input": {
+      "text": "Ingredients: astaxanthin, E161j",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-astaxanthin-is-source-dependent-sv",
+    "input": {
+      "text": "Ingredienser: astaxantin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "algal-astaxanthin-is-plant",
+    "input": {
+      "text": "Ingredients: algal astaxanthin, Haematococcus pluvialis extract, Astaxanthin aus Algen, astaxanthin från alger",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-amino-acids-are-source-dependent",
+    "input": {
+      "text": "Ingredients: L-leucine, L-isoleucine, L-valine, Tyrosin, Prolin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "sourced-amino-acids-and-synthetic-nutrients-are-plant",
+    "input": {
+      "text": "Ingredients: wheat amino acids, betaine, creatine, taurine, L-carnitine",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fatty-alcohol-ethers-and-lactate-salts-are-source-dependent",
+    "input": {
+      "text": "Ingredients: aqua, PPG-15 stearyl ether, cetyl dimethicone, sorbitan caprylate, zinc lactate",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-sambal-is-source-dependent",
+    "input": {
+      "text": "Ingredients: rice, sambal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]

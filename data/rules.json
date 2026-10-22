@@ -500,6 +500,11 @@
       "id": "eu-fortification-regulation",
       "url": "https://eur-lex.europa.eu/eli/reg/2006/1925/oj",
       "title": "Regulation (EC) No 1925/2006: vitamin and mineral forms permitted for addition to foods"
+    },
+    {
+      "id": "efsa-astaxanthin",
+      "url": "https://doi.org/10.2903/j.efsa.2020.5993",
+      "title": "EFSA: astaxanthin as a novel food from Haematococcus pluvialis alongside dietary astaxanthin from fish and crustaceans"
     }
   ],
   "rules": [
@@ -7041,6 +7046,25 @@
       ]
     },
     {
+      "id": "astaxanthin",
+      "status": "ambiguous",
+      "aliases": [
+        "astaxanthin",
+        "astaxantin",
+        "astaxanthine",
+        "e161j",
+        "e 161j",
+        "e-161j"
+      ],
+      "explanation": {
+        "en": "Astaxanthin is extracted from the alga Haematococcus pluvialis, but it also comes from crustaceans such as krill and shrimp or from synthesis; the manufacturer can confirm the source.",
+        "de": "Astaxanthin wird aus der Alge Haematococcus pluvialis gewonnen, stammt aber auch aus Krebstieren wie Krill und Garnelen oder aus Synthese; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "efsa-astaxanthin"
+      ]
+    },
+    {
       "id": "beetroot-red",
       "status": "plant",
       "aliases": [
@@ -7982,7 +8006,9 @@
         "e-329",
         "e585",
         "e 585",
-        "e-585"
+        "e-585",
+        "zinc lactate",
+        "zinklactat"
       ],
       "explanation": {
         "en": "Lactates are salts of lactic acid, which is usually fermented from plant sugars but can use a dairy-based medium.",
@@ -9183,7 +9209,8 @@
         "e-494",
         "e495",
         "e 495",
-        "e-495"
+        "e-495",
+        "sorbitan caprylate"
       ],
       "explanation": {
         "en": "Sorbitan esters are made with fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
@@ -12605,7 +12632,8 @@
         "red curry paste",
         "green curry paste",
         "rote currypaste",
-        "grüne currypaste"
+        "grüne currypaste",
+        "sambal"
       ],
       "explanation": {
         "en": "Stock, sauces, dressings, fillings and prepared components can contain meat, fish, egg or dairy; the label needs to list their components.",
@@ -13825,7 +13853,6 @@
         "chiliöl",
         "chiliolja",
         "sriracha",
-        "sambal",
         "sambal oelek",
         "gochugaru",
         "cayenne",
@@ -15237,7 +15264,11 @@
         "cetyl lactate",
         "stearyl lactate",
         "c10-18 triglycerides",
-        "c12-18 triglycerides"
+        "c12-18 triglycerides",
+        "ppg-15 stearyl ether",
+        "ppg-3 benzyl ether myristate",
+        "ppg-2 myristyl ether propionate",
+        "cetyl dimethicone"
       ],
       "explanation": {
         "en": "Fatty alcohols, fatty esters, glyceryl esters and their ethoxylates are made from fatty acids that can come from plant oils or animal fat; the manufacturer can confirm the source.",
@@ -15397,9 +15428,6 @@
         "ethylhexyl isononanoate",
         "isononyl isononanoate",
         "isopropyl lauroyl sarcosinate",
-        "ppg-15 stearyl ether",
-        "ppg-3 benzyl ether myristate",
-        "ppg-2 myristyl ether propionate",
         "ethylhexyl hydroxystearate",
         "butyloctyl salicylate",
         "phenoxyethyl caprylate",
@@ -15409,7 +15437,6 @@
         "dimethicone/vinyl dimethicone crosspolymer",
         "peg-12 dimethicone",
         "peg/ppg-18/18 dimethicone",
-        "cetyl dimethicone",
         "bis-peg-18 methyl ether dimethyl silane",
         "silica silylate",
         "lauroyl lysine",
@@ -15638,7 +15665,6 @@
         "phytic acid",
         "phytinsäure",
         "fytinsyra",
-        "sorbitan caprylate",
         "tetrasodium glutamate diacetate",
         "tetranatriumglutamatdiacetat",
         "trisodium ethylenediamine disuccinate"
@@ -15905,6 +15931,46 @@
         "apple amino acids",
         "vegetable amino acids",
         "plant amino acids",
+        "sodium pca",
+        "pca",
+        "natrium-pca",
+        "betaine",
+        "betain",
+        "betaín",
+        "trimethylglycine",
+        "creatine",
+        "kreatin",
+        "taurine",
+        "taurin",
+        "carnitine",
+        "l-carnitine",
+        "carnitin",
+        "l-carnitin",
+        "karnitin",
+        "l-theanine",
+        "theanin",
+        "beta-alanine",
+        "beta-alanin",
+        "citrulline",
+        "citrullin",
+        "ornithine",
+        "ornithin",
+        "glutathione",
+        "glutathion"
+      ],
+      "explanation": {
+        "en": "Hydrolysed plant proteins, amino acids with a named plant source and nutrients such as creatine, taurine, carnitine and betaine are made from plant proteins, by fermentation or synthetically.",
+        "de": "Hydrolysierte Pflanzenproteine, Aminosäuren mit benannter pflanzlicher Quelle und Nährstoffe wie Kreatin, Taurin, Carnitin und Betain werden aus Pflanzenproteinen, durch Fermentation oder synthetisch hergestellt."
+      },
+      "sourceIds": [
+        "cosing",
+        "efsa-cysteine-fermentation"
+      ]
+    },
+    {
+      "id": "amino-acids",
+      "status": "ambiguous",
+      "aliases": [
         "arginine",
         "arginin",
         "l-arginine",
@@ -15926,22 +15992,6 @@
         "glutamin",
         "aspartic acid",
         "asparaginsäure",
-        "sodium pca",
-        "pca",
-        "natrium-pca",
-        "betaine",
-        "betain",
-        "betaín",
-        "trimethylglycine",
-        "creatine",
-        "kreatin",
-        "taurine",
-        "taurin",
-        "carnitine",
-        "l-carnitine",
-        "carnitin",
-        "l-carnitin",
-        "karnitin",
         "leucine",
         "leucin",
         "isoleucine",
@@ -15955,24 +16005,49 @@
         "tyrosin",
         "phenylalanine",
         "phenylalanin",
-        "l-theanine",
-        "theanin",
-        "beta-alanine",
-        "beta-alanin",
         "bcaa",
-        "citrulline",
-        "citrullin",
-        "ornithine",
-        "ornithin",
-        "glutathione",
-        "glutathion"
+        "l-leucine",
+        "l-leucin",
+        "l-isoleucine",
+        "l-isoleucin",
+        "l-valine",
+        "l-valin",
+        "l-tyrosine",
+        "l-tyrosin",
+        "l-tryptophan",
+        "l-phenylalanine",
+        "l-phenylalanin",
+        "l-glutamine",
+        "l-glutamin",
+        "l-threonine",
+        "l-threonin",
+        "l-histidine",
+        "l-histidin",
+        "l-proline",
+        "l-prolin",
+        "l-serine",
+        "l-serin",
+        "l-alanine",
+        "l-alanin",
+        "l-methionine",
+        "l-methionin",
+        "dl-methionine",
+        "dl-methionin",
+        "l-aspartic acid",
+        "hydroxyproline",
+        "l-hydroxyproline",
+        "hydroxyprolin",
+        "bcaas",
+        "branched-chain amino acids",
+        "verzweigtkettige aminosäuren",
+        "grenade aminosyror"
       ],
       "explanation": {
-        "en": "Hydrolysed plant proteins and individual amino acids used in foods and cosmetics are made from plant proteins or by fermentation.",
-        "de": "Hydrolysierte Pflanzenproteine und einzelne Aminosäuren für Lebensmittel und Kosmetik werden aus Pflanzenproteinen oder durch Fermentation hergestellt."
+        "en": "Free amino acids such as leucine, lysine, tyrosine or proline are mostly made by fermentation or synthesis, but they can also be extracted from animal protein such as feathers, hair or gelatine; the manufacturer can confirm the source.",
+        "de": "Freie Aminosäuren wie Leucin, Lysin, Tyrosin oder Prolin werden meist durch Fermentation oder Synthese hergestellt, können aber auch aus tierischem Eiweiß wie Federn, Haaren oder Gelatine gewonnen werden; der Hersteller kann die Herkunft bestätigen."
       },
       "sourceIds": [
-        "cosing",
+        "peta-animal-ingredients",
         "efsa-cysteine-fermentation"
       ]
     },
@@ -16346,8 +16421,6 @@
         "nano-hydroxyapatite",
         "zinc ricinoleate",
         "zinkricinoleat",
-        "zinc lactate",
-        "zinklactat",
         "zinc chloride",
         "zinkchlorid",
         "tetrapotassium pyrophosphate",
@@ -17771,8 +17844,14 @@
         "nannochloropsis oculata extract",
         "haematococcus pluvialis",
         "haematococcus pluvialis extract",
-        "astaxanthin",
-        "astaxantin",
+        "algal astaxanthin",
+        "algen-astaxanthin",
+        "astaxanthin from algae",
+        "astaxanthin aus algen",
+        "astaxanthin från alger",
+        "astaxantin från alger",
+        "astaxanthin from haematococcus pluvialis",
+        "haematococcus pluvialis astaxanthin",
         "dunaliella salina",
         "dunaliella salina extract",
         "tetraselmis",

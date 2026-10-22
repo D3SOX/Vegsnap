@@ -81,9 +81,10 @@ const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|
 // A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
 const freeSuffix = new RegExp(String.raw`(?:${freeFrom})(?=$|[^\p{L}])`, 'u');
 const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
-// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk").
+// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk"), and so does a slash
+// ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver").
 const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
-const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\p{L}])/u;
+const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\p{L}])|(?<![-–])\//u;
 const conjunction = /^(?:and|und|och|or|oder|eller|&|\/)$/u;
 const words = (value: string) => value.match(/\p{L}+|[&/]/gu) ?? [];
 // An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg.

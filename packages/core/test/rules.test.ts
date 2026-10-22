@@ -64,7 +64,8 @@ describe('extended animal matching', () => {
       'tamarinder', 'mjölksyrebakterier', 'mjölkvit', 'handleder', 'fiskbensmönstrad', 'fischgrätmuster', 'geografisch', 'filosofisk', 'konfiskerad', 'affisch', 'liebfraumilch', 'butterflies', 'vegetable gelatine',
       'non-dairy milk', 'non-animal whey protein', 'non-animal collagen', 'animal-free collagen', 'nondairy creamer', 'dairy-free milk chocolate', 'dairy free milk chocolate', 'meat-free meatballs', 'egg-free egg noodles', 'milk-free cheese',
       'tierfreies kollagen', 'nicht-tierische gelatine', 'nicht-tierisches kollagen', 'fleischlose wurst', 'eierfreie nudeln', 'djurfritt kollagen', 'icke-animaliskt kollagen', 'mejerifri ost', 'köttfria köttbullar', 'äggfri majonnäs',
-      'milk protein-free oat drink', 'egg protein-free pasta', 'dairy ingredient-free spread', 'milk protein free', 'milk and egg protein-free', 'milcheiweiß-frei', 'milch-eiweiß-frei', 'frei von milchbestandteilen', 'milchbestandteile-frei', 'mjölkproteinfri havredryck', 'fri från mjölkprotein', 'egg ingredients free']) {
+      'milk protein-free oat drink', 'egg protein-free pasta', 'dairy ingredient-free spread', 'milk protein free', 'milk and egg protein-free', 'milcheiweiß-frei', 'milch-eiweiß-frei', 'frei von milchbestandteilen', 'milchbestandteile-frei', 'mjölkproteinfri havredryck', 'fri från mjölkprotein', 'egg ingredients free',
+      'huhn-/pouletgeschmack', 'milch-/mjölkaroma', 'käse-/ostarom', 'cheese-/milk flavour', 'milk-/egg-free']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
@@ -75,7 +76,8 @@ describe('extended animal matching', () => {
       ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides'],
       ['nonfat milk', 'milk'], ['non-hydrogenated milk fat', 'milk-fat'], ['lactose-free milk', 'milk'], ['laktosfri mjölk', 'milk'], ['vattenfritt mjölkfett', 'milk-fat'], ['gluten-free milk chocolate', 'dairy'], ['non-dairy creamer with milk', 'milk'],
       ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen'], ['plant oil or milk', 'milk'], ['natürliches aroma oder milchpulver', 'milk'], ['arom eller mjölkpulver', 'milk'], ['milk or vegan alternative', 'milk'],
-      ['ei und milch', 'milk'], ['ei aus freilandhaltung', 'egg-albumen'], ['ingefära och mjölk', 'milk'], ['ingrediens: mjölk', 'milk']] as const) {
+      ['ei und milch', 'milk'], ['ei aus freilandhaltung', 'egg-albumen'], ['ingefära och mjölk', 'milk'], ['ingrediens: mjölk', 'milk'],
+      ['natural flavouring / milk powder', 'milk'], ['natural flavouring/milk powder', 'milk'], ['milk powder / natural flavouring', 'milk'], ['natürliches aroma / milchpulver', 'milk'], ['arom / mjölkpulver', 'milk'], ['mjölk-/mælkepulver', 'milk']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
@@ -89,6 +91,11 @@ describe('extended animal matching', () => {
     const result = analyzeText({ text, category: 'food' }, undefined, ['sugar', 'alpine milk powder', 'gelatine']);
     expect(result.outcome).toBe('not_vegan');
     expect(result.findings.map(item => [item.term, item.ruleId])).toEqual([['sugar', 'sugar'], ['alpine milk powder', 'milk'], ['gelatine', 'gelatin']]);
+  });
+  test('a slash ends a flavour phrase, so the AI guard keeps the milk the split omitted', () => {
+    const result = analyzeText({ text: 'Ingredients: sugar, natural flavouring / milk powder', category: 'food' }, undefined, ['sugar']);
+    expect(result.outcome).toBe('not_vegan');
+    expect(result.findings.map(item => [item.term, item.status])).toEqual([['sugar', 'plant'], ['natural flavouring / milk powder', 'animal']]);
   });
   test('an animal role prefix outranks an ambiguous suffix the AI split kept', () => {
     const result = analyzeText({ text: 'Zutaten: Milchschokolade: E471, Zucker', category: 'food' }, undefined, ['e471', 'zucker']);
