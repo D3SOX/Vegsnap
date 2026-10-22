@@ -74,9 +74,9 @@ private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])
 private val freeSuffix = Regex("(?:$FREE_FROM)(?=$|[^\\p{L}])")
 private val lastWord = Regex("\\p{L}+(?=[^\\p{L}]*$)")
 private val modifiedAfter = Regex("(?:$MODIFIERS)(?:$|[^\\p{L}])")
-// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
+// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk").
 private val phrase = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
-private val conjunct = Regex("(?:^|[^\\p{L}])(?:with|mit|med|and|und|och|&)(?=$|[^\\p{L}])")
+private val conjunct = Regex("(?:^|[^\\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\\p{L}])")
 private val conjunction = Regex("and|und|och|or|oder|eller|&|/")
 private val wordOrJoiner = Regex("\\p{L}+|[&/]")
 private fun words(value: String): List<String> = wordOrJoiner.findAll(value).map { it.value }.toList()

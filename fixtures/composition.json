@@ -1366,5 +1366,38 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase",
+    "input": {
+      "text": "Ingredients: plant oil or milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase-de",
+    "input": {
+      "text": "Zutaten: Zucker, natürliches Aroma oder Milchpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase-sv",
+    "input": {
+      "text": "Ingredienser: socker, arom eller mjölkpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

@@ -73,7 +73,7 @@ describe('extended animal matching', () => {
       ['non-gmo whole milk', 'milk'], ['non-fat milk', 'milk'], ['no added sugar milk chocolate', 'dairy'], ['no palm oil whole milk powder', 'milk'], ['utan tillsatt socker mjölkchoklad', 'dairy'], ['milk from free range cows', 'milk'], ['eggs from free-range hens', 'egg'],
       ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides'],
       ['nonfat milk', 'milk'], ['non-hydrogenated milk fat', 'milk-fat'], ['lactose-free milk', 'milk'], ['laktosfri mjölk', 'milk'], ['vattenfritt mjölkfett', 'milk-fat'], ['gluten-free milk chocolate', 'dairy'], ['non-dairy creamer with milk', 'milk'],
-      ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen']] as const) {
+      ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen'], ['plant oil or milk', 'milk'], ['natürliches aroma oder milchpulver', 'milk'], ['arom eller mjölkpulver', 'milk'], ['milk or vegan alternative', 'milk']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
