@@ -44,6 +44,7 @@ describe('extended animal matching', () => {
     expect(ruleForTerm('milk powder from alpine milk')?.id).toBe('milk');
     expect(ruleForTerm('alpenmilchpulver')?.id).toBe('milk');
     expect(ruleForTerm('rindsleder')?.id).toBe('leather');
+    for (const [term, id] of [['alpenvollmilchschokoladenstückchen', 'milk'], ['skummjölksyoghurtpulver', 'milk'], ['bio-kuhmilchpulver', 'milk'], ['h-milch-anteil', 'milk'], ['äggulepulver', 'egg'], ['hühnereiweiß', 'egg']] as const) expect(ruleForTerm(term)?.id).toBe(id);
     const result = analyzeText({ text: 'Ingredients: sugar, milk powder from alpine milk', category: 'food' });
     expect(result.findings.map(item => [item.term, item.status, item.ruleId])).toEqual([['sugar', 'plant', 'sugar'], ['milk powder from alpine milk', 'animal', 'milk']]);
   });
@@ -52,13 +53,18 @@ describe('extended animal matching', () => {
       "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'milchfreie schokolade', 'mjölkfritt margarin', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'cheddar cheese flavour',
       'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa',
       'gelatinised wheat starch', 'pre-gelatinized starch', 'gelatinierte stärke', 'gelatineringsmedel', 'zahnfleisch', 'zahnseide', 'pazifisches meersalz', 'spezifisch', 'milchig', 'flachs/leinen', 'zellwolle', 'seidenmatt', 'honigklee', 'kokosnussfleisch', 'butterbur extract', 'sea salt grinder', 'tomatfruktkött', 'inlägg: textil', 'skäggolja', 'silkeslen tofu', 'pregelatinized corn starch', 'pregelatinized', 'fake leather upper', 'fake fur trim',
-      'honigbuschblätter', 'honungsbuskte', 'without milk and eggs', 'ohne milch und eier', 'milk and egg free', 'free from milk and soya', 'imitation cheese and herbs', 'käse-zwiebel-geschmack']) {
+      'honigbuschblätter', 'honungsbuskte', 'without milk and eggs', 'ohne milch und eier', 'milk and egg free', 'free from milk and soya', 'imitation cheese and herbs', 'käse-zwiebel-geschmack',
+      'no milk or eggs', 'ohne zusatz von milch', 'utan tillsatt mjölk', 'no beef gelatine', 'kein tierisches lab', 'milch- und eifrei', 'mjölk- och äggfri', 'milk/egg free', 'gluten- und kuhmilcheiweißfrei', 'modersmjölksersättning',
+      'butterhead lettuce', 'buttersalat', 'butterbeans', 'keramisk beläggning', 'gräddes i ugn', 'silken tofu powder', 'wollen', 'milchig', 'speckled beans', 'skött', 'lättskött', 'förgelatinerad stärkelse', 'pumpakött', 'tandkött',
+      'tamarinder', 'mjölksyrebakterier', 'mjölkvit', 'handleder', 'fiskbensmönstrad', 'fischgrätmuster', 'geografisch', 'filosofisk', 'konfiskerad', 'affisch', 'liebfraumilch', 'butterflies', 'vegetable gelatine']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
-  test('a modifier only blocks the mention it touches, "with" starts a new phrase and a conjunction ends a modifier phrase', () => {
+  test('a negation, free-from suffix or modifier only blocks the mention it binds to, "with" starts a new phrase and a conjunction ends a modifier phrase', () => {
     for (const [term, id] of [['free range eggs', 'egg'], ['lactose free milk', 'milk'], ['plant oil with milk', 'milk'], ['milk powder with natural flavouring', 'milk'], ['käseersatz mit eigelb', 'egg'], ['laktosefreie vollmilch', 'milk'],
-      ['milk powder and natural flavouring', 'milk'], ['natural flavouring and milk powder', 'milk'], ['milk powder & natural flavouring', 'milk'], ['natürliches aroma und milchpulver', 'milk'], ['arom och mjölkpulver', 'milk'], ['yogurt cultures and milk', 'milk']] as const) {
+      ['milk powder and natural flavouring', 'milk'], ['natural flavouring and milk powder', 'milk'], ['milk powder & natural flavouring', 'milk'], ['natürliches aroma und milchpulver', 'milk'], ['arom och mjölkpulver', 'milk'], ['yogurt cultures and milk', 'milk'],
+      ['non-gmo whole milk', 'milk'], ['non-fat milk', 'milk'], ['no added sugar milk chocolate', 'dairy'], ['no palm oil whole milk powder', 'milk'], ['utan tillsatt socker mjölkchoklad', 'dairy'], ['milk from free range cows', 'milk'], ['eggs from free-range hens', 'egg'],
+      ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });

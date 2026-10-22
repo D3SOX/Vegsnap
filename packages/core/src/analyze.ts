@@ -64,29 +64,62 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
-// A negation before an animal mention or a free-from suffix after it covers the whole list ("without milk and eggs", "milk and egg free").
+// A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
+// or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
 const negations = String.raw`no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
+const negationWord = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?=$|[^\p{L}])`, 'gu');
 const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
-const freeAfter = /(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?:$|[^\p{L}])/u;
+// A free-from suffix covers the word it is attached to and a conjunction list before it ("milk-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
+const freeSuffix = /(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?=$|[^\p{L}])/u;
 const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
 // "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
 const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
 const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|&)(?=$|[^\p{L}])/u;
+const conjunction = /^(?:and|und|och|or|oder|eller|&|\/)$/u;
+const words = (value: string) => value.match(/\p{L}+|[&/]/gu) ?? [];
 // An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly.
 const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
-const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm);
+const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm).sort((a, b) => b.length - a.length);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
-/** The item occurs (as a whole word unless it is a compound stem) without a negation or modifier attached to that occurrence. */
+/** The last negation before the mention still covers it unless a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
+function negated(before: string): boolean {
+  const matches = [...before.matchAll(negationWord)];
+  const last = matches[matches.length - 1];
+  if (!last) return false;
+  const rest = before.slice(last.index + last[0].length);
+  let open = true, bound = /^[-–]/u.test(rest);
+  for (const word of words(rest)) {
+    if (conjunction.test(word)) { open = true; continue; }
+    if (open && (bound || ['plant', 'ambiguous'].includes(aliasRules.get(word)?.status ?? ''))) open = false;
+    bound = false;
+  }
+  return open;
+}
+/** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
+function freed(after: string): boolean {
+  const match = freeSuffix.exec(after);
+  if (!match) return false;
+  const between = after.slice(0, match.index), list = words(between);
+  if (/^\p{L}*$/u.test(between)) return true;
+  for (let index = 0; index < list.length; index += 2) if (!conjunction.test(list[index]!) || !list[index + 1] || conjunction.test(list[index + 1]!)) return false;
+  return !/\p{L}$/u.test(between) || aliasRules.has(list[list.length - 1]!);
+}
+/** A stem is a compound component when the letters attached to it could be words themselves: none or at least three before ("Kuhmilch"), none or at least four after ("Milchpulver"). Inflections such as "milchig", "wollen", "silken", "gräddes" or "Flachs" never count, and a stem shorter than four letters ("ägg") must start its word. */
+function component(prefix: number, stem: string, suffix: number): boolean {
+  return (prefix === 0 || prefix >= 3 && stem.length >= 4) && (suffix === 0 || suffix >= 4);
+}
+/** The item occurs (as a whole word, or as a compound stem forming a component) without a negation or modifier covering that occurrence. */
 function mentioned(text: string, item: string, wholeWord: boolean): boolean {
   for (let start = text.indexOf(item); start >= 0; start = text.indexOf(item, start + 1)) {
     const end = start + item.length;
-    if (wholeWord && (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? ''))) continue;
+    if (wholeWord) { if (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? '')) continue; }
+    else if (!component(/\p{L}*$/u.exec(text.slice(0, start))![0].length, item, /^\p{L}*/u.exec(text.slice(end))![0].length)) continue;
     const before = text.slice(0, start), after = text.slice(end);
-    if (negatedBefore.test(before.split(phrase).pop()!) || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
-    if (freeAfter.test(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
+    if (negated(before.split(phrase).pop()!) || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
+    if (freed(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
     return true;
   }
   return false;

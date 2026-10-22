@@ -4,7 +4,7 @@
   "note": "Original concise classification rules; linked references are supporting sources, not imported databases. Plant status includes mineral and synthetic materials without identified animal content. Not a full ingredient taxonomy.",
   "veganCertifiers": ["vegan.org", "vegansociety.com", "v-label.com", "v-label.eu"],
   "extendedMatching": {
-    "note": "Animal aliases also match as whole words inside longer composition terms, and compound stems match inside concatenated words such as German or Swedish compounds. Plant exceptions are removed from a term before that extended check so plant products are never vetoed. Terms with negations, substitutes, imitations or flavour words only match exactly.",
+    "note": "Animal aliases also match as whole words inside longer composition terms. Compound stems match as components of concatenated German or Swedish words (Alpenmilchpulver, mjölkchoklad): the letters attached to a stem must be none or at least three before it and none or at least four after it, so inflections and unrelated words (milchig, wollen, silken, Flachs, beläggning) never count, and a stem shorter than four letters (ägg) must start its word. Plant exceptions are removed from a term before that extended check so plant products are never vetoed. A negation covers the ingredient it introduces up to the first plant or ambiguous ingredient or the hyphenated word (non-GMO), a free-from suffix covers the word it is attached to and a conjunction list before it, and substitute, imitation or flavour words cover their own phrase; such mentions only match exactly.",
     "compoundStems": [
       "milch",
       "molke",
@@ -281,7 +281,82 @@
       "silkesmjuk",
       "honigbusch",
       "honeybush",
-      "honungsbusk"
+      "honungsbusk",
+      "butterhead",
+      "buttersalat",
+      "butterbean",
+      "butterbeans",
+      "butterflies",
+      "liebfraumilch",
+      "grafisch",
+      "tarifisch",
+      "fiskal",
+      "schonung",
+      "meerschweinchen",
+      "fleischfressend",
+      "fischgrät",
+      "fischgrat",
+      "affisch",
+      "grafisk",
+      "sofisk",
+      "trofisk",
+      "morfisk",
+      "pacifisk",
+      "konfiskation",
+      "konfiskera",
+      "gelatinartad",
+      "gelatinerad",
+      "gelatinering",
+      "risgrädde",
+      "tandkött",
+      "pumpakött",
+      "skött",
+      "tamarind",
+      "handleder",
+      "fotleder",
+      "knäleder",
+      "höftleder",
+      "axelleder",
+      "käkleder",
+      "fingerleder",
+      "kulleder",
+      "vandringsleder",
+      "cykelleder",
+      "farleder",
+      "vilseleder",
+      "härleder",
+      "föranleder",
+      "förleder",
+      "missleder",
+      "vägleder",
+      "mjölkaktig",
+      "mjölkglas",
+      "mjölksyre",
+      "mjölktistel",
+      "mjölkört",
+      "mjölkvit",
+      "äggformad",
+      "äggformig",
+      "äggrund",
+      "äggstor",
+      "äggsvamp",
+      "äggskalsvit",
+      "ägglossning",
+      "honungsfärgad",
+      "honungsgul",
+      "honungslen",
+      "honungsdoftande",
+      "honungsskivling",
+      "honungsört",
+      "honungston",
+      "silkepapper",
+      "silkespapper",
+      "silkestunn",
+      "silkesglans",
+      "fiskbensmönster",
+      "fiskbensmönstrad",
+      "köttfärgad",
+      "köttätande"
     ]
   },
   "sources": [
@@ -420,7 +495,12 @@
         "färsk mjölk",
         "whole milk powder",
         "skim milk powder",
-        "dairy milk"
+        "dairy milk",
+        "mjölken",
+        "mjölkens",
+        "buttermilchpulver",
+        "buttermilk powder",
+        "kärnmjölkspulver"
       ],
       "explanation": {
         "en": "Milk is an animal-derived dairy ingredient.",
@@ -539,7 +619,11 @@
         "whey solids",
         "milchmolke",
         "lactoserum en poudre",
-        "vasslepulver från mjölk"
+        "vasslepulver från mjölk",
+        "molken",
+        "süßmolken",
+        "süssmolken",
+        "sauermolken"
       ],
       "explanation": {
         "en": "Whey is derived from milk.",
@@ -648,7 +732,10 @@
         "hühnereigelb",
         "hühnereiklar",
         "hönsäggula",
-        "hönsäggvita"
+        "hönsäggvita",
+        "helägg",
+        "heläggspulver",
+        "torkat helägg"
       ],
       "explanation": {
         "en": "Egg is animal-derived.",
@@ -1103,7 +1190,8 @@
         "viande de porc",
         "viande de boeuf",
         "viande de poulet",
-        "volaille"
+        "volaille",
+        "grisskött"
       ],
       "explanation": {
         "en": "Meat and animal fats are animal-derived.",
@@ -1767,7 +1855,11 @@
         "eucerit",
         "wool alcohols",
         "wollwachsalkohol",
-        "alcoholes lanae"
+        "alcoholes lanae",
+        "lanoline",
+        "cire de lanoline",
+        "lanolin cholesterol",
+        "lanolincholesterin"
       ],
       "explanation": {
         "en": "Lanolin is obtained from sheep wool.",
@@ -2731,7 +2823,12 @@
         "agar-agar",
         "e406",
         "e 406",
-        "agar agar"
+        "agar agar",
+        "vegetable gelatine",
+        "vegetable gelatin",
+        "pflanzliche gelatine",
+        "vegetabiliskt gelatin",
+        "gélatine végétale"
       ],
       "explanation": {
         "en": "No animal-derived ingredient or material is identified by this term; production details remain separate.",
@@ -10554,6 +10651,46 @@
       ]
     },
     {
+      "id": "galactooligosaccharides",
+      "status": "animal",
+      "aliases": [
+        "galactooligosaccharides",
+        "galactooligosaccharide",
+        "galacto-oligosaccharides",
+        "galacto-oligosaccharide",
+        "galaktooligosaccharide",
+        "galaktooligosaccharid",
+        "galaktooligosackarider",
+        "galaktooligosackarid",
+        "gos"
+      ],
+      "explanation": {
+        "en": "Galactooligosaccharides are made from lactose, the sugar of milk.",
+        "de": "Galactooligosaccharide werden aus Laktose, dem Milchzucker, hergestellt."
+      },
+      "sourceIds": [
+        "off-additives",
+        "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "tagatose",
+      "status": "ambiguous",
+      "aliases": [
+        "tagatose",
+        "d-tagatose",
+        "tagatos",
+        "d-tagatos"
+      ],
+      "explanation": {
+        "en": "Tagatose is usually made from lactose, the sugar of milk, although routes from plant galactose exist; the manufacturer can confirm the source.",
+        "de": "Tagatose wird meist aus Laktose, dem Milchzucker, hergestellt, es gibt aber auch Wege aus pflanzlicher Galactose; der Hersteller kann die Herkunft bestätigen."
+      },
+      "sourceIds": [
+        "off-additives"
+      ]
+    },
+    {
       "id": "quillaia",
       "status": "plant",
       "aliases": [
@@ -14157,17 +14294,10 @@
         "allulose",
         "allulos",
         "psicose",
-        "tagatose",
-        "tagatos",
         "isomaltooligosaccharides",
         "isomaltooligosaccharide",
         "isomaltooligosackarider",
         "imo",
-        "galactooligosaccharides",
-        "galactooligosaccharide",
-        "galaktooligosaccharide",
-        "galaktooligosackarider",
-        "gos",
         "xylooligosaccharides",
         "xylo-oligosaccharides",
         "xylooligosaccharide",
@@ -14842,10 +14972,8 @@
         "cholesteryl oleate",
         "cholesteryl isostearate",
         "cholesteryl hydroxystearate",
-        "lanolin cholesterol",
         "cholesteryl nonanoate",
-        "cholesteryl chloride",
-        "phytocholesterol"
+        "cholesteryl chloride"
       ],
       "explanation": {
         "en": "Cholesterol in cosmetics is usually taken from lanolin, although semi-synthetic routes from plant sterols exist; the manufacturer can confirm.",

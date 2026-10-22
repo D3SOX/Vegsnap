@@ -1067,5 +1067,172 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "negation-binds-to-its-own-qualifier",
+    "input": {
+      "text": "Ingredients: sugar, non-GMO whole milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "no-added-sugar-keeps-milk-chocolate",
+    "input": {
+      "text": "Ingredients: cocoa mass, no added sugar milk chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-range-after-milk-is-not-free-from",
+    "input": {
+      "text": "Ingredients: milk from free range cows, eggs from free-range hens",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "non-fat-milk-and-lactose-free-milk-are-milk",
+    "input": {
+      "text": "Ingredients: non-fat milk, pasteurized milk lactose-free, sugar free milk chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "negation-still-covers-its-list",
+    "input": {
+      "text": "Ingredients: rice, water. Without milk and eggs, no soy or fish, ohne Zusatz von Milch, utan tillsatt mjölk, no beef gelatine",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-suffix-covers-conjunction-list-and-compound",
+    "input": {
+      "text": "Zutaten: Reis, milch- und eifrei, mjölk- och äggfri, milk/egg free, gluten- und kuhmilcheiweißfrei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "butterhead-lettuce-never-matches-butter",
+    "input": {
+      "text": "Ingredients: butterhead lettuce, Buttersalat, butterbeans, water",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-coating-never-matches-egg",
+    "input": {
+      "text": "Material: keramisk beläggning, vattenavvisande beläggning",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "inflections-never-form-a-compound-stem",
+    "input": {
+      "text": "Ingredienser: vetemjöl, silken tofu powder, salt. Gräddes i ugn",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "stems-inside-long-compounds-still-match",
+    "input": {
+      "text": "Zutaten: Zucker, Alpenvollmilchschokoladenstückchen, skummjölksyoghurtpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "dictionary-sweep-plant-words-sv",
+    "input": {
+      "text": "Ingredienser: pumpakött, tamarinder, mjölksyrebakterier, förgelatinerad stärkelse, risgrädde, äggsvamp, honungsört, mjölktistel",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "dictionary-sweep-plant-words-de-en-materials",
+    "input": {
+      "text": "Material: Fischgrätmuster, fiskbensmönster, silkespapper, affisch, mjölkglas, handleder, Meerschweinchen-Heu",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "galactooligosaccharides-are-lactose-derived",
+    "input": {
+      "text": "Ingredients: water, sugar, galactooligosaccharides",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "vegetable-gelatine-is-agar",
+    "input": {
+      "text": "Ingredients: water, sugar, vegetable gelatine (agar)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lanolin-cholesterol-names-its-animal-source",
+    "input": {
+      "text": "Ingredients: aqua, lanolin cholesterol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
