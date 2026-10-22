@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
+import { pipeline } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { createGunzip } from 'node:zlib';
 import { normalizeBarcode } from '../packages/core/src/database';
@@ -271,7 +272,8 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     const food = await foodExport(cache, now, options.fetcher ?? fetch);
     // The decompressed export is about 10 GB, so it is read line by line.
     let groups: unknown[][];
-    try { groups = await selectFood(region, createInterface({ input: createReadStream(food.path).pipe(createGunzip()), crlfDelay: Infinity })); }
+    // pipeline forwards read errors, so they reject the line iterator instead of escaping as unhandled events.
+    try { groups = await selectFood(region, createInterface({ input: pipeline(createReadStream(food.path), createGunzip(), () => {}), crlfDelay: Infinity })); }
     catch (error) {
       // A truncated or unusable download must not be reused from the cache on the next run.
       await rm(`${food.path}.json`, { force: true }); await rm(food.path, { force: true });
