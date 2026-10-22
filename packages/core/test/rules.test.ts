@@ -136,6 +136,7 @@ describe('extended animal matching', () => {
     for (const term of ['471', '120', '4711']) expect(ruleForTerm(term)).toBeUndefined();
     expect(compositionTerms('emulsifier (471), mineral salts (452, 450), food acid: 330, preservative (E 202), energy (kcal) 120')).toEqual(['e471', 'e452', 'e450', 'e330', 'e 202', 'energy', 'kcal', '120']);
     expect(compositionTerms('sugar, colours: 100, 120, salt')).toEqual(['sugar', 'e100', 'e120', 'salt']);
+    expect(compositionTerms('sugar, colour (INS 120), thickener (ins1422)')).toEqual(['sugar', 'e120', 'e1422']);
   });
   test('a long term of repeated plant exceptions is stripped in near-linear time', () => {
     const term = 'oat milk '.repeat(2_300).slice(0, 20_000).trim();

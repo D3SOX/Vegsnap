@@ -2656,5 +2656,16 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "ins-prefix-before-additive-number",
+    "input": {
+      "text": "Ingredients: sugar, colour (INS 120)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
