@@ -10,6 +10,11 @@ class ProductMarketTest {
         for (value in listOf("SE", "en:sweden", "sverige")) assertEquals("Sweden", productCountryName(value, Locale.ENGLISH))
         for (value in listOf("SWE", "unknown country", "ZZ", "")) assertEquals(value, productCountryName(value, Locale.ENGLISH))
     }
+    @Test fun `pack regions read as localized country names, keeping unknown regions verbatim`() {
+        assertEquals(listOf("United Kingdom", "Switzerland", "European Union", "Germany + European Union", "fixture"),
+            listOf("united-kingdom", "switzerland", "eu", "de-eu", "fixture").map { packRegionName(it, Locale.ENGLISH) })
+        assertEquals("Vereinigte Staaten", packRegionName("united-states", Locale.GERMAN))
+    }
     @Test fun `canonical Open Facts tags match ISO countries despite system name differences`() {
         for ((country, tag) in mapOf("CZ" to "czech-republic", "TR" to "turkey", "HK" to "hong-kong", "BA" to "bosnia-and-herzegovina", "RE" to "reunion", "CI" to "cote-d-ivoire", "AX" to "aland-islands", "CD" to "democratic-republic-of-the-congo")) {
             assertEquals(country, productCountryCode("en:$tag"))

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import rules from '../../../data/rules.json';
 import { analyzeText, normalizeTerm } from '../src';
-import { ruleForTerm } from '../src/analyze';
+import { compositionTerms, ruleForTerm } from '../src/analyze';
 
 const aliasRule = new Map(rules.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
 
@@ -102,6 +102,41 @@ describe('extended animal matching', () => {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
     for (const term of ['oat milk powder', 'walnut butter', 'kokosnussmilch', 'tomatfruktkött', 'hafermilchkonzentrat', 'lättskött', 'fischgrätmuster', 'tamarinder', 'king oysters']) expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
+  });
+  test('French, Spanish, Italian and Dutch animal ingredients match whole words and Dutch compounds', () => {
+    for (const [term, id] of [['lait écrémé en poudre', 'milk'], ['poudre de lait entier', 'milk'], ['leche desnatada en polvo', 'milk'], ['latte intero in polvere', 'milk'], ['magere melkpoeder', 'milk'],
+      ['melkchocolade', 'milk'], ['roomboter', 'butter'], ["jaune d'œuf", 'egg'], ['huevos camperos', 'egg'], ["tuorlo d'uovo", 'egg'], ['kippenvlees', 'meat'], ['ansjovisextract', 'fish'], ['garnalenpasta', 'shellfish'],
+      ['jambon de porc', 'meat'], ['gélatine de bœuf', 'gelatin'], ['miel de fleurs', 'honey'], ['queso curado', 'cheese'], ['formaggio grana', 'cheese'], ['lactosérum', 'whey'], ['caseinato de sodio', 'casein'],
+      ["lait entier issu de l'agriculture biologique", 'milk'], ['salmon from aquaculture', 'fish'], ["saumon d'aquaculture", 'fish'], ['lachs aus aquakultur', 'fish'], ['aroma en melkpoeder', 'milk'], ['huile végétale - oeufs entiers', 'egg']] as const) {
+      expect(ruleForTerm(term)?.id).toBe(id);
+    }
+  });
+  test('French, Spanish, Italian and Dutch plant drinks, nut butters, negations and flavours never match an animal rule', () => {
+    for (const term of ['lait végétal', 'leche vegetal', 'latte vegetale', 'plantaardige melk', 'fromage végétal', 'lait de coco', "lait d'amande", 'leche de soja', 'latte di mandorla', 'kokosmelk', 'havermelk', 'pindakaas', 'notenboter', 'cacaoboter', 'beurre de cacao', 'manteca de cacao', 'burro di cacao',
+      'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'manteca vegetal', 'manteca de palma', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij',
+      'saveur fromage', 'sabor a queso', 'gusto formaggio', 'kaassmaak', 'store at room temperature', 'viscose lining', 'weizenmehl', 'vis en acier']) {
+      expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
+    }
+  });
+  test('Norwegian, Danish and Finnish animal ingredients match whole words and compounds', () => {
+    for (const [term, id] of [['skummetmælkspulver', 'milk'], ['helmelkpulver', 'milk'], ['smørfett', 'milk-fat'], ['kremfløte', 'cream'], ['hytteost', 'cheese'], ['eggeplomme', 'egg'], ['æggeblomme', 'egg'],
+      ['svinekjøtt', 'meat'], ['oksekød', 'meat'], ['fiskeolje', 'fish'], ['rasvaton maitojauhe', 'milk'], ['täysmaitojauhe', 'milk'], ['maitoproteiini', 'casein'], ['voi', 'butter'], ['laktoositon voi', 'butter'],
+      ['kermajauhe', 'cream'], ['juustojauhe', 'cheese'], ['kananmunankeltuainen', 'egg'], ['naudanliha', 'meat'], ['tonnikala', 'fish'], ['hunaja', 'honey'], ['laktosefri mælk', 'milk']] as const) {
+      expect(ruleForTerm(term)?.id).toBe(id);
+    }
+  });
+  test('Norwegian, Danish and Finnish plant butters, drinks, look-alike words, negations and flavours never match an animal rule', () => {
+    for (const term of ['kakaosmør', 'peanøttsmør', 'kokosfløte', 'havremælk', 'maitohappo', 'kookosmaito', 'juustokumina', 'munakoiso', 'kalamata', 'kala namak', 'hunajameloni', 'hiilihapotettu vesi',
+      'lihavoidut ainesosat', 'ranskalainen', 'laksatiivisia', 'raakalakritsi', 'ei sisällä maitoa', 'uten melk', 'uden mælk', 'mælkefri', 'juustonmakuinen', 'ostesmag', 'sel gris', 'plantefløte', 'plantefløde', 'plantebaseret fløde', 'kasvipohjainen ruokakerma', 'rund tomaten']) {
+      expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
+    }
+  });
+  test('E numbers read the same spaced, hyphenated or with a roman subgroup, and bare INS numbers only after an additive role', () => {
+    for (const [term, id] of [['e-471', 'e471'], ['e 471', 'e471'], ['e500ii', 'sodium-carbonates'], ['e-451i', 'phosphates']] as const) expect(ruleForTerm(term)?.id).toBe(id);
+    for (const term of ['471', '120', '4711']) expect(ruleForTerm(term)).toBeUndefined();
+    expect(compositionTerms('emulsifier (471), mineral salts (452, 450), food acid: 330, preservative (E 202), energy (kcal) 120')).toEqual(['e471', 'e452', 'e450', 'e330', 'e 202', 'energy', 'kcal', '120']);
+    expect(compositionTerms('sugar, colours: 100, 120, salt')).toEqual(['sugar', 'e100', 'e120', 'salt']);
+    expect(compositionTerms('sugar, colour (INS 120), thickener (ins1422)')).toEqual(['sugar', 'e120', 'e1422']);
   });
   test('a long term of repeated plant exceptions is stripped in near-linear time', () => {
     const term = 'oat milk '.repeat(2_300).slice(0, 20_000).trim();

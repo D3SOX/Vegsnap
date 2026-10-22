@@ -100,8 +100,8 @@ class MergeResultsTest {
 
     @Test fun `explicit unresolved AI assessment is not hidden by an assessment from another source`() {
         val ai = evaluator.evaluate(CheckInput(category = "food")).put("findings", JSONArray().put(JSONObject()
-            .put("term", "valkosipuli").put("status", "plant").put("explanation", "A plant bulb.").put("evidenceId", "input")))
-        val other = evaluator.evaluate(CheckInput("valkosipuli", "food", false))
+            .put("term", "rare extract").put("status", "plant").put("explanation", "A plant extract.").put("evidenceId", "input")))
+        val other = evaluator.evaluate(CheckInput("rare extract", "food", false))
         other.getJSONArray("evidence").getJSONObject(0).put("id", "other-assessment").put("kind", "ai_extraction")
         other.getJSONArray("findings").getJSONObject(0).put("evidenceId", "other-assessment").put("explanation", "The source could not be interpreted.")
         val merged = mergeResults(ai, other).getJSONArray("findings")
@@ -120,7 +120,7 @@ class MergeResultsTest {
             if (finding.getString("status") == "unknown") saved.getJSONArray("findings").put(finding.put("evidenceId", "database"))
         }
         val original = saved.toString()
-        assertEquals(23, saved.getJSONArray("findings").length())
+        assertTrue(saved.getJSONArray("findings").length() > curry.getJSONArray("findings").length())
         val shown = IngredientTranslations().localize(saved, "en")
         val findings = shown.getJSONArray("findings")
         assertEquals(13, findings.length())

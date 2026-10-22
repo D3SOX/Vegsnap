@@ -3,24 +3,28 @@ import rulesData from '../../../data/rules.json';
 import { normalizeBarcode } from './database';
 import type { CheckInput, CheckResult, Evidence, Finding, Locale } from './types';
 
-const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel)`;
+const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel|humectants?|firming agents?|flavou?r enhancers?|bulking agents?|anti-?caking agents?|flour treatment agents?|emulsifying salts?|acidity correctors?|food acids?|acids?(?= *:)|mineral salts?|vegetable gums?|leavening(?: agents?)?|feuchthaltemittel|geschmacksverstärker|trennmittel|mehlbehandlungsmittel|festigungsmittel|füllstoffe?|schmelzsalze?|syra|fuktighetsbevarande medel|smakförstärkare|klumpförebyggande medel|ytbehandlingsmedel|mjölbehandlingsmedel|fyllnadsmedel|acidifiants?|correcteurs? d['’]acidité|[ée]mulsifiants?|[ée]paississants?|stabilisants?|gélifiants?|conservateurs?|antioxydants?|colorants?|édulcorants?|affermissants?|exhausteurs? de go[uû]t|agents? de traitement de la farine|agents? d['’]enrobage|agents? de charge|poudres? à lever|agents? levants?|anti-?agglomérants?|séquestrants?|sels? de fonte|acidulantes?|correctores? de (?:la )?acidez|reguladores? de (?:la )?acidez|emulgentes?|emulsionantes?|espesantes?|estabilizantes?|estabilizadores?|gelificantes?|conservadores?|conservantes?|antioxidantes?|colorantes?|edulcorantes?|potenciadores? del sabor|gasificantes?|impulsores?|agentes? de recubrimiento|humectantes?|antiaglomerantes?|sales fundentes|acidificant[ei]|correttor[ei] di acidità|regolator[ei] di acidità|emulsionant[ei]|addensant[ei]|stabilizzant[ei]|gelificant[ei]|conservant[ei]|antiossidant[ei]|colorant[ei]|edulcorant[ei]|esaltator[ei] di sapidità|agent[ei] lievitant[ei]|agent[ei] di rivestimento|umidificant[ei]|antiagglomerant[ei]|agent[ei] di carica|sali di fusione|zuurteregelaars?|voedingszu(?:ur|ren)|verdikkingsmiddel(?:en)?|geleermiddel(?:en)?|conserveermiddel(?:en)?|antioxidanten|kleurstof(?:fen)?|zoetstof(?:fen)?|smaakversterkers?|rijsmiddel(?:en)?|glansmiddel(?:en)?|bevochtigingsmiddel(?:en)?|antiklontermiddel(?:en)?|meelverbeteraars?|verstevigingsmiddel(?:en)?|emulgatorer|fortykningsmid(?:del|ler)|konserveringsmid(?:del|ler)|surhetsregulerende mid(?:del|ler)|surhedsregulerende mid(?:del|ler)|antioksidant(?:er)?|antioxidanter|fargestoff(?:er)?|farvestof(?:fer)?|stabilisatorer|søtstoff(?:er)?|sødestof(?:fer)?|hevemid(?:del|ler)|hævemid(?:del|ler)|smaksforsterker|smagsforstærker|fuktighetsbevarende middel|fugtighedsbevarende middel|melbehandlingsmiddel|overflatebehandlingsmiddel|overfladebehandlingsmiddel|geleringsmiddel|(?:emulgointi|happamuudensäätö|säilöntä|sakeuttamis|stabilointi|väri|makeutus|kohotus|hapettumisenesto|kostutus|paakkuuntumisenesto|pintakäsittely|hyytelöimis)aine(?:et)?|arominvahven(?:ne|teet)|jauhonparanne|farge|farve|konsistensmid(?:del|ler)|fuktighetsbevarer|antiklump(?:e|nings)mid(?:del|ler)|surheitsregulerande mid(?:del|lar)|surhetsregulator(?:er)?|smeltesalt(?:er)?|melbehandlingsmidler|syrer?(?= *:)|nostatusaine(?:et)?|värit?|kosteudensäilyttäjä|hap(?:po|ot)(?= *:))`;
 const additivePrefix = new RegExp(String.raw`^\s*${additiveRoles}(?:\s*:\s*|\s+)(?=\S)`, 'iu');
-const additiveGroup = new RegExp(String.raw`\b${additiveRoles}\s*:?\s*(?=\(\s*[\p{L}\p{N}])`, 'giu');
+// Australian and New Zealand labels give additives as bare INS numbers after their role ("emulsifier (471)", "colour (INS 120)", "mineral salts (452, 450)", "food acid: 330"); elsewhere a bare number is a quantity or a nutrition value.
+const insAfterRole = new RegExp(String.raw`(?<![\p{L}\p{N}])${additiveRoles}\s*(?:\([^()]*\)|:[^,;()\n]*(?:,\s*\d{3,4}[a-h]?(?=\s*(?:[,;()\n]|$)))*)`, 'giu');
+const additiveGroup = new RegExp(String.raw`(?<![\p{L}\p{N}])${additiveRoles}\s*:?\s*(?=\(\s*[\p{L}\p{N}])`, 'giu');
 const materialRoles = `(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)`;
 const materialPrefix = new RegExp(String.raw`^\s*${materialRoles}\s*:\s*`, 'iu');
 const materialSection = new RegExp(String.raw`(?:^|\n)[^\S\r\n]*${materialRoles}\s*:`, 'iu');
 
+// A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
+const leadingConjunction = /^(?:and\/or|und\/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\S)/u;
 export function normalizeTerm(text: string): string {
-  return text.normalize('NFKC').toLowerCase().replace(/[_*]/g, '').replace(/\d+(?:[.,]\d+)?\s*%/g, '')
+  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\b(?:organic|bio)\b/g, '').replace(materialPrefix, '')
     .replace(additivePrefix, '').replace(/^\s*(?:gemüse|vegetables|grönsaker)\s*[-–:]\s*(?=\S)/iu, '')
-    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim();
+    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(leadingConjunction, '');
 }
 
 /** Discard typography notes only, retaining genuine allergen and subingredient text. */
 export function compositionTerms(text: string, materialContext = false): string[] {
-  let value = text.split('\n').filter(line => !/^\s*[*†]\s*(?:Allergioita tai intoleransseja aiheuttavat aineet korostettu|Ämnen som kan orsaka allergier eller intoleranser (?:är|har) markerade)\.?\s*$/i.test(line)).join('\n');
-  const groups = [...value.matchAll(/\b(?:vitamins?|vitamine|vitaminer|vitamiinit)\s*\(/gi)];
+  let value = text.replace(/&(?:quot|#34);/g, '"').replace(/&(?:apos|#39);/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').split('\n').filter(line => !/^\s*[*†]\s*(?:Allergioita tai intoleransseja aiheuttavat aineet korostettu|Ämnen som kan orsaka allergier eller intoleranser (?:är|har) markerade)\.?\s*$/i.test(line)).join('\n');
+  const groups = [...value.matchAll(/\b(?:vitamins?|vitamine[ns]?|vitaminer|vitamiinit|vitaminas|vitamini)\s*\(/gi)];
   for (const group of groups.reverse()) {
     const start = group.index! + group[0].length;
     let end = start, depth = 1;
@@ -33,6 +37,7 @@ export function compositionTerms(text: string, materialContext = false): string[
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
   return value.replace(/\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
+    .replace(insAfterRole, role => role.replace(/(?<![\p{L}\p{N}])(?:[iI][nN][sS]\s?)?(?<![eE][\s-])(\d{3,4}[a-h]?)(?!\p{N})/gu, 'e$1'))
     .replace(additiveGroup, '')
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
 }
@@ -58,7 +63,7 @@ export function parseSourceIngredients(text: string, value: unknown): string[] |
 
 /** Alcoholic/fermented beverage processing needs evidence; ordinary plant drinks do not inherit that veto. */
 export function needsProcessingEvidence(input: CheckInput): boolean {
-  return input.category === 'drink' && /(?:^|[^\p{L}\p{N}])(?:wine|wein|vin|viini|beer|bier|olut|ale|lager|cider|sidra|champagne|sekt|prosecco|alcohol|alkohol|ethanol)(?=$|[^\p{L}\p{N}])/iu.test(`${input.name ?? ''} ${input.text ?? ''}`) || input.category === 'drink' &&
+  return input.category === 'drink' && /(?:^|[^\p{L}\p{N}])(?:wine|wein|vin|vino|wijn|viini|beer|bier|bière|biere|birra|cerveza|olut|øl|ale|lager|cider|cidre|sidra|sidro|champagne|sekt|prosecco|alcohol|alkohol|ethanol)(?=$|[^\p{L}\p{N}])/iu.test(`${input.name ?? ''} ${input.text ?? ''}`) || input.category === 'drink' &&
     // Swedish beer in a product name; German Öl in a composition means oil. UI locale does not identify label language.
     /(?:^|[^\p{L}\p{N}])öl(?=$|[^\p{L}\p{N}])/iu.test(input.name ?? '');
 }
@@ -68,17 +73,17 @@ const qualifierDomains = Object.values(rulesData.extendedMatching.animalQualifie
 const animalQualifiers = qualifierDomains.map(domain => domain.qualifiers).join('|');
 const freeFromHeads = new Set(rulesData.extendedMatching.freeFromHeads.map(normalizeTerm));
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
-const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?';
+const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?|vrije?';
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs"). A negation fused with
 // an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient within the qualifier's domain
 // ("dairy-free egg noodles" keeps the egg); the domains are data, and an empty domain covers every rule.
-// Only EN/DE/SV negations: the Finnish "ei" is the German egg ("Ei und Milch").
+// A bare Finnish "ei" is never a negation: it is the German egg ("Ei und Milch"); only its fixed phrases ("ei sisällä", "ei lisättyä") are.
 const qualified = (qualifiers: string) => String.raw`(?:non|nicht|icke)[-–]?(?:${qualifiers})\p{L}{0,2}|(?:${qualifiers})[-–]?\s?(?:${freeFrom})`;
 const domainNegations = qualifierDomains.map(domain => ({ pattern: new RegExp(`^(?:${qualified(domain.qualifiers)})$`, 'u'), rules: domain.rules }));
-const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
-const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
+const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|saveur\w*|go[uû]t\w*|sabor\w*|gusto\w*|smaak\w*|smag\w*|maku\w*|vegaan\w*|(?<!\p{L})(?:cultures?|kultur\w*)`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
 const negationWord = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?=$|[^\p{L}])`, 'gu');
 const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
@@ -183,9 +188,12 @@ function withoutPlantExceptions(term: string): string {
   }
   return value;
 }
+const additiveNumber = /^e[\s-]?(\d{3,4}[a-h]?)(?:\s?\(?(?:i{1,3}|iv|v|vi)\)?)?$/u;
 /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
 export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
-  const exact = aliasRules.get(term);
+  // E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
+  const number = additiveNumber.exec(term)?.[1];
+  const exact = aliasRules.get(term) ?? (number ? aliasRules.get(`e${number}`) : undefined);
   if (exact) return exact;
   const remainder = withoutPlantExceptions(term);
   const alias = animalAliases.find(item => mentioned(remainder, item, true)) ??
@@ -193,8 +201,8 @@ export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | un
     compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }
-const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti)\s*:\s*/i;
-const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento)\b/i;
+const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\s*:\s*/i;
+const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b(?!\s+(?:eine?[nrs]?|einer) (?:oder mehrere|der folgenden)(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\b(?!\s+(?:een|één) of meer(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\p{L}\p{N}])(?!\s+(?:one or more|either|any (?:one )?of|une? ou plusieurs|l'une? des|uno o (?:más|varios)|alguno de|uno o più|uno dei|een of meer|en eller flere|ett eller flera|én eller flere|yksi tai useampi)(?![\p{L}\p{N}])(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))/iu;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';

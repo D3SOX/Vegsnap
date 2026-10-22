@@ -33,20 +33,24 @@ jobs:
       - run: bun test scripts
       - name: Generate packs and catalog
         run: |
+          # GitHub caps a release at 1,000 assets, so each quarter's packs get their own release; the catalog keeps its fixed URL.
+          release="offline-data-$(date -u +%Y)-q$(( ($(date -u +%-m) + 2) / 3 ))"
+          echo "PACK_RELEASE=$release" >> "$GITHUB_ENV"
           mkdir pack-release
-          for region in germany sweden eu; do
-            bun scripts/offline-snapshot.ts --region "$region" --output "pack-release/$region.json" --strict
-          done
-          bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/offline-data/" pack-release
+          bun scripts/offline-snapshot.ts --region all --output-dir pack-release --strict
+          bun scripts/regional-catalog.ts "https://github.com/$GITHUB_REPOSITORY/releases/download/$release/" pack-release
       - name: Update regional pack release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh release view offline-data --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create offline-data --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "Weekly regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Vegsnap. See the repository README for data licenses." --latest=false
-          fi
+          notes="Weekly regional product snapshots for offline checks and Browse. Records are partial and community-maintained. Each pack includes its generation date and attribution. The catalog includes download sizes and hashes verified by Vegsnap. See the repository README for data licenses."
+          for release in offline-data "$PACK_RELEASE"; do
+            if ! gh release view "$release" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release create "$release" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Regional product packs" --notes "$notes" --latest=false
+            fi
+          done
           # Packs are immutable assets named after their generation time; the catalog switches to them only once they exist.
-          gh release upload offline-data pack-release/{germany,sweden,eu}-*.json --repo "$GITHUB_REPOSITORY"
+          find pack-release -name '*.json' ! -name catalog-v2.json -exec gh release upload "$PACK_RELEASE" --repo "$GITHUB_REPOSITORY" {} +
           gh release upload offline-data pack-release/catalog-v2.json --repo "$GITHUB_REPOSITORY" --clobber
           # Published pack generations are never deleted: apps cache catalogs without an expiry, so any
           # catalog a device has seen must keep downloading. catalog.json and its unversioned packs stay

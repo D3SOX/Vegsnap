@@ -10,7 +10,6 @@ import { OFFLINE_MAX_BYTES, OFFLINE_MAX_PRODUCTS, validateOfflineSnapshot } from
 
 export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 type SnapshotFetch = (url: string, init?: RequestInit) => Promise<Response>;
-export type Region = 'de-eu' | 'germany' | 'sweden' | 'eu';
 /** The bundled de-eu snapshot ships inside the apps, so it keeps its small caps; downloadable packs fill the client limits. */
 export function packLimits(region: Region): { bytes: number; products: number; nonfood: number } {
   return region === 'de-eu' ? { bytes: 10_000_000, products: 10_000, nonfood: 1_000 } : { bytes: OFFLINE_MAX_BYTES, products: OFFLINE_MAX_PRODUCTS, nonfood: 2_000 };
@@ -33,9 +32,18 @@ const FOOD_EXPORT_BYTES = 4 * 1024 ** 3;
 const EU = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech-republic', 'denmark', 'estonia',
   'finland', 'france', 'germany', 'greece', 'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg',
   'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 'spain', 'sweden'];
-export function regionQueries(region: Region): { countries: string[]; exclude: string[]; limit: number }[] {
-  if (region === 'germany' || region === 'sweden') return [{ countries: [region], exclude: [], limit: 30_000 }];
-  if (region === 'eu') return [{ countries: EU, exclude: [], limit: 30_000 }];
+/** Downloadable packs, in catalog order, and the Open Food Facts countries each one covers. */
+export const PACKS = {
+  germany: ['germany'], sweden: ['sweden'], eu: EU, 'united-kingdom': ['united-kingdom'], ireland: ['ireland'],
+  austria: ['austria'], switzerland: ['switzerland'], france: ['france'], belgium: ['belgium'], netherlands: ['netherlands'],
+  spain: ['spain'], italy: ['italy'], norway: ['norway'], denmark: ['denmark'], finland: ['finland'],
+  'united-states': ['united-states'], canada: ['canada'], australia: ['australia'],
+} as const satisfies Record<string, readonly string[]>;
+export type PackRegion = keyof typeof PACKS;
+export type Region = 'de-eu' | PackRegion;
+export const PACK_REGIONS = Object.keys(PACKS) as PackRegion[];
+export function regionQueries(region: Region): { countries: readonly string[]; exclude: string[]; limit: number }[] {
+  if (region !== 'de-eu') return [{ countries: PACKS[region], exclude: [], limit: 30_000 }];
   return [
     { countries: ['germany'], exclude: [], limit: 4_000 },
     { countries: ['sweden'], exclude: ['germany'], limit: 1_500 },
@@ -83,7 +91,7 @@ export function createSnapshot(region: Region, groups: unknown[][], time: Date, 
   for (const dataset of extra) {
     const candidates = dataset.rows.map(row => normalizeProduct(row, dataset.source)).filter((row): row is OfflineProduct => !!row);
     const priority = (row: OfflineProduct): number => row.countries_tags.includes('en:germany') ? 0 : row.countries_tags.includes('en:sweden') ? 1 : 2;
-    const wanted = region === 'germany' || region === 'sweden' ? [region] : EU;
+    const wanted = region === 'de-eu' ? EU : PACKS[region];
     candidates.sort((a, b) => (region === 'de-eu' ? priority(a) - priority(b) : 0) || Number(!a.ingredients) - Number(!b.ingredients) || a.code.localeCompare(b.code));
     let selected = 0;
     for (const product of candidates) {
@@ -194,9 +202,17 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   }
   return { source, rows, retrievedAt };
 }
-/** Keeps each recipe's most-scanned usable products from the official food export, in the order createSnapshot fills packs. */
-export async function selectFood(region: Region, rows: AsyncIterable<string>): Promise<unknown[][]> {
-  const recipes = regionQueries(region), tags = new Set(recipes.flatMap(recipe => recipe.countries).map(country => `en:${country}`));
+/** Locates one field without splitting the line, so the millions of products outside every region cost a partial scan each. */
+function tsvField(line: string, index: number): string {
+  let start = 0;
+  for (let column = 0; column < index; column++) { start = line.indexOf('\t', start) + 1; if (!start) return ''; }
+  const end = line.indexOf('\t', start);
+  return line.slice(start, end < 0 ? undefined : end);
+}
+/** One pass over the official food export keeps each region's most-scanned usable products per recipe, in the order createSnapshot fills packs. */
+export async function selectFood(regions: readonly Region[], rows: AsyncIterable<string>): Promise<unknown[][][]> {
+  const recipes = regions.flatMap((region, index) => regionQueries(region).map(recipe => ({ ...recipe, region: index })));
+  const tags = new Set(recipes.flatMap(recipe => recipe.countries).map(country => `en:${country}`));
   const groups = recipes.map(() => [] as { scans: number; code: string; row: Record<string, unknown> }[]);
   const rank = (a: { scans: number; code: string }, b: { scans: number; code: string }) =>
     b.scans - a.scans || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
@@ -209,7 +225,7 @@ export async function selectFood(region: Region, rows: AsyncIterable<string>): P
       if (Object.values(columns).some(index => index < 0)) throw new Error('Missing food export columns');
       continue;
     }
-    if (![...tags].some(tag => line.includes(tag))) continue;
+    if (!tsvField(line, columns.countries_tags!).split(',').some(tag => tags.has(tag))) continue;
     const fields = line.split('\t'), field = (key: string) => fields[columns![key]!] ?? '';
     const row = { code: field('code'), product_name: field('product_name'), brands: field('brands'), ingredients_text: field('ingredients_text'),
       countries_tags: field('countries_tags'), last_modified_t: Number(field('last_modified_t')) };
@@ -221,7 +237,7 @@ export async function selectFood(region: Region, rows: AsyncIterable<string>): P
       if (!recipe.countries.some(country => product.countries_tags.includes(`en:${country}`)) ||
           recipe.exclude.some(country => product.countries_tags.includes(`en:${country}`))) return;
       const group = groups[index]!;
-      // Split fields share the decompressed chunk's memory; a copy lets each chunk be freed.
+      // Split fields share the decompressed chunk's memory; one copy per product lets each chunk be freed.
       copy ??= JSON.parse(JSON.stringify(row)) as Record<string, unknown>;
       group.push({ scans, code: copy.code as string, row: copy });
       if (group.length >= 2 * recipe.limit) { group.sort(rank); group.length = recipe.limit; }
@@ -229,7 +245,8 @@ export async function selectFood(region: Region, rows: AsyncIterable<string>): P
   }
   if (!columns) throw new Error('Empty food export');
   if (groups.every(group => !group.length)) throw new Error('Export did not contain usable products');
-  return groups.map((group, index) => group.sort(rank).slice(0, recipes[index]!.limit).map(entry => entry.row));
+  const selected = groups.map((group, index) => group.sort(rank).slice(0, recipes[index]!.limit).map(entry => entry.row));
+  return regions.map((_, region) => selected.filter((_, index) => recipes[index]!.region === region));
 }
 async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Promise<{ path: string; retrievedAt: string }> {
   const path = resolve(cache, 'off.csv.gz'), metadataPath = `${path}.json`;
@@ -253,27 +270,46 @@ async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Pro
   } finally { await rm(temporary, { force: true }); await rm(`${temporary}.json`, { force: true }); }
   return { path, retrievedAt: now.toISOString() };
 }
-export async function refreshSnapshot(options: { output: string; region?: Region; force?: boolean; strict?: boolean;
-  fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }): Promise<'cached' | 'updated' | 'stale'> {
-  const region = options.region ?? 'de-eu', now = options.now ?? new Date(), log = options.log ?? console.log;
-  const existing = await readSnapshot(options.output, region);
-  if (!options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
-    if (!existing) throw new Error(`No usable ${region} snapshot at ${options.output} for VEGSNAP_OFFLINE_SNAPSHOT=cached`);
-    log(`Offline ${region}: using ${existing.products.length} products from ${existing.generatedAt} (VEGSNAP_OFFLINE_SNAPSHOT=cached).`); return 'cached';
-  }
-  const age = existing ? now.getTime() - Date.parse(existing.generatedAt) : Infinity;
-  if (existing && !options.force && age >= 0 && age < CACHE_TTL_MS && existing.sources.every(source => now.getTime() - Date.parse(source.retrievedAt) >= 0 && now.getTime() - Date.parse(source.retrievedAt) < CACHE_TTL_MS)) {
-    log(`Offline ${region}: using ${existing.products.length} products from ${existing.generatedAt} (7-day cache).`); return 'cached';
-  }
-  const temporary = `${options.output}.${crypto.randomUUID()}.tmp`;
+type RefreshStatus = 'cached' | 'updated' | 'stale';
+interface RefreshOptions { force?: boolean; strict?: boolean; fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }
+export async function refreshSnapshot(options: RefreshOptions & { output: string; region?: Region }): Promise<RefreshStatus> {
+  return (await refreshSnapshots([{ region: options.region ?? 'de-eu', output: options.output }], options))[0]!;
+}
+/** Refreshes every pack that is not cached from a single read of each export. */
+export async function refreshSnapshots(packs: { region: Region; output: string }[], options: RefreshOptions = {}): Promise<RefreshStatus[]> {
+  const now = options.now ?? new Date(), log = options.log ?? console.log;
+  const existing = await Promise.all(packs.map(pack => readSnapshot(pack.output, pack.region)));
+  const statuses: (RefreshStatus | undefined)[] = packs.map(({ region, output }, index) => {
+    const snapshot = existing[index];
+    if (!options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
+      if (!snapshot) throw new Error(`No usable ${region} snapshot at ${output} for VEGSNAP_OFFLINE_SNAPSHOT=cached`);
+      log(`Offline ${region}: using ${snapshot.products.length} products from ${snapshot.generatedAt} (VEGSNAP_OFFLINE_SNAPSHOT=cached).`); return 'cached';
+    }
+    const age = snapshot ? now.getTime() - Date.parse(snapshot.generatedAt) : Infinity;
+    if (snapshot && !options.force && age >= 0 && age < CACHE_TTL_MS && snapshot.sources.every(source => now.getTime() - Date.parse(source.retrievedAt) >= 0 && now.getTime() - Date.parse(source.retrievedAt) < CACHE_TTL_MS)) {
+      log(`Offline ${region}: using ${snapshot.products.length} products from ${snapshot.generatedAt} (7-day cache).`); return 'cached';
+    }
+    return undefined;
+  });
+  const stale = (index: number, error: unknown): RefreshStatus => {
+    const snapshot = existing[index];
+    if (!snapshot || options.strict) throw error;
+    const age = now.getTime() - Date.parse(snapshot.generatedAt);
+    log(`WARNING: Offline ${packs[index]!.region} refresh failed (${error instanceof Error ? error.message : 'unknown error'}). Keeping ${snapshot.products.length} products from ${snapshot.generatedAt}; snapshot age ${Math.max(0, Math.floor(age / 86_400_000))} days.`);
+    return 'stale';
+  };
+  const pending = packs.flatMap((_, index) => statuses[index] ? [] : [index]);
+  if (!pending.length) return statuses as RefreshStatus[];
+  let sources: { food: { retrievedAt: string }; groups: unknown[][][]; extra: { source: 'obf' | 'opf'; rows: unknown[]; retrievedAt: string }[] };
   try {
-    const cache = options.sourceCache ?? resolve(dirname(options.output), '..', '..', 'artifacts/offline/source-cache');
-    log(`Offline ${region}: preparing off food export.`);
+    const cache = options.sourceCache ?? resolve(dirname(packs[pending[0]!]!.output), '..', '..', 'artifacts/offline/source-cache');
+    const regions = pending.map(index => packs[index]!.region);
+    log(`Offline ${regions.join(', ')}: preparing off food export.`);
     const food = await foodExport(cache, now, options.fetcher ?? fetch);
     // The decompressed export is about 10 GB, so it is read line by line.
-    let groups: unknown[][];
+    let groups: unknown[][][];
     // pipeline forwards read errors, so they reject the line iterator instead of escaping as unhandled events.
-    try { groups = await selectFood(region, createInterface({ input: pipeline(createReadStream(food.path), createGunzip(), () => {}), crlfDelay: Infinity })); }
+    try { groups = await selectFood(regions, createInterface({ input: pipeline(createReadStream(food.path), createGunzip(), () => {}), crlfDelay: Infinity })); }
     catch (error) {
       // A truncated or unusable download must not be reused from the cache on the next run.
       await rm(`${food.path}.json`, { force: true }); await rm(food.path, { force: true });
@@ -282,32 +318,45 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     const extra: { source: 'obf' | 'opf'; rows: unknown[]; retrievedAt: string }[] = [];
     if (options.includeNonfood !== false) {
       for (const source of ['obf', 'opf'] as const) {
-        log(`Offline ${region}: preparing ${source} regional export.`);
+        log(`Offline: preparing ${source} regional export.`);
         extra.push(await nonfoodRows(source, cache, now, options.fetcher ?? fetch));
       }
     }
-    const pack = createSnapshot(region, groups, now, extra);
-    pack.sources[0]!.retrievedAt = food.retrievedAt;
-    const content = `${JSON.stringify(pack)}\n`;
-    if (Buffer.byteLength(content) > packLimits(region).bytes) throw new Error('Snapshot exceeds pack size limit');
-    await mkdir(dirname(options.output), { recursive: true });
-    await writeFile(temporary, content, { flag: 'wx' });
-    await rename(temporary, options.output);
-    log(`Offline ${region}: updated ${pack.products.length} products, ${(Buffer.byteLength(content) / 1024 / 1024).toFixed(2)} MiB, ${pack.generatedAt}.`);
-    return 'updated';
+    sources = { food, groups, extra };
   } catch (error) {
-    await rm(temporary, { force: true });
-    if (!existing || options.strict) throw error;
-    log(`WARNING: Offline refresh failed (${error instanceof Error ? error.message : 'unknown error'}). Keeping ${existing.products.length} products from ${existing.generatedAt}; snapshot age ${Math.max(0, Math.floor(age / 86_400_000))} days.`);
-    return 'stale';
+    for (const index of pending) statuses[index] = stale(index, error);
+    return statuses as RefreshStatus[];
   }
+  for (const [position, index] of pending.entries()) {
+    const { region, output } = packs[index]!, temporary = `${output}.${crypto.randomUUID()}.tmp`;
+    try {
+      const pack = createSnapshot(region, sources.groups[position]!, now, sources.extra);
+      pack.sources[0]!.retrievedAt = sources.food.retrievedAt;
+      const content = `${JSON.stringify(pack)}\n`;
+      if (Buffer.byteLength(content) > packLimits(region).bytes) throw new Error('Snapshot exceeds pack size limit');
+      await mkdir(dirname(output), { recursive: true });
+      await writeFile(temporary, content, { flag: 'wx' });
+      await rename(temporary, output);
+      log(`Offline ${region}: updated ${pack.products.length} products, ${(Buffer.byteLength(content) / 1024 / 1024).toFixed(2)} MiB, ${pack.generatedAt}.`);
+      statuses[index] = 'updated';
+    } catch (error) {
+      await rm(temporary, { force: true });
+      statuses[index] = stale(index, error);
+    }
+  }
+  return statuses as RefreshStatus[];
 }
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const value = (key: string) => { const index = args.indexOf(key); return index < 0 ? undefined : args[index + 1]; };
-  const region = value('--region') ?? 'de-eu';
-  if (['--region', '--output'].some(key => args.includes(key) && (!value(key) || value(key)!.startsWith('--'))) || !['de-eu', 'germany', 'sweden', 'eu'].includes(region) || args.some((arg, index) =>
-    !['--region', '--output', '--force', '--strict'].includes(arg) && !['--region', '--output'].includes(args[index - 1] ?? ''))) throw new Error('Usage: bun scripts/offline-snapshot.ts [--region de-eu|germany|sweden|eu] [--output path] [--force] [--strict]');
+  const region = value('--region') ?? 'de-eu', directory = value('--output-dir');
+  const regions = region === 'all' ? PACK_REGIONS : region.split(',');
+  if (['--region', '--output', '--output-dir'].some(key => args.includes(key) && (!value(key) || value(key)!.startsWith('--'))) ||
+    regions.some(item => item !== 'de-eu' && !Object.hasOwn(PACKS, item)) || new Set(regions).size !== regions.length ||
+    args.includes('--output') && (directory !== undefined || regions.length > 1) || args.some((arg, index) =>
+    !['--region', '--output', '--output-dir', '--force', '--strict'].includes(arg) && !['--region', '--output', '--output-dir'].includes(args[index - 1] ?? ''))) {
+    throw new Error('Usage: bun scripts/offline-snapshot.ts [--region de-eu|all|PACK[,PACK…]] [--output path | --output-dir directory] [--force] [--strict]');
+  }
   const root = fileURLToPath(new URL('..', import.meta.url));
   const lock = resolve(root, 'artifacts/offline/refresh.lock');
   await mkdir(dirname(lock), { recursive: true });
@@ -329,6 +378,7 @@ if (import.meta.main) {
     }
   }
   try {
-    await refreshSnapshot({ region: region as Region, output: resolve(value('--output') ?? (region === 'de-eu' ? `${root}/data/offline/bundle.json` : `${root}/artifacts/offline/${region}.json`)), sourceCache: resolve(root, 'artifacts/offline/source-cache'), force: args.includes('--force'), strict: args.includes('--strict') });
+    const output = (item: string) => resolve(value('--output') ?? (directory ? `${directory}/${item}.json` : item === 'de-eu' ? `${root}/data/offline/bundle.json` : `${root}/artifacts/offline/${item}.json`));
+    await refreshSnapshots(regions.map(item => ({ region: item as Region, output: output(item) })), { sourceCache: resolve(root, 'artifacts/offline/source-cache'), force: args.includes('--force'), strict: args.includes('--strict') });
   } finally { await rm(lock, { recursive: true, force: true }); }
 }

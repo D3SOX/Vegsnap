@@ -1,7 +1,7 @@
 import { resultMessages } from './i18n';
 import { DATABASES, normalizeBarcode } from './database';
 import type { CheckInput, DatabaseProduct } from './types';
-import { countryCode, selectProductCountry } from './market';
+import { countryCode, packRegionName, selectProductCountry } from './market';
 
 export const OFFLINE_MAX_BYTES = 20_000_000;
 export const OFFLINE_MAX_PRODUCTS = 40_000;
@@ -108,7 +108,7 @@ export class OfflineProductIndex {
       evidenceMarkets: product.countries_tags,
       input: { barcode: code, name, brand: product.brands, text, complete: false, locale: input.locale, market,
         category: input.category && input.category !== 'other' ? input.category : db.category, sourceUrl: `${db.origin}/product/${product.code}` },
-      evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${t.offlineSnapshot} (${snapshot.region})`,
+      evidence: { id: `offline:${db.id}:${product.code}`, kind: 'database', title: `${db.name} — ${t.offlineSnapshot} (${packRegionName(snapshot.region, input.locale)})`,
         excerpt: text || name || code, url: `${db.origin}/product/${product.code}`, retrievedAt: source.retrievedAt,
         sourceDate: new Date(product.last_modified_t * 1000).toISOString(), license: `${source.license} (database); DBCL-1.0 (contents)` },
       labels: [],

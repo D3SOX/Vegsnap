@@ -116,6 +116,33 @@ struct CheckJob: Codable, Identifiable {
 struct PackInfo: Codable, Identifiable { var region: String; var generatedAt: String; var count: Int; var id: String { region } }
 struct PackDescriptor: Codable, Identifiable { var id: String; var region: String; var url: String; var bytes: Int; var sha256: String; var generatedAt: String; var products: Int }
 struct PackCatalog: Codable { var schemaVersion: Int; var packs: [PackDescriptor] }
+private let regionCodes = Locale.Region.isoRegions.map(\.identifier).filter { $0.count == 2 }
+private func regionKey(_ value: String) -> String { value.lowercased().filter(\.isLetter) }
+// Canonical Open Facts tags differing from system names. Keep in sync with ProductMarket.kt and core/market.ts.
+private let openFactsRegionCodes: [String: String] = [
+    "antarctic": "AQ", "antiguaandbarbuda": "AG", "bosniaandherzegovina": "BA", "cocoskeelingislands": "CC", "curacao": "CW",
+    "czechrepublic": "CZ", "cotedivoire": "CI", "democraticrepublicofthecongo": "CD", "federatedstatesofmicronesia": "FM",
+    "frenchsouthernandantarcticlands": "TF", "heardislandandmcdonaldislands": "HM", "hongkong": "HK", "macau": "MO", "myanmar": "MM",
+    "pitcairn": "PN", "republicofthecongo": "CG", "reunion": "RE", "sainthelena": "SH", "saintkittsandnevis": "KN", "saintlucia": "LC",
+    "saintmartin": "MF", "saintpierreandmiquelon": "PM", "saintvincentandthegrenadines": "VC", "saintbarthelemy": "BL",
+    "saotomeandprincipe": "ST", "southgeorgiaandthesouthsandwichislands": "GS", "stateofpalestine": "PS", "svalbardandjanmayen": "SJ",
+    "swaziland": "SZ", "thebahamas": "BS", "trinidadandtobago": "TT", "turkey": "TR", "turksandcaicosislands": "TC",
+    "unitedstatesminoroutlyingislands": "UM", "virginislandsoftheunitedstates": "VI", "wallisandfutuna": "WF", "alandislands": "AX",
+    "deutschland": "DE", "sverige": "SE", "suomi": "FI", "uk": "GB", "usa": "US"
+]
+private let englishRegionCodes = Dictionary(regionCodes.compactMap { code in Locale(identifier: "en").localizedString(forRegionCode: code).map { (regionKey($0), code) } }, uniquingKeysWith: { first, _ in first })
+    .merging(openFactsRegionCodes) { _, canonical in canonical }
+private func packRegionCode(_ value: String) -> String? {
+    let code = value.uppercased()
+    return code == "EU" || regionCodes.contains(code) ? code : englishRegionCodes[regionKey(value)]
+}
+/// Pack regions are Open Food Facts country names ("united-kingdom"), "eu" or code pairs such as the bundled "de-eu"; other regions keep their own text. Keep in sync with core/market.ts.
+func packRegionName(_ region: String, locale: Locale = .current) -> String {
+    let name = { (code: String) in locale.localizedString(forRegionCode: code) ?? code }
+    if let code = packRegionCode(region) { return name(code) }
+    let parts = region.split(separator: "-").map { $0.count == 2 ? packRegionCode(String($0)) : nil }
+    return parts.count > 1 && parts.allSatisfy { $0 != nil } ? parts.compactMap { $0 }.map(name).joined(separator: " + ") : region
+}
 struct ManufacturerMessage: Codable { var subject: String; var body: String; var mailto: String? }
 struct CommunityLinks: Codable {
     var submit: String; var replies: String

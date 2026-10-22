@@ -11,6 +11,15 @@ export function countryCode(value: string): string | undefined {
   const name = value.normalize('NFKC').trim().toLowerCase().replace(/^en:/, '').replace(/[\s-]/g, '');
   return Object.hasOwn(aliases, name) ? aliases[name] : undefined;
 }
+/** Pack regions are Open Food Facts country names ("united-kingdom"), "eu" or code pairs such as the bundled "de-eu"; other regions keep their own text. */
+export function packRegionName(region: string, locale?: string): string {
+  const names = new Intl.DisplayNames([appLocale(locale)], { type: 'region' });
+  const code = (value: string) => value.toUpperCase() === 'EU' ? 'EU' : countryCode(value);
+  const whole = code(region);
+  if (whole) return names.of(whole) ?? region;
+  const parts = region.split('-').map(part => part.length === 2 ? code(part) : undefined);
+  return parts.length > 1 && parts.every(Boolean) ? parts.map(part => names.of(part!)).join(' + ') : region;
+}
 export function singleProductCountry(markets: readonly string[]): string | undefined {
   const codes = markets.map(countryCode);
   if (!codes.length || codes.some(code => !code)) return;

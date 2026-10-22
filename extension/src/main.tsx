@@ -1,6 +1,6 @@
 import { HOSTED_AI, OFFLINE_MAX_BYTES, type OfflinePackInfo } from '@vegsnap/core';
 import { render } from 'preact';
-import { alternativeQueryForProduct, communityLinks, countryCode, imageSupport, localizeResult, resultReport, type CommunityReply } from '@vegsnap/core';
+import { alternativeQueryForProduct, communityLinks, countryCode, imageSupport, packRegionName, localizeResult, resultReport, type CommunityReply } from '@vegsnap/core';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
@@ -507,7 +507,7 @@ export function App() {
           {config.connection !== 'database' && activeModel && <p class="hint" role="status">{imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'supported' ? t.imagesSupported : imageSupport(activeModel, config.connection === 'chatgpt' ? models.find(model => model.id === config.model) : undefined) === 'unsupported' ? t.imagesUnsupported : t.imagesAutomatic}</p>}
           <p class="hint">{t.providerHint}</p>
           <section aria-labelledby="offline-heading"><h2 id="offline-heading">{t.offlineHeading}</h2><p class="hint">{t.offlineHint}</p>
-            {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{pack.region}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
+            {offlinePacks.map(pack => <div class="store" key={`${pack.bundled}:${pack.region}`}><div><strong>{packRegionName(pack.region, config.language)}</strong><small>{pack.count.toLocaleString(config.language)} {t.offlineProducts} · {new Date(pack.generatedAt).toLocaleDateString(config.language)}{pack.bundled ? ` · ${t.offlineBundled}` : ''}</small></div>{!pack.bundled && <button type="button" disabled={busy} onClick={() => void act(async () => { await request({ type: 'remove-offline-pack', region: pack.region }); await refresh(); })}>{t.remove}</button>}</div>)}
             <label class="upload">{t.offlineImport}<input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > OFFLINE_MAX_BYTES) throw new Error(t.packSizeLimit); await request({ type: 'import-offline-pack', text: await file.text() }); await refresh(); }); event.currentTarget.value = ''; }}/></label>
           </section>
           <HiddenRepliesSetting count={hiddenReplies.length} locale={config.language} disabled={!ready || busy} onRestore={() => void act(async () => { await request({ type: 'restore-replies' }); await refresh(); })}/>

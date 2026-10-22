@@ -40,6 +40,14 @@ internal fun productCountryCode(value: String): String? = value.trim().uppercase
 internal fun productCountryName(value: String, locale: Locale): String = productCountryCode(value)?.let {
     Locale.Builder().setRegion(it).build().getDisplayCountry(locale)
 } ?: value
+/** Pack regions are Open Food Facts country names ("united-kingdom"), "eu" or code pairs such as the bundled "de-eu"; other regions keep their own text. Keep in sync with core/market.ts. */
+internal fun packRegionName(region: String, locale: Locale): String {
+    fun code(value: String) = if (value.equals("eu", ignoreCase = true)) "EU" else productCountryCode(value)
+    fun name(code: String) = Locale.Builder().setRegion(code).build().getDisplayCountry(locale)
+    code(region)?.let { return name(it) }
+    val parts = region.split('-').map { if (it.length == 2) code(it) else null }
+    return if (parts.size > 1 && parts.all { it != null }) parts.joinToString(" + ") { name(it!!) } else region
+}
 internal fun selectProductCountry(input: CheckInput, packagingCountry: String? = null, markets: List<String> = emptyList()): Pair<String, String> {
     if (input.autoMarket != true) return input.market to "manual"
     val packaging = packagingCountry?.let(::productCountryCode)

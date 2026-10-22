@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { validateOfflineSnapshot, OFFLINE_MAX_BYTES } from '../packages/core/src/offline';
+import { PACK_REGIONS } from './offline-snapshot';
 
 /** Clients released before 20 MB packs keep reading the frozen catalog.json; current clients fetch this asset. */
 export const CATALOG_ASSET = 'catalog-v2.json';
@@ -12,7 +13,7 @@ export async function createCatalog(baseUrl: string, directory: string) {
   const base = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) throw new Error('Use a plain HTTPS release asset base URL.');
   const packs = [];
-  for (const id of ['germany', 'sweden', 'eu']) {
+  for (const id of PACK_REGIONS) {
     const bytes = await readFile(`${directory}/${id}.json`);
     if (bytes.length > OFFLINE_MAX_BYTES) throw new Error(`Pack too large: ${id}`);
     const pack = validateOfflineSnapshot(JSON.parse(bytes.toString('utf8')));
