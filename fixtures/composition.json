@@ -1787,5 +1787,126 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "contains-starts-a-new-phrase-after-a-closed-negation",
+    "input": {
+      "text": "Ingredients: no added sugar and contains whole milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "conjunction-still-carries-a-negation-over-a-plant-word",
+    "input": {
+      "text": "Ingredients: water, free from gluten and milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingrédients: sucre, sel. Peut contenir des traces de viande.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingredientes: agua, sal. Puede contener trazas de carne.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingredienti: acqua, sale. Può contenere tracce di carne.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-milk-powder-and-egg-white-are-animal",
+    "input": {
+      "text": "Ingrédients: sucre, lait entier en poudre, blanc d'oeuf en poudre",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-milk-powder-is-animal",
+    "input": {
+      "text": "Ingredientes: azúcar, leche desnatada en polvo",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-eggs-are-animal",
+    "input": {
+      "text": "Ingredienti: zucchero, uova",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingrédients: eau, sel. Fabriqué dans un atelier qui utilise oeuf, lait, sésame.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingredientes: agua, sal. Elaborado en una fábrica que también procesa huevo.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingredienti: acqua, sale. Prodotto in uno stabilimento che utilizza uova.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

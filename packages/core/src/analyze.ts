@@ -85,7 +85,7 @@ const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|
 // A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
 const freeSuffix = new RegExp(String.raw`(?:${freeFrom})(?=$|[^\p{L}])`, 'u');
 const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
-// A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
+// A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring", "no added sugar and contains whole milk"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
 // ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver"). Both word lists are data shared with Android and match whole words only, so "y", "o" and "e" never match inside a word or an E-number.
 const withWords = rulesData.extendedMatching.withWords.map(normalizeTerm).join('|');
 const conjunctions = rulesData.extendedMatching.conjunctions.map(normalizeTerm).join('|');
@@ -171,8 +171,8 @@ export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | un
   const alias = animalAliases.find(item => mentioned(remainder, item, true)) ?? compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }
-const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i;
-const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von)\b/i;
+const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti)\s*:\s*/i;
+const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento)\b/i;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';

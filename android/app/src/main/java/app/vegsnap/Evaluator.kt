@@ -11,8 +11,8 @@ data class CheckInput(val text: String = "", val category: String = "other", val
     val name: String = "", val barcode: String = "", val locale: String = "en", val truncated: Boolean = false,
     val market: String = "DE", val autoMarket: Boolean? = null)
 
-internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:\\s*", RegexOption.IGNORE_CASE)
-internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von)\\b", RegexOption.IGNORE_CASE)
+internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti)\\s*:\\s*", RegexOption.IGNORE_CASE)
+internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento)\\b", RegexOption.IGNORE_CASE)
 private const val ADDITIVE_ROLES = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel)"
 private val additivePrefix = Regex("^\\s*$ADDITIVE_ROLES(?:\\s*:\\s*|\\s+)(?=\\S)", RegexOption.IGNORE_CASE)
 private val additiveGroup = Regex("\\b$ADDITIVE_ROLES\\s*:?\\s*(?=\\(\\s*[\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
