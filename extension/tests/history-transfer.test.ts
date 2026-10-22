@@ -96,6 +96,20 @@ describe('history transfer', () => {
     expect(historyErrors({ schemaVersion: 1, exportedAt: checkedAt, results: imported })).toEqual([]);
   });
 
+  test('Swedish finding translations survive export and re-import under the shared contracts', () => {
+    const result = stored();
+    result.findings[0] = { ...result.findings[0]!, term: 'malic acid', displayTerm: 'äppelsyra', displayLocale: 'sv' };
+    const document = { schemaVersion: 1, exportedAt: checkedAt, results: historyExport([result]) };
+    expect(historyErrors(document)).toEqual([]);
+    const imported = parseHistoryImport(JSON.stringify(document), notice);
+    expect(imported[0]?.findings).toEqual(result.findings);
+    const reexported = { ...document, results: historyExport(imported) };
+    expect(historyErrors(reexported)).toEqual([]);
+    expect(parseHistoryImport(JSON.stringify(reexported), notice)[0]?.findings).toEqual(result.findings);
+    const invalid = { ...document, results: [{ ...document.results[0], findings: [{ ...result.findings[0], displayLocale: 'fr' }] }] };
+    expect(() => parseHistoryImport(JSON.stringify(invalid), notice)).toThrow('Invalid history result.');
+  });
+
   test('strips unknown fields, drops assessments for another brand, and keeps the first of duplicate identifiers', () => {
     const [first] = exported().results;
     const foreign = { ...first, photos: ['data:image/jpeg;base64,YQ=='], input: { text: 'private draft' }, communityOriginal: {}, surprise: true, companyAssessment: { ...first!.companyAssessment, brand: 'Other' }, warnings: [notice] };

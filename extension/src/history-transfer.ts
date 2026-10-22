@@ -1,4 +1,4 @@
-import { parseResultCompanyAssessment, type CheckResult, type CompanyConcern, type Evidence, type Finding } from '@vegsnap/core';
+import { locales, parseResultCompanyAssessment, type CheckResult, type CompanyConcern, type Evidence, type Finding } from '@vegsnap/core';
 import type { HistoryResult } from './history';
 
 export const HISTORY_IMPORT_MAX_BYTES = 5_000_000;
@@ -17,7 +17,6 @@ const VERIFICATIONS = ['registry', 'packaging', 'source', 'unverified'] as const
 const CONCERN_CATEGORIES = ['animal_testing', 'animal_welfare_lobbying', 'animal_exploitation'] as const;
 const CONCERN_STATUSES = ['current', 'resolved', 'disputed'] as const;
 const SCOPES = ['direct', 'parent'] as const;
-const LOCALES = ['en', 'de'] as const;
 const LONG = 30_000;
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const unsupported = () => new Error('Unsupported history file.');
@@ -53,7 +52,7 @@ function items<T>(value: unknown, maximumItems: number, parse: (item: Record<str
 }
 function defined<T extends object>(value: T): T { return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T; }
 function finding(item: Record<string, unknown>): Finding {
-  const parsed = defined({ term: text(item.term, LONG), displayTerm: optional(item.displayTerm, value => text(value, 300, 1)), displayLocale: optional(item.displayLocale, value => oneOf(value, LOCALES)),
+  const parsed = defined({ term: text(item.term, LONG), displayTerm: optional(item.displayTerm, value => text(value, 300, 1)), displayLocale: optional(item.displayLocale, value => oneOf(value, locales)),
     status: oneOf(item.status, FINDING_STATUSES), ruleId: optional(item.ruleId, value => text(value, 300)), explanation: text(item.explanation, LONG), evidenceId: text(item.evidenceId, LONG) });
   if ((parsed.displayTerm === undefined) !== (parsed.displayLocale === undefined) || parsed.displayTerm !== undefined && !parsed.displayTerm.trim()) throw invalid();
   return parsed;

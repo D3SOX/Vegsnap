@@ -1,5 +1,6 @@
 import type { CheckInput, Locale } from './types';
 import { DATABASES } from './database';
+import { locales } from './locale';
 import { normalizeBarcode } from './barcode';
 import type { OfflineProductIndex } from './offline';
 import { fetchPublicSearch, PublicSearchError } from './public-search';
@@ -23,7 +24,7 @@ const database = (source: BrowseSource) => DATABASES.find(db => db.id === source
 export function validateBrowseSearch(input: unknown): Required<BrowseSearch> {
   if (!object(input) || !DATABASES.some(db => db.id === input.source) || typeof input.query !== 'string' || input.query.trim().length < 2 || input.query.length > 200 ||
     input.cursor !== undefined && (!Number.isInteger(input.cursor) || (input.cursor as number) < 0 || (input.cursor as number) > 10_000) ||
-    input.locale !== undefined && !['en', 'de'].includes(String(input.locale))) throw new Error('Invalid database search.');
+    input.locale !== undefined && !locales.includes(input.locale as Locale)) throw new Error('Invalid database search.');
   return { source: input.source as BrowseSource, query: input.query.trim(), cursor: (input.cursor as number | undefined) ?? 0, locale: (input.locale as Locale | undefined) ?? 'en' };
 }
 export function browseSearchUrl(raw: BrowseSearch): string {

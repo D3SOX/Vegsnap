@@ -30,6 +30,22 @@ describe('database browsing', () => {
     expect(() => validateBrowseSearch({ ...input, cursor: 1.5 })).toThrow();
     expect(() => validateBrowseSearch({ ...input, locale: 'fr' })).toThrow();
   });
+  test('Swedish searches request and parse Swedish fields online', async () => {
+    const swedish = { ...input, query: 'havredryck', locale: 'sv' as const };
+    const fetcher = Object.assign(async (request: string | URL | Request) => {
+      const url = new URL(String(request));
+      expect(url.searchParams.get('lc')).toBe('sv');
+      expect(url.searchParams.get('fields')).toContain('product_name_sv');
+      expect(url.searchParams.get('fields')).toContain('ingredients_text_sv');
+      return Response.json({ products: [{ code: '4006381333931', product_name: 'Oat drink', product_name_sv: 'Havredryck', ingredients_text_sv: 'vatten, havre' }] });
+    }, { preconnect: globalThis.fetch.preconnect });
+    expect((await searchBrowse(swedish, fetcher)).records[0]).toMatchObject({ name: 'Havredryck', composition: 'vatten, havre' });
+  });
+  test('Swedish searches can browse offline packs with their available product text', () => {
+    const page = browseOfflinePage(new OfflineProductIndex([pack]), { ...input, locale: 'sv' }, 'SE');
+    expect(page.offline).toBe(true);
+    expect(page.records[0]).toMatchObject({ name: 'Oat drink', composition: 'water, oats' });
+  });
   test('requests one localized page of twenty records without search-as-you-type parameters', () => {
     const url = new URL(browseSearchUrl({ ...input, source: 'obf', cursor: 2 }));
     expect(url.origin).toBe('https://world.openbeautyfacts.org');
