@@ -81,12 +81,14 @@ const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|
 // A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
 const freeSuffix = new RegExp(String.raw`(?:${freeFrom})(?=$|[^\p{L}])`, 'u');
 const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
-// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk"), and so does a slash
-// ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver").
-const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
-const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\p{L}])|(?<![-–])\//u;
-const conjunction = /^(?:and|und|och|or|oder|eller|&|\/)$/u;
-const words = (value: string) => value.match(/\p{L}+|[&/]/gu) ?? [];
+// A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
+// ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver"). Both word lists are data shared with Android and match whole words only, so "y", "o" and "e" never match inside a word or an E-number.
+const withWords = rulesData.extendedMatching.withWords.map(normalizeTerm).join('|');
+const conjunctions = rulesData.extendedMatching.conjunctions.map(normalizeTerm).join('|');
+const phrase = new RegExp(String.raw`(?:^|[^\p{L}\p{N}])(?:${withWords})(?=$|[^\p{L}\p{N}])`, 'u');
+const conjunct = new RegExp(String.raw`(?:^|[^\p{L}\p{N}])(?:${withWords}|${conjunctions}|&)(?=$|[^\p{L}\p{N}])|(?<![-–])/`, 'u');
+const conjunction = new RegExp(`^(?:${conjunctions}|&|/)$`, 'u');
+const words = (value: string) => value.match(/[\p{L}\p{N}]+|[&/]/gu) ?? [];
 // An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg.
 const exactOnlyAliases = new Set(rulesData.extendedMatching.exactOnlyAliases.map(normalizeTerm));
 const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !exactOnlyAliases.has(alias) && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
@@ -135,11 +137,31 @@ function mentioned(text: string, item: string, wholeWord: boolean): boolean {
   }
   return false;
 }
+/** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
+function overlaps(value: string, alias: string, start: number, end: number): boolean {
+  for (let at = value.indexOf(alias); at >= 0 && at <= start; at = value.indexOf(alias, at + 1)) {
+    if (/[\p{L}\p{N}]/u.test(value[at - 1] ?? '') || /[\p{L}\p{N}]/u.test(value[at + alias.length] ?? '')) continue;
+    if (at + alias.length > (at < start ? start : end)) return true;
+  }
+  return false;
+}
+/** A plant exception is removed where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless an animal alias overlaps it; an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). */
+function withoutPlantExceptions(term: string): string {
+  let value = term;
+  for (const exception of plantExceptions) {
+    for (let start = value.indexOf(exception); start >= 0; start = value.indexOf(exception, start + 1)) {
+      const end = start + exception.length;
+      const prefix = /\p{L}*$/u.exec(value.slice(0, start))![0].length;
+      if (component(prefix, exception, 0) && !animalAliases.some(alias => overlaps(value, alias, start, end))) value = `${value.slice(0, start)} ${value.slice(end)}`;
+    }
+  }
+  return value;
+}
 /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
 export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
   const exact = aliasRules.get(term);
   if (exact) return exact;
-  const remainder = plantExceptions.reduce((value, exception) => value.replaceAll(exception, ' '), term);
+  const remainder = withoutPlantExceptions(term);
   const alias = animalAliases.find(item => mentioned(remainder, item, true)) ?? compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }

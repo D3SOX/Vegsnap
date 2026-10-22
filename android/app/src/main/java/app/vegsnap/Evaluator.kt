@@ -75,12 +75,7 @@ private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])
 private val freeSuffix = Regex("(?:$FREE_FROM)(?=$|[^\\p{L}])")
 private val lastWord = Regex("\\p{L}+(?=[^\\p{L}]*$)")
 private val modifiedAfter = Regex("(?:$MODIFIERS)(?:$|[^\\p{L}])")
-// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk"), and so does a slash
-// ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver").
-private val phrase = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
-private val conjunct = Regex("(?:^|[^\\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\\p{L}])|(?<![-–])/")
-private val conjunction = Regex("and|und|och|or|oder|eller|&|/")
-private val wordOrJoiner = Regex("\\p{L}+|[&/]")
+private val wordOrJoiner = Regex("[\\p{L}\\p{N}]+|[&/]")
 private fun words(value: String): List<String> = wordOrJoiner.findAll(value).map { it.value }.toList()
 /** A stem is a compound component when the letters attached to it could be words themselves: none or at least three before ("Kuhmilch"), none or at least four after ("Milchpulver"). Inflections such as "milchig", "wollen", "silken", "gräddes" or "Flachs" never count, and a stem shorter than four letters ("ägg") must start its word. */
 internal fun component(prefix: Int, stem: String, suffix: Int): Boolean {
@@ -101,6 +96,13 @@ class Evaluator(private val rulesDocument: JSONObject) {
     private fun extendedTerms(key: String): List<String> = extendedMatching.getJSONArray(key).let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
     private val compoundStems = extendedTerms("compoundStems").sortedByDescending { it.length }
     private val plantExceptions = extendedTerms("plantExceptions").sortedByDescending { it.length }
+    // A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
+    // ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver"). Both word lists are data shared with the TypeScript core and match whole words only, so "y", "o" and "e" never match inside a word or an E-number.
+    private val withWords = extendedTerms("withWords").joinToString("|")
+    private val conjunctions = extendedTerms("conjunctions").joinToString("|")
+    private val phrase = Regex("(?:^|[^\\p{L}\\p{N}])(?:$withWords)(?=$|[^\\p{L}\\p{N}])")
+    private val conjunct = Regex("(?:^|[^\\p{L}\\p{N}])(?:$withWords|$conjunctions|&)(?=$|[^\\p{L}\\p{N}])|(?<![-–])/")
+    private val conjunction = Regex("$conjunctions|&|/")
     private val freeFromHeads = extendedTerms("freeFromHeads").toSet()
     // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
     private val animalQualifiers = extendedTerms("animalQualifiers").joinToString("|")
@@ -153,10 +155,34 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         return false
     }
+    /** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
+    private fun overlaps(value: String, alias: String, start: Int, end: Int): Boolean {
+        var at = value.indexOf(alias)
+        while (at in 0..start) {
+            val whole = !wordCharacter.containsMatchIn(value.getOrNull(at - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(value.getOrNull(at + alias.length)?.toString().orEmpty())
+            if (whole && at + alias.length > (if (at < start) start else end)) return true
+            at = value.indexOf(alias, at + 1)
+        }
+        return false
+    }
+    /** A plant exception is removed where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless an animal alias overlaps it; an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). */
+    private fun withoutPlantExceptions(term: String): String {
+        var value = term
+        for (exception in plantExceptions) {
+            var start = value.indexOf(exception)
+            while (start >= 0) {
+                val end = start + exception.length
+                val prefix = value.take(start).takeLastWhile { it.isLetter() }.length
+                if (component(prefix, exception, 0) && animalAliases.none { overlaps(value, it, start, end) }) value = value.take(start) + " " + value.substring(end)
+                start = value.indexOf(exception, start + 1)
+            }
+        }
+        return value
+    }
     /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
     private fun ruleForTerm(term: String): JSONObject? {
         aliasRules[term]?.let { return it }
-        val remainder = plantExceptions.fold(term) { value, exception -> value.replace(exception, " ") }
+        val remainder = withoutPlantExceptions(term)
         val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) } ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
         return alias?.let { aliasRules[it] }
     }

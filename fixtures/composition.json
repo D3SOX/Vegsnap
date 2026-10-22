@@ -1556,5 +1556,203 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "plant-exception-starts-a-word",
+    "input": {
+      "text": "Ingredients: goat milk powder",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "plant-exception-does-not-erase-a-following-animal-phrase",
+    "input": {
+      "text": "Ingredients: oat milk and goat milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "plant-exception-behind-a-compound-modifier-still-covers-it",
+    "input": {
+      "text": "Ingredients: walnut butter, coconut butter, chickpea milk, soybean curd",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "animal-alias-reaching-into-a-plant-exception-wins",
+    "input": {
+      "text": "Ingredienser: rökt griskött, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "animal-alias-outgrowing-a-plant-exception-wins",
+    "input": {
+      "text": "Zutaten: gemahlene Fischgräten, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "inflected-plant-exceptions-keep-their-plant-head",
+    "input": {
+      "text": "Ingredients: beef tomatoes, king oysters, buttercup squash, tamarinder",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingrédients: arôme et viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-conjunction-ends-a-flavour-phrase-reversed",
+    "input": {
+      "text": "Ingrédients: viande et arôme",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredientes: aroma y carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi e carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-ed-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi ed estratto di carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-or-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingrédients: arôme ou viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-or-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi oppure carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "romance-with-words-start-a-new-phrase",
+    "input": {
+      "text": "Ingredienti: aroma con carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-with-word-starts-a-new-phrase",
+    "input": {
+      "text": "Ingrédients: arôme avec viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "single-letter-conjunctions-never-match-inside-words",
+    "input": {
+      "text": "Ingredientes: aroma de carne, aroma di carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-ni-carries-a-negation-on",
+    "input": {
+      "text": "Ingrédients: eau, sans sucre ni viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "italian-ne-carries-a-negation-on",
+    "input": {
+      "text": "Ingredienti: acqua, senza zucchero né carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]
