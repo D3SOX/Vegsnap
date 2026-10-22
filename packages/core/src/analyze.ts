@@ -64,16 +64,21 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
+const animalQualifiers = rulesData.extendedMatching.animalQualifiers.map(normalizeTerm).join('|');
+const freeFromHeads = new Set(rulesData.extendedMatching.freeFromHeads.map(normalizeTerm));
+// A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
+const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?';
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
-// or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
-const negations = String.raw`no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+// or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs"). A negation fused with
+// an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
+const negations = String.raw`(?:non|nicht|icke)[-–]?(?:${animalQualifiers})\p{L}{0,2}|(?:${animalQualifiers})[-–]?\s?(?:${freeFrom})|no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
 const negationWord = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?=$|[^\p{L}])`, 'gu');
 const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
-// A free-from suffix covers the word it is attached to and a conjunction list before it ("milk-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
-const freeSuffix = /(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?=$|[^\p{L}])/u;
+// A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
+const freeSuffix = new RegExp(String.raw`(?:${freeFrom})(?=$|[^\p{L}])`, 'u');
 const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
 // "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
 const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
@@ -98,11 +103,14 @@ function negated(before: string): boolean {
   }
   return open;
 }
-/** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
+/** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei"), behind a head noun of the claim ("milk protein-free", "dairy ingredient-free") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
 function freed(after: string): boolean {
   const match = freeSuffix.exec(after);
   if (!match) return false;
-  const between = after.slice(0, match.index), list = words(between);
+  let between = after.slice(0, match.index);
+  const head = /\p{L}+(?=[^\p{L}]*$)/u.exec(between);
+  if (head && freeFromHeads.has(head[0])) between = between.slice(0, head.index);
+  const list = words(between);
   if (/^\p{L}*$/u.test(between)) return true;
   for (let index = 0; index < list.length; index += 2) if (!conjunction.test(list[index]!) || !list[index + 1] || conjunction.test(list[index + 1]!)) return false;
   return !/\p{L}$/u.test(between) || aliasRules.has(list[list.length - 1]!);

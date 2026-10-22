@@ -65,13 +65,14 @@ internal fun containsWord(text: String, word: String): Boolean {
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
 private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från"
+// A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
+private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?"
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
-private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:$NEGATIONS)(?:$|[^\\p{L}])")
-private val negationWord = Regex("(?:^|[^\\p{L}])(?:$NEGATIONS)(?=$|[^\\p{L}])")
 private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])")
-// A free-from suffix covers the word it is attached to and a conjunction list before it ("milk-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
-private val freeSuffix = Regex("(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?=$|[^\\p{L}])")
+// A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
+private val freeSuffix = Regex("(?:$FREE_FROM)(?=$|[^\\p{L}])")
+private val lastWord = Regex("\\p{L}+(?=[^\\p{L}]*$)")
 private val modifiedAfter = Regex("(?:$MODIFIERS)(?:$|[^\\p{L}])")
 // "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
 private val phrase = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
@@ -79,8 +80,6 @@ private val conjunct = Regex("(?:^|[^\\p{L}])(?:with|mit|med|and|und|och|&)(?=$|
 private val conjunction = Regex("and|und|och|or|oder|eller|&|/")
 private val wordOrJoiner = Regex("\\p{L}+|[&/]")
 private fun words(value: String): List<String> = wordOrJoiner.findAll(value).map { it.value }.toList()
-/** An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly. */
-internal fun readsAsModifier(alias: String): Boolean = negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
 /** A stem is a compound component when the letters attached to it could be words themselves: none or at least three before ("Kuhmilch"), none or at least four after ("Milchpulver"). Inflections such as "milchig", "wollen", "silken", "gräddes" or "Flachs" never count, and a stem shorter than four letters ("ägg") must start its word. */
 internal fun component(prefix: Int, stem: String, suffix: Int): Boolean {
     val modifier = prefix == 0 || prefix >= 3 && stem.length >= 4
@@ -96,10 +95,19 @@ class Evaluator(private val rulesDocument: JSONObject) {
             for (alias in 0 until aliases.length()) put(normalizeCompositionTerm(aliases.getString(alias)), rule)
         }
     }
-    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     private val extendedMatching = rulesDocument.getJSONObject("extendedMatching")
-    private val compoundStems = extendedMatching.getJSONArray("compoundStems").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }.sortedByDescending { it.length }
-    private val plantExceptions = extendedMatching.getJSONArray("plantExceptions").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }.sortedByDescending { it.length }
+    private fun extendedTerms(key: String): List<String> = extendedMatching.getJSONArray(key).let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
+    private val compoundStems = extendedTerms("compoundStems").sortedByDescending { it.length }
+    private val plantExceptions = extendedTerms("plantExceptions").sortedByDescending { it.length }
+    private val freeFromHeads = extendedTerms("freeFromHeads").toSet()
+    // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
+    private val animalQualifiers = extendedTerms("animalQualifiers").joinToString("|")
+    private val negations = "(?:non|nicht|icke)[-–]?(?:$animalQualifiers)\\p{L}{0,2}|(?:$animalQualifiers)[-–]?\\s?(?:$FREE_FROM)|$NEGATIONS"
+    private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:$negations)(?:$|[^\\p{L}])")
+    private val negationWord = Regex("(?:^|[^\\p{L}])(?:$negations)(?=$|[^\\p{L}])")
+    /** An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly. */
+    private fun readsAsModifier(alias: String): Boolean = negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
+    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
     /** The last negation before the mention still covers it unless a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
@@ -115,10 +123,12 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         return open
     }
-    /** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
+    /** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei"), behind a head noun of the claim ("milk protein-free", "dairy ingredient-free") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
     private fun freed(after: String): Boolean {
         val match = freeSuffix.find(after) ?: return false
-        val between = after.take(match.range.first)
+        var between = after.take(match.range.first)
+        val head = lastWord.find(between)
+        if (head != null && head.value in freeFromHeads) between = between.take(head.range.first)
         if (between.all { it.isLetter() }) return true
         val list = words(between)
         for (index in list.indices step 2) if (!conjunction.matches(list[index]) || index + 1 >= list.size || conjunction.matches(list[index + 1])) return false

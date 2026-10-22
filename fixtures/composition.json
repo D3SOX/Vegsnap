@@ -1234,5 +1234,137 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "non-dairy-qualifier-keeps-the-negation",
+    "input": {
+      "text": "Ingredients: water, non-dairy milk, non-animal whey protein, non-animal collagen",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "animal-free-qualifier-keeps-the-negation",
+    "input": {
+      "text": "Ingredients: animal-free collagen, dairy-free milk chocolate, nondairy creamer, meat-free meatballs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "qualified-negation-keeps-covering-the-ingredient-de",
+    "input": {
+      "text": "Zutaten: tierfreies Kollagen, nicht-tierische Gelatine, fleischlose Wurst, eierfreie Nudeln",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "qualified-negation-keeps-covering-the-ingredient-sv",
+    "input": {
+      "text": "Ingredienser: djurfritt kollagen, icke-animaliskt kollagen, mejerifri ost, köttfria köttbullar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "glued-non-before-an-unrelated-qualifier-is-not-a-negation",
+    "input": {
+      "text": "Ingredients: cultured pasteurized nonfat milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lactose-free-before-milk-keeps-milk",
+    "input": {
+      "text": "Ingredients: lactose-free milk, laktosfri mjölk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "with-after-a-qualified-negation-starts-a-new-phrase",
+    "input": {
+      "text": "Ingredients: non-dairy creamer with milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word",
+    "input": {
+      "text": "Ingredients: milk protein-free oat drink, egg protein-free pasta, dairy ingredient-free spread",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word-de",
+    "input": {
+      "text": "Zutaten: Haferflocken, Milch-Eiweiß-frei, Milcheiweiß-frei, frei von Milchbestandteilen",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word-sv",
+    "input": {
+      "text": "Ingredienser: havre, mjölkproteinfri havredryck, fri från mjölkprotein",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-after-a-word-that-is-no-head-noun-keeps-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder gluten free",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-from-in-a-separate-group-keeps-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder (gluten-free)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

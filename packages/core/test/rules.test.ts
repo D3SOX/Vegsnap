@@ -37,6 +37,10 @@ describe('rule data', () => {
     for (const stem of rules.extendedMatching.compoundStems) expect(aliasRule.get(normalizeTerm(stem))?.status).toBe('animal');
     for (const exception of rules.extendedMatching.plantExceptions) expect(aliasRule.get(normalizeTerm(exception))?.status ?? 'plant').not.toBe('animal');
   });
+  test('animal qualifiers name an animal origin and free-from heads never do', () => {
+    for (const qualifier of rules.extendedMatching.animalQualifiers) expect(aliasRule.get(normalizeTerm(qualifier))?.status ?? 'animal').toBe('animal');
+    for (const head of rules.extendedMatching.freeFromHeads) expect(aliasRule.get(normalizeTerm(head))?.status ?? 'plant').not.toBe('animal');
+  });
 });
 
 describe('extended animal matching', () => {
@@ -56,7 +60,10 @@ describe('extended animal matching', () => {
       'honigbuschblätter', 'honungsbuskte', 'without milk and eggs', 'ohne milch und eier', 'milk and egg free', 'free from milk and soya', 'imitation cheese and herbs', 'käse-zwiebel-geschmack',
       'no milk or eggs', 'ohne zusatz von milch', 'utan tillsatt mjölk', 'no beef gelatine', 'kein tierisches lab', 'milch- und eifrei', 'mjölk- och äggfri', 'milk/egg free', 'gluten- und kuhmilcheiweißfrei', 'modersmjölksersättning',
       'butterhead lettuce', 'buttersalat', 'butterbeans', 'keramisk beläggning', 'gräddes i ugn', 'silken tofu powder', 'wollen', 'milchig', 'speckled beans', 'skött', 'lättskött', 'förgelatinerad stärkelse', 'pumpakött', 'tandkött',
-      'tamarinder', 'mjölksyrebakterier', 'mjölkvit', 'handleder', 'fiskbensmönstrad', 'fischgrätmuster', 'geografisch', 'filosofisk', 'konfiskerad', 'affisch', 'liebfraumilch', 'butterflies', 'vegetable gelatine']) {
+      'tamarinder', 'mjölksyrebakterier', 'mjölkvit', 'handleder', 'fiskbensmönstrad', 'fischgrätmuster', 'geografisch', 'filosofisk', 'konfiskerad', 'affisch', 'liebfraumilch', 'butterflies', 'vegetable gelatine',
+      'non-dairy milk', 'non-animal whey protein', 'non-animal collagen', 'animal-free collagen', 'nondairy creamer', 'dairy-free milk chocolate', 'dairy free milk chocolate', 'meat-free meatballs', 'egg-free egg noodles', 'milk-free cheese',
+      'tierfreies kollagen', 'nicht-tierische gelatine', 'nicht-tierisches kollagen', 'fleischlose wurst', 'eierfreie nudeln', 'djurfritt kollagen', 'icke-animaliskt kollagen', 'mejerifri ost', 'köttfria köttbullar', 'äggfri majonnäs',
+      'milk protein-free oat drink', 'egg protein-free pasta', 'dairy ingredient-free spread', 'milk protein free', 'milk and egg protein-free', 'milcheiweiß-frei', 'milch-eiweiß-frei', 'frei von milchbestandteilen', 'milchbestandteile-frei', 'mjölkproteinfri havredryck', 'fri från mjölkprotein', 'egg ingredients free']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
@@ -64,7 +71,9 @@ describe('extended animal matching', () => {
     for (const [term, id] of [['free range eggs', 'egg'], ['lactose free milk', 'milk'], ['plant oil with milk', 'milk'], ['milk powder with natural flavouring', 'milk'], ['käseersatz mit eigelb', 'egg'], ['laktosefreie vollmilch', 'milk'],
       ['milk powder and natural flavouring', 'milk'], ['natural flavouring and milk powder', 'milk'], ['milk powder & natural flavouring', 'milk'], ['natürliches aroma und milchpulver', 'milk'], ['arom och mjölkpulver', 'milk'], ['yogurt cultures and milk', 'milk'],
       ['non-gmo whole milk', 'milk'], ['non-fat milk', 'milk'], ['no added sugar milk chocolate', 'dairy'], ['no palm oil whole milk powder', 'milk'], ['utan tillsatt socker mjölkchoklad', 'dairy'], ['milk from free range cows', 'milk'], ['eggs from free-range hens', 'egg'],
-      ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides']] as const) {
+      ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides'],
+      ['nonfat milk', 'milk'], ['non-hydrogenated milk fat', 'milk-fat'], ['lactose-free milk', 'milk'], ['laktosfri mjölk', 'milk'], ['vattenfritt mjölkfett', 'milk-fat'], ['gluten-free milk chocolate', 'dairy'], ['non-dairy creamer with milk', 'milk'],
+      ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
