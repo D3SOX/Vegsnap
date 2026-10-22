@@ -151,7 +151,7 @@ class ResultDetailsSheetTest {
         show(result(concerns = false), language = "de", failedRetry = retry)
         compose.onNodeWithText("Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt.")
             .performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(AIErrorCode.QUOTA.german).assertDoesNotExist()
+        compose.onNodeWithText(AIErrorCode.QUOTA.message("de")).assertDoesNotExist()
     }
 
     @Test fun failedHostedHistoryRetryShowsEnglishThrottleWait() {
@@ -159,7 +159,7 @@ class ResultDetailsSheetTest {
             0, status = AnalysisStatus.FAILED, historyId = "synthetic-result-tabs", failureReason = AIErrorCode.RATE_LIMIT)
         show(result(concerns = false), failedRetry = retry)
         compose.onNodeWithText("Too many requests to Vegsnap AI. Wait a minute, then try again.").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(AIErrorCode.RATE_LIMIT.english).assertDoesNotExist()
+        compose.onNodeWithText(AIErrorCode.RATE_LIMIT.message("en")).assertDoesNotExist()
     }
 
     @Ignore("Fixture lacks database evidence ids, which withoutDatabaseRuleMisses now reads.")

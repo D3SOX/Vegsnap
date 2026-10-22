@@ -126,7 +126,7 @@ export default defineBackground(() => {
             return { ok: true, result: browseOfflinePage(await offlineLibrary().index(), input, config.fallbackCountry) };
           }
           case 'set-language': {
-            if (message.language !== 'en' && message.language !== 'de') throw new Error('Unsupported language.');
+            if (message.language !== 'en' && message.language !== 'de' && message.language !== 'sv') throw new Error('Unsupported language.');
             const language = message.language;
             await changeSettings(async () => { await browser.storage.local.set({ settings: { ...await settings(), language } }); await syncContextMenu(); });
             return { ok: true, result: null };

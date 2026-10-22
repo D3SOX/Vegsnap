@@ -27,7 +27,7 @@ for name, folder, product, kind in [('Vegsnap','Vegsnap','Vegsnap.app','applicat
     if name in ('Vegsnap','VegsnapShare'):
         prefix = 'Vegsnap/Resources' if name == 'Vegsnap' else 'ShareExtension'
         localized = []
-        for lang in ['en','de']:
+        for lang in ['en','de','sv']:
             p = prefix+'/'+lang+'.lproj/Localizable.strings'
             localized.append(add(name+':locale:'+lang,'PBXFileReference',name=lang,path=p,sourceTree='<group>',lastKnownFileType='text.plist.strings'))
         variant = add(name+':localization','PBXVariantGroup',children=localized,name='Localizable.strings',sourceTree='<group>')
@@ -63,7 +63,7 @@ main=add('main','PBXGroup',children=children+[add('products','PBXGroup',children
 configs=[]
 for config in ['Debug','Release']:
     configs.append(add('project:'+config,'XCBuildConfiguration',name=config,buildSettings={'SDKROOT':'iphoneos','CLANG_ENABLE_MODULES':'YES','CLANG_ENABLE_OBJC_ARC':'YES','ENABLE_USER_SCRIPT_SANDBOXING':'YES','SWIFT_STRICT_CONCURRENCY':'targeted','DEBUG_INFORMATION_FORMAT':'dwarf' if config=='Debug' else 'dwarf-with-dsym','GCC_C_LANGUAGE_STANDARD':'gnu17','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator'}))
-project=add('project','PBXProject',attributes={'LastUpgradeCheck':'2620','BuildIndependentTargetsInParallel':'YES'},buildConfigurationList=add('project:configs','XCConfigurationList',buildConfigurations=configs,defaultConfigurationIsVisible=0,defaultConfigurationName='Release'),compatibilityVersion='Xcode 14.0',developmentRegion='en',knownRegions=['en','de','Base'],mainGroup=main,productRefGroup=ident('products'),projectDirPath='',projectRoot='',targets=targets)
+project=add('project','PBXProject',attributes={'LastUpgradeCheck':'2620','BuildIndependentTargetsInParallel':'YES'},buildConfigurationList=add('project:configs','XCConfigurationList',buildConfigurations=configs,defaultConfigurationIsVisible=0,defaultConfigurationName='Release'),compatibilityVersion='Xcode 14.0',developmentRegion='en',knownRegions=['en','de','sv','Base'],mainGroup=main,productRefGroup=ident('products'),projectDirPath='',projectRoot='',targets=targets)
 def fmt(value, depth=0):
     pad = '\t' * depth
     if isinstance(value,dict):

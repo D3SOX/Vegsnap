@@ -17,7 +17,7 @@ internal fun alternativeQueryForProduct(name: String, brand: String, animalTerms
 }
 internal fun validateAlternativeQuery(input: AlternativeQuery) {
     require(input.query.trim().length in 2..200 && input.store.length <= 100 && validProductMarket(input.market) &&
-        input.category in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other") && input.locale in setOf("en", "de"))
+        input.category in setOf("food", "drink", "cosmetics", "household", "clothing", "shoes", "other") && input.locale in appLanguages)
 }
 internal fun alternativeSource(category: String) = when (category) { "food", "drink" -> BrowseSource.FOOD; "cosmetics" -> BrowseSource.BEAUTY; else -> BrowseSource.PRODUCTS }
 internal fun alternativeUrl(input: AlternativeQuery, root: HttpUrl, storeOnly: Boolean): HttpUrl {
@@ -60,8 +60,8 @@ internal fun rankAlternatives(items: List<VeganAlternative>, input: AlternativeQ
     return items.sortedWith(compareByDescending<VeganAlternative> { score(it) }.thenBy { it.name })
         .distinctBy { it.barcode.takeIf { code -> code.isNotBlank() }?.padStart(14, '0') ?: "${alternativeKey(it.brand)}:${alternativeKey(it.name)}" }.take(20)
 }
-private val veganClaim = Regex("\\bvegan(?:e[nmrs]?)?\\b", RegexOption.IGNORE_CASE)
-private val negatedVeganClaim = Regex("\\b(?:not|non|never|cannot|nicht|kein\\w*|\\w+n['’]t)\\b[^.!?;\\n]*\\bvegan(?:e[nmrs]?)?\\b|\\bvegan(?:e[nmrs]?)?\\b\\s*[:?=-]\\s*(?:no|false|nein)\\b", RegexOption.IGNORE_CASE)
+private val veganClaim = Regex("\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b", RegexOption.IGNORE_CASE)
+private val negatedVeganClaim = Regex("\\b(?:not|non|never|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\\w*|\\w+n['’]t)\\b[^.!?;\\n]*\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b|\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b\\s*[:?=-]\\s*(?:no|false|nein|nej|falskt)\\b", RegexOption.IGNORE_CASE)
 internal fun parseAIAlternatives(extraction: JSONObject, input: AlternativeQuery): List<VeganAlternative> {
     val research = extraction.optJSONObject("research") ?: return emptyList()
     if (!research.optBoolean("searched")) return emptyList()

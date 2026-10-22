@@ -64,7 +64,7 @@ export function isCheckInput(v: unknown): v is CheckInput {
   if (!strings.every(key => v[key] === undefined || (typeof v[key] === 'string' && v[key].length <= 30_000))) return false;
   if (v.market !== undefined && (typeof v.market !== 'string' || !/^[A-Z]{2}$/.test(v.market) || !countryCode(v.market))) return false;
   if (v.category !== undefined && !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(String(v.category))) return false;
-  if (v.locale !== undefined && !['en', 'de'].includes(String(v.locale))) return false;
+  if (v.locale !== undefined && !['en', 'de', 'sv'].includes(String(v.locale))) return false;
   if (v.complete !== undefined && typeof v.complete !== 'boolean') return false;
   return v.images === undefined || (Array.isArray(v.images) && v.images.length <= 3 && v.images.every(x => typeof x === 'string' && x.length < 4_000_000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x)));
 }

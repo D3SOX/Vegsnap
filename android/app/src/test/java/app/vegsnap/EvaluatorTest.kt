@@ -143,6 +143,17 @@ class EvaluatorTest {
         val unknown = HistoryTransfer.parse(JSONObject().put("schemaVersion", 1).put("results", JSONArray().put(result)).toString())
         assertFalse(JSONObject(unknown.single().json).has("aiError"))
     }
+    @Test fun historyRoundTripPreservesSwedishFindingTranslations() {
+        val result = evaluator.evaluate(CheckInput("milk", "food"))
+        result.getJSONArray("findings").getJSONObject(0).put("displayTerm", "mjölk").put("displayLocale", "sv")
+        val document = JSONObject().put("schemaVersion", 1).put("results", JSONArray().put(result)).toString()
+        val imported = HistoryTransfer.parse(document, "sv")
+        val reimported = HistoryTransfer.parse(HistoryTransfer.export(imported, "sv"), "en")
+        val finding = JSONObject(reimported.single().json).getJSONArray("findings").getJSONObject(0)
+        assertEquals("milk", finding.getString("term"))
+        assertEquals("mjölk", finding.getString("displayTerm"))
+        assertEquals("sv", finding.getString("displayLocale"))
+    }
     @Test fun historyRejectsUnboundedOrUnpairedTranslationMetadata() {
         for (translation in listOf(JSONObject().put("displayTerm", "Milch"), JSONObject().put("displayTerm", "x".repeat(301)).put("displayLocale", "de"))) {
             val result = evaluator.evaluate(CheckInput("milk", "food"))

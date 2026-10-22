@@ -12,7 +12,7 @@ export interface CompanyConcernRecord {
   id: string;
   companyId: string;
   category: CompanyConcern['category'];
-  description: Record<Locale, string>;
+  description: Record<'en' | 'de', string> & Partial<Record<Locale, string>>;
   sourceUrl: string;
   sourceDate?: string;
   reviewedAt: string;
@@ -95,7 +95,7 @@ export function createCompanyConcernResolver(value: unknown): (brand?: string, l
       for (const actor of actors) for (const record of records.get(actor.id) ?? []) {
         const parent = actor.id !== entity.id ? entity.parent : undefined;
         concerns.push({
-          id: record.id, company: actor.name, category: record.category, description: record.description[locale],
+          id: record.id, company: actor.name, category: record.category, description: record.description[locale] ?? record.description.en,
           sourceUrl: record.sourceUrl, reviewedAt: new Date(record.reviewedAt).toISOString(), status: record.status,
           scope: parent ? 'parent' : 'direct', matchedBrand: entity.name,
           ...(record.sourceDate ? { sourceDate: record.sourceDate } : {}),

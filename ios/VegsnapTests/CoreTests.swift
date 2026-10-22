@@ -135,6 +135,16 @@ import Security
         XCTAssertThrowsError(try HistoryTransfer.parse(document.jsonData()))
         XCTAssertThrowsError(try HistoryTransfer.parse(Data(repeating: 32, count: 5_000_001)))
     }
+    func testHistoryRoundTripPreservesSwedishFindingTranslations() throws {
+        var result = try analyze("milk")
+        result.findings[0].displayTerm = "mjölk"
+        result.findings[0].displayLocale = "sv"
+        let imported = try HistoryTransfer.parse(HistoryDocument(results: [result]).jsonData())
+        let reimported = try HistoryTransfer.parse(HistoryDocument(results: imported).jsonData())
+        XCTAssertEqual(reimported[0].findings[0].term, "milk")
+        XCTAssertEqual(reimported[0].findings[0].displayTerm, "mjölk")
+        XCTAssertEqual(reimported[0].findings[0].displayLocale, "sv")
+    }
     func testExportRejectsUnrestorableHistoryWithoutChangingIt() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

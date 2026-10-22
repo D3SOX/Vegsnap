@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const languages = ['en', 'de'] as const;
+const languages = ['en', 'de', 'sv'] as const;
 type Language = typeof languages[number];
 type Plural = { one: string; other: string };
 type Translation = string | Plural;
@@ -48,14 +49,17 @@ export function validateCatalog(value: unknown): Catalog {
         throw new Error(`Missing translation or invalid plurals: ${id}.${language}`);
       }
     }
-    const en = message.en as Translation, de = message.de as Translation;
-    if (typeof en !== typeof de) throw new Error(`Translation type mismatch: ${id}`);
+    const en = message.en as Translation;
     if (message.savedResult && typeof en !== 'string') throw new Error(`Saved-result text must be a string: ${id}`);
-    const pairs = typeof en === 'string' ? [[en, de as string]] :
-      (['one', 'other'] as const).map(quantity => [en[quantity], (de as Plural)[quantity]]);
-    for (const [english, german] of pairs) {
-      if (JSON.stringify(placeholders(english!)) !== JSON.stringify(placeholders(german!))) {
-        throw new Error(`Formatting arguments differ between translations: ${id}`);
+    for (const language of languages) {
+      const translation = message[language] as Translation;
+      if (typeof translation !== typeof en) throw new Error(`Translation type mismatch: ${id}`);
+      const pairs = typeof en === 'string' ? [[en, translation as string]] :
+        (['one', 'other'] as const).map(quantity => [en[quantity], (translation as Plural)[quantity]]);
+      for (const [english, translated] of pairs) {
+        if (JSON.stringify(placeholders(english!)) !== JSON.stringify(placeholders(translated!))) {
+          throw new Error(`Formatting arguments differ between translations: ${id}`);
+        }
       }
     }
     let bound = message.savedResult === true;
@@ -144,8 +148,8 @@ export function renderCatalog(catalog: Catalog): Map<string, string> {
     output.set(path, `// ${generatedNotice}\n${dictionaries.join('\n\n')}\n`);
   }
   const kotlin = (value: Translation) => JSON.stringify(value).replaceAll('$', '\\$');
-  const androidResults = targets('androidResult').map(({ key, message }) =>
-    `    fun ${key}(german: Boolean): String = if (german) ${kotlin(message.de)} else ${kotlin(message.en)}`);
+  const androidResults = targets('androidResult').map(({ key, message }) => `    fun ${key}(locale: String): String = when (locale) { ${
+    languages.filter(language => language !== 'en').map(language => `"${language}" -> ${kotlin(message[language])}; `).join('')}else -> ${kotlin(message.en)} }`);
   output.set('android/app/src/main/java/app/vegsnap/ResultStrings.kt',
     `// ${generatedNotice}\npackage app.vegsnap\n\ninternal object ResultStrings {\n${androidResults.join('\n')}\n}\n`);
   const companion = targets('companion');
@@ -153,7 +157,8 @@ export function renderCatalog(catalog: Catalog): Map<string, string> {
     companion.map(({ key, message }) => `    ${key}: ${rustText(message[language] as string)},`).join('\n')}\n};`);
   output.set('companion/src/strings.rs', `// ${generatedNotice}\npub struct Strings {\n${
     companion.map(({ key }) => `    pub ${key}: &'static str,`).join('\n')}\n}\n\n${companionLocales.join('\n\n')}\n`);
-  const terms = Object.values(catalog).filter(message => message.savedResult).map(({ en, de }) => ({ en, de }));
+  const terms = Object.values(catalog).filter(message => message.savedResult)
+    .map(message => Object.fromEntries(languages.map(language => [language, message[language]])));
   output.set('data/result-translations.json', JSON.stringify({ terms }, null, 2) + '\n');
   return output;
 }
@@ -172,6 +177,7 @@ export async function generateStrings(check = false): Promise<void> {
       const target = `${root}${path}`;
       const temporary = `${target}.${randomUUID()}.tmp`;
       try {
+        await mkdir(dirname(target), { recursive: true });
         await writeFile(temporary, content);
         await rename(temporary, target);
       } finally {

@@ -19,7 +19,7 @@ function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () =>
   result.identity.match = 'exact_barcode';
   result.warnings.push(t.communityRecordCaution);
   // Country warnings are evaluated after packaging and database clues are combined.
-  result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:)/.test(warning)));
+  result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:|Den här posten anger andra marknader|Annan marknad:)/.test(warning)));
   // Database label tags are community assertions, not independently verified registry claims.
   if (product.labels.length) result.warnings.push(`${t.databaseLabelsPrefix}${product.labels.join(', ')}`);
   return result;

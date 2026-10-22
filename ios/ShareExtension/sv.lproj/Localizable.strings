@@ -1,0 +1,9 @@
+/* Generated from localization/strings.json by bun run strings:generate. Do not edit. */
+"Cancel" = "Avbryt";
+"Check with Vegsnap" = "Kontrollera med Vegsnap";
+"Done" = "Klar";
+"Open Vegsnap to review and check this product." = "Öppna Vegsnap för att granska och kontrollera den här produkten.";
+"Save product" = "Spara produkt";
+"Saved to Vegsnap" = "Sparat i Vegsnap";
+"The selected text and photos will be saved on this device. Review them in Vegsnap before checking." = "Den valda texten och de valda fotona sparas på den här enheten. Granska dem i Vegsnap innan du kontrollerar.";
+"The shared container is unavailable." = "Den delade lagringen är inte tillgänglig.";

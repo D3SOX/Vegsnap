@@ -276,11 +276,19 @@
 			"sourceTree" = "<group>";
 			"lastKnownFileType" = "text.plist.strings";
 		};
+		"85DFED9FFCCBFA631D977C2C" = {
+			"isa" = "PBXFileReference";
+			"name" = "sv";
+			"path" = "Vegsnap/Resources/sv.lproj/Localizable.strings";
+			"sourceTree" = "<group>";
+			"lastKnownFileType" = "text.plist.strings";
+		};
 		"94FFACBD05CCC2330BE53863" = {
 			"isa" = "PBXVariantGroup";
 			"children" = (
 				"ADBC55C0529C1103BACE04F0",
 				"93F9C282315E37C86EE15317",
+				"85DFED9FFCCBFA631D977C2C",
 			);
 			"name" = "Localizable.strings";
 			"sourceTree" = "<group>";
@@ -398,6 +406,7 @@
 				"$(SRCROOT)/../packages/core/src/i18n.ts",
 				"$(SRCROOT)/../packages/core/src/index.ts",
 				"$(SRCROOT)/../packages/core/src/ingredient-display.ts",
+				"$(SRCROOT)/../packages/core/src/locale.ts",
 				"$(SRCROOT)/../packages/core/src/manufacturer-contact.ts",
 				"$(SRCROOT)/../packages/core/src/market.ts",
 				"$(SRCROOT)/../packages/core/src/matspar-catalogue.ts",
@@ -516,11 +525,19 @@
 			"sourceTree" = "<group>";
 			"lastKnownFileType" = "text.plist.strings";
 		};
+		"6238452E17F81C9228B74D81" = {
+			"isa" = "PBXFileReference";
+			"name" = "sv";
+			"path" = "ShareExtension/sv.lproj/Localizable.strings";
+			"sourceTree" = "<group>";
+			"lastKnownFileType" = "text.plist.strings";
+		};
 		"5B725B4CAD96066C6878118B" = {
 			"isa" = "PBXVariantGroup";
 			"children" = (
 				"94497CE44DE76915248F9A57",
 				"BA65F171892D8A70AD4D66B3",
+				"6238452E17F81C9228B74D81",
 			);
 			"name" = "Localizable.strings";
 			"sourceTree" = "<group>";
@@ -942,6 +959,7 @@
 			"knownRegions" = (
 				"en",
 				"de",
+				"sv",
 				"Base",
 			);
 			"mainGroup" = "0D6E4079E36703EBD37C0072";

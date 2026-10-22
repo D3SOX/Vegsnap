@@ -43,7 +43,7 @@ This is an early release. Device, store and provider compatibility tests are ong
 
 Connected AI can also assess a company using searched sources. Its assessment stays separate from reviewed records and can be inconclusive. Neither changes the product's vegan result. A missing record or no concerns found is not an ethical endorsement.
 
-German and English are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/). Releases include `vegsnap-unsigned.ipa`. It must be signed before installation, including the embedded share extension and its App Group entitlement.
+English, German and Swedish are supported, with Germany and the EU as the first markets. A native SwiftUI app for iPhone and iPad is available in [ios/](ios/). Releases include `vegsnap-unsigned.ipa`. It must be signed before installation, including the embedded share extension and its App Group entitlement.
 
 ## Screenshots
 
@@ -126,7 +126,7 @@ Brave on macOS and Brave, Helium and Vivaldi on Windows share Chrome's registrat
 
 ## Application strings
 
-Edit `localization/strings.json` for Android, iOS, the iOS share extension, and the browser extension, including fixed result explanations and warnings. Each message contains English and German translations and the platform keys that use it. Identical wording shares one entry; platform-specific instructions keep separate entries. iOS keys remain the existing English lookup keys, and Android keeps its existing resource names.
+Edit `localization/strings.json` for Android, iOS, the iOS share extension, and the browser extension, including fixed result explanations and warnings. Each message contains English, German and Swedish translations and the platform keys that use it. Identical wording shares one entry; platform-specific instructions keep separate entries. iOS keys remain the existing English lookup keys, and Android keeps its existing resource names.
 
 Run `bun run strings:generate` after editing the catalog. It generates Android `strings.xml` (including plurals), iOS `Localizable.strings`, and typed extension/core dictionaries. Android's result engine gets generated `ResultStrings` functions, which also work in plain JVM tests. Messages marked `savedResult` generate `data/result-translations.json` for displaying saved results in another language. Use the usual `R.string` / `stringResource`, `L(...)`, and generated dictionary lookups in application code. Generated files are checked in so native builds do not need an extra generation tool.
 

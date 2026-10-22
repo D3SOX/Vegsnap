@@ -175,9 +175,14 @@ impl eframe::App for Setup {
 }
 
 fn language() -> &'static Strings {
-    let german =
-        sys_locale::get_locale().is_some_and(|locale| locale.to_lowercase().starts_with("de"));
-    if german { &strings::DE } else { &strings::EN }
+    let locale = sys_locale::get_locale().unwrap_or_default().to_lowercase();
+    if locale.starts_with("de") {
+        &strings::DE
+    } else if locale.starts_with("sv") {
+        &strings::SV
+    } else {
+        &strings::EN
+    }
 }
 
 pub fn run() -> eframe::Result {

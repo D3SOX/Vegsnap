@@ -86,9 +86,9 @@ internal fun parseBarnivoreSearch(html: String, locale: String, retrievedAt: Str
             if (name.isBlank()) return@mapNotNull null
             val meta = span("result-meta").take(500)
             val status = when {
-                Regex("class=\"[^\"]*\\bbadge-not-vegan\\b").containsMatchIn(body) -> ResultStrings.barnivoreNotVegan(locale == "de")
-                Regex("class=\"[^\"]*\\bbadge-vegan\\b").containsMatchIn(body) -> ResultStrings.barnivoreVegan(locale == "de")
-                else -> ResultStrings.barnivoreUnclear(locale == "de")
+                Regex("class=\"[^\"]*\\bbadge-not-vegan\\b").containsMatchIn(body) -> ResultStrings.barnivoreNotVegan(locale)
+                Regex("class=\"[^\"]*\\bbadge-vegan\\b").containsMatchIn(body) -> ResultStrings.barnivoreVegan(locale)
+                else -> ResultStrings.barnivoreUnclear(locale)
             }
             BrowseRecord(match.groupValues[1].substringAfterLast('/'), BrowseSource.BARNIVORE, name,
                 brand = meta.substringBefore(" · "), description = meta, labels = status,

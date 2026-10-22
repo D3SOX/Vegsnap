@@ -7,24 +7,24 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /** Only these fixed codes/messages may reach saved results; never a provider's raw response. */
-internal enum class AIErrorCode(val code: String, val english: String, val german: String) {
-    AUTHENTICATION("authentication", ResultStrings.aiAuthenticationError(false), ResultStrings.aiAuthenticationError(true)),
-    ACCESS("access_denied", ResultStrings.aiAccessError(false), ResultStrings.aiAccessError(true)),
-    QUOTA("quota", ResultStrings.aiQuotaError(false), ResultStrings.aiQuotaError(true)),
-    RATE_LIMIT("rate_limit", ResultStrings.aiRateLimitError(false), ResultStrings.aiRateLimitError(true)),
-    TIMEOUT("timeout", ResultStrings.aiTimeoutError(false), ResultStrings.aiTimeoutError(true)),
-    NETWORK("network", ResultStrings.aiNetworkError(false), ResultStrings.aiNetworkError(true)),
-    MODEL("unsupported_model", ResultStrings.aiModelError(false), ResultStrings.aiModelError(true)),
-    INVALID_RESPONSE("invalid_response", ResultStrings.aiResponseError(false), ResultStrings.aiResponseError(true)),
-    INCOMPLETE("incomplete_response", ResultStrings.aiIncompleteError(false), ResultStrings.aiIncompleteError(true)),
-    REJECTED("request_rejected", ResultStrings.aiRequestError(false), ResultStrings.aiRequestError(true)),
-    SERVICE("service", ResultStrings.aiServiceError(false), ResultStrings.aiServiceError(true)),
-    UNKNOWN("unknown", ResultStrings.aiUnknownError(false), ResultStrings.aiUnknownError(true));
+internal enum class AIErrorCode(val code: String, private val text: (String) -> String) {
+    AUTHENTICATION("authentication", ResultStrings::aiAuthenticationError),
+    ACCESS("access_denied", ResultStrings::aiAccessError),
+    QUOTA("quota", ResultStrings::aiQuotaError),
+    RATE_LIMIT("rate_limit", ResultStrings::aiRateLimitError),
+    TIMEOUT("timeout", ResultStrings::aiTimeoutError),
+    NETWORK("network", ResultStrings::aiNetworkError),
+    MODEL("unsupported_model", ResultStrings::aiModelError),
+    INVALID_RESPONSE("invalid_response", ResultStrings::aiResponseError),
+    INCOMPLETE("incomplete_response", ResultStrings::aiIncompleteError),
+    REJECTED("request_rejected", ResultStrings::aiRequestError),
+    SERVICE("service", ResultStrings::aiServiceError),
+    UNKNOWN("unknown", ResultStrings::aiUnknownError);
 
     fun message(locale: String, hosted: Boolean = false): String = when {
-        hosted && this == QUOTA -> ResultStrings.hostedQuotaError(locale == "de")
-        hosted && this == RATE_LIMIT -> ResultStrings.hostedRateLimitError(locale == "de")
-        else -> if (locale == "de") german else english
+        hosted && this == QUOTA -> ResultStrings.hostedQuotaError(locale)
+        hosted && this == RATE_LIMIT -> ResultStrings.hostedRateLimitError(locale)
+        else -> text(locale)
     }
     fun json(locale: String, hosted: Boolean = false): JSONObject =
         JSONObject().put("code", code).put("message", message(locale, hosted)).apply { if (hosted) put("hosted", true) }

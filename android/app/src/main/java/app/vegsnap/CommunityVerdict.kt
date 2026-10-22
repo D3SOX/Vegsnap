@@ -44,25 +44,24 @@ internal fun applyCommunityReplies(source: JSONObject, replies: List<CommunityRe
     val findings = result.optJSONArray("findings") ?: JSONArray()
     val animal = (0 until findings.length()).any { findings.getJSONObject(it).optString("status") == "animal" }
     val conflict = result.optString("outcome") == "conflicting" || positive && (negative || result.optString("outcome") == "not_vegan" || animal) || negative && result.optString("outcome") == "vegan"
-    val de = locale == "de"
     result.put("outcome", if (conflict) "conflicting" else if (positive) "vegan" else "not_vegan")
         .put("basis", if (conflict) "insufficient" else "manufacturer")
-        .put("title", if (conflict) { ResultStrings.conflictingEvidence(de) }
-            else if (positive) { ResultStrings.manufacturerSaysVegan(de) }
-            else { ResultStrings.manufacturerSaysNotVegan(de) })
+        .put("title", if (conflict) { ResultStrings.conflictingEvidence(locale) }
+            else if (positive) { ResultStrings.manufacturerSaysVegan(locale) }
+            else { ResultStrings.manufacturerSaysNotVegan(locale) })
         .put("summary", if (conflict) {
-            ResultStrings.communityConflictSummary(de)
+            ResultStrings.communityConflictSummary(locale)
         } else {
-            ResultStrings.communityConfirmationSummary(de)
+            ResultStrings.communityConfirmationSummary(locale)
         })
     if (!conflict) result.put("questions", JSONArray())
     val evidence = result.optJSONArray("evidence") ?: JSONArray().also { result.put("evidence", it) }
     val links = communityLinks(result, locale, baseUrl)
     for (reply in eligible) evidence.put(JSONObject().put("id", "community-${reply.id}").put("kind", "manufacturer")
-        .put("title", "${ResultStrings.reviewedManufacturerReply(de)}: ${reply.brand}")
+        .put("title", "${ResultStrings.reviewedManufacturerReply(locale)}: ${reply.brand}")
         .put("excerpt", reply.reply).put("retrievedAt", now.toString()).put("sourceDate", "${reply.repliedOn}T00:00:00Z")
         .put("claim", reply.claim).put("verification", "unverified").apply { if (links != null) put("url", links.replies) })
     val warnings = result.optJSONArray("warnings") ?: JSONArray().also { result.put("warnings", it) }
-    warnings.put(ResultStrings.communityReplyCaution(de))
+    warnings.put(ResultStrings.communityReplyCaution(locale))
     return result
 }

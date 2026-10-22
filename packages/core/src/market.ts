@@ -1,6 +1,7 @@
 import type { CheckInput, MarketSource } from './types';
 import countries from '../../../contracts/product-countries.json';
 import { resultMessages } from './i18n';
+import { appLocale } from './locale';
 // Shared with the desktop companion so local research uses identical country clues.
 const countryCodes = new Set<string>(countries.codes);
 const aliases: Readonly<Record<string, string>> = countries.aliases;
@@ -17,7 +18,7 @@ export function singleProductCountry(markets: readonly string[]): string | undef
 }
 /** Composition stays attributed to its record, even when the displayed country changes. */
 export function databaseCountryWarning(market: string, markets: readonly string[], locale?: string): string | undefined {
-  const t = resultMessages[locale === 'de' ? 'de' : 'en'];
+  const t = resultMessages[appLocale(locale)];
   if (!markets.length) return t.countryUnknownWarning;
   if (!markets.some(tag => countryCode(tag) === market)) return t.countryMismatchWarning.replace('{market}', market);
 }

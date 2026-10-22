@@ -1,6 +1,7 @@
 import type { AIExtraction, Category, Locale, ProviderAdapter } from './types';
 import { DATABASES } from './database';
 import { countryCode } from './market';
+import { locales } from './locale';
 import { analyzeText, safeSourceUrl } from './analyze';
 import { fetchPublicSearch } from './public-search';
 
@@ -17,8 +18,8 @@ const object = (value: unknown): value is Record<string, unknown> => !!value && 
 const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string').slice(0, 100) : [];
 const text = (value: unknown, maximum = 300) => typeof value === 'string' ? value.trim().slice(0, maximum) : '';
 // Keep negation within a clause; contradictory evidence is not a recommendation.
-const veganClaim = /\bvegan(?:e[nmrs]?)?\b/i;
-const negatedVeganClaim = /\b(?:not|non|never|cannot|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?)?\b|\bvegan(?:e[nmrs]?)?\b\s*[:?=-]\s*(?:no|false|nein)\b/i;
+const veganClaim = /\bvegan(?:e[nmrs]?|sk[ta]?)?\b/i;
+const negatedVeganClaim = /\b(?:not|non|never|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?|sk[ta]?)?\b|\bvegan(?:e[nmrs]?|sk[ta]?)?\b\s*[:?=-]\s*(?:no|false|nein|nej|falskt)\b/i;
 const veganLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
 /** Start with the product type rather than requiring the substitute to share its brand/animal ingredient. */
 export function alternativeQueryForProduct(name: string, brand = '', animalTerms: string[] = []): string {
@@ -31,7 +32,7 @@ export function validateAlternativeSearch(input: AlternativeSearch): Alternative
   if (!object(input) || typeof input.query !== 'string' || input.query.trim().length < 2 || input.query.length > 200 ||
     input.store !== undefined && (typeof input.store !== 'string' || input.store.length > 100) ||
     !['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'].includes(input.category) || countryCode(input.market) !== input.market ||
-    input.locale !== undefined && !['en', 'de'].includes(input.locale) ||
+    input.locale !== undefined && !locales.includes(input.locale) ||
     input.excludeBarcode !== undefined && (typeof input.excludeBarcode !== 'string' || !/^\d{8,14}$/.test(input.excludeBarcode))) throw new Error('Invalid alternative search.');
   return { ...input, query: input.query.trim(), store: input.store?.trim() || undefined };
 }

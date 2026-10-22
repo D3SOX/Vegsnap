@@ -44,7 +44,7 @@ class GermanLocalizationTest {
         assertEquals(expected.getString("summary"), display.getString("summary"))
         assertEquals(expected.getJSONArray("findings").getJSONObject(0).getString("explanation"), display.getJSONArray("findings").getJSONObject(0).getString("explanation"))
         assertEquals("Datenbank nicht erreichbar; lokale Analyse verwendet.", display.getJSONArray("warnings").getString(0))
-        assertEquals(AIErrorCode.QUOTA.german, display.getJSONObject("aiError").getString("message"))
+        assertEquals(AIErrorCode.QUOTA.message("de"), display.getJSONObject("aiError").getString("message"))
         assertEquals(saved.getString("outcome"), display.getString("outcome"))
         assertEquals(saved.getJSONArray("evidence").toString(), display.getJSONArray("evidence").toString())
         assertEquals(snapshot, saved.toString())

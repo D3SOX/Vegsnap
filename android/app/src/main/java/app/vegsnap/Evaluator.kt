@@ -86,8 +86,8 @@ class Evaluator(private val rulesDocument: JSONObject) {
             val rule = ruleForTerm(term)
             findings.put(JSONObject().put("term", term).put("status", rule?.getString("status") ?: "unknown")
                 .put("ruleId", rule?.getString("id"))
-                .put("explanation", rule?.getJSONObject("explanation")?.optString(input.locale)
-                    ?: ResultStrings.unknownOrigin(input.locale == "de"))
+                .put("explanation", rule?.getJSONObject("explanation")?.let { it.optString(input.locale).ifBlank { it.getString("en") } }
+                    ?: ResultStrings.unknownOrigin(input.locale))
                 .put("evidenceId", "input"))
         }
         val statuses = (0 until findings.length()).map { findings.getJSONObject(it).getString("status") }
@@ -97,32 +97,31 @@ class Evaluator(private val rulesDocument: JSONObject) {
             complete && statuses.isNotEmpty() && statuses.all { it == "plant" } && input.category in setOf("food", "drink", "cosmetics", "household") && !needsProcessingEvidence(input) -> "vegan"
             else -> "uncertain"
         }
-        val de = input.locale == "de"
         val summary = when (outcome) {
-            "not_vegan" -> ResultStrings.animalCompositionSummary(de)
-            "vegan" -> ResultStrings.veganCompositionSummary(de)
-            else -> ResultStrings.uncertainCompositionSummary(de)
+            "not_vegan" -> ResultStrings.animalCompositionSummary(input.locale)
+            "vegan" -> ResultStrings.veganCompositionSummary(input.locale)
+            else -> ResultStrings.uncertainCompositionSummary(input.locale)
         }
         val questions = JSONArray()
         if (outcome == "uncertain") {
             val unresolved = (0 until findings.length()).map { findings.getJSONObject(it) }
                 .filter { it.getString("status") in setOf("unknown", "ambiguous") }.map { it.getString("term") }
             questions.put(when {
-                input.category in setOf("shoes", "clothing") || needsProcessingEvidence(input) -> ResultStrings.manufacturerDeclarationQuestion(de)
-                !complete || findings.length() == 0 -> ResultStrings.completeLabelQuestion(de)
-                unresolved.isNotEmpty() -> (ResultStrings.originQuestionPrefix(de)) + unresolved.joinToString(", ") + "."
-                else -> ResultStrings.categoryQuestion(de)
+                input.category in setOf("shoes", "clothing") || needsProcessingEvidence(input) -> ResultStrings.manufacturerDeclarationQuestion(input.locale)
+                !complete || findings.length() == 0 -> ResultStrings.completeLabelQuestion(input.locale)
+                unresolved.isNotEmpty() -> (ResultStrings.originQuestionPrefix(input.locale)) + unresolved.joinToString(", ") + "."
+                else -> ResultStrings.categoryQuestion(input.locale)
             })
         }
         return JSONObject().put("schemaVersion", 1).put("id", UUID.randomUUID().toString()).put("outcome", outcome)
             .put("basis", if (outcome == "uncertain") "insufficient" else "composition")
-            .put("title", input.name.ifBlank { input.text.take(80).ifBlank { ResultStrings.productCheck(de) } })
+            .put("title", input.name.ifBlank { input.text.take(80).ifBlank { ResultStrings.productCheck(input.locale) } })
             .put("summary", summary).put("category", input.category)
             .put("identity", JSONObject().put("name", input.name).put("barcode", input.barcode).put("market", input.market).put("match", "unconfirmed"))
             .put("findings", findings).put("evidence", JSONArray().put(JSONObject().put("id", "input").put("kind", "user_text")
-                .put("title", ResultStrings.suppliedText(de)).put("excerpt", input.text).put("retrievedAt", now)))
+                .put("title", ResultStrings.suppliedText(input.locale)).put("excerpt", input.text).put("retrievedAt", now)))
             .put("questions", questions).put("warnings", JSONArray().apply {
-                if (parsedIngredients != null && parsed == null && input.text.isNotBlank()) put(ResultStrings.aiIngredientsMismatch(de))
+                if (parsedIngredients != null && parsed == null && input.text.isNotBlank()) put(ResultStrings.aiIngredientsMismatch(input.locale))
             }).put("crossContact", crossContact)
             .put("companyConcerns", JSONArray()).put("checkedAt", now).put("usedAI", false)
     }

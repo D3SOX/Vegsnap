@@ -33,7 +33,7 @@ internal fun AlternativeSearchButton(model: VegsnapViewModel, initialQuery: Stri
 @Composable
 private fun AlternativesScreen(model: VegsnapViewModel, initialQuery: String, initialCategory: String, market: String, barcode: String) {
     val settings by model.settings.collectAsStateWithLifecycle()
-    val locale = if (LocalConfiguration.current.locales[0].language == "de") "de" else "en"
+    val locale = appLanguage(LocalConfiguration.current.locales[0].language)
     var query by rememberSaveable { mutableStateOf(initialQuery.take(200)) }
     var store by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf(initialCategory) }

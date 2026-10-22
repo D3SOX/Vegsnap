@@ -16,8 +16,7 @@ export function siteLabel(host: string): string {
 export function applyWebEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction): CheckResult {
   if (!extracted.research?.searched) return result;
   const sources = new Map(extracted.research.sources.map(source => [source.url, source]));
-  const de = input.locale === 'de';
-  const t = resultMessages[de ? 'de' : 'en'];
+  const t = resultMessages[input.locale ?? 'en'];
   const consultedOnly = (): CheckResult => ({ ...result, evidence: [...result.evidence,
     ...[...sources.values()].filter(source => safeSourceUrl(source.url)).slice(0, 3).map((source, index): Evidence => ({
       id: `web-consulted-${index}`, kind: 'ai_extraction',

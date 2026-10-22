@@ -44,8 +44,11 @@ function context() {
   };
   return { ctx, invalidate() { ctx.abort(); } };
 }
+type StorageListener = (changes: Record<string, { newValue?: unknown }>, area: string) => void;
+const storageListeners = new Set<StorageListener>();
 mock.module('wxt/browser', () => ({ browser: {
   i18n: { getUILanguage: () => 'en-GB' },
+  storage: { local: { async get() { return { settings: { language: 'en' } }; } }, onChanged: { addListener(listener: StorageListener) { storageListeners.add(listener); }, removeListener(listener: StorageListener) { storageListeners.delete(listener); } } },
   runtime: { id: 'vegsnap', async sendMessage(message: Record<string, unknown>) { messages.push(message); return respond(message); }, onMessage: { addListener(listener: RuntimeListener) { runtimeListeners.add(listener); }, removeListener(listener: RuntimeListener) { runtimeListeners.delete(listener); } } },
 } }));
 mock.module('wxt/utils/define-content-script', () => ({ defineContentScript: (definition: unknown) => definition }));
@@ -60,6 +63,12 @@ try {
   document.body.insertAdjacentHTML('beforeend', '<script type="application/ld+json">{"@type":"Product","name":"Example Oat Drink 1L","brand":"Example Brand","url":"https://www.amazon.de/dp/B0ABC12345"}</script>');
   const first = context(); script.main(first.ctx);
   assert.equal(badges().length, 2, 'Amazon cards without barcodes still show explicit check buttons');
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'Idle badges follow the language saved in Vegsnap');
+  await settle();
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'An older initial settings read cannot overwrite a language-change event');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
   assert(badges().every(host => !host.closest('a')), 'Check buttons are never nested in store product links');
   assert.equal(messages.length, 0, 'Barcodeless cards do not start background lookups');
@@ -123,7 +132,43 @@ try {
   assert.equal(badges().length, 0);
   assert.equal(runtimeListeners.size, 0);
   assert.equal(domListeners.size, 0);
-  console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, reinjection and disable cleanup verified');
+
+  document.body.innerHTML = await fixture('dm-current');
+  const lookups: ((response: unknown) => void)[] = [];
+  respond = message => message.type === 'background-check' ? new Promise(resolve => { lookups.push(resolve); }) : Promise.resolve({ ok: true, result: null });
+  const fourth = context(); script.main(fourth.ctx);
+  const languageHost = badges()[0]!;
+  const visibility = VisibilityObserver.instances.at(-1)!;
+  visibility.show(languageHost);
+  await settle();
+  lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Composition appears vegan', summary: 'Database evidence' } });
+  await settle();
+  assert.equal(button(languageHost).textContent, 'Vegsnap · Composition appears vegan');
+  assert.equal(languageHost.title, 'Database evidence');
+  assert(!visibility.observed.has(languageHost), 'A completed lookup is not repeated while the language stays the same');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  assert.equal(button(languageHost).textContent, 'Vegsnap · Kontrollera', 'A language switch resets completed badges');
+  assert.equal(languageHost.title, '');
+  assert(visibility.observed.has(languageHost), 'A reset badge is checked again in the new language once visible');
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
+  fourth.invalidate();
+  assert.equal(badges().length, 0);
+
+  document.body.innerHTML = await fixture('dm-current');
+  const fifth = context(); script.main(fifth.ctx);
+  await settle();
+  const pendingHost = badges()[0]!;
+  VisibilityObserver.instances.at(-1)!.show(pendingHost);
+  await settle();
+  assert.equal(lookups.length, 1);
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Old English result', summary: 'Old English summary' } });
+  await settle();
+  assert.equal(button(pendingHost).textContent, 'Vegsnap · Kontrollera', 'A pending lookup cannot restore an old-language result after a switch');
+  assert.equal(pendingHost.title, '');
+  fifth.invalidate();
+  assert.equal(badges().length, 0);
+  console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, language switches, reinjection and disable cleanup verified');
 } finally {
   const shared = globalThis as typeof globalThis & { __vegsnapStoreCleanup?: () => void };
   shared.__vegsnapStoreCleanup?.();

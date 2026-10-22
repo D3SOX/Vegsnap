@@ -87,7 +87,7 @@ internal fun BrowseScreen(settings: AppSettings, model: VegsnapViewModel) {
     var externalSources by remember { mutableStateOf(false) }
     var linkError by remember { mutableStateOf(false) }
     val available = !settings.offline || state.source !in setOf(BrowseSource.WIKIDATA, BrowseSource.BARNIVORE)
-    val locale = LocalConfiguration.current.locales[0]?.language?.takeIf { it in setOf("en", "de") } ?: "en"
+    val locale = appLanguage(LocalConfiguration.current.locales[0]?.language)
     LaunchedEffect(settings.offline) { browser.offline(settings.offline) }
     DisposableEffect(browser) { onDispose { browser.cancel() } }
     fun search(direction: Int = 0) { keyboard?.hide(); browser.search(settings.offline, locale, direction) }

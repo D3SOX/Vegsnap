@@ -32,6 +32,20 @@
     {"quote": "Vegan: no.", "accepted": false},
     {"quote": "Vegan? Nein.", "accepted": false},
     {"quote": "Vegan = false.", "accepted": false},
+    {"quote": "Produkten är vegan.", "accepted": true},
+    {"quote": "Produkten är vegansk.", "accepted": true},
+    {"quote": "Ett veganskt alternativ.", "accepted": true},
+    {"quote": "Veganska produkter.", "accepted": true},
+    {"quote": "Produkten är inte vegan.", "accepted": false},
+    {"quote": "Produkten är inte lämplig för en vegansk kost.", "accepted": false},
+    {"quote": "Produkten är ej vegansk.", "accepted": false},
+    {"quote": "Icke-veganskt alternativ.", "accepted": false},
+    {"quote": "Ingen vegansk produkt.", "accepted": false},
+    {"quote": "Inget veganskt alternativ.", "accepted": false},
+    {"quote": "Inga veganska produkter.", "accepted": false},
+    {"quote": "Aldrig vegansk.", "accepted": false},
+    {"quote": "Vegansk: nej.", "accepted": false},
+    {"quote": "Veganskt = falskt.", "accepted": false},
     {"quote": "Plant-based chocolate.", "accepted": false}
   ]
 }

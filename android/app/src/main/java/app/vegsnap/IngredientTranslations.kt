@@ -7,7 +7,7 @@ import org.json.JSONObject
 /** Display names have no role in ingredient matching, evidence identity, or the vegan outcome. */
 internal class IngredientTranslations {
     fun localize(source: JSONObject, locale: String): JSONObject {
-        val language = if (locale == "de") "de" else "en"
+        val language = appLanguage(locale)
         val result = JSONObject(source.toString())
         result.optJSONArray("findings")?.let { result.put("findings", withoutDatabaseRuleMisses(it, result.optJSONArray("evidence") ?: JSONArray())) }
         val findings = result.optJSONArray("findings") ?: JSONArray()

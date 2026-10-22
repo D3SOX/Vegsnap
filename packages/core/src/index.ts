@@ -1,4 +1,6 @@
 export * from './types';
+export { locales, appLocale } from './locale';
+export { analysisMessages, resultMessages } from './i18n';
 export { alternativeQueryForProduct, alternativeSearchUrl, validateAlternativeSearch, parsePublicAlternatives, parseAIAlternatives, rankAlternatives, searchPublicAlternatives, researchVeganAlternatives } from './alternatives';
 export type { AlternativeSearch, VeganAlternative } from './alternatives';
 export { validateBrowseSearch, browseSearchUrl, parseBrowsePage, browseOfflinePage, searchBrowse, browseCheckInput, BROWSE_PAGE_SIZE } from './browse';

@@ -1,7 +1,7 @@
 export type Category = 'food' | 'drink' | 'cosmetics' | 'household' | 'clothing' | 'shoes' | 'other';
 export type Outcome = 'vegan' | 'not_vegan' | 'uncertain' | 'conflicting';
 export type Basis = 'certified' | 'manufacturer' | 'research' | 'composition' | 'packaging' | 'insufficient';
-export type Locale = 'en' | 'de';
+export type Locale = 'en' | 'de' | 'sv';
 export type MarketSource = 'manual' | 'fallback' | 'packaging' | 'database';
 export interface CheckInput {
   text?: string;

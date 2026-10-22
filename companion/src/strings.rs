@@ -52,3 +52,21 @@ pub const DE: Strings = Strings {
     update: "Aktualisieren",
     wallet: "Die Zugangsdaten benötigen eine entsperrte Secret-Service-Wallet, etwa KDE Wallet mit aktiviertem Secret Service.",
 };
+
+pub const SV: Strings = Strings {
+    browsers: "Webbläsare",
+    failed: "Installationen misslyckades: {error}",
+    install: "Installera",
+    installed: "Klart. Öppna Vegsnaps inställningar i webbläsaren och välj Anslut ChatGPT.",
+    intro: "Kopplar Vegsnaps webbläsartillägg till din ChatGPT Plus- eller Pro-prenumeration. Välj de webbläsare där du använder Vegsnap.",
+    license: "Licens",
+    license_notice: "Vegsnap är fri programvara under GNU Affero General Public License 3.0 och levereras utan någon garanti.",
+    location: "Installerad i {path}",
+    registered: "Konfigurerad",
+    removed: "Datorhjälparen är inte längre installerad.",
+    saved_accounts: "Vid avinstallation finns sparade ChatGPT-konton kvar i systemets lösenordshanterare. Ta bort dem i Vegsnaps inställningar först.",
+    title: "Vegsnaps datorhjälpare",
+    uninstall: "Avinstallera",
+    update: "Uppdatera",
+    wallet: "ChatGPT-inloggningen kräver en upplåst Secret Service-plånbok, till exempel KDE Wallet med Secret Service aktiverat.",
+};
