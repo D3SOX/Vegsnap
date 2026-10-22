@@ -68,6 +68,20 @@ internal fun containsWord(text: String, word: String): Boolean {
 private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från"
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
 private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?"
+// A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst").
+private fun qualified(qualifiers: String): String = "(?:non|nicht|icke)[-–]?(?:$qualifiers)\\p{L}{0,2}|(?:$qualifiers)[-–]?\\s?(?:$FREE_FROM)"
+private data class QualifierDomain(val qualifiers: String, val rules: Set<String>)
+private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
+/** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
+private fun overlaps(value: String, alias: String, start: Int, end: Int): Boolean {
+    var at = value.indexOf(alias)
+    while (at in 0..start) {
+        val whole = !wordCharacter.containsMatchIn(value.getOrNull(at - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(value.getOrNull(at + alias.length)?.toString().orEmpty())
+        if (whole && at + alias.length > (if (at < start) start else end)) return true
+        at = value.indexOf(alias, at + 1)
+    }
+    return false
+}
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
 private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])")
@@ -93,7 +107,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
     }
     private val extendedMatching = rulesDocument.getJSONObject("extendedMatching")
-    private fun extendedTerms(key: String): List<String> = extendedMatching.getJSONArray(key).let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
+    private fun extendedTerms(key: String): List<String> = extendedMatching.getJSONArray(key).strings().map(::normalizeCompositionTerm)
     private val compoundStems = extendedTerms("compoundStems").sortedByDescending { it.length }
     private val plantExceptions = extendedTerms("plantExceptions").sortedByDescending { it.length }
     // A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
@@ -104,9 +118,16 @@ class Evaluator(private val rulesDocument: JSONObject) {
     private val conjunct = Regex("(?:^|[^\\p{L}\\p{N}])(?:$withWords|$conjunctions|&)(?=$|[^\\p{L}\\p{N}])|(?<![-–])/")
     private val conjunction = Regex("$conjunctions|&|/")
     private val freeFromHeads = extendedTerms("freeFromHeads").toSet()
-    // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
-    private val animalQualifiers = extendedTerms("animalQualifiers").joinToString("|")
-    private val negations = "(?:non|nicht|icke)[-–]?(?:$animalQualifiers)\\p{L}{0,2}|(?:$animalQualifiers)[-–]?\\s?(?:$FREE_FROM)|$NEGATIONS"
+    // A qualified negation keeps covering the following ingredient within the qualifier's domain ("dairy-free egg noodles" keeps the egg); the domains are data, and an empty domain covers every rule.
+    private val qualifierDomains = extendedMatching.getJSONObject("animalQualifiers").let { domains ->
+        domains.keys().asSequence().map { key ->
+            val domain = domains.getJSONObject(key)
+            QualifierDomain(domain.getJSONArray("qualifiers").strings().map(::normalizeCompositionTerm).joinToString("|"), domain.getJSONArray("rules").strings().toSet())
+        }.toList()
+    }
+    private val animalQualifiers = qualifierDomains.joinToString("|") { it.qualifiers }
+    private val domainNegations = qualifierDomains.map { Regex("^(?:${qualified(it.qualifiers)})$") to it.rules }
+    private val negations = "${qualified(animalQualifiers)}|$NEGATIONS"
     private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:$negations)(?:$|[^\\p{L}])")
     private val negationWord = Regex("(?:^|[^\\p{L}])(?:$negations)(?=$|[^\\p{L}])")
     /** An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg. */
@@ -115,9 +136,11 @@ class Evaluator(private val rulesDocument: JSONObject) {
     private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
-    /** The last negation before the mention still covers it unless a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
-    private fun negated(before: String): Boolean {
+    /** The last negation before the mention still covers it unless it names another domain or a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
+    private fun negated(before: String, ruleId: String): Boolean {
         val last = negationWord.findAll(before).lastOrNull() ?: return false
+        val rules = domainNegations.firstOrNull { (pattern, _) -> pattern.matches(last.value.trimStart { !it.isLetter() }) }?.second
+        if (!rules.isNullOrEmpty() && ruleId !in rules) return false
         val rest = before.substring(last.range.last + 1)
         var open = true
         var bound = rest.startsWith("-") || rest.startsWith("–")
@@ -148,20 +171,10 @@ class Evaluator(private val rulesDocument: JSONObject) {
             val after = text.substring(end)
             val boundary = if (wholeWord) !wordCharacter.containsMatchIn(text.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(text.getOrNull(end)?.toString().orEmpty())
                 else component(before.takeLastWhile { it.isLetter() }.length, item, after.takeWhile { it.isLetter() }.length)
-            val blockedBefore = negated(before.split(phrase).last()) || modifiedBefore.containsMatchIn(before.split(conjunct).last())
+            val blockedBefore = negated(before.split(phrase).last(), aliasRules[item]?.getString("id").orEmpty()) || modifiedBefore.containsMatchIn(before.split(conjunct).last())
             val blockedAfter = freed(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first())
             if (boundary && !blockedBefore && !blockedAfter) return true
             start = text.indexOf(item, start + 1)
-        }
-        return false
-    }
-    /** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
-    private fun overlaps(value: String, alias: String, start: Int, end: Int): Boolean {
-        var at = value.indexOf(alias)
-        while (at in 0..start) {
-            val whole = !wordCharacter.containsMatchIn(value.getOrNull(at - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(value.getOrNull(at + alias.length)?.toString().orEmpty())
-            if (whole && at + alias.length > (if (at < start) start else end)) return true
-            at = value.indexOf(alias, at + 1)
         }
         return false
     }

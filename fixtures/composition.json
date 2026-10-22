@@ -1754,5 +1754,38 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Ingredients: dairy-free egg noodles",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Zutaten: eifreie Milchschokolade",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Ingredienser: äggfri mjölkchoklad",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

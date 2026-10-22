@@ -64,15 +64,19 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
-const animalQualifiers = rulesData.extendedMatching.animalQualifiers.map(normalizeTerm).join('|');
+const qualifierDomains = Object.values(rulesData.extendedMatching.animalQualifiers).map(domain => ({ qualifiers: domain.qualifiers.map(normalizeTerm).join('|'), rules: new Set(domain.rules) }));
+const animalQualifiers = qualifierDomains.map(domain => domain.qualifiers).join('|');
 const freeFromHeads = new Set(rulesData.extendedMatching.freeFromHeads.map(normalizeTerm));
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
 const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?';
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs"). A negation fused with
-// an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
+// an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient within the qualifier's domain
+// ("dairy-free egg noodles" keeps the egg); the domains are data, and an empty domain covers every rule.
 // Only EN/DE/SV negations: the Finnish "ei" is the German egg ("Ei und Milch").
-const negations = String.raw`(?:non|nicht|icke)[-–]?(?:${animalQualifiers})\p{L}{0,2}|(?:${animalQualifiers})[-–]?\s?(?:${freeFrom})|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+const qualified = (qualifiers: string) => String.raw`(?:non|nicht|icke)[-–]?(?:${qualifiers})\p{L}{0,2}|(?:${qualifiers})[-–]?\s?(?:${freeFrom})`;
+const domainNegations = qualifierDomains.map(domain => ({ pattern: new RegExp(`^(?:${qualified(domain.qualifiers)})$`, 'u'), rules: domain.rules }));
+const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
@@ -94,11 +98,13 @@ const exactOnlyAliases = new Set(rulesData.extendedMatching.exactOnlyAliases.map
 const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !exactOnlyAliases.has(alias) && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm).sort((a, b) => b.length - a.length);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
-/** The last negation before the mention still covers it unless a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
-function negated(before: string): boolean {
+/** The last negation before the mention still covers it unless it names another domain or a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
+function negated(before: string, ruleId: string): boolean {
   const matches = [...before.matchAll(negationWord)];
   const last = matches[matches.length - 1];
   if (!last) return false;
+  const domain = domainNegations.find(item => item.pattern.test(last[0].replace(/^[^\p{L}]+/u, '')));
+  if (domain?.rules.size && !domain.rules.has(ruleId)) return false;
   const rest = before.slice(last.index + last[0].length);
   let open = true, bound = /^[-–]/u.test(rest);
   for (const word of words(rest)) {
@@ -131,7 +137,7 @@ function mentioned(text: string, item: string, wholeWord: boolean): boolean {
     if (wholeWord) { if (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? '')) continue; }
     else if (!component(/\p{L}*$/u.exec(text.slice(0, start))![0].length, item, /^\p{L}*/u.exec(text.slice(end))![0].length)) continue;
     const before = text.slice(0, start), after = text.slice(end);
-    if (negated(before.split(phrase).pop()!) || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
+    if (negated(before.split(phrase).pop()!, aliasRules.get(item)?.id ?? '') || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
     if (freed(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
     return true;
   }

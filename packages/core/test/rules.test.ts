@@ -38,8 +38,12 @@ describe('rule data', () => {
     for (const exception of rules.extendedMatching.plantExceptions) expect(aliasRule.get(normalizeTerm(exception))?.status ?? 'plant').not.toBe('animal');
     for (const alias of rules.extendedMatching.exactOnlyAliases) expect(aliasRule.get(normalizeTerm(alias))?.status).toBe('animal');
   });
-  test('animal qualifiers name an animal origin and free-from heads never do', () => {
-    for (const qualifier of rules.extendedMatching.animalQualifiers) expect(aliasRule.get(normalizeTerm(qualifier))?.status ?? 'animal').toBe('animal');
+  test('animal qualifiers name an animal origin, their domains list animal rules and free-from heads never name an animal', () => {
+    const byId = new Map(rules.rules.map(rule => [rule.id, rule]));
+    for (const domain of Object.values(rules.extendedMatching.animalQualifiers)) {
+      for (const qualifier of domain.qualifiers) expect(aliasRule.get(normalizeTerm(qualifier))?.status ?? 'animal').toBe('animal');
+      for (const id of domain.rules) expect(byId.get(id)?.status).toBe('animal');
+    }
     for (const head of rules.extendedMatching.freeFromHeads) expect(aliasRule.get(normalizeTerm(head))?.status ?? 'plant').not.toBe('animal');
   });
   test('with-words and conjunctions are single words that never name an ingredient', () => {
@@ -73,7 +77,7 @@ describe('extended animal matching', () => {
       'milk protein-free oat drink', 'egg protein-free pasta', 'dairy ingredient-free spread', 'milk protein free', 'milk and egg protein-free', 'milcheiweiß-frei', 'milch-eiweiß-frei', 'frei von milchbestandteilen', 'milchbestandteile-frei', 'mjölkproteinfri havredryck', 'fri från mjölkprotein', 'egg ingredients free',
       'huhn-/pouletgeschmack', 'milch-/mjölkaroma', 'käse-/ostarom', 'cheese-/milk flavour', 'milk-/egg-free',
       'beef tomatoes', 'king oysters', 'buttercups', 'oyster mushrooms', 'walnut butter', 'coconut butter', 'chickpea milk', 'soybean curd', 'grapefruit butter', 'lättskött tyg', 'reklamaffisch', 'atrofisk', 'smoking oysters',
-      'aroma de carne', 'aroma di carne', 'sans sucre ni viande', 'senza zucchero né carne', 'sin azúcar ni carne', 'natural flavouring e471 milk powder']) {
+      'aroma de carne', 'aroma di carne', 'sans sucre ni viande', 'senza zucchero né carne', 'sin azúcar ni carne', 'natural flavouring e471 milk powder', 'fish-free fish sauce', 'fiskfri fisksås', 'eifreie eiernudeln']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
@@ -87,7 +91,8 @@ describe('extended animal matching', () => {
       ['ei und milch', 'milk'], ['ei aus freilandhaltung', 'egg-albumen'], ['ingefära och mjölk', 'milk'], ['ingrediens: mjölk', 'milk'],
       ['natural flavouring / milk powder', 'milk'], ['natural flavouring/milk powder', 'milk'], ['milk powder / natural flavouring', 'milk'], ['natürliches aroma / milchpulver', 'milk'], ['arom / mjölkpulver', 'milk'], ['mjölk-/mælkepulver', 'milk'],
       ['arôme et viande', 'meat'], ['viande et arôme', 'meat'], ['aroma y carne', 'meat'], ['carne y aroma', 'meat'], ['aromi e carne', 'meat'], ['aromi ed estratto di carne', 'meat'], ['arôme ou viande', 'meat'], ['aroma o carne', 'meat'], ['aromi oppure carne', 'meat'],
-      ['arôme avec viande', 'meat'], ['aroma con carne', 'meat'], ['carne con aroma', 'meat'], ['sans sucre, viande', 'meat']] as const) {
+      ['arôme avec viande', 'meat'], ['aroma con carne', 'meat'], ['carne con aroma', 'meat'], ['sans sucre, viande', 'meat'],
+      ['dairy-free egg noodles', 'egg-albumen'], ['egg-free milk chocolate', 'dairy'], ['meat-free milk chocolate', 'dairy'], ['eifreie milchschokolade', 'dairy'], ['fleischfreie eiernudeln', 'egg-albumen'], ['äggfri mjölkchoklad', 'dairy'], ['mejerifri äggpasta', 'egg']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
