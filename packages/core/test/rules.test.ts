@@ -113,7 +113,7 @@ describe('extended animal matching', () => {
   });
   test('French, Spanish, Italian and Dutch plant drinks, nut butters, negations and flavours never match an animal rule', () => {
     for (const term of ['lait végétal', 'leche vegetal', 'latte vegetale', 'plantaardige melk', 'fromage végétal', 'lait de coco', "lait d'amande", 'leche de soja', 'latte di mandorla', 'kokosmelk', 'havermelk', 'pindakaas', 'notenboter', 'cacaoboter', 'beurre de cacao', 'manteca de cacao', 'burro di cacao',
-      'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij',
+      'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'manteca vegetal', 'manteca de palma', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij',
       'saveur fromage', 'sabor a queso', 'gusto formaggio', 'kaassmaak', 'store at room temperature', 'viscose lining', 'weizenmehl', 'vis en acier']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }

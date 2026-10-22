@@ -2601,5 +2601,16 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "es-vegetable-shortening-is-not-lard",
+    "input": {
+      "text": "Ingredientes: harina de trigo, manteca vegetal, azúcar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

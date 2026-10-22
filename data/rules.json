@@ -647,7 +647,12 @@
       "plantaardige room",
       "plantaardige yoghurt",
       "plantemelk",
-      "plantemælk"
+      "plantemælk",
+      "manteca vegetal",
+      "mantecas vegetales",
+      "manteca de palma",
+      "manteca de coco",
+      "manteca de karite"
     ],
     "withWords": [
       "with",
@@ -7486,7 +7491,9 @@
         "kasviöljy",
         "kasviöljyt",
         "kasvirasva",
-        "kasvirasvat"
+        "kasvirasvat",
+        "manteca vegetal",
+        "mantecas vegetales"
       ],
       "explanation": {
         "en": "This is a plant ingredient. Separately listed additives, coatings and other components are assessed independently.",
