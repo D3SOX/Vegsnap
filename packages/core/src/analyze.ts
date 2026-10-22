@@ -143,22 +143,30 @@ function mentioned(text: string, item: string, wholeWord: boolean): boolean {
   }
   return false;
 }
-/** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
-function overlaps(value: string, alias: string, start: number, end: number): boolean {
-  for (let at = value.indexOf(alias); at >= 0 && at <= start; at = value.indexOf(alias, at + 1)) {
-    if (/[\p{L}\p{N}]/u.test(value[at - 1] ?? '') || /[\p{L}\p{N}]/u.test(value[at + alias.length] ?? '')) continue;
-    if (at + alias.length > (at < start ? start : end)) return true;
+/** How far whole-word animal alias occurrences reach: `at[i]` from an occurrence starting at `i`, `before[i]` from any occurrence starting earlier. One scan per term keeps stripping thousands of exceptions near-linear. */
+function animalReach(term: string): { at: Int32Array; before: Int32Array } {
+  const at = new Int32Array(term.length + 1), before = new Int32Array(term.length + 1);
+  for (const alias of animalAliases) {
+    for (let start = term.indexOf(alias); start >= 0; start = term.indexOf(alias, start + 1)) {
+      const end = start + alias.length;
+      if (!/[\p{L}\p{N}]/u.test(term[start - 1] ?? '') && !/[\p{L}\p{N}]/u.test(term[end] ?? '')) at[start] = Math.max(at[start]!, end);
+    }
   }
-  return false;
+  for (let index = 1; index <= term.length; index++) before[index] = Math.max(before[index - 1]!, at[index - 1]!);
+  return { at, before };
 }
-/** A plant exception is removed where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless an animal alias overlaps it; an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). */
+/** A plant exception is blanked where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless a whole-word animal alias starts before it and reaches into it ("Griskött" over "skött") or starts with it and outgrows it ("Fischgräten" over "Fischgrät"); an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). Blanks keep the term's length, so the reach measured once on the term stays aligned. */
 function withoutPlantExceptions(term: string): string {
+  let reach: ReturnType<typeof animalReach> | undefined;
   let value = term;
   for (const exception of plantExceptions) {
     for (let start = value.indexOf(exception); start >= 0; start = value.indexOf(exception, start + 1)) {
       const end = start + exception.length;
-      const prefix = /\p{L}*$/u.exec(value.slice(0, start))![0].length;
-      if (component(prefix, exception, 0) && !animalAliases.some(alias => overlaps(value, alias, start, end))) value = `${value.slice(0, start)} ${value.slice(end)}`;
+      let prefix = 0;
+      while (/\p{L}/u.test(value[start - prefix - 1] ?? '')) prefix++;
+      if (!component(prefix, exception, 0)) continue;
+      reach ??= animalReach(term);
+      if (reach.before[start]! <= start && reach.at[start]! <= end) value = `${value.slice(0, start)}${' '.repeat(exception.length)}${value.slice(end)}`;
     }
   }
   return value;

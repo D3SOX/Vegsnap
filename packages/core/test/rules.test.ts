@@ -103,6 +103,14 @@ describe('extended animal matching', () => {
     }
     for (const term of ['oat milk powder', 'walnut butter', 'kokosnussmilch', 'tomatfruktkött', 'hafermilchkonzentrat', 'lättskött', 'fischgrätmuster', 'tamarinder', 'king oysters']) expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
   });
+  test('a long term of repeated plant exceptions is stripped in near-linear time', () => {
+    const term = 'oat milk '.repeat(2_300).slice(0, 20_000).trim();
+    const started = performance.now();
+    expect(ruleForTerm(term)).toBeUndefined();
+    expect(analyzeText({ text: term, category: 'food', complete: true }).outcome).toBe('uncertain');
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(ruleForTerm(`${term} goat milk`)?.id).toBe('dairy');
+  });
   test('unsourced calcium carbonate, activated charcoal and dashi are ambiguous while their mineral, plant and fish forms keep their status', () => {
     for (const term of ['calcium carbonate', 'calciumcarbonat', 'ci 77220', 'activated charcoal', 'activated carbon', 'aktivkohle', 'charcoal', 'dashi']) expect(ruleForTerm(term)?.status).toBe('ambiguous');
     for (const term of ['e170', 'chalk', 'limestone', 'calcite', 'precipitated calcium carbonate', 'calcium carbonate from algae', 'vegetable carbon', 'e153', 'coconut charcoal', 'bamboo charcoal', 'holzkohle']) expect(ruleForTerm(term)?.status).toBe('plant');

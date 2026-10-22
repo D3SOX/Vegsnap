@@ -72,16 +72,6 @@ private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]
 private fun qualified(qualifiers: String): String = "(?:non|nicht|icke)[-–]?(?:$qualifiers)\\p{L}{0,2}|(?:$qualifiers)[-–]?\\s?(?:$FREE_FROM)"
 private data class QualifierDomain(val qualifiers: String, val rules: Set<String>)
 private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
-/** A whole-word occurrence of the alias starts before the span and reaches into it ("Griskött" over "skött"), or starts with the span and outgrows it ("Fischgräten" over "Fischgrät"). */
-private fun overlaps(value: String, alias: String, start: Int, end: Int): Boolean {
-    var at = value.indexOf(alias)
-    while (at in 0..start) {
-        val whole = !wordCharacter.containsMatchIn(value.getOrNull(at - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(value.getOrNull(at + alias.length)?.toString().orEmpty())
-        if (whole && at + alias.length > (if (at < start) start else end)) return true
-        at = value.indexOf(alias, at + 1)
-    }
-    return false
-}
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
 private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])")
@@ -178,15 +168,34 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         return false
     }
-    /** A plant exception is removed where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless an animal alias overlaps it; an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). */
+    /** How far whole-word animal alias occurrences reach: `at[i]` from an occurrence starting at `i`, `before[i]` from any occurrence starting earlier. One scan per term keeps stripping thousands of exceptions near-linear. */
+    private class AnimalReach(val at: IntArray, val before: IntArray)
+    private fun animalReach(term: String): AnimalReach {
+        val at = IntArray(term.length + 1)
+        val before = IntArray(term.length + 1)
+        for (alias in animalAliases) {
+            var start = term.indexOf(alias)
+            while (start >= 0) {
+                val end = start + alias.length
+                val whole = !wordCharacter.containsMatchIn(term.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(term.getOrNull(end)?.toString().orEmpty())
+                if (whole) at[start] = maxOf(at[start], end)
+                start = term.indexOf(alias, start + 1)
+            }
+        }
+        for (index in 1..term.length) before[index] = maxOf(before[index - 1], at[index - 1])
+        return AnimalReach(at, before)
+    }
+    /** A plant exception is blanked where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless a whole-word animal alias starts before it and reaches into it ("Griskött" over "skött") or starts with it and outgrows it ("Fischgräten" over "Fischgrät"); an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). Blanks keep the term's length, so the reach measured once on the term stays aligned. */
     private fun withoutPlantExceptions(term: String): String {
+        val reach by lazy { animalReach(term) }
         var value = term
         for (exception in plantExceptions) {
             var start = value.indexOf(exception)
             while (start >= 0) {
                 val end = start + exception.length
-                val prefix = value.take(start).takeLastWhile { it.isLetter() }.length
-                if (component(prefix, exception, 0) && animalAliases.none { overlaps(value, it, start, end) }) value = value.take(start) + " " + value.substring(end)
+                var prefix = 0
+                while (value.getOrNull(start - prefix - 1)?.isLetter() == true) prefix++
+                if (component(prefix, exception, 0) && reach.before[start] <= start && reach.at[start] <= end) value = value.take(start) + " ".repeat(exception.length) + value.substring(end)
                 start = value.indexOf(exception, start + 1)
             }
         }
