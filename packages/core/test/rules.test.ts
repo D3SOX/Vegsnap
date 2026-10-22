@@ -50,7 +50,8 @@ describe('extended animal matching', () => {
   test('plant exceptions, negations, substitutes and flavours never match an animal rule', () => {
     for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'honey melon', 'butter bean', 'butter lettuce', 'silk tofu', 'milchsäurebakterien',
       "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'milchfreie schokolade', 'mjölkfritt margarin', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'cheddar cheese flavour',
-      'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa']) {
+      'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa',
+      'gelatinised wheat starch', 'pre-gelatinized starch', 'gelatinierte stärke', 'gelatineringsmedel', 'zahnfleisch', 'zahnseide', 'pazifisches meersalz', 'spezifisch', 'milchig', 'flachs/leinen', 'zellwolle', 'seidenmatt', 'honigklee', 'kokosnussfleisch', 'butterbur extract', 'sea salt grinder', 'tomatfruktkött', 'inlägg: textil', 'skäggolja', 'silkeslen tofu', 'pregelatinized corn starch', 'pregelatinized', 'fake leather upper', 'fake fur trim']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
@@ -69,5 +70,10 @@ describe('extended animal matching', () => {
     const result = analyzeText({ text, category: 'food' }, undefined, ['sugar', 'alpine milk powder', 'gelatine']);
     expect(result.outcome).toBe('not_vegan');
     expect(result.findings.map(item => [item.term, item.ruleId])).toEqual([['sugar', 'sugar'], ['alpine milk powder', 'milk'], ['gelatine', 'gelatin']]);
+  });
+  test('an animal role prefix outranks an ambiguous suffix the AI split kept', () => {
+    const result = analyzeText({ text: 'Zutaten: Milchschokolade: E471, Zucker', category: 'food' }, undefined, ['e471', 'zucker']);
+    expect(result.outcome).toBe('not_vegan');
+    expect(result.findings.map(item => [item.term, item.status])).toEqual([['e471', 'ambiguous'], ['zucker', 'plant'], ['milchschokolade: e471', 'animal']]);
   });
 });

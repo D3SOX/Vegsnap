@@ -3,7 +3,7 @@ import rulesData from '../../../data/rules.json';
 import { normalizeBarcode } from './database';
 import type { CheckInput, CheckResult, Evidence, Finding, Locale } from './types';
 
-const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel)`;
+const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel)`;
 const additivePrefix = new RegExp(String.raw`^\s*${additiveRoles}(?:\s*:\s*|\s+)(?=\S)`, 'iu');
 const additiveGroup = new RegExp(String.raw`\b${additiveRoles}\s*:?\s*(?=\(\s*[\p{L}\p{N}])`, 'giu');
 const materialRoles = `(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)`;
@@ -65,7 +65,7 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
 // A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
-const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
+const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|${modifiers})(?:$|[^\p{L}])`, 'u');
 const substitutedAfter = new RegExp(String.raw`(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|${modifiers})(?:$|[^\p{L}])`, 'u');
 // "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
@@ -118,9 +118,13 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const parsed = parseSourceIngredients(text, parsedIngredients);
   // AI selects the actual ingredients; local animal/ambiguous rules remain a veto
   // even when an ingredient is omitted or hidden inside a misleading compound.
-  const veto = (term: string) => ['animal', 'ambiguous'].includes(ruleForTerm(term)?.status ?? '');
-  // The ingredient after a role prefix is the guard; the whole term still counts when only the prefix names an animal ("Milchschokolade: Zucker").
-  const guards = fallback.flatMap(term => [...(term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1))] : []), term].filter(veto).slice(0, 1));
+  const status = (term: string) => ruleForTerm(term)?.status;
+  // The ingredient after a role prefix is the guard, but an animal whole term outranks a plant or ambiguous suffix ("Milchschokolade: Zucker", "Milchschokolade: E471").
+  const guards = fallback.flatMap(term => {
+    const candidates = term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1)), term] : [term];
+    const guard = candidates.find(item => status(item) === 'animal') ?? candidates.find(item => status(item) === 'ambiguous');
+    return guard ? [guard] : [];
+  });
   const tokens = parsed ? [...parsed, ...guards] : fallback;
   const findings: Finding[] = [...new Set(tokens)].map(term => {
     const rule = ruleForTerm(term);

@@ -13,9 +13,9 @@ data class CheckInput(val text: String = "", val category: String = "other", val
 
 internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:\\s*", RegexOption.IGNORE_CASE)
 internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b[^.!]*\\benthalten|spuren von)\\b", RegexOption.IGNORE_CASE)
-private const val additiveRoles = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel)"
-private val additivePrefix = Regex("^\\s*$additiveRoles(?:\\s*:\\s*|\\s+)(?=\\S)", RegexOption.IGNORE_CASE)
-private val additiveGroup = Regex("\\b$additiveRoles\\s*:?\\s*(?=\\(\\s*[\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
+private const val ADDITIVE_ROLES = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel)"
+private val additivePrefix = Regex("^\\s*$ADDITIVE_ROLES(?:\\s*:\\s*|\\s+)(?=\\S)", RegexOption.IGNORE_CASE)
+private val additiveGroup = Regex("\\b$ADDITIVE_ROLES\\s*:?\\s*(?=\\(\\s*[\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
 private const val materialRoles = "(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)"
 private val materialPrefix = Regex("^\\s*$materialRoles\\s*:\\s*", RegexOption.IGNORE_CASE)
 private val materialSection = Regex("(?:^|\\n)\\s*$materialRoles\\s*:", RegexOption.IGNORE_CASE)
@@ -63,7 +63,7 @@ internal fun containsWord(text: String, word: String): Boolean {
     return false
 }
 // A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
-private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
+private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
 private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|$MODIFIERS)(?:$|[^\\p{L}])")
 private val substitutedAfter = Regex("(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|$MODIFIERS)(?:$|[^\\p{L}])")
 // "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
@@ -122,9 +122,12 @@ class Evaluator(private val rulesDocument: JSONObject) {
         val fallback = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
         val parsed = parsedIngredients?.let { parseSourceIngredients(input.text, JSONArray(it)) }
         // AI supplies the split; omissions and misleading compound assessments cannot erase known origins.
-        val veto = { term: String -> ruleForTerm(term)?.optString("status") in setOf("animal", "ambiguous") }
-        // The ingredient after a role prefix is the guard; the whole term still counts when only the prefix names an animal ("Milchschokolade: Zucker").
-        val guards = fallback.mapNotNull { term -> (if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term) else listOf(term)).firstOrNull(veto) }
+        val status = { term: String -> ruleForTerm(term)?.optString("status") }
+        // The ingredient after a role prefix is the guard, but an animal whole term outranks a plant or ambiguous suffix ("Milchschokolade: Zucker", "Milchschokolade: E471").
+        val guards = fallback.mapNotNull { term ->
+            val candidates = if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term) else listOf(term)
+            candidates.firstOrNull { status(it) == "animal" } ?: candidates.firstOrNull { status(it) == "ambiguous" }
+        }
         val tokens = if (parsed != null) (parsed + guards).distinct() else fallback
         val findings = JSONArray()
         for (term in tokens) {

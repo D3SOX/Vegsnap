@@ -840,5 +840,122 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "guard-prefers-animal-role-prefix-over-ambiguous-suffix",
+    "input": {
+      "text": "Zutaten: Milchschokolade: E471, Zucker",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "e471",
+      "zucker"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatinised-starches-are-plant",
+    "input": {
+      "text": "Ingredients: gelatinised wheat starch, pre-gelatinized starch, gelatinized corn starch, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatinised-starches-are-plant-de",
+    "input": {
+      "text": "Zutaten: Quellstärke, vorgelatinierte Stärke, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelling-agent-role-word-is-not-gelatin-sv",
+    "input": {
+      "text": "Ingredienser: gelatiniserad stärkelse, gelatineringsmedel (pektin), salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatine-beside-gelatinised-starch-stays-animal",
+    "input": {
+      "text": "Ingredients: pregelatinised starch, gelatine, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "compound-stems-skip-unrelated-german-words",
+    "input": {
+      "text": "Zutaten: pazifisches Meersalz, Kokosnussfleisch, Honigklee, Flachs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "dental-floss-is-not-silk",
+    "input": {
+      "text": "Zahnseide, Zahnseidehalter",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-insole-and-fruit-pulp-are-not-egg-or-meat",
+    "input": {
+      "text": "Ovandel: textil\nInlägg: tomatfruktkött\nYttersula: gummi",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "fake-leather-upper-is-not-leather",
+    "input": {
+      "text": "Upper: fake leather upper\nLining: textile",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "split-starch-descriptor-is-plant",
+    "input": {
+      "text": "Ingredients: sugar, rice flour (pregelatinized)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]
