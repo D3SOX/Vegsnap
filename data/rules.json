@@ -1264,8 +1264,6 @@
         "leberwurst",
         "leberpastete",
         "leverpastej",
-        "pâté",
-        "pastete",
         "offal",
         "innereien",
         "inälvor",
@@ -1912,7 +1910,6 @@
         "eiderdaunen",
         "ejderdun",
         "plumes",
-        "duvet",
         "down and feathers",
         "daunen und federn",
         "dun och fjädrar",
@@ -12762,7 +12759,10 @@
         "green curry paste",
         "rote currypaste",
         "grüne currypaste",
-        "sambal"
+        "sambal",
+        "pâté",
+        "pastete",
+        "pastej"
       ],
       "explanation": {
         "en": "Stock, sauces, dressings, fillings and prepared components can contain meat, fish, egg or dairy; the label needs to list their components.",
@@ -20549,7 +20549,8 @@
         "druckfarbe",
         "tryckfärg",
         "druckfarben",
-        "tryckfärger"
+        "tryckfärger",
+        "duvet"
       ],
       "explanation": {
         "en": "These material, filling, finishing and auxiliary terms do not identify the fibre or substance source; it may be plant, synthetic or animal.",

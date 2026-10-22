@@ -77,7 +77,7 @@ describe('extended animal matching', () => {
       'milk protein-free oat drink', 'egg protein-free pasta', 'dairy ingredient-free spread', 'milk protein free', 'milk and egg protein-free', 'milcheiweiß-frei', 'milch-eiweiß-frei', 'frei von milchbestandteilen', 'milchbestandteile-frei', 'mjölkproteinfri havredryck', 'fri från mjölkprotein', 'egg ingredients free',
       'huhn-/pouletgeschmack', 'milch-/mjölkaroma', 'käse-/ostarom', 'cheese-/milk flavour', 'milk-/egg-free',
       'beef tomatoes', 'king oysters', 'buttercups', 'oyster mushrooms', 'walnut butter', 'coconut butter', 'chickpea milk', 'soybean curd', 'grapefruit butter', 'lättskött tyg', 'reklamaffisch', 'atrofisk', 'smoking oysters',
-      'aroma de carne', 'aroma di carne', 'sans sucre ni viande', 'senza zucchero né carne', 'sin azúcar ni carne', 'natural flavouring e471 milk powder', 'fish-free fish sauce', 'fiskfri fisksås', 'eifreie eiernudeln', 'free from gluten and milk', 'frei von gluten und milch', 'fri från gluten och mjölk']) {
+      'aroma de carne', 'aroma di carne', 'sans sucre ni viande', 'senza zucchero né carne', 'sin azúcar ni carne', 'natural flavouring e471 milk powder', 'fish-free fish sauce', 'fiskfri fisksås', 'eifreie eiernudeln', 'free from gluten and milk', 'frei von gluten und milch', 'fri från gluten och mjölk', 'mushroom pâté', 'vegetable pâté', 'gemüsepastete', 'polyester duvet', 'duvet cover']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
@@ -93,7 +93,7 @@ describe('extended animal matching', () => {
       ['arôme et viande', 'meat'], ['viande et arôme', 'meat'], ['aroma y carne', 'meat'], ['carne y aroma', 'meat'], ['aromi e carne', 'meat'], ['aromi ed estratto di carne', 'meat'], ['arôme ou viande', 'meat'], ['aroma o carne', 'meat'], ['aromi oppure carne', 'meat'],
       ['arôme avec viande', 'meat'], ['aroma con carne', 'meat'], ['carne con aroma', 'meat'], ['sans sucre, viande', 'meat'],
       ['dairy-free egg noodles', 'egg-albumen'], ['egg-free milk chocolate', 'dairy'], ['meat-free milk chocolate', 'dairy'], ['eifreie milchschokolade', 'dairy'], ['fleischfreie eiernudeln', 'egg-albumen'], ['äggfri mjölkchoklad', 'dairy'], ['mejerifri äggpasta', 'egg'],
-      ['no added sugar and contains whole milk', 'milk'], ['kein zuckerzusatz und enthält vollmilch', 'milk'], ['utan tillsatt socker och innehåller helmjölk', 'milk'], ['sans sucre ajouté et contient du fromage', 'cheese']] as const) {
+      ['no added sugar and contains whole milk', 'milk'], ['kein zuckerzusatz und enthält vollmilch', 'milk'], ['utan tillsatt socker och innehåller helmjölk', 'milk'], ['sans sucre ajouté et contient du fromage', 'cheese'], ['liver pâté', 'meat'], ['leberpastete', 'meat'], ['down duvet', 'down']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });

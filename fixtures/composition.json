@@ -1908,5 +1908,49 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "generic-pate-is-source-dependent",
+    "input": {
+      "text": "Ingredients: mushroom pâté, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "liver-pate-is-animal",
+    "input": {
+      "text": "Ingredients: liver pâté, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-duvet-is-source-dependent",
+    "input": {
+      "text": "Materials: polyester duvet",
+      "category": "other"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "down-duvet-is-animal",
+    "input": {
+      "text": "Materials: down duvet",
+      "category": "other"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
