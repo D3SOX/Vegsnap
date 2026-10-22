@@ -118,7 +118,20 @@ struct PackDescriptor: Codable, Identifiable { var id: String; var region: Strin
 struct PackCatalog: Codable { var schemaVersion: Int; var packs: [PackDescriptor] }
 private let regionCodes = Locale.Region.isoRegions.map(\.identifier).filter { $0.count == 2 }
 private func regionKey(_ value: String) -> String { value.lowercased().filter(\.isLetter) }
+// Canonical Open Facts tags differing from system names. Keep in sync with ProductMarket.kt and core/market.ts.
+private let openFactsRegionCodes: [String: String] = [
+    "antarctic": "AQ", "antiguaandbarbuda": "AG", "bosniaandherzegovina": "BA", "cocoskeelingislands": "CC", "curacao": "CW",
+    "czechrepublic": "CZ", "cotedivoire": "CI", "democraticrepublicofthecongo": "CD", "federatedstatesofmicronesia": "FM",
+    "frenchsouthernandantarcticlands": "TF", "heardislandandmcdonaldislands": "HM", "hongkong": "HK", "macau": "MO", "myanmar": "MM",
+    "pitcairn": "PN", "republicofthecongo": "CG", "reunion": "RE", "sainthelena": "SH", "saintkittsandnevis": "KN", "saintlucia": "LC",
+    "saintmartin": "MF", "saintpierreandmiquelon": "PM", "saintvincentandthegrenadines": "VC", "saintbarthelemy": "BL",
+    "saotomeandprincipe": "ST", "southgeorgiaandthesouthsandwichislands": "GS", "stateofpalestine": "PS", "svalbardandjanmayen": "SJ",
+    "swaziland": "SZ", "thebahamas": "BS", "trinidadandtobago": "TT", "turkey": "TR", "turksandcaicosislands": "TC",
+    "unitedstatesminoroutlyingislands": "UM", "virginislandsoftheunitedstates": "VI", "wallisandfutuna": "WF", "alandislands": "AX",
+    "deutschland": "DE", "sverige": "SE", "suomi": "FI", "uk": "GB", "usa": "US"
+]
 private let englishRegionCodes = Dictionary(regionCodes.compactMap { code in Locale(identifier: "en").localizedString(forRegionCode: code).map { (regionKey($0), code) } }, uniquingKeysWith: { first, _ in first })
+    .merging(openFactsRegionCodes) { _, canonical in canonical }
 private func packRegionCode(_ value: String) -> String? {
     let code = value.uppercased()
     return code == "EU" || regionCodes.contains(code) ? code : englishRegionCodes[regionKey(value)]

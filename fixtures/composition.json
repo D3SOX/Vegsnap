@@ -2491,5 +2491,16 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "allergen-choice-precaution-stays-cross-contact",
+    "input": {
+      "text": "Ingredients: wheat flour, water, salt. May contain one or more of the following allergens: milk, eggs.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

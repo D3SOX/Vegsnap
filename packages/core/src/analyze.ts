@@ -199,7 +199,7 @@ export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | un
   return alias ? aliasRules.get(alias) : undefined;
 }
 const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\s*:\s*/i;
-const precaution = /\b(?:may contain(?!\s+(?:one or more|either|any (?:one )?of)\b)|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\b[^.!]*\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\p{L}\p{N}])/iu;
+const precaution = /\b(?:may contain(?!\s+(?:one or more|either|any (?:one )?of)\b(?![^.:;)]*\b(?:allergens?|traces?)\b))|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\b[^.!]*\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\p{L}\p{N}])/iu;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';
