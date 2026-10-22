@@ -584,6 +584,16 @@
       "id": "efsa-astaxanthin",
       "url": "https://doi.org/10.2903/j.efsa.2020.5993",
       "title": "EFSA: astaxanthin as a novel food from Haematococcus pluvialis alongside dietary astaxanthin from fish and crustaceans"
+    },
+    {
+      "id": "hydroxyapatite-sources-review",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/36082327/",
+      "title": "Heliyon review: natural hydroxyapatite is extracted from bovine and fish bone, eggshells and seashells alongside synthetic production"
+    },
+    {
+      "id": "eu-wine-oenological-practices",
+      "url": "https://eur-lex.europa.eu/eli/reg_del/2019/934/oj",
+      "title": "Delegated Regulation (EU) 2019/934: authorised oenological practices, including chitosan derived from Aspergillus niger"
     }
   ],
   "rules": [
@@ -9877,13 +9887,20 @@
         "calcium phosphate from bone",
         "bone calcium",
         "knochencalcium",
+        "microcrystalline hydroxyapatite",
+        "microcrystalline hydroxyapatite complex",
+        "mikrokristallines hydroxylapatit",
+        "mikrokristallin hydroxiapatit",
+        "bone hydroxyapatite",
+        "bovine hydroxyapatite",
+        "knochenhydroxylapatit",
         "e542",
         "e 542",
         "e-542"
       ],
       "explanation": {
-        "en": "Bone phosphate (E542) and bone meal are ground animal bones.",
-        "de": "Knochenphosphat (E542) und Knochenmehl sind gemahlene Tierknochen."
+        "en": "Bone phosphate (E542), bone meal and microcrystalline hydroxyapatite (MCHA) are ground or extracted animal bone.",
+        "de": "Knochenphosphat (E542), Knochenmehl und mikrokristallines Hydroxylapatit (MCHA) sind gemahlener oder extrahierter Tierknochen."
       },
       "sourceIds": [
         "eu-food-additives-regulation",
@@ -12431,15 +12448,69 @@
         "kalziumkarbonat",
         "kalziumcarbonat",
         "kalciumkarbonat",
-        "ci 77220"
+        "ci 77220",
+        "natural calcium",
+        "natürliches calcium",
+        "natürliches kalzium",
+        "naturligt kalcium",
+        "coral calcium",
+        "korallencalcium",
+        "korallenkalzium",
+        "korallkalcium"
       ],
       "explanation": {
-        "en": "Calcium can be added as a mineral salt, from algae, or from milk, bones or shells, and unsourced calcium carbonate is also made from oyster shells; the label needs to name the compound and its source.",
-        "de": "Calcium kann als mineralisches Salz, aus Algen oder aus Milch, Knochen oder Schalen zugesetzt werden, und Calciumcarbonat ohne Quellenangabe wird auch aus Austernschalen gewonnen; das Etikett muss Verbindung und Quelle nennen."
+        "en": "Calcium can be added as a mineral salt, from algae, or from milk, bones, shells or coral, and unsourced calcium carbonate is also made from oyster shells; the label needs to name the compound and its source.",
+        "de": "Calcium kann als mineralisches Salz, aus Algen oder aus Milch, Knochen, Schalen oder Korallen zugesetzt werden, und Calciumcarbonat ohne Quellenangabe wird auch aus Austernschalen gewonnen; das Etikett muss Verbindung und Quelle nennen."
       },
       "sourceIds": [
         "eu-fortification-regulation",
         "peta-animal-ingredients"
+      ]
+    },
+    {
+      "id": "hydroxyapatite",
+      "status": "ambiguous",
+      "aliases": [
+        "hydroxyapatite",
+        "hydroxylapatite",
+        "hydroxylapatit",
+        "hydroxyapatit",
+        "hydroxiapatit",
+        "calcium hydroxyapatite",
+        "calciumhydroxylapatit",
+        "nano-hydroxyapatite",
+        "nano hydroxyapatite",
+        "nanohydroxyapatite",
+        "nano-hydroxylapatit",
+        "nanohydroxylapatit",
+        "hydroxyapatite powder",
+        "hydroxylapatitpulver"
+      ],
+      "explanation": {
+        "en": "Hydroxyapatite is produced synthetically or extracted from bovine and fish bone, eggshells and seashells; the label needs to name the source.",
+        "de": "Hydroxylapatit wird synthetisch hergestellt oder aus Rinder- und Fischknochen, Eierschalen und Muschelschalen gewonnen; das Etikett muss die Quelle nennen."
+      },
+      "sourceIds": [
+        "hydroxyapatite-sources-review",
+        "cosing"
+      ]
+    },
+    {
+      "id": "chitosan",
+      "status": "ambiguous",
+      "aliases": [
+        "chitin",
+        "chitosan",
+        "kitin",
+        "kitosan"
+      ],
+      "explanation": {
+        "en": "Chitin and chitosan are mostly made from crustacean shells, but chitosan from the fungus Aspergillus niger is the form permitted for wine fining; the label needs to name the source.",
+        "de": "Chitin und Chitosan werden meist aus Krebstierschalen hergestellt, aber Chitosan aus dem Pilz Aspergillus niger ist die für die Weinschönung zugelassene Form; das Etikett muss die Quelle nennen."
+      },
+      "sourceIds": [
+        "peta-animal-ingredients",
+        "eu-wine-oenological-practices"
       ]
     },
     {
@@ -16573,11 +16644,13 @@
         "jade",
         "tourmaline",
         "turmalin",
-        "hydroxyapatite",
-        "hydroxylapatit",
-        "hydroxyapatit",
-        "calcium hydroxyapatite",
-        "nano-hydroxyapatite",
+        "synthetic hydroxyapatite",
+        "synthetic hydroxylapatite",
+        "synthetic calcium hydroxyapatite",
+        "synthetic nano-hydroxyapatite",
+        "synthetisches hydroxylapatit",
+        "synthetisches hydroxyapatit",
+        "syntetisk hydroxiapatit",
         "zinc ricinoleate",
         "zinkricinoleat",
         "zinc chloride",

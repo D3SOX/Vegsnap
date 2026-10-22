@@ -2041,4 +2041,49 @@
       "basis": "composition"
     }
   }
+,
+  {
+    "id": "generic-hydroxyapatite-is-source-dependent",
+    "input": {
+      "text": "Ingredients: aqua, hydroxyapatite, xylitol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "synthetic-hydroxyapatite-is-plant",
+    "input": {
+      "text": "Ingredients: aqua, synthetic hydroxyapatite, xylitol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "microcrystalline-hydroxyapatite-is-bone",
+    "input": {
+      "text": "Ingredients: microcrystalline hydroxyapatite, cellulose",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "unsourced-chitosan-is-source-dependent",
+    "input": {
+      "text": "Ingredients: water, chitosan",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  }
 ]

@@ -116,6 +116,11 @@ describe('extended animal matching', () => {
     for (const term of ['e170', 'chalk', 'limestone', 'calcite', 'precipitated calcium carbonate', 'calcium carbonate from algae', 'vegetable carbon', 'e153', 'coconut charcoal', 'bamboo charcoal', 'holzkohle']) expect(ruleForTerm(term)?.status).toBe('plant');
     for (const term of ['bone char', 'bone charcoal', 'oyster shell powder', 'katsuo dashi']) expect(ruleForTerm(term)?.status).toBe('animal');
   });
+  test('unsourced hydroxyapatite, chitosan, natural and coral calcium are ambiguous while synthetic and bone-derived hydroxyapatite keep their status', () => {
+    for (const term of ['hydroxyapatite', 'hydroxylapatit', 'calcium hydroxyapatite', 'nano-hydroxyapatite', 'chitosan', 'chitin', 'natural calcium', 'coral calcium']) expect(ruleForTerm(term)?.status).toBe('ambiguous');
+    for (const term of ['synthetic hydroxyapatite', 'synthetisches hydroxylapatit', 'tricalcium phosphate', 'e341', 'calcium citrate', 'e333']) expect(ruleForTerm(term)?.status).toBe('plant');
+    for (const term of ['microcrystalline hydroxyapatite', 'bovine hydroxyapatite', 'hydroxyapatite from bone', 'bone phosphate', 'e542', 'nacre', 'pearl powder', 'calcium citrate from oyster shells']) expect(ruleForTerm(term)?.status).toBe('animal');
+  });
   test('plant and ambiguous rules only match exactly', () => {
     expect(ruleForTerm('natural flavouring with vanilla')).toBeUndefined();
     expect(ruleForTerm('e471 from palm oil')).toBeUndefined();
