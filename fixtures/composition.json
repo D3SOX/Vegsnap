@@ -2502,5 +2502,38 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "nutrition-energy-is-not-an-ins-number",
+    "input": {
+      "text": "Ingredients: sugar, water\nNutrition\nEnergy (kcal) 120",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "au-mineral-salts-ins-list",
+    "input": {
+      "text": "Ingredients: wheat flour, water, mineral salts (452, 450), salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fr-plant-milk-is-not-milk",
+    "input": {
+      "text": "Ingrédients : eau, sucre, lait végétal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]

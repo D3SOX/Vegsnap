@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import rules from '../../../data/rules.json';
 import { analyzeText, normalizeTerm } from '../src';
-import { ruleForTerm } from '../src/analyze';
+import { compositionTerms, ruleForTerm } from '../src/analyze';
 
 const aliasRule = new Map(rules.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
 
@@ -112,7 +112,7 @@ describe('extended animal matching', () => {
     }
   });
   test('French, Spanish, Italian and Dutch plant drinks, nut butters, negations and flavours never match an animal rule', () => {
-    for (const term of ['lait de coco', "lait d'amande", 'leche de soja', 'latte di mandorla', 'kokosmelk', 'havermelk', 'pindakaas', 'notenboter', 'cacaoboter', 'beurre de cacao', 'manteca de cacao', 'burro di cacao',
+    for (const term of ['lait végétal', 'leche vegetal', 'latte vegetale', 'plantaardige melk', 'fromage végétal', 'lait de coco', "lait d'amande", 'leche de soja', 'latte di mandorla', 'kokosmelk', 'havermelk', 'pindakaas', 'notenboter', 'cacaoboter', 'beurre de cacao', 'manteca de cacao', 'burro di cacao',
       'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij',
       'saveur fromage', 'sabor a queso', 'gusto formaggio', 'kaassmaak', 'store at room temperature', 'viscose lining', 'weizenmehl']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
@@ -131,9 +131,10 @@ describe('extended animal matching', () => {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
-  test('E numbers read the same hyphenated, with a roman subgroup or as bare Australian INS numbers', () => {
-    for (const [term, id] of [['e-471', 'e471'], ['471', 'e471'], ['e500ii', 'sodium-carbonates'], ['e-451i', 'phosphates'], ['330', 'citric-acid'], ['120', 'carmine']] as const) expect(ruleForTerm(term)?.id).toBe(id);
-    expect(ruleForTerm('4711')).toBeUndefined();
+  test('E numbers read the same spaced, hyphenated or with a roman subgroup, and bare INS numbers only after an additive role', () => {
+    for (const [term, id] of [['e-471', 'e471'], ['e 471', 'e471'], ['e500ii', 'sodium-carbonates'], ['e-451i', 'phosphates']] as const) expect(ruleForTerm(term)?.id).toBe(id);
+    for (const term of ['471', '120', '4711']) expect(ruleForTerm(term)).toBeUndefined();
+    expect(compositionTerms('emulsifier (471), mineral salts (452, 450), food acid: 330, preservative (E 202), energy (kcal) 120')).toEqual(['e471', 'e452', 'e450', 'e330', 'e 202', 'energy', 'kcal', '120']);
   });
   test('a long term of repeated plant exceptions is stripped in near-linear time', () => {
     const term = 'oat milk '.repeat(2_300).slice(0, 20_000).trim();

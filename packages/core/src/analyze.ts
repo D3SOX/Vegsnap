@@ -5,6 +5,8 @@ import type { CheckInput, CheckResult, Evidence, Finding, Locale } from './types
 
 const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel|humectants?|firming agents?|flavou?r enhancers?|bulking agents?|anti-?caking agents?|flour treatment agents?|emulsifying salts?|acidity correctors?|food acids?|acids?(?= *:)|mineral salts?|vegetable gums?|leavening(?: agents?)?|feuchthaltemittel|geschmacksverstärker|trennmittel|mehlbehandlungsmittel|festigungsmittel|füllstoffe?|schmelzsalze?|syra|fuktighetsbevarande medel|smakförstärkare|klumpförebyggande medel|ytbehandlingsmedel|mjölbehandlingsmedel|fyllnadsmedel|acidifiants?|correcteurs? d['’]acidité|[ée]mulsifiants?|[ée]paississants?|stabilisants?|gélifiants?|conservateurs?|antioxydants?|colorants?|édulcorants?|affermissants?|exhausteurs? de go[uû]t|agents? de traitement de la farine|agents? d['’]enrobage|agents? de charge|poudres? à lever|agents? levants?|anti-?agglomérants?|séquestrants?|sels? de fonte|acidulantes?|correctores? de (?:la )?acidez|reguladores? de (?:la )?acidez|emulgentes?|emulsionantes?|espesantes?|estabilizantes?|estabilizadores?|gelificantes?|conservadores?|conservantes?|antioxidantes?|colorantes?|edulcorantes?|potenciadores? del sabor|gasificantes?|impulsores?|agentes? de recubrimiento|humectantes?|antiaglomerantes?|sales fundentes|acidificant[ei]|correttor[ei] di acidità|regolator[ei] di acidità|emulsionant[ei]|addensant[ei]|stabilizzant[ei]|gelificant[ei]|conservant[ei]|antiossidant[ei]|colorant[ei]|edulcorant[ei]|esaltator[ei] di sapidità|agent[ei] lievitant[ei]|agent[ei] di rivestimento|umidificant[ei]|antiagglomerant[ei]|agent[ei] di carica|sali di fusione|zuurteregelaars?|voedingszu(?:ur|ren)|verdikkingsmiddel(?:en)?|geleermiddel(?:en)?|conserveermiddel(?:en)?|antioxidanten|kleurstof(?:fen)?|zoetstof(?:fen)?|smaakversterkers?|rijsmiddel(?:en)?|glansmiddel(?:en)?|bevochtigingsmiddel(?:en)?|antiklontermiddel(?:en)?|meelverbeteraars?|verstevigingsmiddel(?:en)?|emulgatorer|fortykningsmid(?:del|ler)|konserveringsmid(?:del|ler)|surhetsregulerende mid(?:del|ler)|surhedsregulerende mid(?:del|ler)|antioksidant(?:er)?|antioxidanter|fargestoff(?:er)?|farvestof(?:fer)?|stabilisatorer|søtstoff(?:er)?|sødestof(?:fer)?|hevemid(?:del|ler)|hævemid(?:del|ler)|smaksforsterker|smagsforstærker|fuktighetsbevarende middel|fugtighedsbevarende middel|melbehandlingsmiddel|overflatebehandlingsmiddel|overfladebehandlingsmiddel|geleringsmiddel|(?:emulgointi|happamuudensäätö|säilöntä|sakeuttamis|stabilointi|väri|makeutus|kohotus|hapettumisenesto|kostutus|paakkuuntumisenesto|pintakäsittely|hyytelöimis)aine(?:et)?|arominvahven(?:ne|teet)|jauhonparanne|farge|farve|konsistensmid(?:del|ler)|fuktighetsbevarer|antiklump(?:e|nings)mid(?:del|ler)|surheitsregulerande mid(?:del|lar)|surhetsregulator(?:er)?|smeltesalt(?:er)?|melbehandlingsmidler|syrer?(?= *:)|nostatusaine(?:et)?|värit?|kosteudensäilyttäjä|hap(?:po|ot)(?= *:))`;
 const additivePrefix = new RegExp(String.raw`^\s*${additiveRoles}(?:\s*:\s*|\s+)(?=\S)`, 'iu');
+// Australian and New Zealand labels give additives as bare INS numbers after their role ("emulsifier (471)", "mineral salts (452, 450)", "food acid: 330"); elsewhere a bare number is a quantity or a nutrition value.
+const insAfterRole = new RegExp(String.raw`(?<![\p{L}\p{N}])${additiveRoles}\s*(?:\([^()]*\)|:[^,;()\n]*)`, 'giu');
 const additiveGroup = new RegExp(String.raw`(?<![\p{L}\p{N}])${additiveRoles}\s*:?\s*(?=\(\s*[\p{L}\p{N}])`, 'giu');
 const materialRoles = `(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)`;
 const materialPrefix = new RegExp(String.raw`^\s*${materialRoles}\s*:\s*`, 'iu');
@@ -35,6 +37,7 @@ export function compositionTerms(text: string, materialContext = false): string[
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
   return value.replace(/\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
+    .replace(insAfterRole, role => role.replace(/(?<![\p{L}\p{N}])(?<![eE][\s-])(\d{3,4}[a-h]?)(?!\p{N})/gu, 'e$1'))
     .replace(additiveGroup, '')
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
 }
@@ -185,10 +188,10 @@ function withoutPlantExceptions(term: string): string {
   }
   return value;
 }
-const additiveNumber = /^(?:e[\s-]?)?(\d{3,4}[a-h]?)(?:\s?\(?(?:i{1,3}|iv|v|vi)\)?)?$/u;
+const additiveNumber = /^e[\s-]?(\d{3,4}[a-h]?)(?:\s?\(?(?:i{1,3}|iv|v|vi)\)?)?$/u;
 /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
 export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
-  // E numbers come hyphenated or with a roman subgroup ("e-471", "e500ii"), and Australian and New Zealand labels give bare INS numbers ("emulsifier (471)").
+  // E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
   const number = additiveNumber.exec(term)?.[1];
   const exact = aliasRules.get(term) ?? (number ? aliasRules.get(`e${number}`) : undefined);
   if (exact) return exact;
