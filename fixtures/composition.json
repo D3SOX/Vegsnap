@@ -2612,5 +2612,38 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "de-rund-means-approximately",
+    "input": {
+      "text": "Zutaten: rund 50 % Tomaten, Wasser, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "nl-beef-gelatine-in-parentheses",
+    "input": {
+      "text": "Ingrediënten: suiker, gelatine (rund), citroenzuur",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "no-plant-cream-is-not-cream",
+    "input": {
+      "text": "Ingredienser: vann, plantefløte, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]

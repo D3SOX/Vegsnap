@@ -127,7 +127,7 @@ describe('extended animal matching', () => {
   });
   test('Norwegian, Danish and Finnish plant butters, drinks, look-alike words, negations and flavours never match an animal rule', () => {
     for (const term of ['kakaosmør', 'peanøttsmør', 'kokosfløte', 'havremælk', 'maitohappo', 'kookosmaito', 'juustokumina', 'munakoiso', 'kalamata', 'kala namak', 'hunajameloni', 'hiilihapotettu vesi',
-      'lihavoidut ainesosat', 'ranskalainen', 'laksatiivisia', 'raakalakritsi', 'ei sisällä maitoa', 'uten melk', 'uden mælk', 'mælkefri', 'juustonmakuinen', 'ostesmag', 'sel gris']) {
+      'lihavoidut ainesosat', 'ranskalainen', 'laksatiivisia', 'raakalakritsi', 'ei sisällä maitoa', 'uten melk', 'uden mælk', 'mælkefri', 'juustonmakuinen', 'ostesmag', 'sel gris', 'plantefløte', 'plantefløde', 'plantebaseret fløde', 'kasvipohjainen ruokakerma', 'rund tomaten']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });

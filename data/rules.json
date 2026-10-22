@@ -85,7 +85,8 @@
       "voi",
       "voita",
       "valle",
-      "vis"
+      "vis",
+      "rund"
     ],
     "exactOnlyContexts": [
       {
@@ -652,7 +653,18 @@
       "mantecas vegetales",
       "manteca de palma",
       "manteca de coco",
-      "manteca de karite"
+      "manteca de karite",
+      "plantefløte",
+      "plantefløde",
+      "plantebasert fløte",
+      "plantebaseret fløde",
+      "plantebaseret madlavningsfløde",
+      "plantebasert smør",
+      "plantebaseret smør",
+      "kasvipohjainen kerma",
+      "kasvipohjainen ruokakerma",
+      "kasvipohjainen kuohukerma",
+      "kasviruokakerma"
     ],
     "withWords": [
       "with",
