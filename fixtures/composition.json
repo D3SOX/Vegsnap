@@ -651,7 +651,7 @@
   {
     "id": "extended-finnish-negation-is-not-a-german-egg",
     "input": {
-      "text": "Ingredients: water, ei sisällä maitoa",
+      "text": "Ingredients: water, ei sisällä maitoa, ei lisättyä sokeria",
       "category": "food"
     },
     "expected": {
@@ -1393,6 +1393,39 @@
     "id": "alternative-conjunction-ends-a-modifier-phrase-sv",
     "input": {
       "text": "Ingredienser: socker, arom eller mjölkpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-egg-is-never-a-negation",
+    "input": {
+      "text": "Zutaten: Weizenmehl, Ei und Milch, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-negation-forms-cover-the-animal-word",
+    "input": {
+      "text": "Ingredienser: havredryck, ingen mjölk, inget smör, innehåller inte ägg, ej honung, utan gelatin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-negation-needs-a-word-boundary",
+    "input": {
+      "text": "Ingredienser: ingefära och mjölk",
       "category": "food"
     },
     "expected": {

@@ -71,7 +71,8 @@ const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?';
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs"). A negation fused with
 // an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient.
-const negations = String.raw`(?:non|nicht|icke)[-–]?(?:${animalQualifiers})\p{L}{0,2}|(?:${animalQualifiers})[-–]?\s?(?:${freeFrom})|no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+// Only EN/DE/SV negations: the Finnish "ei" is the German egg ("Ei und Milch").
+const negations = String.raw`(?:non|nicht|icke)[-–]?(?:${animalQualifiers})\p{L}{0,2}|(?:${animalQualifiers})[-–]?\s?(?:${freeFrom})|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
@@ -85,8 +86,9 @@ const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
 const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|or|oder|eller|&)(?=$|[^\p{L}])/u;
 const conjunction = /^(?:and|und|och|or|oder|eller|&|\/)$/u;
 const words = (value: string) => value.match(/\p{L}+|[&/]/gu) ?? [];
-// An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly.
-const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
+// An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg.
+const exactOnlyAliases = new Set(rulesData.extendedMatching.exactOnlyAliases.map(normalizeTerm));
+const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !exactOnlyAliases.has(alias) && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm).sort((a, b) => b.length - a.length);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
 /** The last negation before the mention still covers it unless a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */

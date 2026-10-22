@@ -36,6 +36,7 @@ describe('rule data', () => {
   test('compound stems are animal aliases and plant exceptions never are', () => {
     for (const stem of rules.extendedMatching.compoundStems) expect(aliasRule.get(normalizeTerm(stem))?.status).toBe('animal');
     for (const exception of rules.extendedMatching.plantExceptions) expect(aliasRule.get(normalizeTerm(exception))?.status ?? 'plant').not.toBe('animal');
+    for (const alias of rules.extendedMatching.exactOnlyAliases) expect(aliasRule.get(normalizeTerm(alias))?.status).toBe('animal');
   });
   test('animal qualifiers name an animal origin and free-from heads never do', () => {
     for (const qualifier of rules.extendedMatching.animalQualifiers) expect(aliasRule.get(normalizeTerm(qualifier))?.status ?? 'animal').toBe('animal');
@@ -55,7 +56,7 @@ describe('extended animal matching', () => {
   test('plant exceptions, negations, substitutes and flavours never match an animal rule', () => {
     for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'honey melon', 'butter bean', 'butter lettuce', 'silk tofu', 'milchsäurebakterien',
       "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'milchfreie schokolade', 'mjölkfritt margarin', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'cheddar cheese flavour',
-      'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa',
+      'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa', 'ei lisättyä sokeria', 'kokosnüss ei der ernte', 'ingen mjölk', 'inget smör', 'innehåller inte ägg', 'ej honung',
       'gelatinised wheat starch', 'pre-gelatinized starch', 'gelatinierte stärke', 'gelatineringsmedel', 'zahnfleisch', 'zahnseide', 'pazifisches meersalz', 'spezifisch', 'milchig', 'flachs/leinen', 'zellwolle', 'seidenmatt', 'honigklee', 'kokosnussfleisch', 'butterbur extract', 'sea salt grinder', 'tomatfruktkött', 'inlägg: textil', 'skäggolja', 'silkeslen tofu', 'pregelatinized corn starch', 'pregelatinized', 'fake leather upper', 'fake fur trim',
       'honigbuschblätter', 'honungsbuskte', 'without milk and eggs', 'ohne milch und eier', 'milk and egg free', 'free from milk and soya', 'imitation cheese and herbs', 'käse-zwiebel-geschmack',
       'no milk or eggs', 'ohne zusatz von milch', 'utan tillsatt mjölk', 'no beef gelatine', 'kein tierisches lab', 'milch- und eifrei', 'mjölk- och äggfri', 'milk/egg free', 'gluten- und kuhmilcheiweißfrei', 'modersmjölksersättning',
@@ -73,7 +74,8 @@ describe('extended animal matching', () => {
       ['non-gmo whole milk', 'milk'], ['non-fat milk', 'milk'], ['no added sugar milk chocolate', 'dairy'], ['no palm oil whole milk powder', 'milk'], ['utan tillsatt socker mjölkchoklad', 'dairy'], ['milk from free range cows', 'milk'], ['eggs from free-range hens', 'egg'],
       ['pasteurized milk lactose-free', 'dairy'], ['milk chocolate sugar free', 'dairy'], ['milk and cellulose', 'milk'], ['honungsrostade jordnötter', 'honey'], ['lanolin cholesterol', 'lanolin'], ['galactooligosaccharides', 'galactooligosaccharides'],
       ['nonfat milk', 'milk'], ['non-hydrogenated milk fat', 'milk-fat'], ['lactose-free milk', 'milk'], ['laktosfri mjölk', 'milk'], ['vattenfritt mjölkfett', 'milk-fat'], ['gluten-free milk chocolate', 'dairy'], ['non-dairy creamer with milk', 'milk'],
-      ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen'], ['plant oil or milk', 'milk'], ['natürliches aroma oder milchpulver', 'milk'], ['arom eller mjölkpulver', 'milk'], ['milk or vegan alternative', 'milk']] as const) {
+      ['milk powder gluten free', 'milk'], ['milk cellulose-free', 'milk'], ['pasteurised free range egg yolk', 'egg-albumen'], ['plant oil or milk', 'milk'], ['natürliches aroma oder milchpulver', 'milk'], ['arom eller mjölkpulver', 'milk'], ['milk or vegan alternative', 'milk'],
+      ['ei und milch', 'milk'], ['ei aus freilandhaltung', 'egg-albumen'], ['ingefära och mjölk', 'milk'], ['ingrediens: mjölk', 'milk']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });

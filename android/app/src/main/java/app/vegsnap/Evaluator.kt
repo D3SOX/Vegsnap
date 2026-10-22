@@ -64,7 +64,8 @@ internal fun containsWord(text: String, word: String): Boolean {
 }
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
-private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från"
+// Only EN/DE/SV negations: the Finnish "ei" is the German egg ("Ei und Milch").
+private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från"
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
 private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?"
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
@@ -105,8 +106,9 @@ class Evaluator(private val rulesDocument: JSONObject) {
     private val negations = "(?:non|nicht|icke)[-–]?(?:$animalQualifiers)\\p{L}{0,2}|(?:$animalQualifiers)[-–]?\\s?(?:$FREE_FROM)|$NEGATIONS"
     private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:$negations)(?:$|[^\\p{L}])")
     private val negationWord = Regex("(?:^|[^\\p{L}])(?:$negations)(?=$|[^\\p{L}])")
-    /** An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly. */
-    private fun readsAsModifier(alias: String): Boolean = negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
+    /** An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg. */
+    private val exactOnlyAliases = extendedTerms("exactOnlyAliases").toSet()
+    private fun readsAsModifier(alias: String): Boolean = alias in exactOnlyAliases || negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
     private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
