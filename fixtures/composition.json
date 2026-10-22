@@ -220,8 +220,8 @@
       "category": "food"
     },
     "expected": {
-      "outcome": "uncertain",
-      "basis": "insufficient"
+      "outcome": "vegan",
+      "basis": "composition"
     }
   },
   {
@@ -487,6 +487,1599 @@
       "text": "Material: Textil",
       "category": "clothing",
       "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-whole-word-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder from alpine milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-german-compound-milk",
+    "input": {
+      "text": "Zutaten: Zucker, Alpenmilchpulver, Haselnüsse",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-swedish-compound-milk",
+    "input": {
+      "text": "Ingredienser: socker, mjölkchokladbitar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-plant-compounds-never-vetoed",
+    "input": {
+      "text": "Zutaten: Hafermilchkonzentrat, Kakaobutter, Erdnussbutter, Honigmelone",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-english-plant-phrases-never-vetoed",
+    "input": {
+      "text": "Ingredients: soy milk base, cream of tartar, butterfly pea extract, lamb's lettuce, oyster mushroom powder, butter bean purée, honey melon pieces, butter lettuce, silk tofu",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-negation-and-substitute-only-match-exactly",
+    "input": {
+      "text": "Ingredients: water, salt, vegan cheese alternative, non-dairy creamer, milk-free chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-lactose-free-milk-is-still-milk",
+    "input": {
+      "text": "Zutaten: Wasser, laktosefreie Milch, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-organic-cotton-is-not-wool",
+    "input": {
+      "text": "Material: 100% Bio-Baumwolle",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-leather-look-is-not-leather",
+    "input": {
+      "text": "Obermaterial: Lederoptik\nInnenmaterial: Textil",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-compound-leather-and-wool",
+    "input": {
+      "text": "Obermaterial: Rindsleder\nFutter: Schurwolle",
+      "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-modifier-only-blocks-the-mention-it-touches",
+    "input": {
+      "text": "Ingredients: free range eggs, lactose free milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-with-starts-a-new-phrase-after-a-modifier",
+    "input": {
+      "text": "Ingredients: plant oil with milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-flavour-after-with-keeps-the-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder with natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-attached-modifiers-still-block",
+    "input": {
+      "text": "Ingredients: water, no added milk, free from eggs, smak av honung, egg substitute, milchfreie schokolade, mjölkfritt margarin, aroma mit milchgeschmack",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-finnish-negation-is-not-a-german-egg",
+    "input": {
+      "text": "Ingredients: water, ei sisällä maitoa, ei lisättyä sokeria",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "guard-keeps-animal-role-prefix-the-ai-split-omits",
+    "input": {
+      "text": "Zutaten: Milchschokolade: Zucker, Kakaobutter",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "zucker",
+      "kakaobutter"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "synthetic-beeswax-is-a-synthetic-wax",
+    "input": {
+      "text": "Ingredients: aqua, synthetic beeswax, cera microcristallina",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "botanical-pollen-is-not-a-bee-product",
+    "input": {
+      "text": "Ingredients: aqua, helianthus annuus pollen extract",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "bee-pollen-is-a-bee-product",
+    "input": {
+      "text": "Ingredients: sugar, bee pollen",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "additives-resolve-to-vegan",
+    "input": {
+      "text": "Zutaten: Wasser, Zucker, Säuerungsmittel: Citronensäure, Konservierungsstoff: Kaliumsorbat, Farbstoff: E160a, Süßungsmittel: Sucralose",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lactic-acid-stays-ambiguous",
+    "input": {
+      "text": "Ingredients: water, lactic acid",
+      "category": "food",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "e441-is-gelatine",
+    "input": {
+      "text": "Ingredients: sugar, E 441",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "whey-permeate-is-dairy",
+    "input": {
+      "text": "Ingredients: sugar, whey permeate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeydew-melon-is-plant",
+    "input": {
+      "text": "Zutaten: Honigmelone, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-soy-drink-components",
+    "input": {
+      "text": "Ingredienser: sojadryck (vatten, sojabönor), kakaosmör, havssalt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-inci-shea-is-plant",
+    "input": {
+      "text": "Ingredients: aqua, butyrospermum parkii butter, cocos nucifera oil, tocopherol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-keratin",
+    "input": {
+      "text": "Ingredients: aqua, hydrolyzed keratin",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-lanolin-alcohol",
+    "input": {
+      "text": "Ingredients: aqua, lanolin alcohol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "cosmetic-fatty-derivatives-ambiguous",
+    "input": {
+      "text": "Ingredients: aqua, cetearyl alcohol, glyceryl stearate",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "clothing-alpaca-blend",
+    "input": {
+      "text": "Material: 70% Baumwolle, 30% Alpaka",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "clothing-faux-fur-never-vetoed",
+    "input": {
+      "text": "Material: Kunstpelz (100% Polyester)",
+      "category": "clothing",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "guard-prefers-animal-role-prefix-over-ambiguous-suffix",
+    "input": {
+      "text": "Zutaten: Milchschokolade: E471, Zucker",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "e471",
+      "zucker"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatinised-starches-are-plant",
+    "input": {
+      "text": "Ingredients: gelatinised wheat starch, pre-gelatinized starch, gelatinized corn starch, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatinised-starches-are-plant-de",
+    "input": {
+      "text": "Zutaten: Quellstärke, vorgelatinierte Stärke, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelling-agent-role-word-is-not-gelatin-sv",
+    "input": {
+      "text": "Ingredienser: gelatiniserad stärkelse, gelatineringsmedel (pektin), salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "gelatine-beside-gelatinised-starch-stays-animal",
+    "input": {
+      "text": "Ingredients: pregelatinised starch, gelatine, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "compound-stems-skip-unrelated-german-words",
+    "input": {
+      "text": "Zutaten: pazifisches Meersalz, Kokosnussfleisch, Honigklee, Flachs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "dental-floss-is-not-silk",
+    "input": {
+      "text": "Zahnseide, Zahnseidehalter",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-insole-and-fruit-pulp-are-not-egg-or-meat",
+    "input": {
+      "text": "Ovandel: textil\nInlägg: tomatfruktkött\nYttersula: gummi",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "fake-leather-upper-is-not-leather",
+    "input": {
+      "text": "Upper: fake leather upper\nLining: textile",
+      "category": "shoes",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "split-starch-descriptor-is-plant",
+    "input": {
+      "text": "Ingredients: sugar, rice flour (pregelatinized)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: sugar, milk powder and natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-conjunction-before-the-mention-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: natural flavouring and milk powder, sugar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-german-swedish-conjunctions-end-a-flavour-phrase",
+    "input": {
+      "text": "Zutaten: Zucker, natürliches Aroma und Milchpulver, mjölkpulver och naturlig arom",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-ampersand-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: sugar, milk powder & natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-negation-covers-a-coordinated-list",
+    "input": {
+      "text": "Vegan certified. Made without milk and eggs. Ohne Milch und Eier.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-free-suffix-covers-a-coordinated-list",
+    "input": {
+      "text": "Ingredients: sugar, salt. Milk and egg free. Gluten- und laktosefrei.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-genuine-modifier-phrases-still-block",
+    "input": {
+      "text": "Ingredients: water, milk flavour, Milcharoma, milk-free chocolate, vegan milk alternative, imitation cheese and herbs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "honeybush-tea-is-plant",
+    "input": {
+      "text": "Zutaten: Honigbuschtee, Rooibos",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeybush-tea-is-plant-sv",
+    "input": {
+      "text": "Ingredienser: honungsbuske, rooibos",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeybush-compound-never-matches-honey",
+    "input": {
+      "text": "Zutaten: Honigbuschblätter, honungsbuskte, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "negation-binds-to-its-own-qualifier",
+    "input": {
+      "text": "Ingredients: sugar, non-GMO whole milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "no-added-sugar-keeps-milk-chocolate",
+    "input": {
+      "text": "Ingredients: cocoa mass, no added sugar milk chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-range-after-milk-is-not-free-from",
+    "input": {
+      "text": "Ingredients: milk from free range cows, eggs from free-range hens",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "non-fat-milk-and-lactose-free-milk-are-milk",
+    "input": {
+      "text": "Ingredients: non-fat milk, pasteurized milk lactose-free, sugar free milk chocolate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "negation-still-covers-its-list",
+    "input": {
+      "text": "Ingredients: rice, water. Without milk and eggs, no soy or fish, ohne Zusatz von Milch, utan tillsatt mjölk, no beef gelatine",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-suffix-covers-conjunction-list-and-compound",
+    "input": {
+      "text": "Zutaten: Reis, milch- und eifrei, mjölk- och äggfri, milk/egg free, gluten- und kuhmilcheiweißfrei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "butterhead-lettuce-never-matches-butter",
+    "input": {
+      "text": "Ingredients: butterhead lettuce, Buttersalat, butterbeans, water",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-coating-never-matches-egg",
+    "input": {
+      "text": "Material: keramisk beläggning, vattenavvisande beläggning",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "inflections-never-form-a-compound-stem",
+    "input": {
+      "text": "Ingredienser: vetemjöl, silken tofu powder, salt. Gräddes i ugn",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "stems-inside-long-compounds-still-match",
+    "input": {
+      "text": "Zutaten: Zucker, Alpenvollmilchschokoladenstückchen, skummjölksyoghurtpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "dictionary-sweep-plant-words-sv",
+    "input": {
+      "text": "Ingredienser: pumpakött, tamarinder, mjölksyrebakterier, förgelatinerad stärkelse, risgrädde, äggsvamp, honungsört, mjölktistel",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "dictionary-sweep-plant-words-de-en-materials",
+    "input": {
+      "text": "Material: Fischgrätmuster, fiskbensmönster, silkespapper, affisch, mjölkglas, handleder, Meerschweinchen-Heu",
+      "category": "other",
+      "complete": true
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "galactooligosaccharides-are-lactose-derived",
+    "input": {
+      "text": "Ingredients: water, sugar, galactooligosaccharides",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "vegetable-gelatine-is-agar",
+    "input": {
+      "text": "Ingredients: water, sugar, vegetable gelatine (agar)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lanolin-cholesterol-names-its-animal-source",
+    "input": {
+      "text": "Ingredients: aqua, lanolin cholesterol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "non-dairy-qualifier-keeps-the-negation",
+    "input": {
+      "text": "Ingredients: water, non-dairy milk, non-animal whey protein, non-animal collagen",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "animal-free-qualifier-keeps-the-negation",
+    "input": {
+      "text": "Ingredients: animal-free collagen, dairy-free milk chocolate, nondairy creamer, meat-free meatballs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "qualified-negation-keeps-covering-the-ingredient-de",
+    "input": {
+      "text": "Zutaten: tierfreies Kollagen, nicht-tierische Gelatine, fleischlose Wurst, eierfreie Nudeln",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "qualified-negation-keeps-covering-the-ingredient-sv",
+    "input": {
+      "text": "Ingredienser: djurfritt kollagen, icke-animaliskt kollagen, mejerifri ost, köttfria köttbullar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "glued-non-before-an-unrelated-qualifier-is-not-a-negation",
+    "input": {
+      "text": "Ingredients: cultured pasteurized nonfat milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "lactose-free-before-milk-keeps-milk",
+    "input": {
+      "text": "Ingredients: lactose-free milk, laktosfri mjölk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "with-after-a-qualified-negation-starts-a-new-phrase",
+    "input": {
+      "text": "Ingredients: non-dairy creamer with milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word",
+    "input": {
+      "text": "Ingredients: milk protein-free oat drink, egg protein-free pasta, dairy ingredient-free spread",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word-de",
+    "input": {
+      "text": "Zutaten: Haferflocken, Milch-Eiweiß-frei, Milcheiweiß-frei, frei von Milchbestandteilen",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-head-noun-covers-the-animal-word-sv",
+    "input": {
+      "text": "Ingredienser: havre, mjölkproteinfri havredryck, fri från mjölkprotein",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "free-from-after-a-word-that-is-no-head-noun-keeps-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder gluten free",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-from-in-a-separate-group-keeps-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder (gluten-free)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase",
+    "input": {
+      "text": "Ingredients: plant oil or milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase-de",
+    "input": {
+      "text": "Zutaten: Zucker, natürliches Aroma oder Milchpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "alternative-conjunction-ends-a-modifier-phrase-sv",
+    "input": {
+      "text": "Ingredienser: socker, arom eller mjölkpulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-egg-is-never-a-negation",
+    "input": {
+      "text": "Zutaten: Weizenmehl, Ei und Milch, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-negation-forms-cover-the-animal-word",
+    "input": {
+      "text": "Ingredienser: havredryck, ingen mjölk, inget smör, innehåller inte ägg, ej honung, utan gelatin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "swedish-negation-needs-a-word-boundary",
+    "input": {
+      "text": "Ingredienser: ingefära och mjölk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "slash-ends-a-flavour-phrase-for-the-ai-guard",
+    "input": {
+      "text": "Ingredients: sugar, natural flavouring / milk powder",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "sugar"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "slash-ends-a-modifier-phrase",
+    "input": {
+      "text": "Ingredients: sugar, natural flavouring / milk powder, milk powder/natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "hyphen-slash-shares-one-animal-head",
+    "input": {
+      "text": "Ingredienser: socker, mjölk-/mælkepulver",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "hyphen-slash-shares-one-modifier-head",
+    "input": {
+      "text": "Zutaten: Zucker, Huhn-/Pouletgeschmack, Milch-/Mjölkaroma",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-astaxanthin-is-source-dependent",
+    "input": {
+      "text": "Ingredients: astaxanthin, E161j",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-astaxanthin-is-source-dependent-sv",
+    "input": {
+      "text": "Ingredienser: astaxantin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "algal-astaxanthin-is-plant",
+    "input": {
+      "text": "Ingredients: algal astaxanthin, Haematococcus pluvialis extract, Astaxanthin aus Algen, astaxanthin från alger",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "free-amino-acids-are-source-dependent",
+    "input": {
+      "text": "Ingredients: L-leucine, L-isoleucine, L-valine, Tyrosin, Prolin",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "sourced-amino-acids-and-synthetic-nutrients-are-plant",
+    "input": {
+      "text": "Ingredients: wheat amino acids, betaine, creatine, taurine, L-carnitine",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "fatty-alcohol-ethers-and-lactate-salts-are-source-dependent",
+    "input": {
+      "text": "Ingredients: aqua, PPG-15 stearyl ether, cetyl dimethicone, sorbitan caprylate, zinc lactate",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "generic-sambal-is-source-dependent",
+    "input": {
+      "text": "Ingredients: rice, sambal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "plant-exception-starts-a-word",
+    "input": {
+      "text": "Ingredients: goat milk powder",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "plant-exception-does-not-erase-a-following-animal-phrase",
+    "input": {
+      "text": "Ingredients: oat milk and goat milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "plant-exception-behind-a-compound-modifier-still-covers-it",
+    "input": {
+      "text": "Ingredients: walnut butter, coconut butter, chickpea milk, soybean curd",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "animal-alias-reaching-into-a-plant-exception-wins",
+    "input": {
+      "text": "Ingredienser: rökt griskött, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "animal-alias-outgrowing-a-plant-exception-wins",
+    "input": {
+      "text": "Zutaten: gemahlene Fischgräten, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "inflected-plant-exceptions-keep-their-plant-head",
+    "input": {
+      "text": "Ingredients: beef tomatoes, king oysters, buttercup squash, tamarinder",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingrédients: arôme et viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-conjunction-ends-a-flavour-phrase-reversed",
+    "input": {
+      "text": "Ingrédients: viande et arôme",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredientes: aroma y carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi e carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-ed-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi ed estratto di carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-or-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingrédients: arôme ou viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-or-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredienti: aromi oppure carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "romance-with-words-start-a-new-phrase",
+    "input": {
+      "text": "Ingredienti: aroma con carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-with-word-starts-a-new-phrase",
+    "input": {
+      "text": "Ingrédients: arôme avec viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "single-letter-conjunctions-never-match-inside-words",
+    "input": {
+      "text": "Ingredientes: aroma de carne, aroma di carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-ni-carries-a-negation-on",
+    "input": {
+      "text": "Ingrédients: eau, sans sucre ni viande",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "italian-ne-carries-a-negation-on",
+    "input": {
+      "text": "Ingredienti: acqua, senza zucchero né carne",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Ingredients: dairy-free egg noodles",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Zutaten: eifreie Milchschokolade",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-qualified-negation-only-covers-its-own-domain",
+    "input": {
+      "text": "Ingredienser: äggfri mjölkchoklad",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "contains-starts-a-new-phrase-after-a-closed-negation",
+    "input": {
+      "text": "Ingredients: no added sugar and contains whole milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "conjunction-still-carries-a-negation-over-a-plant-word",
+    "input": {
+      "text": "Ingredients: water, free from gluten and milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingrédients: sucre, sel. Peut contenir des traces de viande.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingredientes: agua, sal. Puede contener trazas de carne.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-precaution-is-cross-contact",
+    "input": {
+      "text": "Ingredienti: acqua, sale. Può contenere tracce di carne.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-milk-powder-and-egg-white-are-animal",
+    "input": {
+      "text": "Ingrédients: sucre, lait entier en poudre, blanc d'oeuf en poudre",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-milk-powder-is-animal",
+    "input": {
+      "text": "Ingredientes: azúcar, leche desnatada en polvo",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-eggs-are-animal",
+    "input": {
+      "text": "Ingredienti: zucchero, uova",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingrédients: eau, sel. Fabriqué dans un atelier qui utilise oeuf, lait, sésame.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "spanish-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingredientes: agua, sal. Elaborado en una fábrica que también procesa huevo.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "italian-facility-statement-is-cross-contact",
+    "input": {
+      "text": "Ingredienti: acqua, sale. Prodotto in uno stabilimento che utilizza uova.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-pate-is-source-dependent",
+    "input": {
+      "text": "Ingredients: mushroom pâté, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "liver-pate-is-animal",
+    "input": {
+      "text": "Ingredients: liver pâté, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-duvet-is-source-dependent",
+    "input": {
+      "text": "Materials: polyester duvet",
+      "category": "other"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "down-duvet-is-animal",
+    "input": {
+      "text": "Materials: down duvet",
+      "category": "other"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-tweed-is-source-dependent",
+    "input": {
+      "text": "Materials: 100% polyester tweed",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "harris-tweed-is-animal",
+    "input": {
+      "text": "Materials: harris tweed",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-dashi-is-source-dependent",
+    "input": {
+      "text": "Ingredients: kombu dashi, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "fish-dashi-is-animal",
+    "input": {
+      "text": "Ingredients: katsuo dashi, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "unsourced-calcium-carbonate-is-source-dependent",
+    "input": {
+      "text": "Ingredients: sugar, calcium carbonate",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "e170-and-chalk-are-mineral",
+    "input": {
+      "text": "Ingredients: sugar, E170, chalk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "generic-activated-charcoal-is-source-dependent",
+    "input": {
+      "text": "Ingredients: sugar, activated charcoal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "vegetable-carbon-and-coconut-charcoal-are-plant",
+    "input": {
+      "text": "Ingredients: sugar, vegetable carbon, coconut charcoal",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  }
+,
+  {
+    "id": "generic-hydroxyapatite-is-source-dependent",
+    "input": {
+      "text": "Ingredients: aqua, hydroxyapatite, xylitol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "synthetic-hydroxyapatite-is-plant",
+    "input": {
+      "text": "Ingredients: aqua, synthetic hydroxyapatite, xylitol",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "microcrystalline-hydroxyapatite-is-bone",
+    "input": {
+      "text": "Ingredients: microcrystalline hydroxyapatite, cellulose",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "unsourced-chitosan-is-source-dependent",
+    "input": {
+      "text": "Ingredients: water, chitosan",
+      "category": "food"
     },
     "expected": {
       "outcome": "uncertain",

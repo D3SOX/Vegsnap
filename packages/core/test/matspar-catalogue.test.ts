@@ -128,7 +128,7 @@ describe('Matspar catalogue fallback', () => {
     const result = await checkProduct(input, { mode: 'explicit', provider });
     expect(calls).toHaveLength(2);
     expect(result.evidence.some(item => item.url === 'https://www.matspar.se/produkt/hummus-chili-200g-coop' && item.excerpt === ingredients)).toBe(true);
-    expect(result.findings.some(item => item.term === 'e 202' && item.status === 'unknown')).toBe(true);
+    expect(result.findings.some(item => item.term === 'e 202' && item.status === 'plant')).toBe(true);
     expect(result.evidence.some(item => item.title.includes('AI transcription') && item.excerpt === ingredients)).toBe(false);
   });
 
@@ -160,8 +160,8 @@ describe('Matspar catalogue fallback', () => {
     const result = await checkProduct(input, { mode: 'explicit', provider: { supportsWebSearch: true, extract: async () => extracted } });
     expect(result.evidence.some(item => item.url === 'https://www.matspar.se/produkt/hummus-chili-200g-coop' && item.excerpt === ingredients)).toBe(true);
     expect(result.findings).toHaveLength(11);
-    expect(result.findings.find(item => item.term === 'e 202')?.status).toBe('unknown');
-    expect(result.outcome).toBe('uncertain');
+    expect(result.findings.find(item => item.term === 'e 202')?.status).toBe('plant');
+    expect(result.outcome).toBe('vegan');
   });
 
   test('a genuinely different follow-up identity cannot assess the fetched product', async () => {
@@ -201,7 +201,7 @@ describe('Matspar catalogue fallback', () => {
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'selected', supportsVision: true }, aiFetcher, catalogueFetcher);
     const result = await checkProduct(input, { mode: 'explicit', provider });
     expect(result.outcome).toBe('uncertain');
-    expect(result.findings.find(item => item.term === 'e 202')?.status).toBe('unknown');
+    expect(result.findings.find(item => item.term === 'e 202')?.status).toBe('plant');
     expect(result.evidence.some(item => item.excerpt === ingredients && item.url?.includes('matspar'))).toBe(true);
   });
 });

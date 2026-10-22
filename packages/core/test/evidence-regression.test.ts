@@ -61,8 +61,8 @@ describe('composition and photo evidence regressions', () => {
     expect(result.basis).toBe('insufficient');
   });
   test('AI can assess an unknown actual ingredient and attributes its reasoning', async () => {
-    const result = await check({ text: 'sorghum flour', complete: true, category: 'food' }, { text: 'sorghum flour', complete: true, category: 'food', ingredientAssessments: [
-      { term: 'sorghum flour', status: 'plant', explanation: 'Flour made from sorghum grain.' },
+    const result = await check({ text: 'acorn flour', complete: true, category: 'food' }, { text: 'acorn flour', complete: true, category: 'food', ingredientAssessments: [
+      { term: 'acorn flour', status: 'plant', explanation: 'Flour made from ground acorns.' },
       { term: 'milk', status: 'plant', explanation: 'This invented entry does not occur in the supplied list.' },
     ] });
     expect(result.outcome).toBe('vegan');

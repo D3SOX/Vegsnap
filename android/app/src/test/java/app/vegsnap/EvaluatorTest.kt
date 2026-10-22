@@ -63,12 +63,22 @@ class EvaluatorTest {
         for (index in 0 until fixtures.length()) {
             val case = fixtures.getJSONObject(index)
             val input = case.getJSONObject("input")
+            val parsed = case.optJSONArray("parsedIngredients")?.let { items -> (0 until items.length()).map { items.getString(it) } }
             val actual = evaluator.evaluate(CheckInput(input.optString("text"), input.optString("category", "other"),
-                if (input.has("complete")) input.getBoolean("complete") else null, name = input.optString("name"), locale = input.optString("locale", "en")))
+                if (input.has("complete")) input.getBoolean("complete") else null, name = input.optString("name"), locale = input.optString("locale", "en")), parsed)
             val expected = case.getJSONObject("expected")
             assertEquals(case.getString("id"), expected.getString("outcome"), actual.getString("outcome"))
             assertEquals(case.getString("id"), expected.getString("basis"), actual.getString("basis"))
         }
+    }
+    /** OCR can duplicate a plant exception thousands of times inside one term; stripping the exceptions must stay near-linear so the analysis never stalls the UI. */
+    @Test fun aLongTermOfRepeatedPlantExceptionsResolvesQuickly() {
+        val term = "oat milk ".repeat(2_300).take(20_000).trim()
+        val started = System.nanoTime()
+        val result = evaluator.evaluate(CheckInput(term, "food", true))
+        val elapsed = (System.nanoTime() - started) / 1_000_000
+        assertEquals("uncertain", result.getString("outcome"))
+        assertTrue("took $elapsed ms", elapsed < 3_000)
     }
     @Test fun completeAutoPlantListAsksForCategoryInsteadOfEmptyIngredientOrigin() {
         for ((locale, question) in listOf("en" to "Identify the product category to assess its ingredients and production requirements.", "de" to "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten.")) {

@@ -21,7 +21,7 @@ describe('shared composition fixtures', () => {
     expect(analyzeText({ text: `${code}, milk`, category: 'food', complete: true }).outcome).toBe('not_vegan');
   });
   for (const fixture of fixtures) test(fixture.id, () => {
-    const result = analyzeText(fixture.input as CheckInput, now);
+    const result = analyzeText(fixture.input as CheckInput, now, (fixture as { parsedIngredients?: string[] }).parsedIngredients);
     expect(result.outcome).toBe(fixture.expected.outcome as Outcome);
     expect(result.basis).toBe(fixture.expected.basis as Basis);
     expect(result.companyConcerns).toEqual([]);

@@ -3,7 +3,7 @@ import rulesData from '../../../data/rules.json';
 import { normalizeBarcode } from './database';
 import type { CheckInput, CheckResult, Evidence, Finding, Locale } from './types';
 
-const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel)`;
+const additiveRoles = `(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel)`;
 const additivePrefix = new RegExp(String.raw`^\s*${additiveRoles}(?:\s*:\s*|\s+)(?=\S)`, 'iu');
 const additiveGroup = new RegExp(String.raw`\b${additiveRoles}\s*:?\s*(?=\(\s*[\p{L}\p{N}])`, 'giu');
 const materialRoles = `(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)`;
@@ -37,24 +37,23 @@ export function compositionTerms(text: string, materialContext = false): string[
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
 }
 
+function containsWord(text: string, word: string): boolean {
+  let start = text.indexOf(word);
+  while (start >= 0) {
+    if (!/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') && !/[\p{L}\p{N}]/u.test(text[start + word.length] ?? '')) return true;
+    start = text.indexOf(word, start + 1);
+  }
+  return false;
+}
+
 /** Preserve chemical punctuation and verify every AI term against intentional source composition. */
 export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
   if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
   const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
   const precautionMatch = precaution.exec(source);
   const intentional = precautionMatch ? source.slice(0, precautionMatch.index) : source;
-  const contains = (term: string) => {
-    let start = intentional.indexOf(term);
-    while (start >= 0) {
-      const before = intentional[start - 1] ?? '';
-      const after = intentional[start + term.length] ?? '';
-      if (!/[\p{L}\p{N}]/u.test(before) && !/[\p{L}\p{N}]/u.test(after)) return true;
-      start = intentional.indexOf(term, start + 1);
-    }
-    return false;
-  };
   const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
-  return terms.every(contains) ? [...new Set(terms.map(normalizeTerm))] : undefined;
+  return terms.every(term => containsWord(intentional, term)) ? [...new Set(terms.map(normalizeTerm))] : undefined;
 }
 
 /** Alcoholic/fermented beverage processing needs evidence; ordinary plant drinks do not inherit that veto. */
@@ -65,8 +64,123 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
-const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i;
-const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von)\b/i;
+const qualifierDomains = Object.values(rulesData.extendedMatching.animalQualifiers).map(domain => ({ qualifiers: domain.qualifiers.map(normalizeTerm).join('|'), rules: new Set(domain.rules) }));
+const animalQualifiers = qualifierDomains.map(domain => domain.qualifiers).join('|');
+const freeFromHeads = new Set(rulesData.extendedMatching.freeFromHeads.map(normalizeTerm));
+// A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
+const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?';
+// A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
+// or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs"). A negation fused with
+// an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst") keeps covering the following ingredient within the qualifier's domain
+// ("dairy-free egg noodles" keeps the egg); the domains are data, and an empty domain covers every rule.
+// Only EN/DE/SV negations: the Finnish "ei" is the German egg ("Ei und Milch").
+const qualified = (qualifiers: string) => String.raw`(?:non|nicht|icke)[-–]?(?:${qualifiers})\p{L}{0,2}|(?:${qualifiers})[-–]?\s?(?:${freeFrom})`;
+const domainNegations = qualifierDomains.map(domain => ({ pattern: new RegExp(`^(?:${qualified(domain.qualifiers)})$`, 'u'), rules: domain.rules }));
+const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+// A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
+const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
+const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
+const negationWord = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?=$|[^\p{L}])`, 'gu');
+const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
+// A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
+const freeSuffix = new RegExp(String.raw`(?:${freeFrom})(?=$|[^\p{L}])`, 'u');
+const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
+// A with-word starts a new phrase ("plant oil with milk", "milk powder with natural flavouring", "no added sugar and contains whole milk"); a conjunction also ends a modifier's phrase ("plant oil or milk", "arôme et viande"), and so does a slash
+// ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver"). Both word lists are data shared with Android and match whole words only, so "y", "o" and "e" never match inside a word or an E-number.
+const withWords = rulesData.extendedMatching.withWords.map(normalizeTerm).join('|');
+const conjunctions = rulesData.extendedMatching.conjunctions.map(normalizeTerm).join('|');
+const phrase = new RegExp(String.raw`(?:^|[^\p{L}\p{N}])(?:${withWords})(?=$|[^\p{L}\p{N}])`, 'u');
+const conjunct = new RegExp(String.raw`(?:^|[^\p{L}\p{N}])(?:${withWords}|${conjunctions}|&)(?=$|[^\p{L}\p{N}])|(?<![-–])/`, 'u');
+const conjunction = new RegExp(`^(?:${conjunctions}|&|/)$`, 'u');
+const words = (value: string) => value.match(/[\p{L}\p{N}]+|[&/]/gu) ?? [];
+// An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg.
+const exactOnlyAliases = new Set(rulesData.extendedMatching.exactOnlyAliases.map(normalizeTerm));
+const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !exactOnlyAliases.has(alias) && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
+const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm).sort((a, b) => b.length - a.length);
+const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
+/** The last negation before the mention still covers it unless it names another domain or a plant or ambiguous ingredient (or the hyphenated word) closed its scope without a conjunction reopening it. */
+function negated(before: string, ruleId: string): boolean {
+  const matches = [...before.matchAll(negationWord)];
+  const last = matches[matches.length - 1];
+  if (!last) return false;
+  const domain = domainNegations.find(item => item.pattern.test(last[0].replace(/^[^\p{L}]+/u, '')));
+  if (domain?.rules.size && !domain.rules.has(ruleId)) return false;
+  const rest = before.slice(last.index + last[0].length);
+  let open = true, bound = /^[-–]/u.test(rest);
+  for (const word of words(rest)) {
+    if (conjunction.test(word)) { open = true; continue; }
+    if (open && (bound || ['plant', 'ambiguous'].includes(aliasRules.get(word)?.status ?? ''))) open = false;
+    bound = false;
+  }
+  return open;
+}
+/** A free-from suffix covers the mention inside the same word ("Milcheiweißfrei"), behind a head noun of the claim ("milk protein-free", "dairy ingredient-free") or across conjunction-led words only; a separate word glued to the suffix must itself be an ingredient ("eifrei", not "cellulose"). */
+function freed(after: string): boolean {
+  const match = freeSuffix.exec(after);
+  if (!match) return false;
+  let between = after.slice(0, match.index);
+  const head = /\p{L}+(?=[^\p{L}]*$)/u.exec(between);
+  if (head && freeFromHeads.has(head[0])) between = between.slice(0, head.index);
+  const list = words(between);
+  if (/^\p{L}*$/u.test(between)) return true;
+  for (let index = 0; index < list.length; index += 2) if (!conjunction.test(list[index]!) || !list[index + 1] || conjunction.test(list[index + 1]!)) return false;
+  return !/\p{L}$/u.test(between) || aliasRules.has(list[list.length - 1]!);
+}
+/** A stem is a compound component when the letters attached to it could be words themselves: none or at least three before ("Kuhmilch"), none or at least four after ("Milchpulver"). Inflections such as "milchig", "wollen", "silken", "gräddes" or "Flachs" never count, and a stem shorter than four letters ("ägg") must start its word. */
+function component(prefix: number, stem: string, suffix: number): boolean {
+  return (prefix === 0 || prefix >= 3 && stem.length >= 4) && (suffix === 0 || suffix >= 4);
+}
+/** The item occurs (as a whole word, or as a compound stem forming a component) without a negation or modifier covering that occurrence. */
+function mentioned(text: string, item: string, wholeWord: boolean): boolean {
+  for (let start = text.indexOf(item); start >= 0; start = text.indexOf(item, start + 1)) {
+    const end = start + item.length;
+    if (wholeWord) { if (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? '')) continue; }
+    else if (!component(/\p{L}*$/u.exec(text.slice(0, start))![0].length, item, /^\p{L}*/u.exec(text.slice(end))![0].length)) continue;
+    const before = text.slice(0, start), after = text.slice(end);
+    if (negated(before.split(phrase).pop()!, aliasRules.get(item)?.id ?? '') || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
+    if (freed(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
+    return true;
+  }
+  return false;
+}
+/** How far whole-word animal alias occurrences reach: `at[i]` from an occurrence starting at `i`, `before[i]` from any occurrence starting earlier. One scan per term keeps stripping thousands of exceptions near-linear. */
+function animalReach(term: string): { at: Int32Array; before: Int32Array } {
+  const at = new Int32Array(term.length + 1), before = new Int32Array(term.length + 1);
+  for (const alias of animalAliases) {
+    for (let start = term.indexOf(alias); start >= 0; start = term.indexOf(alias, start + 1)) {
+      const end = start + alias.length;
+      if (!/[\p{L}\p{N}]/u.test(term[start - 1] ?? '') && !/[\p{L}\p{N}]/u.test(term[end] ?? '')) at[start] = Math.max(at[start]!, end);
+    }
+  }
+  for (let index = 1; index <= term.length; index++) before[index] = Math.max(before[index - 1]!, at[index - 1]!);
+  return { at, before };
+}
+/** A plant exception is blanked where it starts a word ("oat milk powder", not "goat milk powder") or follows a compound modifier of at least three letters ("walnut butter", "Tomatfruktkött"), unless a whole-word animal alias starts before it and reaches into it ("Griskött" over "skött") or starts with it and outgrows it ("Fischgräten" over "Fischgrät"); an inflection or compound tail after it keeps its plant head ("beef tomatoes", "king oysters", "Hafermilchkonzentrat"). Blanks keep the term's length, so the reach measured once on the term stays aligned. */
+function withoutPlantExceptions(term: string): string {
+  let reach: ReturnType<typeof animalReach> | undefined;
+  let value = term;
+  for (const exception of plantExceptions) {
+    for (let start = value.indexOf(exception); start >= 0; start = value.indexOf(exception, start + 1)) {
+      const end = start + exception.length;
+      let prefix = 0;
+      while (/\p{L}/u.test(value[start - prefix - 1] ?? '')) prefix++;
+      if (!component(prefix, exception, 0)) continue;
+      reach ??= animalReach(term);
+      if (reach.before[start]! <= start && reach.at[start]! <= end) value = `${value.slice(0, start)}${' '.repeat(exception.length)}${value.slice(end)}`;
+    }
+  }
+  return value;
+}
+/** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
+  const exact = aliasRules.get(term);
+  if (exact) return exact;
+  const remainder = withoutPlantExceptions(term);
+  const alias = animalAliases.find(item => mentioned(remainder, item, true)) ?? compoundStems.find(stem => mentioned(remainder, stem, false));
+  return alias ? aliasRules.get(alias) : undefined;
+}
+const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti)\s*:\s*/i;
+const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento)\b/i;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';
@@ -92,11 +206,16 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const parsed = parseSourceIngredients(text, parsedIngredients);
   // AI selects the actual ingredients; local animal/ambiguous rules remain a veto
   // even when an ingredient is omitted or hidden inside a misleading compound.
-  const guards = fallback.flatMap(term => [term, ...(term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1))] : [])])
-    .filter(term => ['animal', 'ambiguous'].includes(aliasRules.get(term)?.status ?? ''));
+  const status = (term: string) => ruleForTerm(term)?.status;
+  // The ingredient after a role prefix is the guard, but an animal whole term outranks a plant or ambiguous suffix ("Milchschokolade: Zucker", "Milchschokolade: E471").
+  const guards = fallback.flatMap(term => {
+    const candidates = term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1)), term] : [term];
+    const guard = candidates.find(item => status(item) === 'animal') ?? candidates.find(item => status(item) === 'ambiguous');
+    return guard ? [guard] : [];
+  });
   const tokens = parsed ? [...parsed, ...guards] : fallback;
   const findings: Finding[] = [...new Set(tokens)].map(term => {
-    const rule = aliasRules.get(term);
+    const rule = ruleForTerm(term);
     return rule ? {
       term, status: rule.status as Finding['status'], ruleId: rule.id,
       // Rule explanations are maintained in English and German; other locales read the English text.

@@ -10,7 +10,7 @@ const check = (value = extraction) => checkProduct(input, { mode: 'explicit', pr
 
 describe('manufacturer contact', () => {
   test('does not duplicate saved origin questions for more than fifteen ingredients', () => {
-    const terms = 'äppelsyra, natriumcitrat, naturlig arom, aspartam, acesulfam k, e414, e444, e445, kaliumsorbat, antocyanin, safflorextrakt, niacin, pantotensyra, vitamin b6, biotin, zink, raps';
+    const terms = 'naturlig arom, e445, e471, e472e, glycerol, lecitin, vitamin d, e920, mjölksyra, e481, e304, e631, enzym, safflorextrakt, e475, e433, okänd tillsats';
     const result = { ...analyzeText({ text: terms, complete: true }), questions: [`Confirm the origin of: ${terms}.`] };
     const prefixes = { en: 'Confirm the origin of:', de: 'Die Herkunft dieser Zutaten klären:', sv: 'Bekräfta ursprunget för:' };
     for (const locale of ['en', 'de', 'sv'] as const) {

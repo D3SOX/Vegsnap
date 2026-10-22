@@ -23,20 +23,11 @@ internal fun parseSourceIngredients(text: String, items: JSONArray?): List<Strin
     val precaution = compositionPrecaution.find(source)
     val intentional = if (precaution == null) source else source.take(precaution.range.first)
     val terms = mutableListOf<String>()
-    val word = Regex("[\\p{L}\\p{N}]")
     for (index in 0 until items.length()) {
         val value = items.opt(index) as? String ?: return null
         if (value.isBlank() || value.length > 300) return null
         val term = canonicalIngredientSource(value)
-        var start = intentional.indexOf(term)
-        var found = false
-        while (start >= 0) {
-            val before = intentional.getOrNull(start - 1)?.toString().orEmpty()
-            val after = intentional.getOrNull(start + term.length)?.toString().orEmpty()
-            if (!word.containsMatchIn(before) && !word.containsMatchIn(after)) { found = true; break }
-            start = intentional.indexOf(term, start + 1)
-        }
-        if (!found) return null
+        if (!containsWord(intentional, term)) return null
         terms += normalizeCompositionTerm(term)
     }
     return terms.distinct()
