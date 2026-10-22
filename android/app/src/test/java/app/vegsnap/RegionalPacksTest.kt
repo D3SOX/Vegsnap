@@ -155,7 +155,7 @@ class RegionalPacksTest {
             descriptor(bytes).put("url", "https://user:key@packs.example/file.json"),
             descriptor(bytes).put("url", "https://packs.example/file.json#fragment"),
             descriptor(bytes).put("id", "../outside"), descriptor(bytes).put("bytes", OFFLINE_PACK_BYTES + 1),
-            descriptor(bytes).put("products", 10001), descriptor(bytes).put("sha256", "bad"),
+            descriptor(bytes).put("products", OFFLINE_PACK_PRODUCTS + 1), descriptor(bytes).put("sha256", "bad"),
         )) {
             try { parseRegionalCatalog(catalog(bad)); fail("Unsafe manifest accepted") } catch (_: IllegalArgumentException) { }
         }
@@ -172,6 +172,25 @@ class RegionalPacksTest {
         reloaded.initialize()
         assertEquals("https://other.example/catalog.json", reloaded.state.value.catalogUrl)
         assertTrue(reloaded.state.value.packs.isEmpty())
+    }
+    @Test fun `saved legacy default catalog follows the weekly catalog while custom sources stay`() = withDatabase { database, folder ->
+        val directory = File(folder, "downloads").apply { mkdirs() }
+        File(directory, "catalog-source").writeText("https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json")
+        val migrated = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        migrated.initialize()
+        assertEquals(DEFAULT_REGIONAL_CATALOG, migrated.state.value.catalogUrl)
+        File(directory, "catalog-source").writeText("https://other.example/catalog.json")
+        val custom = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        custom.initialize()
+        assertEquals("https://other.example/catalog.json", custom.state.value.catalogUrl)
+    }
+    @Test fun `catalog cached before the weekly catalog is dropped on upgrade`() = withDatabase { database, folder ->
+        val directory = File(folder, "downloads").apply { mkdirs() }
+        val legacy = File(directory, "catalog.json").apply { writeBytes(catalog(descriptor(snapshot("Sweden")))) }
+        val packs = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        packs.initialize()
+        assertTrue(packs.state.value.packs.isEmpty())
+        assertFalse(legacy.exists())
     }
     @Test fun `HTTPS release redirect follows without credentials and HTTP downgrade is rejected`() = runBlocking {
         MockWebServer().use { server ->

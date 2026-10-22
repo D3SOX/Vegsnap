@@ -36,7 +36,9 @@ import CryptoKit
         files = try FileStore(root: root)
         engine = try CoreEngine()
         hosted = try HostedAIConnection(configuration: ServiceConfiguration.load("hosted-ai"))
-        let loadedSettings: Settings = try files.read("settings.json") ?? Settings()
+        var loadedSettings: Settings = try files.read("settings.json") ?? Settings()
+        // Releases before 20 MB packs saved the now frozen catalog.json default; those installs follow the weekly catalog instead.
+        if loadedSettings.catalogURL == "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json" { loadedSettings.catalogURL = Settings().catalogURL }
         settings = loadedSettings
         savedFallbackCountry = loadedSettings.defaultCountry
         history = try files.read("history.json") ?? []
@@ -364,13 +366,16 @@ import CryptoKit
         packs = try engine.call("packs", "")
     }
     func importPack(_ data: Data) throws {
-        guard data.count <= 10_000_000 else { throw AppError(L("Offline packs must be smaller than 10 MB.")) }
+        guard data.count <= 20_000_000 else { throw AppError(L("Offline packs must be smaller than 20 MB.")) }
         let validated = try engine.callRaw("snapshot", json: String(decoding: data, as: UTF8.self))
         struct Header: Decodable { var region: String; var generatedAt: String }
         let header = try JSONDecoder().decode(Header.self, from: Data(validated.utf8))
         let name = "pack-" + Keychain.account(header.region.lowercased()) + ".json"
         var names: [String] = try files.read("packs.json") ?? []
         guard names.contains(name) || names.count < 12 else { throw AppError(L("Remove an offline pack before adding another.")) }
+        // Every installed pack is kept in the engine's memory, so their total size is bounded to three maximum packs.
+        let installedBytes = names.filter { $0 != name }.reduce(0) { $0 + ((((try? FileManager.default.attributesOfItem(atPath: files.url($1).path))?[.size]) as? Int) ?? 0) }
+        guard installedBytes + data.count <= 60_000_000 else { throw AppError(L("Remove an offline pack before adding another.")) }
         if let old: Header = try files.read(name) {
             guard let oldDate = HistoryTransfer.parseDate(old.generatedAt), let newDate = HistoryTransfer.parseDate(header.generatedAt) else { throw AppError(L("Invalid regional pack catalog.")) }
             if oldDate > newDate { throw AppError(L("The installed pack is newer.")) }
@@ -394,7 +399,7 @@ import CryptoKit
                 let data = try await Network.get(url, limit: 256_000, redirects: true)
                 let doc = try JSONDecoder().decode(PackCatalog.self, from: data)
                 guard doc.schemaVersion == 1, doc.packs.count <= 100, Set(doc.packs.map(\.id)).count == doc.packs.count,
-                      doc.packs.allSatisfy({ safeURL($0.url) != nil && (1...10_000_000).contains($0.bytes) && (0...10_000).contains($0.products) && $0.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && HistoryTransfer.parseDate($0.generatedAt) != nil }) else { throw AppError(L("Invalid regional pack catalog.")) }
+                      doc.packs.allSatisfy({ safeURL($0.url) != nil && (1...20_000_000).contains($0.bytes) && (0...40_000).contains($0.products) && $0.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil && HistoryTransfer.parseDate($0.generatedAt) != nil }) else { throw AppError(L("Invalid regional pack catalog.")) }
                 try Task.checkCancellation()
                 catalog = doc.packs
             } catch {

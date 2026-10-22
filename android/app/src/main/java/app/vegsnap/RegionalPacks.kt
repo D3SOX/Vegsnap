@@ -19,7 +19,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
-internal const val DEFAULT_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
+internal const val DEFAULT_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog-v2.json"
+// Releases before 20 MB packs used this frozen catalog as the default; a saved copy follows the weekly catalog instead.
+private const val LEGACY_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
 internal const val REGIONAL_CATALOG_BYTES = 256_000
 internal data class RegionalPackDescriptor(val id: String, val region: String, val url: String, val bytes: Long,
     val sha256: String, val generatedAt: String, val products: Int)
@@ -52,7 +54,7 @@ internal fun parseRegionalCatalog(bytes: ByteArray): List<RegionalPackDescriptor
         require(item.getString("generatedAt").length <= 50)
         Instant.parse(item.getString("generatedAt"))
         require(item.get("bytes") is Number && item.getDouble("bytes") == item.getLong("bytes").toDouble() && item.getLong("bytes") in 1..OFFLINE_PACK_BYTES.toLong())
-        require(item.get("products") is Number && item.getDouble("products") == item.getInt("products").toDouble() && item.getInt("products") in 0..10_000)
+        require(item.get("products") is Number && item.getDouble("products") == item.getInt("products").toDouble() && item.getInt("products") in 0..OFFLINE_PACK_PRODUCTS)
         RegionalPackDescriptor(id, region, item.getString("url"), item.getLong("bytes"), item.getString("sha256"), item.getString("generatedAt"), item.getInt("products"))
     }
 }
@@ -115,12 +117,16 @@ internal class RegionalPacks(private val directory: File, private val database: 
     private val mutableState = MutableStateFlow(RegionalPacksState())
     val state = mutableState.asStateFlow()
     private val settingsFile get() = File(directory, "catalog-source")
-    private val catalogFile get() = File(directory, "catalog.json")
+    // Caches written before catalog-v2 list frozen pack generations, so a new file name drops them on upgrade.
+    private val catalogFile get() = File(directory, "catalog-v2.json")
+    private val legacyCatalogFile get() = File(directory, "catalog.json")
 
     suspend fun initialize() = withContext(Dispatchers.IO) { lock.withLock { initializeLocked() } }
     private fun initializeLocked() {
         if (state.value.ready) return
-        val source = settingsFile.takeIf { it.isFile && it.length() <= 2000 }?.readText()?.takeIf(::validPackUrl) ?: DEFAULT_REGIONAL_CATALOG
+        legacyCatalogFile.delete()
+        val source = settingsFile.takeIf { it.isFile && it.length() <= 2000 }?.readText()?.takeIf(::validPackUrl)
+            ?.takeUnless { it == LEGACY_REGIONAL_CATALOG } ?: DEFAULT_REGIONAL_CATALOG
         val packs = runCatching {
             if (!catalogFile.isFile || catalogFile.length() > REGIONAL_CATALOG_BYTES) emptyList() else parseRegionalCatalog(catalogFile.readBytes())
         }.getOrDefault(emptyList())
@@ -155,7 +161,7 @@ internal class RegionalPacks(private val directory: File, private val database: 
         database.initialize()
         val installed = database.state.value.installed.firstOrNull { it.id == offlineRegionId(pack.region) }
         if (installed?.sha256 == pack.sha256) return@withLock
-        require(installed != null || database.state.value.installed.size < OFFLINE_INSTALLED_PACKS)
+        require(database.state.value.canInstall(pack.region, pack.bytes)) { "Installed pack limit reached" }
         require(installed == null || Instant.parse(pack.generatedAt) >= Instant.parse(installed.generatedAt)) { "Installed snapshot is newer" }
         mutableState.update { it.copy(downloading = id, downloadedBytes = 0) }
         val context = currentCoroutineContext()

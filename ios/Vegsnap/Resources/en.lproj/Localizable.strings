@@ -174,7 +174,7 @@
 "Offline mode" = "Offline mode";
 "Offline mode prevents product, AI, and community requests. Local rules and text recognition remain available." = "Offline mode prevents product, AI, and community requests. Local rules and text recognition remain available.";
 "Offline mode — local evidence only" = "Offline mode — local evidence only";
-"Offline packs must be smaller than 10 MB." = "Offline packs must be smaller than 10 MB.";
+"Offline packs must be smaller than 20 MB." = "Offline packs must be smaller than 20 MB.";
 "Offline product databases" = "Offline product databases";
 "Offline snapshot" = "Offline snapshot";
 "On-device text recognition" = "On-device text recognition";

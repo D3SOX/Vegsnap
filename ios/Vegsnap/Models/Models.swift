@@ -95,7 +95,7 @@ struct Settings: Codable, Equatable {
         get { if let fallbackCountry, ProductCountry.isValid(fallbackCountry) { return fallbackCountry }; return "DE" }
         set { fallbackCountry = ProductCountry.isValid(newValue) ? newValue : "DE" }
     }
-    var catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
+    var catalogURL = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog-v2.json"
 }
 struct HistoryDocument: Codable { var schemaVersion = 1; var exportedAt = ISO8601DateFormatter().string(from: Date()); var results: [CheckResult] }
 struct SavedCheck: Codable, Identifiable {

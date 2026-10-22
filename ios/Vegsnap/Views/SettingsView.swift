@@ -132,7 +132,7 @@ struct SettingsView: View {
             .onDisappear { modelTask?.cancel() }
             .onChange(of: store.settings.baseUrl) { _, endpoint in modelTask?.cancel(); token = (try? Keychain.read(endpoint)) ?? ""; models = []; connectionNotice = nil }
             .task { token = (try? Keychain.read(store.settings.baseUrl)) ?? ""; languages = (try? VNRecognizeTextRequest().supportedRecognitionLanguages()) ?? ["en-US", "de-DE"]; chatGPT.loadStatus() }
-            .fileImporter(isPresented: $importPack, allowedContentTypes: [.json]) { result in do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; try store.importPack(readLimitedFile(url, limit: 10_000_000)) } catch { store.report(error) } }
+            .fileImporter(isPresented: $importPack, allowedContentTypes: [.json]) { result in do { let url = try result.get(); let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }; try store.importPack(readLimitedFile(url, limit: 20_000_000)) } catch { store.report(error) } }
     }
     private func changeEndpoint(_ endpoint: String) { store.settings.baseUrl = endpoint; store.settings.model = "" }
     private func loadModels() async {

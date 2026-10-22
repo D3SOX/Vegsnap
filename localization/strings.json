@@ -1074,9 +1074,9 @@
     ]
   },
   "app_offline_hint": {
-    "en": "Barcodes are checked locally first. These packs cover a selection of products; missing products use the online databases. Import regional JSON packs up to 10 MB.",
-    "de": "Barcodes werden zuerst lokal geprüft. Die Pakete enthalten eine Produktauswahl; fehlende Produkte werden online nachgeschlagen. Regionale JSON-Pakete bis 10 MB importieren.",
-    "sv": "Streckkoder kontrolleras lokalt först. Paketen täcker ett urval produkter; produkter som saknas slås upp i onlinedatabaserna. Importera regionala JSON-paket på upp till 10 MB.",
+    "en": "Barcodes are checked locally first. These packs cover a selection of products; missing products use the online databases. Import regional JSON packs up to 20 MB.",
+    "de": "Barcodes werden zuerst lokal geprüft. Die Pakete enthalten eine Produktauswahl; fehlende Produkte werden online nachgeschlagen. Regionale JSON-Pakete bis 20 MB importieren.",
+    "sv": "Streckkoder kontrolleras lokalt först. Paketen täcker ett urval produkter; produkter som saknas slås upp i onlinedatabaserna. Importera regionala JSON-paket på upp till 20 MB.",
     "extension": [
       "app.offlineHint"
     ]
@@ -4175,9 +4175,9 @@
     ]
   },
   "extension_pack_size_limit": {
-    "en": "Offline packs must be no larger than 10 MB.",
-    "de": "Offline-Pakete dürfen nicht größer als 10 MB sein.",
-    "sv": "Offlinepaket får vara högst 10 MB.",
+    "en": "Offline packs must be no larger than 20 MB.",
+    "de": "Offline-Pakete dürfen nicht größer als 20 MB sein.",
+    "sv": "Offlinepaket får vara högst 20 MB.",
     "extension": [
       "app.packSizeLimit"
     ]
@@ -5492,9 +5492,9 @@
     ]
   },
   "offline_pack_hint": {
-    "en": "Install several regions (up to 10 packs, 10 MB / 10,000 products each). Updating one region keeps your other packs. You can also import a downloaded JSON file.",
-    "de": "Installiere mehrere Regionen (bis zu 10 Pakete mit je 10 MB / 10.000 Produkten). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.",
-    "sv": "Installera flera regioner (upp till 10 paket med 10 MB/10 000 produkter vardera). När en region uppdateras behålls dina övriga paket. Du kan också importera en nedladdad JSON-fil.",
+    "en": "Install several regions (up to 10 packs, 20 MB / 40,000 products each, 60 MB in total). Updating one region keeps your other packs. You can also import a downloaded JSON file.",
+    "de": "Installiere mehrere Regionen (bis zu 10 Pakete mit je 20 MB / 40.000 Produkten, insgesamt 60 MB). Ein Update einer Region behält die anderen Pakete. Du kannst auch eine heruntergeladene JSON-Datei importieren.",
+    "sv": "Installera flera regioner (upp till 10 paket med 20 MB/40 000 produkter vardera, totalt 60 MB). När en region uppdateras behålls dina övriga paket. Du kan också importera en nedladdad JSON-fil.",
     "android": [
       "offline_pack_hint"
     ]
@@ -5523,12 +5523,12 @@
       "offline_pack_summary"
     ]
   },
-  "offline_packs_must_be_smaller_than_10_mb": {
-    "en": "Offline packs must be smaller than 10 MB.",
-    "de": "Offline-Pakete müssen kleiner als 10 MB sein.",
-    "sv": "Offlinepaket måste vara mindre än 10 MB.",
+  "offline_packs_must_be_smaller_than_20_mb": {
+    "en": "Offline packs must be smaller than 20 MB.",
+    "de": "Offline-Pakete müssen kleiner als 20 MB sein.",
+    "sv": "Offlinepaket måste vara mindre än 20 MB.",
     "ios": [
-      "Offline packs must be smaller than 10 MB."
+      "Offline packs must be smaller than 20 MB."
     ]
   },
   "offline_product_databases": {

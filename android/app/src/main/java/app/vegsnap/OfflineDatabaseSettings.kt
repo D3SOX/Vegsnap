@@ -120,7 +120,7 @@ internal fun RegionalPacksSheet(
                             Text(stringResource(R.string.offline_download_progress, downloads.downloadedBytes / 1_000_000.0, pack.bytes / 1_000_000.0), style = MaterialTheme.typography.labelMedium)
                         } else if (current) Text(stringResource(R.string.offline_download_installed), style = MaterialTheme.typography.labelLarge)
                         else OutlinedButton(onClick = { onDownload(pack.id) },
-                            enabled = !busy && !offline && (installed != null || state.installed.size < OFFLINE_INSTALLED_PACKS)) {
+                            enabled = !busy && !offline && state.canInstall(pack.region, pack.bytes)) {
                             Icon(Icons.Outlined.Download, null); Spacer(Modifier.width(8.dp))
                             Text(stringResource(if (installed == null) R.string.offline_download else R.string.offline_download_update))
                         }

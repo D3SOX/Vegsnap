@@ -3,7 +3,8 @@ import { DATABASES, normalizeBarcode } from './database';
 import type { CheckInput, DatabaseProduct } from './types';
 import { countryCode, selectProductCountry } from './market';
 
-export const OFFLINE_MAX_BYTES = 10_000_000;
+export const OFFLINE_MAX_BYTES = 20_000_000;
+export const OFFLINE_MAX_PRODUCTS = 40_000;
 export interface OfflineSnapshot {
   schemaVersion: 1;
   generatedAt: string;
@@ -26,8 +27,8 @@ export function validateOfflineSnapshot(value: unknown): OfflineSnapshot {
   if (!record(value) || !only(value, ['schemaVersion', 'generatedAt', 'region', 'sources', 'products']) || value.schemaVersion !== 1 ||
     !timestamp(value.generatedAt) || !string(value.region, 80) || !value.region.trim() ||
     !Array.isArray(value.sources) || !value.sources.length || value.sources.length > 3 ||
-    !Array.isArray(value.products) || value.products.length > 10_000) throw new Error('Invalid offline pack format.');
-  if (new TextEncoder().encode(JSON.stringify(value)).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.');
+    !Array.isArray(value.products) || value.products.length > OFFLINE_MAX_PRODUCTS) throw new Error('Invalid offline pack format.');
+  if (new TextEncoder().encode(JSON.stringify(value)).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 20 MB.');
   const sourceIds = new Set<string>();
   for (const source of value.sources) {
     if (!record(source) || !only(source, ['id', 'url', 'license', 'retrievedAt']) ||
@@ -51,7 +52,7 @@ export function validateOfflineSnapshot(value: unknown): OfflineSnapshot {
   return value as unknown as OfflineSnapshot;
 }
 export function parseOfflineSnapshot(text: string): OfflineSnapshot {
-  if (text.length > OFFLINE_MAX_BYTES || new TextEncoder().encode(text).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 10 MB.');
+  if (text.length > OFFLINE_MAX_BYTES || new TextEncoder().encode(text).length > OFFLINE_MAX_BYTES) throw new Error('Offline packs must be no larger than 20 MB.');
   return validateOfflineSnapshot(JSON.parse(text));
 }
 type OfflineEntry = { product: OfflineSnapshot['products'][number]; snapshot: OfflineSnapshot };

@@ -174,7 +174,7 @@
 "Offline mode" = "Offlineläge";
 "Offline mode prevents product, AI, and community requests. Local rules and text recognition remain available." = "Offlineläget stoppar produkt-, AI- och gemenskapsförfrågningar. Lokala regler och textigenkänning är fortfarande tillgängliga.";
 "Offline mode — local evidence only" = "Offlineläge — endast lokala belägg";
-"Offline packs must be smaller than 10 MB." = "Offlinepaket måste vara mindre än 10 MB.";
+"Offline packs must be smaller than 20 MB." = "Offlinepaket måste vara mindre än 20 MB.";
 "Offline product databases" = "Offlineproduktdatabaser";
 "Offline snapshot" = "Offlineögonblicksbild";
 "On-device text recognition" = "Textigenkänning på enheten";

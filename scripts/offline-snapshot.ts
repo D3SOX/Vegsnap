@@ -2,13 +2,15 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeBarcode } from '../packages/core/src/database';
-import { validateOfflineSnapshot } from '../packages/core/src/offline';
+import { OFFLINE_MAX_BYTES, OFFLINE_MAX_PRODUCTS, validateOfflineSnapshot } from '../packages/core/src/offline';
 
-export const MAX_BYTES = 10_000_000;
-export const MAX_PRODUCTS = 10_000;
 export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 type SnapshotFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export type Region = 'de-eu' | 'germany' | 'sweden' | 'eu';
+/** The bundled de-eu snapshot ships inside the apps, so it keeps its small caps; downloadable packs fill the client limits. */
+export function packLimits(region: Region): { bytes: number; products: number; nonfood: number } {
+  return region === 'de-eu' ? { bytes: 10_000_000, products: 10_000, nonfood: 1_000 } : { bytes: OFFLINE_MAX_BYTES, products: OFFLINE_MAX_PRODUCTS, nonfood: 2_000 };
+}
 export type SourceId = 'off' | 'obf' | 'opf';
 export interface OfflineProduct {
   source: SourceId; code: string; name: string; brands: string; ingredients: string;
@@ -27,8 +29,8 @@ const EU = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech-republ
   'finland', 'france', 'germany', 'greece', 'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg',
   'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 'spain', 'sweden'];
 export function regionQueries(region: Region): { countries: string[]; exclude: string[]; limit: number }[] {
-  if (region === 'germany' || region === 'sweden') return [{ countries: [region], exclude: [], limit: 8_000 }];
-  if (region === 'eu') return [{ countries: EU, exclude: [], limit: 8_000 }];
+  if (region === 'germany' || region === 'sweden') return [{ countries: [region], exclude: [], limit: 30_000 }];
+  if (region === 'eu') return [{ countries: EU, exclude: [], limit: 30_000 }];
   return [
     { countries: ['germany'], exclude: [], limit: 4_000 },
     { countries: ['sweden'], exclude: ['germany'], limit: 1_500 },
@@ -66,7 +68,7 @@ export function createSnapshot(region: Region, groups: unknown[][], time: Date, 
   const iso = time.toISOString();
   const pack: OfflineSnapshot = { schemaVersion: 1, generatedAt: iso, region,
     sources: [{ id: 'off', url: SOURCE, license: 'ODbL-1.0', retrievedAt: iso }], products: [] };
-  const seen = new Set<string>();
+  const seen = new Set<string>(), limits = packLimits(region);
   let bytes = Buffer.byteLength(JSON.stringify(pack)) + 1;
   for (let group = 0; group < groups.length; group++) {
     const recipe = regionQueries(region)[group];
@@ -78,7 +80,7 @@ export function createSnapshot(region: Region, groups: unknown[][], time: Date, 
       const key = product.code.padStart(14, '0');
       if (seen.has(key)) continue;
       const size = Buffer.byteLength(JSON.stringify(product)) + 1;
-      if (bytes + size > MAX_BYTES || pack.products.length >= MAX_PRODUCTS) break;
+      if (bytes + size > limits.bytes || pack.products.length >= limits.products) break;
       bytes += size; seen.add(key); pack.products.push(product);
     }
   }
@@ -94,7 +96,7 @@ export function createSnapshot(region: Region, groups: unknown[][], time: Date, 
       const key = product.code.padStart(14, '0');
       if (seen.has(key)) continue;
       const size = Buffer.byteLength(JSON.stringify(product)) + 1;
-      if (selected >= 1_000 || pack.products.length >= MAX_PRODUCTS || bytes + size + 300 > MAX_BYTES) break;
+      if (selected >= limits.nonfood || pack.products.length >= limits.products || bytes + size + 300 > limits.bytes) break;
       bytes += size; selected++; seen.add(key); pack.products.push(product);
     }
     if (selected) { pack.sources.push({ id: dataset.source, url: ORIGINS[dataset.source], license: 'ODbL-1.0', retrievedAt: dataset.retrievedAt }); bytes += 300; }
@@ -111,12 +113,12 @@ export function usableSnapshot(raw: unknown, region: Region): raw is OfflineSnap
 async function readSnapshot(path: string, region: Region): Promise<OfflineSnapshot | undefined> {
   try {
     const bytes = await readFile(path);
-    if (bytes.length > MAX_BYTES) return;
+    if (bytes.length > packLimits(region).bytes) return;
     const raw: unknown = JSON.parse(bytes.toString('utf8'));
     return usableSnapshot(raw, region) ? raw : undefined;
   } catch { return; }
 }
-async function readExport(response: Response): Promise<unknown[]> {
+async function readExport(response: Response, limit: number): Promise<unknown[]> {
   if (!response.ok) throw new Error(`Export HTTP ${response.status}`);
   const reader = response.body?.getReader();
   if (!reader) throw new Error('Empty export response');
@@ -125,13 +127,13 @@ async function readExport(response: Response): Promise<unknown[]> {
     while (true) {
       const next = await reader.read(); if (next.done) break;
       length += next.value.byteLength;
-      if (length > 24 * 1024 * 1024) throw new Error('Export exceeds download bound');
+      if (length > 64 * 1024 * 1024) throw new Error('Export exceeds download bound');
       chunks.push(next.value);
     }
   } finally { await reader.cancel(); }
   const raw: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   const result = object(raw);
-  if (result?.ok !== true || result.truncated !== false || !Array.isArray(result.rows) || result.rows.length > MAX_PRODUCTS) throw new Error('Incomplete or invalid export');
+  if (result?.ok !== true || result.truncated !== false || !Array.isArray(result.rows) || result.rows.length > limit) throw new Error('Incomplete or invalid export');
   return result.rows;
 }
 export function* parseTsv(text: string): Generator<Record<string, string>> {
@@ -232,9 +234,10 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     const groups: unknown[][] = [];
     for (const query of regionQueries(region)) {
       log(`Offline ${region}: fetching ${query.limit} food candidates for ${query.countries.length === 1 ? query.countries[0] : 'EU'}.`);
+      // Mirabelle sorts the whole table per query and allows up to 280 s of SQL time.
       const response = await (options.fetcher ?? fetch)(exportUrl(query), { headers: { Accept: 'application/json', 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' },
-        redirect: 'error', signal: AbortSignal.timeout(60_000) });
-      groups.push(await readExport(response));
+        redirect: 'error', signal: AbortSignal.timeout(300_000) });
+      groups.push(await readExport(response, query.limit));
     }
     const extra: { source: 'obf' | 'opf'; rows: unknown[]; retrievedAt: string }[] = [];
     if (options.includeNonfood !== false) {
@@ -246,7 +249,7 @@ export async function refreshSnapshot(options: { output: string; region?: Region
     }
     const pack = createSnapshot(region, groups, now, extra);
     const content = `${JSON.stringify(pack)}\n`;
-    if (Buffer.byteLength(content) > MAX_BYTES) throw new Error('Snapshot exceeds bundle size limit');
+    if (Buffer.byteLength(content) > packLimits(region).bytes) throw new Error('Snapshot exceeds pack size limit');
     await mkdir(dirname(options.output), { recursive: true });
     await writeFile(temporary, content, { flag: 'wx' });
     await rename(temporary, options.output);

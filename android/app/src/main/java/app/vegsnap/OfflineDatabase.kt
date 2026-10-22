@@ -20,13 +20,21 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal const val OFFLINE_PACK_BYTES = 10_000_000
+internal const val OFFLINE_PACK_BYTES = 20_000_000
+internal const val OFFLINE_PACK_PRODUCTS = 40_000
 internal const val OFFLINE_INSTALLED_PACKS = 10
+/** Every installed pack stays parsed in memory, so imports and downloads keep their total size within three maximum packs. */
+internal const val OFFLINE_INSTALLED_BYTES = 60_000_000L
 internal fun offlineRegionId(region: String): String = MessageDigest.getInstance("SHA-256")
     .digest(region.trim().lowercase(Locale.ROOT).toByteArray()).joinToString("") { "%02x".format(it) }
 internal data class OfflinePackInfo(val region: String, val generatedAt: String, val count: Int, val sources: String,
     val bytes: Long, val sha256: String) { val id get() = offlineRegionId(region) }
 internal data class OfflineDatabaseState(val bundled: OfflinePackInfo? = null, val installed: List<OfflinePackInfo> = emptyList(), val ready: Boolean = false, val unavailable: Boolean = false)
+internal fun OfflineDatabaseState.canInstall(region: String, bytes: Long): Boolean {
+    val id = offlineRegionId(region)
+    return (installed.any { it.id == id } || installed.size < OFFLINE_INSTALLED_PACKS) &&
+        installed.filter { it.id != id }.sumOf { it.bytes } + bytes <= OFFLINE_INSTALLED_BYTES
+}
 private data class OfflinePack(val info: OfflinePackInfo, val sources: Map<String, JSONObject>, val products: List<JSONObject>)
 private val offlineSources = mapOf("off" to BrowseSource.FOOD, "obf" to BrowseSource.BEAUTY, "opf" to BrowseSource.PRODUCTS)
 
@@ -73,7 +81,7 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
         currentCoroutineContext().ensureActive()
         initialize()
         lock.withLock {
-            require(parsed.info.id in regional || regional.size < OFFLINE_INSTALLED_PACKS) { "Installed pack limit reached" }
+            require(mutableState.value.canInstall(parsed.info.region, parsed.info.bytes)) { "Installed pack limit reached" }
             check(regionsDirectory.isDirectory || regionsDirectory.mkdirs())
             val target = regionalFile(parsed.info.id)
             val temporary = File(regionsDirectory, "${parsed.info.id}.pending")
@@ -173,7 +181,7 @@ class OfflineDatabase(private val bundled: () -> InputStream, private val direct
             sources[id] = source
         }
         val values = document.getJSONArray("products")
-        require(values.length() <= 10_000)
+        require(values.length() <= OFFLINE_PACK_PRODUCTS)
         val seen = mutableSetOf<String>()
         val products = (0 until values.length()).map { index ->
             values.getJSONObject(index).also { p ->
