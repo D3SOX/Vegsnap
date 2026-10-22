@@ -957,5 +957,115 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "extended-conjunction-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: sugar, milk powder and natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-conjunction-before-the-mention-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: natural flavouring and milk powder, sugar",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-german-swedish-conjunctions-end-a-flavour-phrase",
+    "input": {
+      "text": "Zutaten: Zucker, natürliches Aroma und Milchpulver, mjölkpulver och naturlig arom",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-ampersand-ends-a-flavour-phrase",
+    "input": {
+      "text": "Ingredients: sugar, milk powder & natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-negation-covers-a-coordinated-list",
+    "input": {
+      "text": "Vegan certified. Made without milk and eggs. Ohne Milch und Eier.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-free-suffix-covers-a-coordinated-list",
+    "input": {
+      "text": "Ingredients: sugar, salt. Milk and egg free. Gluten- und laktosefrei.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-genuine-modifier-phrases-still-block",
+    "input": {
+      "text": "Ingredients: water, milk flavour, Milcharoma, milk-free chocolate, vegan milk alternative, imitation cheese and herbs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "honeybush-tea-is-plant",
+    "input": {
+      "text": "Zutaten: Honigbuschtee, Rooibos",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeybush-tea-is-plant-sv",
+    "input": {
+      "text": "Ingredienser: honungsbuske, rooibos",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "honeybush-compound-never-matches-honey",
+    "input": {
+      "text": "Zutaten: Honigbuschblätter, honungsbuskte, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]

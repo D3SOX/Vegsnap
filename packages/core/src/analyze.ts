@@ -64,22 +64,30 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
-// A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
+// A negation before an animal mention or a free-from suffix after it covers the whole list ("without milk and eggs", "milk and egg free").
+const negations = String.raw`no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från`;
+// A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
-const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|${modifiers})(?:$|[^\p{L}])`, 'u');
-const substitutedAfter = new RegExp(String.raw`(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|${modifiers})(?:$|[^\p{L}])`, 'u');
-// "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
-const connector = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
-// An alias that reads as a modifier itself (Finnish "ei" is German "Ei") only matches exactly.
-const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !negatedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
+const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
+const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
+const freeAfter = /(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?:$|[^\p{L}])/u;
+const modifiedAfter = new RegExp(String.raw`(?:${modifiers})(?:$|[^\p{L}])`, 'u');
+// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
+const phrase = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
+const conjunct = /(?:^|[^\p{L}])(?:with|mit|med|and|und|och|&)(?=$|[^\p{L}])/u;
+// An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly.
+const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
-/** The item occurs (as a whole word unless it is a compound stem) without a modifier attached to that occurrence. */
+/** The item occurs (as a whole word unless it is a compound stem) without a negation or modifier attached to that occurrence. */
 function mentioned(text: string, item: string, wholeWord: boolean): boolean {
   for (let start = text.indexOf(item); start >= 0; start = text.indexOf(item, start + 1)) {
     const end = start + item.length;
     if (wholeWord && (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? ''))) continue;
-    if (!negatedBefore.test(text.slice(0, start).split(connector).pop()!) && !substitutedAfter.test(text.slice(end).split(connector)[0]!)) return true;
+    const before = text.slice(0, start), after = text.slice(end);
+    if (negatedBefore.test(before.split(phrase).pop()!) || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
+    if (freeAfter.test(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
+    return true;
   }
   return false;
 }

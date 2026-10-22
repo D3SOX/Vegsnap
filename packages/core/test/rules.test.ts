@@ -51,12 +51,14 @@ describe('extended animal matching', () => {
     for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'honey melon', 'butter bean', 'butter lettuce', 'silk tofu', 'milchsäurebakterien',
       "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'milchfreie schokolade', 'mjölkfritt margarin', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'cheddar cheese flavour',
       'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa',
-      'gelatinised wheat starch', 'pre-gelatinized starch', 'gelatinierte stärke', 'gelatineringsmedel', 'zahnfleisch', 'zahnseide', 'pazifisches meersalz', 'spezifisch', 'milchig', 'flachs/leinen', 'zellwolle', 'seidenmatt', 'honigklee', 'kokosnussfleisch', 'butterbur extract', 'sea salt grinder', 'tomatfruktkött', 'inlägg: textil', 'skäggolja', 'silkeslen tofu', 'pregelatinized corn starch', 'pregelatinized', 'fake leather upper', 'fake fur trim']) {
+      'gelatinised wheat starch', 'pre-gelatinized starch', 'gelatinierte stärke', 'gelatineringsmedel', 'zahnfleisch', 'zahnseide', 'pazifisches meersalz', 'spezifisch', 'milchig', 'flachs/leinen', 'zellwolle', 'seidenmatt', 'honigklee', 'kokosnussfleisch', 'butterbur extract', 'sea salt grinder', 'tomatfruktkött', 'inlägg: textil', 'skäggolja', 'silkeslen tofu', 'pregelatinized corn starch', 'pregelatinized', 'fake leather upper', 'fake fur trim',
+      'honigbuschblätter', 'honungsbuskte', 'without milk and eggs', 'ohne milch und eier', 'milk and egg free', 'free from milk and soya', 'imitation cheese and herbs', 'käse-zwiebel-geschmack']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
   });
-  test('a modifier only blocks the mention it touches and "with" starts a new phrase', () => {
-    for (const [term, id] of [['free range eggs', 'egg'], ['lactose free milk', 'milk'], ['plant oil with milk', 'milk'], ['milk powder with natural flavouring', 'milk'], ['käseersatz mit eigelb', 'egg'], ['laktosefreie vollmilch', 'milk']] as const) {
+  test('a modifier only blocks the mention it touches, "with" starts a new phrase and a conjunction ends a modifier phrase', () => {
+    for (const [term, id] of [['free range eggs', 'egg'], ['lactose free milk', 'milk'], ['plant oil with milk', 'milk'], ['milk powder with natural flavouring', 'milk'], ['käseersatz mit eigelb', 'egg'], ['laktosefreie vollmilch', 'milk'],
+      ['milk powder and natural flavouring', 'milk'], ['natural flavouring and milk powder', 'milk'], ['milk powder & natural flavouring', 'milk'], ['natürliches aroma und milchpulver', 'milk'], ['arom och mjölkpulver', 'milk'], ['yogurt cultures and milk', 'milk']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });

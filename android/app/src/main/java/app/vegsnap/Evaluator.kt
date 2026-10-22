@@ -62,19 +62,30 @@ internal fun containsWord(text: String, word: String): Boolean {
     }
     return false
 }
-// A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
+// A negation before an animal mention or a free-from suffix after it covers the whole list ("without milk and eggs", "milk and egg free").
+private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från"
+// A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
-private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|$MODIFIERS)(?:$|[^\\p{L}])")
-private val substitutedAfter = Regex("(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|$MODIFIERS)(?:$|[^\\p{L}])")
-// "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
-private val connector = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
-/** The item occurs (as a whole word unless it is a compound stem) without a modifier attached to that occurrence. */
+private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:$NEGATIONS)(?:$|[^\\p{L}])")
+private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])")
+private val freeAfter = Regex("(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?)(?:$|[^\\p{L}])")
+private val modifiedAfter = Regex("(?:$MODIFIERS)(?:$|[^\\p{L}])")
+// "with" starts a new phrase ("plant oil with milk", "milk powder with natural flavouring"); a conjunction also ends a modifier's phrase.
+private val phrase = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
+private val conjunct = Regex("(?:^|[^\\p{L}])(?:with|mit|med|and|und|och|&)(?=$|[^\\p{L}])")
+/** An alias that reads as a negation or modifier itself (Finnish "ei" is German "Ei") only matches exactly. */
+internal fun readsAsModifier(alias: String): Boolean = negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
+/** The item occurs (as a whole word unless it is a compound stem) without a negation or modifier attached to that occurrence. */
 internal fun mentioned(text: String, item: String, wholeWord: Boolean): Boolean {
     var start = text.indexOf(item)
     while (start >= 0) {
         val end = start + item.length
         val boundary = !wholeWord || !wordCharacter.containsMatchIn(text.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(text.getOrNull(end)?.toString().orEmpty())
-        if (boundary && !negatedBefore.containsMatchIn(text.substring(0, start).split(connector).last()) && !substitutedAfter.containsMatchIn(text.substring(end).split(connector).first())) return true
+        val before = text.substring(0, start)
+        val after = text.substring(end)
+        val negated = negatedBefore.containsMatchIn(before.split(phrase).last()) || modifiedBefore.containsMatchIn(before.split(conjunct).last())
+        val substituted = freeAfter.containsMatchIn(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first())
+        if (boundary && !negated && !substituted) return true
         start = text.indexOf(item, start + 1)
     }
     return false
@@ -89,8 +100,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
             for (alias in 0 until aliases.length()) put(normalizeCompositionTerm(aliases.getString(alias)), rule)
         }
     }
-    // An alias that reads as a modifier itself (Finnish "ei" is German "Ei") only matches exactly.
-    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot { negatedBefore.containsMatchIn(it) }.sortedByDescending { it.length }
+    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     private val extendedMatching = rulesDocument.getJSONObject("extendedMatching")
     private val compoundStems = extendedMatching.getJSONArray("compoundStems").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
     private val plantExceptions = extendedMatching.getJSONArray("plantExceptions").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }.sortedByDescending { it.length }
