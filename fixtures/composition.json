@@ -1952,5 +1952,27 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "generic-tweed-is-source-dependent",
+    "input": {
+      "text": "Materials: 100% polyester tweed",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "harris-tweed-is-animal",
+    "input": {
+      "text": "Materials: harris tweed",
+      "category": "clothing"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

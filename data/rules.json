@@ -1844,9 +1844,6 @@
         "schappe silk",
         "schappeseide",
         "silk noil",
-        "dupioni",
-        "habotai",
-        "crepe de chine",
         "silk crepe",
         "seidenkrepp",
         "silk georgette",
@@ -18454,7 +18451,6 @@
         "wool felt",
         "wollfilz",
         "ullfilt",
-        "tweed",
         "harris tweed",
         "loden",
         "boiled wool",
@@ -20550,7 +20546,11 @@
         "tryckfärg",
         "druckfarben",
         "tryckfärger",
-        "duvet"
+        "duvet",
+        "tweed",
+        "crepe de chine",
+        "dupioni",
+        "habotai"
       ],
       "explanation": {
         "en": "These material, filling, finishing and auxiliary terms do not identify the fibre or substance source; it may be plant, synthetic or animal.",
