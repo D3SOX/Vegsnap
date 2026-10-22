@@ -118,9 +118,9 @@ describe('extended animal matching', () => {
     expect(performance.now() - started).toBeLessThan(1_000);
     expect(ruleForTerm(`${term} with milk`)?.id).toBe('milk');
   });
-  test('German egg counts with an adjective or preposition, Finnish ei and Milchling mushrooms do not', () => {
-    for (const term of ['frisches ei', 'getrocknetes ei', 'mit flüssigem ei', 'ei von freilaufenden hühnern', 'ei aus bio-haltung']) expect(ruleForTerm(term)?.id).toBe('egg');
-    for (const term of ['ohne frisches ei', 'tuote ei sisällä maitoa', 'ei sisällä maitoa / ohne frisches ei', 'milchling', 'pfeffer-milchlinge', 'milchbrätling', 'edel-reizker']) expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
+  test('German egg counts with an adjective or preposition, Finnish and Romanian ei and Milchling mushrooms do not', () => {
+    for (const term of ['frisches ei', 'getrocknetes ei', 'flüssiges ei', 'ganzes ei', 'rohes ei', 'ei von freilaufenden hühnern', 'ei aus bio-haltung']) expect(ruleForTerm(term)?.id).toBe('egg');
+    for (const term of ['ohne frisches ei', 'tuote ei sisällä maitoa', 'ei sisällä maitoa / ohne frisches ei', 'suntem ei', 'ales ei', 'mies ei', 'milchling', 'pfeffer-milchlinge', 'milchbrätling', 'edel-reizker']) expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
   });
   test('unsourced calcium carbonate, activated charcoal and dashi are ambiguous while their mineral, plant and fish forms keep their status', () => {
     for (const term of ['calcium carbonate', 'calciumcarbonat', 'ci 77220', 'activated charcoal', 'activated carbon', 'aktivkohle', 'charcoal', 'dashi']) expect(ruleForTerm(term)?.status).toBe('ambiguous');

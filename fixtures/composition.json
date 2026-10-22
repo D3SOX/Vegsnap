@@ -2139,5 +2139,16 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "romanian-ei-is-not-egg",
+    "input": {
+      "text": "Ingrediente: apă, sare. Suntem ei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]
