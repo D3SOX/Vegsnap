@@ -13,7 +13,7 @@ type Catalog = Record<string, Message>;
 const platforms: Platform[] = ['android', 'ios', 'share', 'extension', 'core', 'androidResult', 'companion'];
 const extensionGroups = {
   app: 'messages', company: 'companyMessages', community: 'communityMessages', contact: 'contactMessages',
-  store: 'storeMessages', background: 'backgroundMessages',
+  store: 'storeMessages', background: 'backgroundMessages', report: 'reportMessages',
   market: 'marketMessages',
   alternatives: 'alternativeMessages',
   browse: 'browseMessages',

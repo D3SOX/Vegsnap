@@ -9,6 +9,7 @@ import { hostedCommand, hostedToken } from '../src/hosted';
 import { history, type HistoryResult } from '../src/history';
 import { withoutCommunityHistory } from '../src/community-history';
 import { mergeHistoryImport, parseHistoryImport } from '../src/history-transfer';
+import { hiddenReplies, hideReply, restoreReplies } from '../src/hidden-replies';
 import { offlineLibrary } from '../src/offline';
 import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
@@ -96,7 +97,7 @@ export default defineBackground(() => {
           return { ok: true, result };
         }
         switch (message.type) {
-          case 'state': { const key = (await browser.storage.session.get('credential')).credential; return { ok: true, result: { settings: config, history: await history('list'), offlinePacks: await offlineLibrary().info(), hasKey: isRecord(key) && key.endpoint === config.baseUrl && typeof key.token === 'string' && key.token.length > 0 } }; }
+          case 'state': { const key = (await browser.storage.session.get('credential')).credential; return { ok: true, result: { settings: config, history: await history('list'), offlinePacks: await offlineLibrary().info(), hiddenReplies: await hiddenReplies(), hasKey: isRecord(key) && key.endpoint === config.baseUrl && typeof key.token === 'string' && key.token.length > 0 } }; }
           case 'import-offline-pack': {
             if (typeof message.text !== 'string') throw new Error('Invalid offline pack.');
             await offlineLibrary().import(message.text);
@@ -284,6 +285,13 @@ export default defineBackground(() => {
             return { ok: true, result: updated };
           }
           case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
+          case 'hide-reply': {
+            if (typeof message.id !== 'string') throw new Error('Invalid reply reference.');
+            const id = message.id;
+            await changeSettings(() => hideReply(id));
+            return { ok: true, result: null };
+          }
+          case 'restore-replies': await changeSettings(restoreReplies); return { ok: true, result: null };
           case 'hosted': {
             if (!['connect', 'status', 'disconnect'].includes(String(message.command))) throw new Error('Invalid hosted command.');
             const result = await hostedCommand(message.command as 'connect' | 'status' | 'disconnect');

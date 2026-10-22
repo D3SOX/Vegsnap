@@ -60,16 +60,45 @@ test('moderators can inspect and withdraw a reported published reply before clea
   expect((await submit({ kind: 'community', contentId: id, text: '', reason: 'Another report' })).status).toBe(404);
   expect((await request(`/api/review/reports/${reportId}`, { method: 'DELETE', headers: auth })).status).toBe(200);
 });
+const details = { product: 'Example oat drink', brand: 'Example Maker', outcome: 'not_vegan', locale: 'de', platform: 'extension', appVersion: '0.2.19',
+  findings: [{ term: 'vitamin D', status: 'animal', ruleId: 'vitamin-d' }, { term: 'oats', status: 'plant', ruleId: '' }] };
+const resultReport = { kind: 'result', contentId: '', text: '', reason: 'The vitamin D in this product is plant derived.', result: details };
+test('wrong-result reports store structured verdict context that moderators can read and delete', async () => {
+  const response = await submit(resultReport); expect(response.status).toBe(201);
+  const { id } = await response.json() as { id: string };
+  const queue = await (await request('/api/review/reports', { headers: auth })).json() as { reports: Record<string, unknown>[] };
+  expect(queue.reports[0]).toMatchObject({ id, kind: 'result', content_id: '', text: '', reason: resultReport.reason, details });
+  const page = await (await request('/review.js')).text();
+  expect(page).toContain('Reported wrong result');
+  expect(await (await request('/api/snapshot')).text()).not.toContain('vitamin-d');
+  expect((await request(`/api/review/reports/${id}`, { method: 'DELETE', headers: auth })).status).toBe(200);
+  expect(await (await request('/api/review/reports', { headers: auth })).json()).toEqual({ reports: [] });
+});
+test('wrong-result reports with invalid structure, oversized lists or private fields are rejected', async () => {
+  for (const body of [{ ...resultReport, result: undefined }, { ...resultReport, text: 'private history' }, { ...resultReport, contentId: 'private-history-id' },
+    { ...resultReport, result: { ...details, outcome: 'maybe' } }, { ...resultReport, result: { ...details, platform: 'web' } },
+    { ...resultReport, result: { ...details, photos: ['private'] } }, { ...resultReport, result: { ...details, findings: [{ term: 'milk', status: 'animal', ruleId: '', explanation: 'x' }] } },
+    { ...resultReport, result: { ...details, findings: Array.from({ length: 201 }, () => ({ term: 'milk', status: 'animal', ruleId: '' })) } },
+    { ...resultReport, result: { ...details, product: 'x'.repeat(301) } }, { ...resultReport, result: { ...details, locale: 'not a locale' } },
+    { ...resultReport, result: { ...details, findings: Array.from({ length: 100 }, () => ({ term: 'y'.repeat(200), status: 'unknown', ruleId: 'z'.repeat(100) })) } },
+    { ...report, result: details }]) {
+    expect((await submit(body)).status).toBe(400);
+  }
+  expect(await (await mf.getD1Database('DB')).prepare('SELECT COUNT(*) FROM content_reports').first('COUNT(*)')).toBe(0);
+});
 test('repeated reports from one client reach the per-minute limit', async () => {
   const headers = { 'CF-Connecting-IP': '198.51.100.44' };
   for (let i = 0; i < 5; i++) expect((await submit(report, headers)).status).toBe(201);
   expect((await submit(report, headers)).status).toBe(429);
 });
-test('cross-origin reports oversized bodies and the daily cap are rejected', async () => {
+test('cross-origin reports oversized bodies and the daily cap are rejected while extension origins are accepted', async () => {
   expect((await submit(report, { Origin: 'https://other.example' })).status).toBe(403);
+  expect((await submit(report, { Origin: 'chrome-extension://evil.example' })).status).toBe(403);
+  expect((await submit(report, { Origin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop' })).status).toBe(201);
+  expect((await submit(report, { Origin: 'moz-extension://3fa85f64-5717-4562-b3fc-2c963f66afa6' })).status).toBe(201);
   expect((await submit({ ...report, text: 'x'.repeat(48_000) })).status).toBe(413);
   const db = await mf.getD1Database('DB');
-  await db.prepare('INSERT INTO report_budget VALUES (?,200)').bind(new Date().toISOString().slice(0, 10)).run();
+  await db.prepare('INSERT OR REPLACE INTO report_budget VALUES (?,200)').bind(new Date().toISOString().slice(0, 10)).run();
   expect((await submit()).status).toBe(429);
 });
 test('hourly cleanup removes expired reports and old budgets', async () => {

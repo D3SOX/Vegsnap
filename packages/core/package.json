@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./community": "./src/community.ts",
+    "./content-reports": "./src/content-reports.ts",
     "./barcode": "./src/barcode.ts"
   },
   "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },

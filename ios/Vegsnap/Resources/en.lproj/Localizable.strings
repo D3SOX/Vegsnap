@@ -180,6 +180,7 @@
 "On-device text recognition" = "On-device text recognition";
 "Only mark a list complete when you have checked the entire label." = "Only mark a list complete when you have checked the entire label.";
 "Only this reply’s reference and your reason are sent to the moderators." = "Only this reply’s reference and your reason are sent to the moderators.";
+"Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days." = "Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days.";
 "Open in Mail" = "Open in Mail";
 "Open product source" = "Open product source";
 "Open source" = "Open source";
@@ -237,6 +238,7 @@
 "Report AI content" = "Report AI content";
 "Report sent. Reference:" = "Report sent. Reference:";
 "Report this reply" = "Report this reply";
+"Report wrong result" = "Report wrong result";
 "Research" = "Research";
 "Resolved" = "Resolved";
 "Response exceeds the size limit." = "Response exceeds the size limit.";
@@ -332,6 +334,7 @@
 "Wait for the active request to finish." = "Wait for the active request to finish.";
 "Web sources consulted" = "Web sources consulted";
 "Website" = "Website";
+"What is wrong with this result?" = "What is wrong with this result?";
 "What would clarify this?" = "What would clarify this?";
 "Whole product" = "Whole product";
 "Working…" = "Working…";

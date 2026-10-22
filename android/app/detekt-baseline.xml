@@ -56,7 +56,7 @@
     <ID>CyclomaticComplexMethod:CompanyAssessmentSection.kt$@Composable internal fun CompanyAssessmentSection(result: JSONObject)</ID>
     <ID>CyclomaticComplexMethod:CompanyConcernSection.kt$@Composable internal fun CompanyConcernSection(result: JSONObject, showHeading: Boolean = true)</ID>
     <ID>CyclomaticComplexMethod:CompanyConcerns.kt$CompanyConcernResolver$fun resolve(brand: String, locale: String): JSONArray</ID>
-    <ID>CyclomaticComplexMethod:ContentReportButton.kt$@Composable internal fun ContentReportButton(kind: String, offline: Boolean, contentId: String = "", initialText: String = "", submit: (suspend (ContentReport) -&gt; String)? = null)</ID>
+    <ID>CyclomaticComplexMethod:ContentReportButton.kt$@Composable internal fun ContentReportButton(subject: ReportSubject, offline: Boolean, submit: (suspend (ContentReport) -&gt; String)? = null)</ID>
     <ID>CyclomaticComplexMethod:Evaluator.kt$Evaluator$fun evaluate(input: CheckInput, parsedIngredients: List&lt;String&gt;? = null): JSONObject</ID>
     <ID>CyclomaticComplexMethod:HistoryResearch.kt$internal fun retainPreviousResearch(result: JSONObject, previous: JSONObject)</ID>
     <ID>CyclomaticComplexMethod:IdentifiedProductLookup.kt$IdentifiedProductLookup$suspend fun lookup(identity: JSONObject): BrowseRecord?</ID>

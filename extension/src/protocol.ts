@@ -33,6 +33,8 @@ export type Request =
   | { type: 'delete'; id?: string }
   | { type: 'set-result-market'; id: string; market: string }
   | { type: 'cache-community-result'; expected: string; result: HistoryResult }
+  | { type: 'hide-reply'; id: string }
+  | { type: 'restore-replies' }
   | { type: 'hosted'; command: 'connect' | 'status' | 'disconnect' }
   | ({ type: 'companion'; command: CompanionCommand } & AccountOptions);
 export interface CheckProgressMessage { type: 'check-progress'; requestId: string; stage: CheckStage; }
@@ -42,7 +44,7 @@ export function pendingInput(pending: Pending): CheckInput {
   return { ...scanInput({ text: pending.text ?? '', category: 'other', complete: false, images: [] }),
     ...(pending.barcode ? { barcode: pending.barcode } : {}), name: pending.name, brand: pending.brand, sourceUrl: pending.sourceUrl, market: pending.market };
 }
-export interface State { settings: Settings; history: HistoryResult[]; hasKey: boolean; offlinePacks: OfflinePackInfo[]; }
+export interface State { settings: Settings; history: HistoryResult[]; hasKey: boolean; offlinePacks: OfflinePackInfo[]; hiddenReplies: string[]; }
 export type Reply<T> = { ok: true; result: T } | { ok: false; error: string };
 export function isRecord(v: unknown): v is Record<string, unknown> { return v !== null && typeof v === 'object' && !Array.isArray(v); }
 export function isBackgroundRequest(value: unknown): value is Extract<Request, { type: 'background-check' | 'open-check' }> {

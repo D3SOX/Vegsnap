@@ -88,9 +88,19 @@ async function load() {
 }
 function reportCard(report) {
   const card = element('article',null,'reply-card');
-  card.append(element('h2',report.kind === 'ai' ? 'Reported AI output' : 'Reported community reply'),
-    element('p',`${report.created_at} · ${report.id}`,'hint'),element('h3','Reason'),element('p',report.reason,'quote'),
-    element('h3','Reported content'),element('p',report.kind === 'ai' ? report.text : report.reply ?? 'Reply already removed.','quote'));
+  card.append(element('h2',report.kind === 'ai' ? 'Reported AI output' : report.kind === 'result' ? 'Reported wrong result' : 'Reported community reply'),
+    element('p',`${report.created_at} · ${report.id}`,'hint'),element('h3','Reason'),element('p',report.reason,'quote'));
+  if (report.kind === 'result' && report.details) {
+    const details = report.details;
+    card.append(element('h3','Reported result'),
+      element('p',`${[details.brand,details.product].filter(Boolean).join(' · ') || 'Product not named'} · outcome: ${details.outcome}`,'quote'),
+      element('p',`${details.platform} ${details.appVersion} · ${details.locale}`,'hint'));
+    if (details.findings.length) {
+      const list = element('ul');
+      for (const finding of details.findings) list.append(element('li',`${finding.term} — ${finding.status}${finding.ruleId ? ` (${finding.ruleId})` : ''}`));
+      card.append(element('h3','Ingredients and materials'),list);
+    } else card.append(element('p','No ingredient findings.','hint'));
+  } else card.append(element('h3','Reported content'),element('p',report.kind === 'ai' ? report.text : report.reply ?? 'Reply already removed.','quote'));
   const actions = element('div',null,'actions');
   if (report.kind === 'community' && report.reply_status === 'approved') {
     card.append(element('p',`${report.brand} · ${report.product_name} · ${report.content_id}`,'hint'));

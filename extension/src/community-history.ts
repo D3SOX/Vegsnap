@@ -15,3 +15,7 @@ export function applyCommunityHistory(result: HistoryResult, replies: CommunityR
   const { outcome, basis, title, summary, questions, evidence, warnings } = original;
   return { ...original, ...updated, communityOriginal: { outcome, basis, title, summary, questions, evidence, warnings } };
 }
+/** A cached community verdict that relies on a reply hidden on this device falls back to the original analysis. */
+export function hidesCommunityHistory(result: HistoryResult, hidden: string[]): boolean {
+  return !!result.communityOriginal && result.evidence.some(item => item.id.startsWith('community-') && hidden.includes(item.id.slice('community-'.length)));
+}

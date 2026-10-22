@@ -46,6 +46,7 @@ let hostedVerified = false;
 let hostedEnabled = true;
 let hostedConnects = 0;
 let communityReplyPage: { replies: unknown[]; more: boolean } = { replies: [], more: false };
+let hiddenReplies: string[] = [];
 let failCommunityLookup = false;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = Object.assign(async (url: RequestInfo | URL, options?: RequestInit) => {
@@ -60,7 +61,7 @@ const changed = (senderId = 'vegsnap') => { for (const listener of messageListen
 function storageChanged(keys: string[], area: string) { for (const listener of storageListeners) listener(Object.fromEntries(keys.map(key => [key, {}])), area); }
 mock.module('wxt/browser', () => ({ browser: {
   runtime: {
-    id: 'vegsnap', getURL: (path: string) => `${extensionScheme}//vegsnap${path}`,
+    id: 'vegsnap', getURL: (path: string) => `${extensionScheme}//vegsnap${path}`, getManifest: () => ({ version: '0.0.0-fixture' }),
     onMessage: { addListener: (listener: MessageListener) => messageListeners.add(listener), removeListener: (listener: MessageListener) => messageListeners.delete(listener) },
     async sendMessage(message: Request) {
       switch (message.type) {
@@ -70,7 +71,9 @@ mock.module('wxt/browser', () => ({ browser: {
           const { images, ...input } = message.input;
           return { ok: true, result: { ...fixtureResult, id: `check-${checkRequests}`, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
         }
-        case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks }) };
+        case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks, hiddenReplies }) };
+        case 'hide-reply': hiddenReplies = [...new Set([...hiddenReplies, message.id])]; changed(); break;
+        case 'restore-replies': hiddenReplies = []; changed(); break;
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
         case 'update-settings': settings = { ...settings, ...message.patch }; storageChanged(['settings'], 'local'); break;
         case 'set-language': settings = { ...settings, language: message.language }; storageChanged(['settings'], 'local'); break;
@@ -198,6 +201,12 @@ try {
   const historyPreference = historyToggle(roots[0]!); assert(historyPreference?.checked);
   await act(async () => { historyPreference.click(); });
   await until(() => roots.every(root => historyToggle(root)?.checked === false), 'Saved preferences propagate to the other open window');
+  const restoreButton = (root: HTMLElement) => [...root.querySelectorAll('button')].find(button => button.textContent?.startsWith('Restore hidden replies'));
+  assert(roots.every(root => restoreButton(root)?.disabled), 'Nothing to restore until a reply is hidden');
+  hiddenReplies = ['12345678-1234-4234-8234-123456789abc']; changed();
+  await until(() => roots.every(root => restoreButton(root)?.disabled === false), 'Hidden replies enable the restore action in every open window');
+  await act(async () => { restoreButton(roots[0]!)!.click(); });
+  await until(() => roots.every(root => restoreButton(root)?.disabled), 'Restoring in one window clears hidden replies everywhere');
   await act(async () => { emailButton(roots[0]!)!.click(); });
   session.chatGPTConnection = { state: 'connected', email: 'another-fake@example.invalid', task: 'models' };
   session.chatGPTModelCatalog = [{ id: 'another-model', name: 'Shared replacement model' }];

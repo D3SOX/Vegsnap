@@ -697,8 +697,9 @@ internal fun ResultSheet(originalResult: JSONObject, onClose: () -> Unit, onRech
                                 for (index in 0 until findings.length()) appendLine(findings.getJSONObject(index).optString("explanation"))
                                 result.optJSONObject("companyAssessment")?.let { appendLine(it.optString("summary")) }
                             }.trim()
-                            ContentReportButton("ai", settings.offline, initialText = reportText)
+                            ContentReportButton(ReportSubject.AIOutput(reportText), settings.offline)
                         }
+                        ContentReportButton(ReportSubject.Result(result), settings.offline)
                         if (sendToAI && settings.offline && aiStatusText != R.string.ai_status_offline) {
                             Text(stringResource(R.string.ai_status_offline), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)

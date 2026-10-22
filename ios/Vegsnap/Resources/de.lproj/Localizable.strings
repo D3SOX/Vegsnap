@@ -180,6 +180,7 @@
 "On-device text recognition" = "Texterkennung auf dem Gerät";
 "Only mark a list complete when you have checked the entire label." = "Markiere eine Liste nur dann als vollständig, wenn du das gesamte Etikett geprüft hast.";
 "Only this reply’s reference and your reason are sent to the moderators." = "Nur die Referenz dieser Antwort und deine Begründung werden an die Moderation gesendet.";
+"Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days." = "Nur das Ergebnis, die aufgeführten Zutatenbegriffe mit Status und Regel-ID, Produktname und Marke, App-Sprache, Plattform und Version sowie dein Grund werden an den Moderationsdienst von Vegsnap auf Cloudflare gesendet. Fotos, gespeicherter Verlauf und Zugangsdaten werden nie mitgesendet. Meldungen sind privat und verfallen nach 30 Tagen.";
 "Open in Mail" = "In Mail öffnen";
 "Open product source" = "Produktquelle öffnen";
 "Open source" = "Quelle öffnen";
@@ -237,6 +238,7 @@
 "Report AI content" = "KI-Inhalt melden";
 "Report sent. Reference:" = "Meldung gesendet. Referenz:";
 "Report this reply" = "Diese Antwort melden";
+"Report wrong result" = "Falsches Ergebnis melden";
 "Research" = "Recherche";
 "Resolved" = "Behoben";
 "Response exceeds the size limit." = "Die Antwort überschreitet das Größenlimit.";
@@ -332,6 +334,7 @@
 "Wait for the active request to finish." = "Warte, bis die laufende Anfrage abgeschlossen ist.";
 "Web sources consulted" = "Webquellen herangezogen";
 "Website" = "Website";
+"What is wrong with this result?" = "Was ist an diesem Ergebnis falsch?";
 "What would clarify this?" = "Was würde dies klären?";
 "Whole product" = "Gesamtes Produkt";
 "Working…" = "In Bearbeitung…";
