@@ -63,8 +63,9 @@ class EvaluatorTest {
         for (index in 0 until fixtures.length()) {
             val case = fixtures.getJSONObject(index)
             val input = case.getJSONObject("input")
+            val parsed = case.optJSONArray("parsedIngredients")?.let { items -> (0 until items.length()).map { items.getString(it) } }
             val actual = evaluator.evaluate(CheckInput(input.optString("text"), input.optString("category", "other"),
-                if (input.has("complete")) input.getBoolean("complete") else null, name = input.optString("name"), locale = input.optString("locale", "en")))
+                if (input.has("complete")) input.getBoolean("complete") else null, name = input.optString("name"), locale = input.optString("locale", "en")), parsed)
             val expected = case.getJSONObject("expected")
             assertEquals(case.getString("id"), expected.getString("outcome"), actual.getString("outcome"))
             assertEquals(case.getString("id"), expected.getString("basis"), actual.getString("basis"))

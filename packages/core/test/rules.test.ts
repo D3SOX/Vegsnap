@@ -48,9 +48,15 @@ describe('extended animal matching', () => {
     expect(result.findings.map(item => [item.term, item.status, item.ruleId])).toEqual([['sugar', 'plant', 'sugar'], ['milk powder from alpine milk', 'animal', 'milk']]);
   });
   test('plant exceptions, negations, substitutes and flavours never match an animal rule', () => {
-    for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'milchsäurebakterien',
-      "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'ei sisällä maitoa']) {
+    for (const term of ['oat milk powder', 'hafermilchkonzentrat', 'kokosmilchpulver', 'cream of tartar', 'erdnussbutter', '-baumwolle', 'honigmelone', 'honey melon', 'butter bean', 'butter lettuce', 'silk tofu', 'milchsäurebakterien',
+      "lamb's lettuce", 'oyster mushroom powder', 'milk-free chocolate', 'milchfreie schokolade', 'mjölkfritt margarin', 'non-dairy creamer', 'vegan cheese alternative', 'laktosefrei', 'käsearoma', 'cheese flavour', 'cheddar cheese flavour',
+      'smak av honung', 'no added milk', 'free from eggs', 'egg substitute', 'synthetic beeswax', 'helianthus annuus pollen extract', 'ei sisällä maitoa']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
+    }
+  });
+  test('a modifier only blocks the mention it touches and "with" starts a new phrase', () => {
+    for (const [term, id] of [['free range eggs', 'egg'], ['lactose free milk', 'milk'], ['plant oil with milk', 'milk'], ['milk powder with natural flavouring', 'milk'], ['käseersatz mit eigelb', 'egg'], ['laktosefreie vollmilch', 'milk']] as const) {
+      expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
   test('plant and ambiguous rules only match exactly', () => {

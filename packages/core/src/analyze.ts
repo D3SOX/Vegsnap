@@ -64,17 +64,31 @@ export function needsProcessingEvidence(input: CheckInput): boolean {
 }
 
 const aliasRules = new Map(rulesData.rules.flatMap(rule => rule.aliases.map(alias => [normalizeTerm(alias), rule] as const)));
-const animalAliases = [...aliasRules].filter(([, rule]) => rule.status === 'animal').map(([alias]) => alias).sort((a, b) => b.length - a.length);
+// A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
+const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|cultures?|kultur\w*`;
+const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|${modifiers})(?:$|[^\p{L}])`, 'u');
+const substitutedAfter = new RegExp(String.raw`(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|${modifiers})(?:$|[^\p{L}])`, 'u');
+// "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
+const connector = /(?:^|[^\p{L}])(?:with|mit|med)(?=$|[^\p{L}])/u;
+// An alias that reads as a modifier itself (Finnish "ei" is German "Ei") only matches exactly.
+const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !negatedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
-// A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
-const exactOnly = /(?:^|[^\p{L}])(?:no|non|not|without|ohne|kein\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|cultures?|vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*)(?:$|[^\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak|kultur\w*)(?:$|[^\p{L}])/u;
-/** An exact alias wins; otherwise an animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+/** The item occurs (as a whole word unless it is a compound stem) without a modifier attached to that occurrence. */
+function mentioned(text: string, item: string, wholeWord: boolean): boolean {
+  for (let start = text.indexOf(item); start >= 0; start = text.indexOf(item, start + 1)) {
+    const end = start + item.length;
+    if (wholeWord && (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? ''))) continue;
+    if (!negatedBefore.test(text.slice(0, start).split(connector).pop()!) && !substitutedAfter.test(text.slice(end).split(connector)[0]!)) return true;
+  }
+  return false;
+}
+/** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
 export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
   const exact = aliasRules.get(term);
-  if (exact || exactOnly.test(term)) return exact;
+  if (exact) return exact;
   const remainder = plantExceptions.reduce((value, exception) => value.replaceAll(exception, ' '), term);
-  const alias = animalAliases.find(item => containsWord(remainder, item)) ?? compoundStems.find(stem => remainder.includes(stem));
+  const alias = animalAliases.find(item => mentioned(remainder, item, true)) ?? compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }
 const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i;
@@ -104,8 +118,9 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const parsed = parseSourceIngredients(text, parsedIngredients);
   // AI selects the actual ingredients; local animal/ambiguous rules remain a veto
   // even when an ingredient is omitted or hidden inside a misleading compound.
-  const guards = fallback.map(term => term.includes(':') ? normalizeTerm(term.slice(term.lastIndexOf(':') + 1)) : term)
-    .filter(term => ['animal', 'ambiguous'].includes(ruleForTerm(term)?.status ?? ''));
+  const veto = (term: string) => ['animal', 'ambiguous'].includes(ruleForTerm(term)?.status ?? '');
+  // The ingredient after a role prefix is the guard; the whole term still counts when only the prefix names an animal ("Milchschokolade: Zucker").
+  const guards = fallback.flatMap(term => [...(term.includes(':') ? [normalizeTerm(term.slice(term.lastIndexOf(':') + 1))] : []), term].filter(veto).slice(0, 1));
   const tokens = parsed ? [...parsed, ...guards] : fallback;
   const findings: Finding[] = [...new Set(tokens)].map(term => {
     const rule = ruleForTerm(term);

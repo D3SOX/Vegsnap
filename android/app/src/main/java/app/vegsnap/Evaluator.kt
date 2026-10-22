@@ -62,8 +62,23 @@ internal fun containsWord(text: String, word: String): Boolean {
     }
     return false
 }
-// A negated, substituted, imitated or flavour-only mention of an animal ingredient does not prove its presence.
-private val exactOnly = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|cultures?|vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*)(?:$|[^\\p{L}])|(?:frei|free|fri|los|ersatz|imitat|alternative|alternativ|ersättning|substitute|replacer|aroma|geschmack|smak|kultur\\w*)(?:$|[^\\p{L}])")
+// A negation or substitute before an animal mention, or a free-from, flavour, culture or substitute word after it, does not prove its presence.
+private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
+private val negatedBefore = Regex("(?:^|[^\\p{L}])(?:no|non|not|without|ohne|kein\\w*|ei|utan|inga?|ej|sans|sin|senza|traces?|spuren|spår|free (?:from|of)|frei von|fri från|$MODIFIERS)(?:$|[^\\p{L}])")
+private val substitutedAfter = Regex("(?:frei(?:e[rsmn]?)?|free|fri(?:tt|a)?|los(?:e[rsmn]?)?|$MODIFIERS)(?:$|[^\\p{L}])")
+// "with" starts a new phrase: "plant oil with milk" contains milk and "milk powder with natural flavouring" contains milk powder.
+private val connector = Regex("(?:^|[^\\p{L}])(?:with|mit|med)(?=$|[^\\p{L}])")
+/** The item occurs (as a whole word unless it is a compound stem) without a modifier attached to that occurrence. */
+internal fun mentioned(text: String, item: String, wholeWord: Boolean): Boolean {
+    var start = text.indexOf(item)
+    while (start >= 0) {
+        val end = start + item.length
+        val boundary = !wholeWord || !wordCharacter.containsMatchIn(text.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(text.getOrNull(end)?.toString().orEmpty())
+        if (boundary && !negatedBefore.containsMatchIn(text.substring(0, start).split(connector).last()) && !substitutedAfter.containsMatchIn(text.substring(end).split(connector).first())) return true
+        start = text.indexOf(item, start + 1)
+    }
+    return false
+}
 
 class Evaluator(private val rulesDocument: JSONObject) {
     private val rules = rulesDocument.getJSONArray("rules")
@@ -74,18 +89,18 @@ class Evaluator(private val rulesDocument: JSONObject) {
             for (alias in 0 until aliases.length()) put(normalizeCompositionTerm(aliases.getString(alias)), rule)
         }
     }
-    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.sortedByDescending { it.length }
+    // An alias that reads as a modifier itself (Finnish "ei" is German "Ei") only matches exactly.
+    private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot { negatedBefore.containsMatchIn(it) }.sortedByDescending { it.length }
     private val extendedMatching = rulesDocument.getJSONObject("extendedMatching")
     private val compoundStems = extendedMatching.getJSONArray("compoundStems").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }
     private val plantExceptions = extendedMatching.getJSONArray("plantExceptions").let { items -> (0 until items.length()).map { normalizeCompositionTerm(items.getString(it)) } }.sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
-    /** An exact alias wins; otherwise an animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+    /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
     private fun ruleForTerm(term: String): JSONObject? {
-        val exact = aliasRules[term]
-        if (exact != null || exactOnly.containsMatchIn(term)) return exact
+        aliasRules[term]?.let { return it }
         val remainder = plantExceptions.fold(term) { value, exception -> value.replace(exception, " ") }
-        val alias = animalAliases.firstOrNull { containsWord(remainder, it) } ?: compoundStems.firstOrNull { it in remainder }
+        val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) } ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
         return alias?.let { aliasRules[it] }
     }
     fun evaluate(input: CheckInput, parsedIngredients: List<String>? = null): JSONObject {
@@ -107,8 +122,9 @@ class Evaluator(private val rulesDocument: JSONObject) {
         val fallback = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
         val parsed = parsedIngredients?.let { parseSourceIngredients(input.text, JSONArray(it)) }
         // AI supplies the split; omissions and misleading compound assessments cannot erase known origins.
-        val guards = fallback.map { term -> if (':' in term) normalizeCompositionTerm(term.substringAfterLast(':')) else term }
-            .filter { ruleForTerm(it)?.optString("status") in setOf("animal", "ambiguous") }
+        val veto = { term: String -> ruleForTerm(term)?.optString("status") in setOf("animal", "ambiguous") }
+        // The ingredient after a role prefix is the guard; the whole term still counts when only the prefix names an animal ("Milchschokolade: Zucker").
+        val guards = fallback.mapNotNull { term -> (if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term) else listOf(term)).firstOrNull(veto) }
         val tokens = if (parsed != null) (parsed + guards).distinct() else fallback
         val findings = JSONArray()
         for (term in tokens) {

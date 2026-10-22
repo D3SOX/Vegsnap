@@ -540,7 +540,7 @@
   {
     "id": "extended-english-plant-phrases-never-vetoed",
     "input": {
-      "text": "Ingredients: soy milk base, cream of tartar, butterfly pea extract, lamb's lettuce, oyster mushroom powder",
+      "text": "Ingredients: soy milk base, cream of tartar, butterfly pea extract, lamb's lettuce, oyster mushroom powder, butter bean purée, honey melon pieces, butter lettuce, silk tofu",
       "category": "food"
     },
     "expected": {
@@ -598,6 +598,109 @@
     "input": {
       "text": "Obermaterial: Rindsleder\nFutter: Schurwolle",
       "category": "shoes"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-modifier-only-blocks-the-mention-it-touches",
+    "input": {
+      "text": "Ingredients: free range eggs, lactose free milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-with-starts-a-new-phrase-after-a-modifier",
+    "input": {
+      "text": "Ingredients: plant oil with milk",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-flavour-after-with-keeps-the-milk",
+    "input": {
+      "text": "Ingredients: sugar, milk powder with natural flavouring",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "extended-attached-modifiers-still-block",
+    "input": {
+      "text": "Ingredients: water, no added milk, free from eggs, smak av honung, egg substitute, milchfreie schokolade, mjölkfritt margarin, aroma mit milchgeschmack",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "extended-finnish-negation-is-not-a-german-egg",
+    "input": {
+      "text": "Ingredients: water, ei sisällä maitoa",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "guard-keeps-animal-role-prefix-the-ai-split-omits",
+    "input": {
+      "text": "Zutaten: Milchschokolade: Zucker, Kakaobutter",
+      "category": "food"
+    },
+    "parsedIngredients": [
+      "zucker",
+      "kakaobutter"
+    ],
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "synthetic-beeswax-is-a-synthetic-wax",
+    "input": {
+      "text": "Ingredients: aqua, synthetic beeswax, cera microcristallina",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "botanical-pollen-is-not-a-bee-product",
+    "input": {
+      "text": "Ingredients: aqua, helianthus annuus pollen extract",
+      "category": "cosmetics"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "bee-pollen-is-a-bee-product",
+    "input": {
+      "text": "Ingredients: sugar, bee pollen",
+      "category": "food"
     },
     "expected": {
       "outcome": "not_vegan",
