@@ -330,7 +330,7 @@
     <string name="previous_photo">Föregående foto</string>
     <string name="privacy">Integritet</string>
     <string name="privacy_policy">Integritetspolicy</string>
-    <string name="privacy_text">Inget konto, ingen analys och ingen molnhistorik. Analyserade foton sparas bara i den lokala historiken och tas bort när du raderar kontrollen. Metadata tas bort innan något skickas. API-nycklar krypteras med Android Keystore. Förfrågningar till offentliga databaser och AI avslöjar din IP-adress för de tjänsterna.</string>
+    <string name="privacy_text">Inget konto, ingen användningsanalys och ingen molnhistorik. Analyserade foton sparas bara i den lokala historiken och tas bort när du raderar kontrollen. Metadata tas bort innan något skickas. API-nycklar krypteras med Android Keystore. Förfrågningar till offentliga databaser och AI avslöjar din IP-adress för de tjänsterna.</string>
     <string name="private_model">För lokal Ollama avser localhost den här Android-enheten. Använd HTTPS för en server på en annan enhet.</string>
     <string name="product_country">Produktland</string>
     <string name="product_country_hint">Välj landet som produkten säljs för (t.ex. SE för Sverige). Det är inte tillverkarens plats. En sparad korrigering uppdaterar gemenskapens svar; kontrollera igen för att uppdatera den ursprungliga analysen.</string>
@@ -377,6 +377,9 @@
     <string name="report_reason">Varför rapporterar du det här innehållet?</string>
     <string name="report_reply">Rapportera det här svaret</string>
     <string name="report_reply_notice">Endast svarets referens och din anledning skickas till Vegsnaps modereringstjänst på Cloudflare. Ta bort personuppgifter från din anledning. Rapporter är privata och raderas efter 30 dagar.</string>
+    <string name="report_result">Rapportera felaktigt resultat</string>
+    <string name="report_result_notice">Endast resultatets bedömning, de listade ingredienserna med deras status och regel-ID:n, produktnamn och varumärke, appens språk, plattform och version samt din motivering skickas till Vegsnaps modereringstjänst på Cloudflare. Foton, sparad historik och inloggningsuppgifter ingår aldrig. Rapporter är privata och raderas efter 30 dagar.</string>
+    <string name="report_result_reason">Vad är fel med det här resultatet?</string>
     <string name="report_send">Skicka rapport</string>
     <string name="report_sending">Skickar…</string>
     <string name="report_sent">Rapporten har tagits emot. Tack. Referens: %1$s</string>

@@ -60,8 +60,8 @@ internal fun rankAlternatives(items: List<VeganAlternative>, input: AlternativeQ
     return items.sortedWith(compareByDescending<VeganAlternative> { score(it) }.thenBy { it.name })
         .distinctBy { it.barcode.takeIf { code -> code.isNotBlank() }?.padStart(14, '0') ?: "${alternativeKey(it.brand)}:${alternativeKey(it.name)}" }.take(20)
 }
-private val veganClaim = Regex("\\bvegan(?:e[nmrs]?)?\\b", RegexOption.IGNORE_CASE)
-private val negatedVeganClaim = Regex("\\b(?:not|non|never|cannot|nicht|kein\\w*|\\w+n['’]t)\\b[^.!?;\\n]*\\bvegan(?:e[nmrs]?)?\\b|\\bvegan(?:e[nmrs]?)?\\b\\s*[:?=-]\\s*(?:no|false|nein)\\b", RegexOption.IGNORE_CASE)
+private val veganClaim = Regex("\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b", RegexOption.IGNORE_CASE)
+private val negatedVeganClaim = Regex("\\b(?:not|non|never|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\\w*|\\w+n['’]t)\\b[^.!?;\\n]*\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b|\\bvegan(?:e[nmrs]?|sk[ta]?)?\\b\\s*[:?=-]\\s*(?:no|false|nein|nej|falskt)\\b", RegexOption.IGNORE_CASE)
 internal fun parseAIAlternatives(extraction: JSONObject, input: AlternativeQuery): List<VeganAlternative> {
     val research = extraction.optJSONObject("research") ?: return emptyList()
     if (!research.optBoolean("searched")) return emptyList()

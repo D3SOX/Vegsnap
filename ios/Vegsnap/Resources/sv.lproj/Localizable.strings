@@ -180,6 +180,7 @@
 "On-device text recognition" = "Textigenkänning på enheten";
 "Only mark a list complete when you have checked the entire label." = "Markera en lista som fullständig bara när du har kontrollerat hela etiketten.";
 "Only this reply’s reference and your reason are sent to the moderators." = "Endast svarets referens och din anledning skickas till moderatorerna.";
+"Only this result’s verdict, the listed ingredient terms with their status and rule IDs, the product name and brand, the app language, platform and version, and your reason are sent to Vegsnap’s moderation service on Cloudflare. Photos, saved history and credentials are never included. Reports are private and expire after 30 days." = "Endast resultatets bedömning, de listade ingredienserna med deras status och regel-ID:n, produktnamn och varumärke, appens språk, plattform och version samt din motivering skickas till Vegsnaps modereringstjänst på Cloudflare. Foton, sparad historik och inloggningsuppgifter ingår aldrig. Rapporter är privata och raderas efter 30 dagar.";
 "Open in Mail" = "Öppna i Mail";
 "Open product source" = "Öppna produktkällan";
 "Open source" = "Öppna källa";
@@ -237,6 +238,7 @@
 "Report AI content" = "Rapportera AI-innehåll";
 "Report sent. Reference:" = "Rapporten har skickats. Referens:";
 "Report this reply" = "Rapportera det här svaret";
+"Report wrong result" = "Rapportera felaktigt resultat";
 "Research" = "Research";
 "Resolved" = "Åtgärdad";
 "Response exceeds the size limit." = "Svaret överskrider storleksgränsen.";
@@ -332,6 +334,7 @@
 "Wait for the active request to finish." = "Vänta tills den pågående förfrågan är klar.";
 "Web sources consulted" = "Webbkällor konsulterade";
 "Website" = "Webbplats";
+"What is wrong with this result?" = "Vad är fel med det här resultatet?";
 "What would clarify this?" = "Vad skulle klargöra detta?";
 "Whole product" = "Hela produkten";
 "Working…" = "Arbetar…";

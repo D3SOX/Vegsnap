@@ -21,10 +21,13 @@ export default defineContentScript({
     const uiLanguage = browser.i18n.getUILanguage();
     let language: Language = /^de/i.test(uiLanguage) ? 'de' : /^sv/i.test(uiLanguage) ? 'sv' : 'en';
     let t = storeMessages[language];
+    let languageGeneration = 0;
+    let settingsChangedSinceRead = false;
     // Badges follow the language saved in Vegsnap, like the results they show; the browser language is only the first-launch default.
     function applyLanguage(value: unknown) {
       if (!languages.includes(value as Language) || value === language) return;
       language = value as Language; t = storeMessages[language];
+      languageGeneration++;
       // Completed lookups carry result text in the old language, so every badge starts over.
       for (const [host, binding] of badges) {
         const label = host.shadowRoot?.querySelector('span');
@@ -34,8 +37,13 @@ export default defineContentScript({
       }
     }
     const savedLanguage = (settings: unknown) => (settings as { language?: unknown } | undefined)?.language;
-    void browser.storage.local.get('settings').then(stored => applyLanguage(savedLanguage(stored.settings))).catch(() => {});
-    const settingsChanged = (changes: Record<string, { newValue?: unknown }>, area: string) => { if (area === 'local' && changes.settings) applyLanguage(savedLanguage(changes.settings.newValue)); };
+    void browser.storage.local.get('settings').then(stored => { if (active && !settingsChangedSinceRead) applyLanguage(savedLanguage(stored.settings)); }).catch(() => {});
+    const settingsChanged = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area === 'local' && changes.settings) {
+        settingsChangedSinceRead = true;
+        applyLanguage(savedLanguage(changes.settings.newValue));
+      }
+    };
     browser.storage.onChanged.addListener(settingsChanged);
     const current = (host: HTMLElement, binding: ProductBinding) => active && host.isConnected && badges.get(host) === binding && isCurrentProductBinding(binding, location.href);
     const observer = new IntersectionObserver(entries => {
@@ -44,16 +52,18 @@ export default defineContentScript({
         const host = entry.target as HTMLElement;
         const binding = badges.get(host);
         if (!binding?.product.barcode) continue;
+        const generation = languageGeneration;
+        const lookupCurrent = () => generation === languageGeneration && current(host, binding);
         queue = queue.then(async () => {
-          if (!current(host, binding)) return;
+          if (!lookupCurrent()) return;
           const label = host.shadowRoot?.querySelector('span');
           if (label) label.textContent = t.checking;
           try {
             const response = await browser.runtime.sendMessage({ type: 'background-check', barcode: binding.product.barcode }) as Reply<CheckResult>;
-            if (!current(host, binding)) return;
+            if (!lookupCurrent()) return;
             if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : t.check;
             host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
-          } catch { if (label && current(host, binding)) label.textContent = t.check; }
+          } catch { if (label && lookupCurrent()) label.textContent = t.check; }
           await new Promise(resolve => setTimeout(resolve, 1600));
         }).catch(() => {});
       }

@@ -66,6 +66,8 @@ try {
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'Idle badges follow the language saved in Vegsnap');
+  await settle();
+  assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'An older initial settings read cannot overwrite a language-change event');
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
   assert(badges().every(host => !host.closest('a')), 'Check buttons are never nested in store product links');
@@ -150,6 +152,21 @@ try {
   assert(visibility.observed.has(languageHost), 'A reset badge is checked again in the new language once visible');
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
   fourth.invalidate();
+  assert.equal(badges().length, 0);
+
+  document.body.innerHTML = await fixture('dm-current');
+  const fifth = context(); script.main(fifth.ctx);
+  await settle();
+  const pendingHost = badges()[0]!;
+  VisibilityObserver.instances.at(-1)!.show(pendingHost);
+  await settle();
+  assert.equal(lookups.length, 1);
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
+  lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Old English result', summary: 'Old English summary' } });
+  await settle();
+  assert.equal(button(pendingHost).textContent, 'Vegsnap · Kontrollera', 'A pending lookup cannot restore an old-language result after a switch');
+  assert.equal(pendingHost.title, '');
+  fifth.invalidate();
   assert.equal(badges().length, 0);
   console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, language switches, reinjection and disable cleanup verified');
 } finally {
