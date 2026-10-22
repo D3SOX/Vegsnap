@@ -1,6 +1,10 @@
+import { createReadStream } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
+import { pipeline } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { createGunzip } from 'node:zlib';
 import { normalizeBarcode } from '../packages/core/src/database';
 import { OFFLINE_MAX_BYTES, OFFLINE_MAX_PRODUCTS, validateOfflineSnapshot } from '../packages/core/src/offline';
 
@@ -24,7 +28,8 @@ export interface OfflineSnapshot {
 const SOURCE = 'https://world.openfoodfacts.org';
 const ORIGINS: Record<SourceId, string> = { off: SOURCE, obf: 'https://world.openbeautyfacts.org', opf: 'https://world.openproductsfacts.org' };
 const DOMAIN: Record<'obf' | 'opf', string> = { obf: 'openbeautyfacts', opf: 'openproductsfacts' };
-const EXPORT = 'https://mirabelle.openfoodfacts.org/products.json';
+const FOOD_EXPORT = 'https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz';
+const FOOD_EXPORT_BYTES = 4 * 1024 ** 3;
 const EU = ['austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech-republic', 'denmark', 'estonia',
   'finland', 'france', 'germany', 'greece', 'hungary', 'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg',
   'malta', 'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 'spain', 'sweden'];
@@ -36,16 +41,6 @@ export function regionQueries(region: Region): { countries: string[]; exclude: s
     { countries: ['sweden'], exclude: ['germany'], limit: 1_500 },
     { countries: EU.filter(country => country !== 'germany' && country !== 'sweden'), exclude: ['germany', 'sweden'], limit: 2_500 },
   ];
-}
-export function exportUrl(query: ReturnType<typeof regionQueries>[number]): string {
-  // All country names and limits come from the fixed recipes above, never user SQL.
-  const match = (country: string) => `countries_tags LIKE '%en:${country}%'`;
-  const where = [`(${query.countries.map(match).join(' OR ')})`, ...query.exclude.map(country => `NOT (${match(country)})`),
-    "length(product_name) BETWEEN 1 AND 500", "length(brands) <= 500", "length(ingredients_text) <= 12000"];
-  const sql = `SELECT code,product_name,brands,ingredients_text,countries_tags,last_modified_t FROM [all] WHERE ${where.join(' AND ')} ORDER BY unique_scans_n DESC, code LIMIT ${query.limit}`;
-  const url = new URL(EXPORT);
-  url.searchParams.set('sql', sql); url.searchParams.set('_shape', 'objects'); url.searchParams.set('_size', 'max');
-  return url.href;
 }
 function object(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -117,24 +112,6 @@ async function readSnapshot(path: string, region: Region): Promise<OfflineSnapsh
     const raw: unknown = JSON.parse(bytes.toString('utf8'));
     return usableSnapshot(raw, region) ? raw : undefined;
   } catch { return; }
-}
-async function readExport(response: Response, limit: number): Promise<unknown[]> {
-  if (!response.ok) throw new Error(`Export HTTP ${response.status}`);
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('Empty export response');
-  const chunks: Uint8Array[] = []; let length = 0;
-  try {
-    while (true) {
-      const next = await reader.read(); if (next.done) break;
-      length += next.value.byteLength;
-      if (length > 64 * 1024 * 1024) throw new Error('Export exceeds download bound');
-      chunks.push(next.value);
-    }
-  } finally { await reader.cancel(); }
-  const raw: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  const result = object(raw);
-  if (result?.ok !== true || result.truncated !== false || !Array.isArray(result.rows) || result.rows.length > limit) throw new Error('Incomplete or invalid export');
-  return result.rows;
 }
 export function* parseTsv(text: string): Generator<Record<string, string>> {
   let headers: string[] | undefined, fields: string[] = [], field = '', quoted = false;
@@ -217,6 +194,65 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   }
   return { source, rows, retrievedAt };
 }
+/** Keeps each recipe's most-scanned usable products from the official food export, in the order createSnapshot fills packs. */
+export async function selectFood(region: Region, rows: AsyncIterable<string>): Promise<unknown[][]> {
+  const recipes = regionQueries(region), tags = new Set(recipes.flatMap(recipe => recipe.countries).map(country => `en:${country}`));
+  const groups = recipes.map(() => [] as { scans: number; code: string; row: Record<string, unknown> }[]);
+  const rank = (a: { scans: number; code: string }, b: { scans: number; code: string }) =>
+    b.scans - a.scans || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
+  let columns: Record<string, number> | undefined;
+  for await (const line of rows) {
+    // The export has no quoting: every line is one product, and fields never contain tabs or newlines.
+    if (!columns) {
+      const headers = line.replace(/^\uFEFF/u, '').split('\t');
+      columns = Object.fromEntries(['code', 'product_name', 'brands', 'ingredients_text', 'countries_tags', 'last_modified_t', 'unique_scans_n'].map(key => [key, headers.indexOf(key)]));
+      if (Object.values(columns).some(index => index < 0)) throw new Error('Missing food export columns');
+      continue;
+    }
+    if (![...tags].some(tag => line.includes(tag))) continue;
+    const fields = line.split('\t'), field = (key: string) => fields[columns![key]!] ?? '';
+    const row = { code: field('code'), product_name: field('product_name'), brands: field('brands'), ingredients_text: field('ingredients_text'),
+      countries_tags: field('countries_tags'), last_modified_t: Number(field('last_modified_t')) };
+    const product = normalizeProduct(row);
+    if (!product) continue;
+    const scans = Number(field('unique_scans_n')) || 0;
+    let copy: Record<string, unknown> | undefined;
+    recipes.forEach((recipe, index) => {
+      if (!recipe.countries.some(country => product.countries_tags.includes(`en:${country}`)) ||
+          recipe.exclude.some(country => product.countries_tags.includes(`en:${country}`))) return;
+      const group = groups[index]!;
+      // Split fields share the decompressed chunk's memory; a copy lets each chunk be freed.
+      copy ??= JSON.parse(JSON.stringify(row)) as Record<string, unknown>;
+      group.push({ scans, code: copy.code as string, row: copy });
+      if (group.length >= 2 * recipe.limit) { group.sort(rank); group.length = recipe.limit; }
+    });
+  }
+  if (!columns) throw new Error('Empty food export');
+  if (groups.every(group => !group.length)) throw new Error('Export did not contain usable products');
+  return groups.map((group, index) => group.sort(rank).slice(0, recipes[index]!.limit).map(entry => entry.row));
+}
+async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Promise<{ path: string; retrievedAt: string }> {
+  const path = resolve(cache, 'off.csv.gz'), metadataPath = `${path}.json`;
+  try {
+    const entry = object(JSON.parse(await readFile(metadataPath, 'utf8')));
+    const age = typeof entry?.retrievedAt === 'string' ? now.getTime() - Date.parse(entry.retrievedAt) : Infinity;
+    if (age >= 0 && age < CACHE_TTL_MS && entry?.bytes === Bun.file(path).size) return { path, retrievedAt: entry.retrievedAt as string };
+  } catch { /* Missing/invalid cache is refreshed from the official export. */ }
+  // The static URL redirects to the current file on Open Food Facts' S3 bucket.
+  const response = await fetcher(FOOD_EXPORT, { headers: { 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' }, signal: AbortSignal.timeout(1_800_000) });
+  if (!response.ok) throw new Error(`off export HTTP ${response.status}`);
+  if (Number(response.headers.get('content-length') ?? 0) > FOOD_EXPORT_BYTES) throw new Error('Download exceeds size bound');
+  const temporary = `${path}.${crypto.randomUUID()}.tmp`;
+  await mkdir(cache, { recursive: true });
+  try {
+    const bytes = await Bun.write(temporary, response);
+    if (bytes > FOOD_EXPORT_BYTES) throw new Error('Download exceeds size bound');
+    await rename(temporary, path);
+    await writeFile(`${temporary}.json`, JSON.stringify({ url: FOOD_EXPORT, retrievedAt: now.toISOString(), sourceDate: response.headers.get('last-modified'), bytes }), { flag: 'wx' });
+    await rename(`${temporary}.json`, metadataPath);
+  } finally { await rm(temporary, { force: true }); await rm(`${temporary}.json`, { force: true }); }
+  return { path, retrievedAt: now.toISOString() };
+}
 export async function refreshSnapshot(options: { output: string; region?: Region; force?: boolean; strict?: boolean;
   fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }): Promise<'cached' | 'updated' | 'stale'> {
   const region = options.region ?? 'de-eu', now = options.now ?? new Date(), log = options.log ?? console.log;
@@ -231,23 +267,27 @@ export async function refreshSnapshot(options: { output: string; region?: Region
   }
   const temporary = `${options.output}.${crypto.randomUUID()}.tmp`;
   try {
-    const groups: unknown[][] = [];
-    for (const query of regionQueries(region)) {
-      log(`Offline ${region}: fetching ${query.limit} food candidates for ${query.countries.length === 1 ? query.countries[0] : 'EU'}.`);
-      // Mirabelle sorts the whole table per query and allows up to 280 s of SQL time.
-      const response = await (options.fetcher ?? fetch)(exportUrl(query), { headers: { Accept: 'application/json', 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' },
-        redirect: 'error', signal: AbortSignal.timeout(300_000) });
-      groups.push(await readExport(response, query.limit));
+    const cache = options.sourceCache ?? resolve(dirname(options.output), '..', '..', 'artifacts/offline/source-cache');
+    log(`Offline ${region}: preparing off food export.`);
+    const food = await foodExport(cache, now, options.fetcher ?? fetch);
+    // The decompressed export is about 10 GB, so it is read line by line.
+    let groups: unknown[][];
+    // pipeline forwards read errors, so they reject the line iterator instead of escaping as unhandled events.
+    try { groups = await selectFood(region, createInterface({ input: pipeline(createReadStream(food.path), createGunzip(), () => {}), crlfDelay: Infinity })); }
+    catch (error) {
+      // A truncated or unusable download must not be reused from the cache on the next run.
+      await rm(`${food.path}.json`, { force: true }); await rm(food.path, { force: true });
+      throw error;
     }
     const extra: { source: 'obf' | 'opf'; rows: unknown[]; retrievedAt: string }[] = [];
     if (options.includeNonfood !== false) {
-      const cache = options.sourceCache ?? resolve(dirname(options.output), '..', '..', 'artifacts/offline/source-cache');
       for (const source of ['obf', 'opf'] as const) {
         log(`Offline ${region}: preparing ${source} regional export.`);
         extra.push(await nonfoodRows(source, cache, now, options.fetcher ?? fetch));
       }
     }
     const pack = createSnapshot(region, groups, now, extra);
+    pack.sources[0]!.retrievedAt = food.retrievedAt;
     const content = `${JSON.stringify(pack)}\n`;
     if (Buffer.byteLength(content) > packLimits(region).bytes) throw new Error('Snapshot exceeds pack size limit');
     await mkdir(dirname(options.output), { recursive: true });
