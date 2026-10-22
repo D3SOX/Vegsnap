@@ -2150,5 +2150,16 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "german-egg-with-dative-adjective",
+    "input": {
+      "text": "Zutaten: Nudeln mit frischem Ei, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
