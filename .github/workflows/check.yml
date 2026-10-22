@@ -1,11 +1,15 @@
 name: Checks
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   extension:
@@ -26,6 +30,9 @@ jobs:
           version-file: pyproject.toml
       - run: bun run test
       - run: bun run test:package
+        # Reuse the checked-in Open Food Facts snapshot instead of refreshing it over the network.
+        env:
+          VEGSNAP_OFFLINE_SNAPSHOT: cached
       - run: bun run test:screenshots
       - run: python3 -m unittest discover -s scripts -p 'test_extension_stores.py' -v
 
@@ -40,6 +47,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - run: ./gradlew testDebugUnitTest lintDebug
         working-directory: android
       - name: Lint Kotlin with detekt
