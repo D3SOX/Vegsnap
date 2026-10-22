@@ -2645,5 +2645,16 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "colon-ins-list-keeps-every-number",
+    "input": {
+      "text": "Ingredients: sugar, colours: 100, 120",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
