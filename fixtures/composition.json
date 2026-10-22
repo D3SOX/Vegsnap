@@ -2128,5 +2128,16 @@
       "outcome": "uncertain",
       "basis": "insufficient"
     }
+  },
+  {
+    "id": "german-egg-context-binds-its-own-occurrence",
+    "input": {
+      "text": "Ainesosat: kaurapohja, ei sisällä maitoa / ohne frisches Ei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
   }
 ]

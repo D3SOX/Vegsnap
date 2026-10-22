@@ -74,6 +74,8 @@ private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]
 // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst").
 private fun qualified(qualifiers: String): String = "(?:non|nicht|icke)[-–]?(?:$qualifiers)\\p{L}{0,2}|(?:$qualifiers)[-–]?\\s?(?:$FREE_FROM)"
 private data class QualifierDomain(val qualifiers: String, val rules: Set<String>)
+/** Words that must surround an exact-only alias for it to count inside a longer term ("frisches Ei", "Ei aus Freilandhaltung"). */
+private data class WordContext(val before: Regex, val after: Regex)
 private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
@@ -131,7 +133,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
         (0 until items.length()).map { index ->
             val context = items.getJSONObject(index)
             val alias = normalizeCompositionTerm(context.getString("alias"))
-            alias to Regex("(?:^|[^\\p{L}\\p{N}])(?:(?:${context.getString("before")})\\s+$alias|$alias\\s+(?:${context.getString("after")}))(?=$|[^\\p{L}\\p{N}])")
+            alias to WordContext(Regex("(?:^|[^\\p{L}\\p{N}])(?:${context.getString("before")})\\s+$"), Regex("^\\s+(?:${context.getString("after")})(?=$|[^\\p{L}\\p{N}])"))
         }
     }
     private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
@@ -172,16 +174,19 @@ class Evaluator(private val rulesDocument: JSONObject) {
         return text.substring(from, start) to text.substring(end, to)
     }
     /** The item occurs (as a whole word, or as a compound stem forming a component) without a negation or modifier covering that occurrence. */
-    private fun mentioned(text: String, item: String, wholeWord: Boolean): Boolean {
+    private fun mentioned(text: String, item: String, wholeWord: Boolean, context: WordContext? = null): Boolean {
         var start = text.indexOf(item)
         while (start >= 0) {
             val end = start + item.length
             val (before, after) = scopeAround(text, start, end)
             val boundary = if (wholeWord) !wordCharacter.containsMatchIn(text.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(text.getOrNull(end)?.toString().orEmpty())
                 else component(before.takeLastWhile { it.isLetter() }.length, item, after.takeWhile { it.isLetter() }.length)
-            val blockedBefore = { negated(before.split(phrase).last(), aliasRules[item]?.getString("id").orEmpty()) || modifiedBefore.containsMatchIn(before.split(conjunct).last()) }
-            val blockedAfter = { freed(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first()) }
-            if (boundary && !blockedBefore() && !blockedAfter()) return true
+            val inContext = { context == null || context.before.containsMatchIn(before) || context.after.containsMatchIn(after) }
+            val blocked = {
+                negated(before.split(phrase).last(), aliasRules[item]?.getString("id").orEmpty()) || modifiedBefore.containsMatchIn(before.split(conjunct).last()) ||
+                    freed(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first())
+            }
+            if (boundary && inContext() && !blocked()) return true
             start = text.indexOf(item, start + 1)
         }
         return false
@@ -224,7 +229,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
         aliasRules[term]?.let { return it }
         val remainder = withoutPlantExceptions(term)
         val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) }
-            ?: exactOnlyContexts.firstOrNull { (contextAlias, pattern) -> pattern.containsMatchIn(remainder) && mentioned(remainder, contextAlias, true) }?.first
+            ?: exactOnlyContexts.firstOrNull { (contextAlias, context) -> mentioned(remainder, contextAlias, true, context) }?.first
             ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
         return alias?.let { aliasRules[it] }
     }
