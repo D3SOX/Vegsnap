@@ -20,6 +20,8 @@ import okhttp3.Request
 import org.json.JSONObject
 
 internal const val DEFAULT_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog-v2.json"
+// Releases before 20 MB packs used this frozen catalog as the default; a saved copy follows the weekly catalog instead.
+private const val LEGACY_REGIONAL_CATALOG = "https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json"
 internal const val REGIONAL_CATALOG_BYTES = 256_000
 internal data class RegionalPackDescriptor(val id: String, val region: String, val url: String, val bytes: Long,
     val sha256: String, val generatedAt: String, val products: Int)
@@ -120,7 +122,8 @@ internal class RegionalPacks(private val directory: File, private val database: 
     suspend fun initialize() = withContext(Dispatchers.IO) { lock.withLock { initializeLocked() } }
     private fun initializeLocked() {
         if (state.value.ready) return
-        val source = settingsFile.takeIf { it.isFile && it.length() <= 2000 }?.readText()?.takeIf(::validPackUrl) ?: DEFAULT_REGIONAL_CATALOG
+        val source = settingsFile.takeIf { it.isFile && it.length() <= 2000 }?.readText()?.takeIf(::validPackUrl)
+            ?.takeUnless { it == LEGACY_REGIONAL_CATALOG } ?: DEFAULT_REGIONAL_CATALOG
         val packs = runCatching {
             if (!catalogFile.isFile || catalogFile.length() > REGIONAL_CATALOG_BYTES) emptyList() else parseRegionalCatalog(catalogFile.readBytes())
         }.getOrDefault(emptyList())

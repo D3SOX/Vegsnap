@@ -173,6 +173,17 @@ class RegionalPacksTest {
         assertEquals("https://other.example/catalog.json", reloaded.state.value.catalogUrl)
         assertTrue(reloaded.state.value.packs.isEmpty())
     }
+    @Test fun `saved legacy default catalog follows the weekly catalog while custom sources stay`() = withDatabase { database, folder ->
+        val directory = File(folder, "downloads").apply { mkdirs() }
+        File(directory, "catalog-source").writeText("https://github.com/D3SOX/vegsnap/releases/download/offline-data/catalog.json")
+        val migrated = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        migrated.initialize()
+        assertEquals(DEFAULT_REGIONAL_CATALOG, migrated.state.value.catalogUrl)
+        File(directory, "catalog-source").writeText("https://other.example/catalog.json")
+        val custom = RegionalPacks(directory, database, FakeDownload(mutableMapOf()))
+        custom.initialize()
+        assertEquals("https://other.example/catalog.json", custom.state.value.catalogUrl)
+    }
     @Test fun `HTTPS release redirect follows without credentials and HTTP downgrade is rejected`() = runBlocking {
         MockWebServer().use { server ->
             val http = OkHttpClient.Builder().followRedirects(false).addInterceptor { chain ->
