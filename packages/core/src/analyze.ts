@@ -95,6 +95,9 @@ const conjunction = new RegExp(`^(?:${conjunctions}|&|/)$`, 'u');
 const words = (value: string) => value.match(/[\p{L}\p{N}]+|[&/]/gu) ?? [];
 // An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg.
 const exactOnlyAliases = new Set(rulesData.extendedMatching.exactOnlyAliases.map(normalizeTerm));
+// A listed context lets an exact-only alias count as a word: a German adjective before it or a German preposition after it ("frisches Ei", "Ei aus Freilandhaltung").
+const exactOnlyContexts = rulesData.extendedMatching.exactOnlyContexts.map(context => ({ alias: normalizeTerm(context.alias),
+  pattern: new RegExp(String.raw`(?:^|[^\p{L}\p{N}])(?:(?:${context.before})\s+${normalizeTerm(context.alias)}|${normalizeTerm(context.alias)}\s+(?:${context.after}))(?=$|[^\p{L}\p{N}])`, 'u') }));
 const animalAliases = [...aliasRules].filter(([alias, rule]) => rule.status === 'animal' && !exactOnlyAliases.has(alias) && !negatedBefore.test(alias) && !modifiedBefore.test(alias)).map(([alias]) => alias).sort((a, b) => b.length - a.length);
 const compoundStems = rulesData.extendedMatching.compoundStems.map(normalizeTerm).sort((a, b) => b.length - a.length);
 const plantExceptions = rulesData.extendedMatching.plantExceptions.map(normalizeTerm).sort((a, b) => b.length - a.length);
@@ -130,13 +133,20 @@ function freed(after: string): boolean {
 function component(prefix: number, stem: string, suffix: number): boolean {
   return (prefix === 0 || prefix >= 3 && stem.length >= 4) && (suffix === 0 || suffix >= 4);
 }
+// Negation, modifier and free-from scopes on real labels span far less than this, so each mention only looks this far around itself and repeated mentions stay linear.
+// The window ends on word boundaries, so a cut word never reads as "no" or "free", and a scope cut off by it can only make a mention count, never hide one.
+const scopeWindow = 300;
+const wordCharacter = /[\p{L}\p{N}]/u;
 /** The item occurs (as a whole word, or as a compound stem forming a component) without a negation or modifier covering that occurrence. */
 function mentioned(text: string, item: string, wholeWord: boolean): boolean {
   for (let start = text.indexOf(item); start >= 0; start = text.indexOf(item, start + 1)) {
     const end = start + item.length;
-    if (wholeWord) { if (/[\p{L}\p{N}]/u.test(text[start - 1] ?? '') || /[\p{L}\p{N}]/u.test(text[end] ?? '')) continue; }
-    else if (!component(/\p{L}*$/u.exec(text.slice(0, start))![0].length, item, /^\p{L}*/u.exec(text.slice(end))![0].length)) continue;
-    const before = text.slice(0, start), after = text.slice(end);
+    let from = Math.max(0, start - scopeWindow), to = Math.min(text.length, end + scopeWindow);
+    if (from > 0) while (from < start && wordCharacter.test(text[from - 1]!)) from++;
+    if (to < text.length) while (to > end && wordCharacter.test(text[to]!)) to--;
+    const before = text.slice(from, start), after = text.slice(end, to);
+    if (wholeWord) { if (wordCharacter.test(text[start - 1] ?? '') || wordCharacter.test(text[end] ?? '')) continue; }
+    else if (!component(/\p{L}*$/u.exec(before)![0].length, item, /^\p{L}*/u.exec(after)![0].length)) continue;
     if (negated(before.split(phrase).pop()!, aliasRules.get(item)?.id ?? '') || modifiedBefore.test(before.split(conjunct).pop()!)) continue;
     if (freed(after.split(phrase)[0]!) || modifiedAfter.test(after.split(conjunct)[0]!)) continue;
     return true;
@@ -176,7 +186,9 @@ export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | un
   const exact = aliasRules.get(term);
   if (exact) return exact;
   const remainder = withoutPlantExceptions(term);
-  const alias = animalAliases.find(item => mentioned(remainder, item, true)) ?? compoundStems.find(stem => mentioned(remainder, stem, false));
+  const alias = animalAliases.find(item => mentioned(remainder, item, true)) ??
+    exactOnlyContexts.find(context => context.pattern.test(remainder) && mentioned(remainder, context.alias, true))?.alias ??
+    compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }
 const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti)\s*:\s*/i;
