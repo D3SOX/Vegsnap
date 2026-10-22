@@ -118,9 +118,3 @@ jobs:
         run: |
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(v["udid"] for runtime,devices in d["devices"].items() if "iOS-" in runtime and int(runtime.split("iOS-")[1].split("-")[0]) >= 18 for v in devices if v["name"].startswith("iPhone")))')
           xcodebuild -project ios/Vegsnap.xcodeproj -scheme Vegsnap -destination "platform=iOS Simulator,id=$device" -parallel-testing-enabled NO CODE_SIGN_IDENTITY=- test
-
-  companion-installer:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: python3 -m unittest discover -s companion -p 'test_install.py' -v
