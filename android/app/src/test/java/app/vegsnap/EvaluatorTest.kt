@@ -80,6 +80,15 @@ class EvaluatorTest {
         assertEquals("uncertain", result.getString("outcome"))
         assertTrue("took $elapsed ms", elapsed < 3_000)
     }
+    /** Every mention checks its own negation scope, so a term of repeated negations must still resolve near-linearly. */
+    @Test fun aLongTermOfRepeatedNegationsResolvesQuickly() {
+        val term = "no milk ".repeat(2_500).take(20_000).trim()
+        val started = System.nanoTime()
+        val result = evaluator.evaluate(CheckInput(term, "food", true))
+        val elapsed = (System.nanoTime() - started) / 1_000_000
+        assertEquals("uncertain", result.getString("outcome"))
+        assertTrue("took $elapsed ms", elapsed < 3_000)
+    }
     @Test fun completeAutoPlantListAsksForCategoryInsteadOfEmptyIngredientOrigin() {
         for ((locale, question) in listOf("en" to "Identify the product category to assess its ingredients and production requirements.", "de" to "Die Produktkategorie bestimmen, um Zutaten und Herstellungsverfahren zu bewerten.")) {
             val result = evaluator.evaluate(CheckInput("water, salt", "other", true, locale = locale))

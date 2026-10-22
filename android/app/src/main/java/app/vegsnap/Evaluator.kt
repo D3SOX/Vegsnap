@@ -52,6 +52,9 @@ internal fun needsProcessingEvidence(input: CheckInput): Boolean = input.categor
     Regex("(?:^|[^\\p{L}\\p{N}])öl(?=$|[^\\p{L}\\p{N}])", RegexOption.IGNORE_CASE).containsMatchIn(input.name)
 
 private val wordCharacter = Regex("[\\p{L}\\p{N}]")
+// Negation, modifier and free-from scopes on real labels span far less than this, so each mention only looks this far around itself and repeated mentions stay linear.
+// The window ends on word boundaries, so a cut word never reads as "no" or "free", and a scope cut off by it can only make a mention count, never hide one.
+private const val SCOPE_WINDOW = 300
 internal fun containsWord(text: String, word: String): Boolean {
     var start = text.indexOf(word)
     while (start >= 0) {
@@ -71,6 +74,8 @@ private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]
 // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst").
 private fun qualified(qualifiers: String): String = "(?:non|nicht|icke)[-–]?(?:$qualifiers)\\p{L}{0,2}|(?:$qualifiers)[-–]?\\s?(?:$FREE_FROM)"
 private data class QualifierDomain(val qualifiers: String, val rules: Set<String>)
+/** Words that must surround an exact-only alias for it to count inside a longer term ("frisches Ei", "Ei aus Freilandhaltung"). */
+private data class WordContext(val before: Regex, val after: Regex)
 private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|cultures?|kultur\\w*"
@@ -123,6 +128,14 @@ class Evaluator(private val rulesDocument: JSONObject) {
     /** An alias that reads as a negation or modifier itself ("pflanzlich gegerbtes Leder") or doubles as a word of another language ("ei": Finnish "not", Romanian "they") only matches exactly; inside longer text it is as likely an OCR fragment as an egg. */
     private val exactOnlyAliases = extendedTerms("exactOnlyAliases").toSet()
     private fun readsAsModifier(alias: String): Boolean = alias in exactOnlyAliases || negatedBefore.containsMatchIn(alias) || modifiedBefore.containsMatchIn(alias)
+    /** A listed context lets an exact-only alias count as a word: a German adjective before it or a German preposition after it ("frisches Ei", "Ei aus Freilandhaltung"). */
+    private val exactOnlyContexts = extendedMatching.getJSONArray("exactOnlyContexts").let { items ->
+        (0 until items.length()).map { index ->
+            val context = items.getJSONObject(index)
+            val alias = normalizeCompositionTerm(context.getString("alias"))
+            alias to WordContext(Regex("(?:^|[^\\p{L}\\p{N}])(?:${context.getString("before")})\\s+$"), Regex("^\\s+(?:${context.getString("after")})(?=$|[^\\p{L}\\p{N}])"))
+        }
+    }
     private val animalAliases = aliasRules.filterValues { it.getString("status") == "animal" }.keys.filterNot(::readsAsModifier).sortedByDescending { it.length }
     /** Hosts allowed to settle a web claim as certification evidence (shared with the TypeScript core). */
     internal val veganCertifiers: Set<String> = rulesDocument.optJSONArray("veganCertifiers")?.let { items -> (0 until items.length()).map { items.getString(it) }.toSet() }.orEmpty()
@@ -152,18 +165,28 @@ class Evaluator(private val rulesDocument: JSONObject) {
         for (index in list.indices step 2) if (!conjunction.matches(list[index]) || index + 1 >= list.size || conjunction.matches(list[index + 1])) return false
         return !between.last().isLetter() || aliasRules.containsKey(list.last())
     }
+    /** The text within the scope window before and after a mention, cut back to word boundaries. */
+    private fun scopeAround(text: String, start: Int, end: Int): Pair<String, String> {
+        var from = maxOf(0, start - SCOPE_WINDOW)
+        var to = minOf(text.length, end + SCOPE_WINDOW)
+        if (from > 0) while (from < start && wordCharacter.matches(text[from - 1].toString())) from++
+        if (to < text.length) while (to > end && wordCharacter.matches(text[to].toString())) to--
+        return text.substring(from, start) to text.substring(end, to)
+    }
     /** The item occurs (as a whole word, or as a compound stem forming a component) without a negation or modifier covering that occurrence. */
-    private fun mentioned(text: String, item: String, wholeWord: Boolean): Boolean {
+    private fun mentioned(text: String, item: String, wholeWord: Boolean, context: WordContext? = null): Boolean {
         var start = text.indexOf(item)
         while (start >= 0) {
             val end = start + item.length
-            val before = text.substring(0, start)
-            val after = text.substring(end)
+            val (before, after) = scopeAround(text, start, end)
             val boundary = if (wholeWord) !wordCharacter.containsMatchIn(text.getOrNull(start - 1)?.toString().orEmpty()) && !wordCharacter.containsMatchIn(text.getOrNull(end)?.toString().orEmpty())
                 else component(before.takeLastWhile { it.isLetter() }.length, item, after.takeWhile { it.isLetter() }.length)
-            val blockedBefore = negated(before.split(phrase).last(), aliasRules[item]?.getString("id").orEmpty()) || modifiedBefore.containsMatchIn(before.split(conjunct).last())
-            val blockedAfter = freed(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first())
-            if (boundary && !blockedBefore && !blockedAfter) return true
+            val inContext = { context == null || context.before.containsMatchIn(before) || context.after.containsMatchIn(after) }
+            val blocked = {
+                negated(before.split(phrase).last(), aliasRules[item]?.getString("id").orEmpty()) || modifiedBefore.containsMatchIn(before.split(conjunct).last()) ||
+                    freed(after.split(phrase).first()) || modifiedAfter.containsMatchIn(after.split(conjunct).first())
+            }
+            if (boundary && inContext() && !blocked()) return true
             start = text.indexOf(item, start + 1)
         }
         return false
@@ -205,7 +228,9 @@ class Evaluator(private val rulesDocument: JSONObject) {
     private fun ruleForTerm(term: String): JSONObject? {
         aliasRules[term]?.let { return it }
         val remainder = withoutPlantExceptions(term)
-        val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) } ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
+        val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) }
+            ?: exactOnlyContexts.firstOrNull { (contextAlias, context) -> mentioned(remainder, contextAlias, true, context) }?.first
+            ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
         return alias?.let { aliasRules[it] }
     }
     fun evaluate(input: CheckInput, parsedIngredients: List<String>? = null): JSONObject {

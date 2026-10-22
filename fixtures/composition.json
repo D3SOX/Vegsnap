@@ -2040,8 +2040,7 @@
       "outcome": "vegan",
       "basis": "composition"
     }
-  }
-,
+  },
   {
     "id": "generic-hydroxyapatite-is-source-dependent",
     "input": {
@@ -2084,6 +2083,83 @@
     "expected": {
       "outcome": "uncertain",
       "basis": "insufficient"
+    }
+  },
+  {
+    "id": "german-egg-with-adjective",
+    "input": {
+      "text": "Zutaten: Weizenmehl, frisches Ei, Zucker",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-egg-with-preposition",
+    "input": {
+      "text": "Zutaten: Hartweizengrieß, Ei von freilaufenden Hühnern, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "finnish-ei-is-not-egg",
+    "input": {
+      "text": "Ainesosat: kaurapohja. Ei sisällä maitoa",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "milchling-mushrooms-are-not-milk",
+    "input": {
+      "text": "Zutaten: Pilze (Edel-Reizker, Pfeffer-Milchlinge), Sonnenblumenöl, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "german-egg-context-binds-its-own-occurrence",
+    "input": {
+      "text": "Ainesosat: kaurapohja, ei sisällä maitoa / ohne frisches Ei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "romanian-ei-is-not-egg",
+    "input": {
+      "text": "Ingrediente: apă, sare. Suntem ei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "german-egg-with-dative-adjective",
+    "input": {
+      "text": "Zutaten: Nudeln mit frischem Ei, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
     }
   }
 ]
