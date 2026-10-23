@@ -205,7 +205,6 @@
 "Privacy policy" = "Datenschutzerklärung";
 "Processing" = "Herstellung";
 "Product country" = "Produktland";
-"Product country (e.g. SE)" = "Produktland (z. B. SE)";
 "Product country unconfirmed" = "Produktland unbestätigt";
 "Product details" = "Produktdetails";
 "Product evidence and company concerns are assessed separately. This result is not an allergy assessment." = "Produktbelege und Unternehmensbedenken werden getrennt bewertet. Dieses Ergebnis ist keine Allergiebewertung.";
@@ -254,7 +253,6 @@
 "Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage." = "Geprüfte Antworten werden automatisch nur anhand von Produktname, Marke, Barcode und Land abgerufen. Bestätigungen für das ganze Produkt können dieses Ergebnis ändern; prüfe Datum und Geltungsbereich.";
 "Rotate" = "Drehen";
 "Save API key" = "API-Schlüssel speichern";
-"Save country" = "Land speichern";
 "Saved ChatGPT accounts" = "Gespeicherte ChatGPT-Konten";
 "Saved account" = "Gespeichertes Konto";
 "Saved on this device. Search, revisit, or export your results." = "Auf diesem Gerät gespeichert. Suche, öffne oder exportiere deine Ergebnisse.";
@@ -266,6 +264,7 @@
 "Search" = "Suchen";
 "Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there." = "Suche nach einer Produktart, z. B. Schokolade oder Joghurt. Ein Ladenname priorisiert dort gelistete Produkte.";
 "Search checks" = "Prüfungen suchen";
+"Search countries" = "Länder suchen";
 "Search food, cosmetics, products, beverages, and companies." = "Suche Lebensmittel, Kosmetik, Produkte, Getränke und Unternehmen.";
 "Searches use public databases, never AI. Review the original source and market." = "Die Suche nutzt öffentliche Datenbanken, keine KI. Prüfe Originalquelle und Markt.";
 "Searching public records…" = "Produktdaten werden durchsucht…";

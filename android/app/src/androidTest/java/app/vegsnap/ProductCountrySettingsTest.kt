@@ -35,7 +35,7 @@ class ProductCountrySettingsTest {
         compose.runOnIdle { model.selectTab("settings") }
         compose.setContent { VegsnapApp(model) }
         compose.onNodeWithText("Detect product country automatically").performScrollTo().assertIsOn()
-        compose.onNodeWithText("Product country: Sweden (SE)").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Product country: 🇸🇪 Sweden").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(target.getString(R.string.auto_product_country_hint)).performScrollTo()
         if (InstrumentationRegistry.getArguments().getString("captureCountrySettings") == "true") {
             val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
@@ -44,9 +44,9 @@ class ProductCountrySettingsTest {
         }
         compose.onNodeWithText("Detect product country automatically").performScrollTo().performClick()
         compose.waitUntil { !model.settings.value.autoCountry }
-        compose.onNodeWithText("Product country: Sweden (SE)").performScrollTo().performClick()
-        compose.onNode(hasSetTextAction()).performTextReplacement("FI")
-        compose.onNodeWithText("Save country").performClick()
+        compose.onNodeWithText("Product country: 🇸🇪 Sweden").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextReplacement("finl")
+        compose.onNodeWithText("Finland").performClick()
         compose.waitUntil { model.settings.value.fallbackCountry == "FI" && model.state.value.market == "FI" }
         compose.runOnIdle { model.setProductMarket("SE") }
         runBlocking { model.updateSettings { it.copy(fallbackCountry = "NO", autoCountry = true) }.join() }

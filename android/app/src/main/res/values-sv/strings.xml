@@ -138,7 +138,7 @@
     <string name="community_find">Hitta svar</string>
     <string name="community_hide">Dölj delade svar</string>
     <string name="community_hide_reply">Dölj svar</string>
-    <string name="community_invalid_lookup">Ange en landskod med två bokstäver och en giltig streckkod, eller det exakta produktnamnet och varumärket.</string>
+    <string name="community_invalid_lookup">Välj ett land och ange en giltig streckkod, eller det exakta produktnamnet och varumärket.</string>
     <string name="community_load_failed">Svaren kunde inte läsas in. Kontrollera anslutningen och försök igen.</string>
     <string name="community_loading">Läser in svar…</string>
     <string name="community_lookup_notice">Uppslaget skickar endast produktnamn, varumärke, streckkod och land till gemenskapstjänsten på Cloudflare.</string>
@@ -333,7 +333,7 @@
     <string name="privacy_text">Inget konto, ingen användningsanalys och ingen molnhistorik. Analyserade foton sparas bara i den lokala historiken och tas bort när du raderar kontrollen. Metadata tas bort innan något skickas. API-nycklar krypteras med Android Keystore. Förfrågningar till offentliga databaser och AI avslöjar din IP-adress för de tjänsterna.</string>
     <string name="private_model">För lokal Ollama avser localhost den här Android-enheten. Använd HTTPS för en server på en annan enhet.</string>
     <string name="product_country">Produktland</string>
-    <string name="product_country_hint">Välj landet som produkten säljs för (t.ex. SE för Sverige). Det är inte tillverkarens plats. En sparad korrigering uppdaterar gemenskapens svar; kontrollera igen för att uppdatera den ursprungliga analysen.</string>
+    <string name="product_country_hint">Välj landet som produkten säljs för. Det är inte tillverkarens plats. En sparad korrigering uppdaterar gemenskapens svar; kontrollera igen för att uppdatera den ursprungliga analysen.</string>
     <string name="product_name">Produktnamn (valfritt)</string>
     <string name="progress_database">Kontrollerar produktdatabaser…</string>
     <string name="progress_elapsed">Förfluten tid %1$d:%2$02d</string>
@@ -393,9 +393,9 @@
     <string name="result_tab_concerns">Anmärkningar</string>
     <string name="result_tab_ingredients">Ingredienser</string>
     <string name="result_tab_sources">Källor</string>
-    <string name="save_product_country">Spara land</string>
     <string name="scan">Kamera</string>
     <string name="scan_hint">Fotografera ingrediens- eller materialförteckningen. Alla kategorier är välkomna.</string>
+    <string name="search_countries">Sök länder</string>
     <string name="search_history">Sök i historiken</string>
     <string name="select_model">Välj en modell</string>
     <string name="settings">Inställningar</string>

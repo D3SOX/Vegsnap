@@ -35,4 +35,10 @@ class ProductMarketTest {
     @Test fun `manual choice takes precedence`() {
         assertEquals("FI" to "manual", selectProductCountry(automatic.copy(market = "FI", autoMarket = false), "SE", listOf("en:sweden")))
     }
+    @Test fun `country flags use regional indicators and stay empty for unknown codes`() {
+        assertEquals("🇸🇪", countryFlag("SE"))
+        assertEquals("🇩🇪", countryFlag("de"))
+        assertEquals("🇸🇪", countryFlag("en:sweden"))
+        for (value in listOf("ZZ", "SWE", "")) assertEquals("", countryFlag(value))
+    }
 }

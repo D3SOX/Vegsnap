@@ -89,8 +89,7 @@ internal fun CommunityRepliesViewer(
                         modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
                     OutlinedTextField(controller.lookup.barcode, { edit(controller.lookup.copy(barcode = it.take(40))) }, label = { Text(stringResource(R.string.community_barcode)) },
                         modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
-                    OutlinedTextField(controller.lookup.market, { edit(controller.lookup.copy(market = it.take(2))) }, label = { Text(stringResource(R.string.community_market)) },
-                        modifier = Modifier.fillMaxWidth(), enabled = !controller.loading && !offline, singleLine = true)
+                    ProductMarketButton(controller.lookup.market, !controller.loading && !offline, Modifier.fillMaxWidth()) { edit(controller.lookup.copy(market = it)); true }
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = { controller.editing = !controller.editing }, enabled = !controller.loading && !offline) { Text(stringResource(R.string.community_edit_lookup)) }

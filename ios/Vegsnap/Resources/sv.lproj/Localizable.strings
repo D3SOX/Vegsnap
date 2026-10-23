@@ -205,7 +205,6 @@
 "Privacy policy" = "Integritetspolicy";
 "Processing" = "Tillverkning";
 "Product country" = "Produktland";
-"Product country (e.g. SE)" = "Produktland (t.ex. SE)";
 "Product country unconfirmed" = "Produktland obekräftat";
 "Product details" = "Produktuppgifter";
 "Product evidence and company concerns are assessed separately. This result is not an allergy assessment." = "Produktbelägg och företagsanmärkningar bedöms separat. Resultatet är ingen allergibedömning.";
@@ -254,7 +253,6 @@
 "Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage." = "Granskade svar hämtas automatiskt med hjälp av endast produktnamn, varumärke, streckkod och land. Bekräftelser för hela produkten kan uppdatera bedömningen; kontrollera datum och omfattning.";
 "Rotate" = "Rotera";
 "Save API key" = "Spara API-nyckel";
-"Save country" = "Spara land";
 "Saved ChatGPT accounts" = "Sparade ChatGPT-konton";
 "Saved account" = "Sparat konto";
 "Saved on this device. Search, revisit, or export your results." = "Sparat på den här enheten. Sök, öppna eller exportera dina resultat.";
@@ -266,6 +264,7 @@
 "Search" = "Sök";
 "Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there." = "Sök efter en produkttyp, t.ex. choklad eller yoghurt. Lägg till en butik för att prioritera produkter som listas där.";
 "Search checks" = "Sök kontroller";
+"Search countries" = "Sök länder";
 "Search food, cosmetics, products, beverages, and companies." = "Sök livsmedel, kosmetika, produkter, drycker och företag.";
 "Searches use public databases, never AI. Review the original source and market." = "Sökningar använder offentliga databaser, aldrig AI. Granska originalkällan och marknaden.";
 "Searching public records…" = "Söker i offentliga register…";

@@ -2620,9 +2620,9 @@
     ]
   },
   "community_invalid_lookup": {
-    "en": "Enter a two-letter country code and a valid barcode, or the exact product name and brand.",
-    "de": "Gib einen zweistelligen Ländercode und einen gültigen Barcode oder den genauen Produktnamen und die Marke ein.",
-    "sv": "Ange en landskod med två bokstäver och en giltig streckkod, eller det exakta produktnamnet och varumärket.",
+    "en": "Choose a country and enter a valid barcode, or the exact product name and brand.",
+    "de": "Wähle ein Land und gib einen gültigen Barcode oder den genauen Produktnamen und die Marke ein.",
+    "sv": "Välj ett land och ange en giltig streckkod, eller det exakta produktnamnet och varumärket.",
     "android": [
       "community_invalid_lookup"
     ]
@@ -4946,17 +4946,17 @@
     ]
   },
   "market_correctionhint": {
-    "en": "Country this product is sold for, e.g. SE for Sweden. Saving refreshes community replies. Check again to refresh the original analysis.",
-    "de": "Land, für das das Produkt verkauft wird, z. B. SE für Schweden. Speichern aktualisiert die Community-Antworten. Prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
-    "sv": "Landet som produkten säljs för, t.ex. SE för Sverige. Att spara uppdaterar gemenskapens svar. Kontrollera igen för att uppdatera den ursprungliga analysen.",
+    "en": "Country this product is sold for. Saving refreshes community replies. Check again to refresh the original analysis.",
+    "de": "Land, für das das Produkt verkauft wird. Speichern aktualisiert die Community-Antworten. Prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
+    "sv": "Landet som produkten säljs för. Att spara uppdaterar gemenskapens svar. Kontrollera igen för att uppdatera den ursprungliga analysen.",
     "extension": [
       "market.correctionHint"
     ]
   },
   "market_countryhint": {
-    "en": "Country this product is sold for, e.g. SE for Sweden.",
-    "de": "Land, für das das Produkt verkauft wird, z. B. SE für Schweden.",
-    "sv": "Landet som produkten säljs för, t.ex. SE för Sverige.",
+    "en": "Country this product is sold for.",
+    "de": "Land, für das das Produkt verkauft wird.",
+    "sv": "Landet som produkten säljs för.",
     "extension": [
       "market.countryHint"
     ]
@@ -5929,18 +5929,10 @@
       "alternatives.productCountry"
     ]
   },
-  "product_country_e_g_se": {
-    "en": "Product country (e.g. SE)",
-    "de": "Produktland (z. B. SE)",
-    "sv": "Produktland (t.ex. SE)",
-    "ios": [
-      "Product country (e.g. SE)"
-    ]
-  },
   "product_country_hint": {
-    "en": "Choose the country this product is sold for (e.g. SE for Sweden). This is not the manufacturer’s location. Saving a correction refreshes community replies; check again to refresh the original analysis.",
-    "de": "Wähle das Land, für das dieses Produkt verkauft wird (z. B. SE für Schweden). Gemeint ist nicht der Herstellerstandort. Eine gespeicherte Korrektur aktualisiert die Community-Antworten; prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
-    "sv": "Välj landet som produkten säljs för (t.ex. SE för Sverige). Det är inte tillverkarens plats. En sparad korrigering uppdaterar gemenskapens svar; kontrollera igen för att uppdatera den ursprungliga analysen.",
+    "en": "Choose the country this product is sold for. This is not the manufacturer’s location. Saving a correction refreshes community replies; check again to refresh the original analysis.",
+    "de": "Wähle das Land, für das dieses Produkt verkauft wird. Gemeint ist nicht der Herstellerstandort. Eine gespeicherte Korrektur aktualisiert die Community-Antworten; prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
+    "sv": "Välj landet som produkten säljs för. Det är inte tillverkarens plats. En sparad korrigering uppdaterar gemenskapens svar; kontrollera igen för att uppdatera den ursprungliga analysen.",
     "android": [
       "product_country_hint"
     ]
@@ -7756,12 +7748,6 @@
     "en": "Save country",
     "de": "Land speichern",
     "sv": "Spara land",
-    "android": [
-      "save_product_country"
-    ],
-    "ios": [
-      "Save country"
-    ],
     "extension": [
       "market.saveCountry"
     ]
@@ -7855,6 +7841,17 @@
     "sv": "Sök kontroller",
     "ios": [
       "Search checks"
+    ]
+  },
+  "search_countries": {
+    "en": "Search countries",
+    "de": "Länder suchen",
+    "sv": "Sök länder",
+    "android": [
+      "search_countries"
+    ],
+    "ios": [
+      "Search countries"
     ]
   },
   "search_food_cosmetics_products_beverages_and_companies": {

@@ -77,11 +77,7 @@ struct SettingsView: View {
             }
             Section(L("Preferences")) {
                 Toggle(L("Detect product country automatically"), isOn: $store.settings.automaticCountry)
-                Picker(L("Fallback country"), selection: $store.settings.defaultCountry) {
-                    ForEach(ProductCountry.codes, id: \.self) { code in
-                        Text((Locale.current.localizedString(forRegionCode: code) ?? code) + " (" + code + ")").tag(code)
-                    }
-                }
+                CountryPicker(title: L("Fallback country"), selection: $store.settings.defaultCountry)
                 Text(L("Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.")).font(.footnote).foregroundStyle(.secondary)
                 Picker(L("Default category"), selection: $store.settings.defaultCategory) { ForEach(Category.allCases) { Text($0.label).tag($0) } }
                 Picker(L("Start screen"), selection: $store.settings.startTab) { Text(L("Check")).tag("check"); Text(L("Browse")).tag("browse"); Text(L("History")).tag("history"); Text(L("Last used")).tag("last") }
