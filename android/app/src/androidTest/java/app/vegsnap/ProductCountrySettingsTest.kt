@@ -45,7 +45,7 @@ class ProductCountrySettingsTest {
         compose.onNodeWithText("Detect product country automatically").performScrollTo().performClick()
         compose.waitUntil { !model.settings.value.autoCountry }
         compose.onNodeWithText("Product country: 🇸🇪 Sweden").performScrollTo().performClick()
-        compose.onNode(hasSetTextAction()).performTextReplacement("finl")
+        compose.onNode(hasSetTextAction() and hasText("Search countries")).performTextReplacement("finl")
         compose.onNodeWithText("Finland").performClick()
         compose.waitUntil { model.settings.value.fallbackCountry == "FI" && model.state.value.market == "FI" }
         compose.runOnIdle { model.setProductMarket("SE") }
