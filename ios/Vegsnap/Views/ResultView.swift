@@ -6,7 +6,6 @@ struct ResultView: View {
     @State private var communityRefresh = 0
     var currentSaved: SavedCheck { store.history.first(where: { $0.id == saved.id }) ?? saved }
     var result: CheckResult { community.displayResult(currentSaved, engine: store.engine, locale: store.locale, hidden: store.hiddenReplies) }
-    @State private var market = ""
     @State private var findingFilter = "all"
     @State private var query = ""
     @State private var message: ManufacturerMessage?
@@ -109,10 +108,9 @@ struct ResultView: View {
                 if let source = saved.result.identity.marketSource {
                     Text(L(["packaging": "Detected from packaging (AI — check the label)", "database": "Detected from database", "manual": "Selected manually", "fallback": "Fallback country"][source] ?? "Fallback country")).font(.footnote).foregroundStyle(.secondary)
                 }
-                TextField(L("Product country (e.g. SE)"), text: $market).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                    .onChange(of: market) { _, value in market = String(value.uppercased().filter { $0.isASCII && $0.isLetter }.prefix(2)) }
-                Button(L("Save country")) { do { try store.updateProductMarket(saved.id, market: market) } catch { store.report(error) } }
-                    .disabled(!ProductCountry.isValid(market))
+                CountryPicker(title: L("Product country"), selection: Binding(get: { saved.result.identity.market }, set: { market in
+                    do { try store.updateProductMarket(saved.id, market: market) } catch { store.report(error) }
+                }))
             } header: { Text(L("Product country")) } footer: { Text(L("Saving a correction refreshes community replies. Check again to refresh the original analysis.")) }
             CommunitySection(store: store, state: community, onRefresh: { communityRefresh += 1 })
             Section {
@@ -126,8 +124,6 @@ struct ResultView: View {
                 ContentReportButton(store: store, kind: "result", result: result)
             }
         }.navigationTitle(L("Result")).navigationBarTitleDisplayMode(.inline)
-            .onAppear { market = saved.result.identity.market }
-            .onChange(of: saved.result.identity.market) { _, value in market = value }
             .task(id: CommunityRequestKey(id: saved.id, identity: saved.result.identity, offline: store.settings.offline, refresh: communityRefresh, locale: store.locale)) {
                 await community.load(saved.result, engine: store.engine, locale: store.locale, offline: store.settings.offline)
             }

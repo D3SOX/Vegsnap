@@ -67,27 +67,16 @@ internal fun databaseCountryWarning(market: String, markets: List<String>, local
 internal fun ProductMarketButton(market: String, enabled: Boolean = true, modifier: Modifier = Modifier,
     source: String? = null, colors: ButtonColors = ButtonDefaults.outlinedButtonColors(), onSave: suspend (String) -> Boolean) {
     var editing by remember { mutableStateOf(false) }
-    var value by remember(market) { mutableStateOf(productCountryCode(market) ?: market) }
     var saving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0]
-    val country = productCountryName(market, locale)
-    OutlinedButton(onClick = { value = productCountryCode(market) ?: market; editing = true }, enabled = enabled, modifier = modifier, colors = colors) {
+    OutlinedButton(onClick = { editing = true }, enabled = enabled, modifier = modifier, colors = colors) {
         Column {
-            Text(stringResource(R.string.product_country) + ": " + country + " (" + market + ")")
+            Text(stringResource(R.string.product_country) + ": " + listOf(countryFlag(market), productCountryName(market, locale)).filter { it.isNotEmpty() }.joinToString(" "))
             source?.let { Text(stringResource(when (it) { "packaging" -> R.string.country_from_packaging; "database" -> R.string.country_from_database; "manual" -> R.string.country_manual; else -> R.string.country_fallback }), style = MaterialTheme.typography.labelSmall) }
         }
     }
-    if (editing) AlertDialog(onDismissRequest = { if (!saving) editing = false },
-        title = { Text(stringResource(R.string.product_country)) },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.product_country_hint))
-            OutlinedTextField(value, { value = it.uppercase(Locale.ROOT).filter { c -> c in 'A'..'Z' }.take(2) },
-                label = { Text(stringResource(R.string.community_market)) }, singleLine = true, enabled = !saving,
-                supportingText = { if (validProductMarket(value)) Text(Locale.Builder().setRegion(value).build().getDisplayCountry(locale)) })
-        } },
-        confirmButton = { TextButton(enabled = !saving && validProductMarket(value), onClick = {
-            scope.launch { saving = true; try { if (onSave(value)) editing = false } finally { saving = false } }
-        }) { Text(stringResource(R.string.save_product_country)) } },
-        dismissButton = { TextButton(enabled = !saving, onClick = { editing = false }) { Text(stringResource(R.string.cancel)) } })
+    if (editing) CountryPickerDialog(productCountryCode(market), enabled = !saving, onDismiss = { if (!saving) editing = false }) { country ->
+        scope.launch { saving = true; try { if (onSave(country)) editing = false } finally { saving = false } }
+    }
 }

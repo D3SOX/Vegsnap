@@ -11,6 +11,18 @@ export function countryCode(value: string): string | undefined {
   const name = value.normalize('NFKC').trim().toLowerCase().replace(/^en:/, '').replace(/[\s-]/g, '');
   return Object.hasOwn(aliases, name) ? aliases[name] : undefined;
 }
+/** Regional indicator pair, rendered as a flag where the platform font supports it. */
+export function countryFlag(code: string): string {
+  return String.fromCodePoint(...[...code.toUpperCase()].map(letter => 0x1f1a5 + letter.charCodeAt(0)));
+}
+/** Every selectable product country with its localized name, sorted for display. */
+export function countryOptions(locale?: string): { code: string; name: string; flag: string }[] {
+  const language = appLocale(locale);
+  const names = new Intl.DisplayNames([language], { type: 'region' });
+  const collator = new Intl.Collator(language);
+  return countries.codes.map(code => ({ code, name: names.of(code) ?? code, flag: countryFlag(code) }))
+    .sort((a, b) => collator.compare(a.name, b.name));
+}
 /** Pack regions are Open Food Facts country names ("united-kingdom"), "eu" or code pairs such as the bundled "de-eu"; other regions keep their own text. */
 export function packRegionName(region: string, locale?: string): string {
   const names = new Intl.DisplayNames([appLocale(locale)], { type: 'region' });

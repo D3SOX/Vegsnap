@@ -828,8 +828,8 @@ export const marketMessages = {
   en: {
     "autoCountry": "Detect product country automatically",
     "autoCountryHint": "Uses an explicit sales country on the packaging or one country in an exact barcode record. Unclear or conflicting clues use the fallback. A manual product selection takes precedence.",
-    "correctionHint": "Country this product is sold for, e.g. SE for Sweden. Saving refreshes community replies. Check again to refresh the original analysis.",
-    "countryHint": "Country this product is sold for, e.g. SE for Sweden.",
+    "correctionHint": "Country this product is sold for. Saving refreshes community replies. Check again to refresh the original analysis.",
+    "countryHint": "Country this product is sold for.",
     "database": "Detected from database",
     "fallback": "Fallback country",
     "invalidCountry": "Enter a valid country code.",
@@ -841,8 +841,8 @@ export const marketMessages = {
   de: {
     "autoCountry": "Produktland automatisch erkennen",
     "autoCountryHint": "Verwendet ein ausdrücklich genanntes Verkaufsland auf der Verpackung oder ein einzelnes Land in einem passenden Barcode-Datensatz. Unklare oder widersprüchliche Angaben verwenden das Ersatzland. Eine manuelle Auswahl hat Vorrang.",
-    "correctionHint": "Land, für das das Produkt verkauft wird, z. B. SE für Schweden. Speichern aktualisiert die Community-Antworten. Prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
-    "countryHint": "Land, für das das Produkt verkauft wird, z. B. SE für Schweden.",
+    "correctionHint": "Land, für das das Produkt verkauft wird. Speichern aktualisiert die Community-Antworten. Prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.",
+    "countryHint": "Land, für das das Produkt verkauft wird.",
     "database": "Aus Datenbank erkannt",
     "fallback": "Land bei unklaren Angaben",
     "invalidCountry": "Einen gültigen Ländercode eingeben.",
@@ -854,8 +854,8 @@ export const marketMessages = {
   sv: {
     "autoCountry": "Identifiera produktland automatiskt",
     "autoCountryHint": "Använder ett uttryckligt försäljningsland på förpackningen eller ett enda land i en exakt streckkodspost. Vid oklara eller motstridiga ledtrådar används reservlandet. Ett manuellt produktval har företräde.",
-    "correctionHint": "Landet som produkten säljs för, t.ex. SE för Sverige. Att spara uppdaterar gemenskapens svar. Kontrollera igen för att uppdatera den ursprungliga analysen.",
-    "countryHint": "Landet som produkten säljs för, t.ex. SE för Sverige.",
+    "correctionHint": "Landet som produkten säljs för. Att spara uppdaterar gemenskapens svar. Kontrollera igen för att uppdatera den ursprungliga analysen.",
+    "countryHint": "Landet som produkten säljs för.",
     "database": "Identifierat från databas",
     "fallback": "Reservland",
     "invalidCountry": "Ange en giltig landskod.",

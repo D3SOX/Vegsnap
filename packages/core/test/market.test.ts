@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { checkProduct, createOpenAIProvider, packRegionName, selectProductCountry, type AIExtraction } from '../src';
+import { checkProduct, countryOptions, createOpenAIProvider, packRegionName, selectProductCountry, type AIExtraction } from '../src';
 import { OfflineProductIndex, type OfflineSnapshot } from '../src/offline';
 import { lookupProduct } from '../src/database';
 
@@ -156,4 +156,11 @@ test('pack regions read as localized country names, keeping unknown regions verb
     .toEqual(['United Kingdom', 'Switzerland', 'European Union', 'Germany + European Union', 'fixture']);
   expect(['united-states', 'de-eu'].map(region => packRegionName(region, 'de'))).toEqual(['Vereinigte Staaten', 'Deutschland + Europäische Union']);
   expect(packRegionName('netherlands', 'sv')).toBe('Nederländerna');
+});
+
+test('country options list every product country with a flag and localized name in collation order', () => {
+  const options = countryOptions('sv');
+  expect(options).toHaveLength(249);
+  expect(options.find(option => option.code === 'SE')).toEqual({ code: 'SE', name: 'Sverige', flag: '🇸🇪' });
+  expect(options.findIndex(option => option.code === 'AT')).toBeGreaterThan(options.findIndex(option => option.code === 'SE'));
 });

@@ -241,12 +241,12 @@ try {
   await tab(roots[1]!, 'history');
   await until(()=>historyItems(roots[1]!).length === 1,'Country correction fixture is available in the second window');
   await act(async()=>{(historyItems(roots[1]!)[0] as HTMLButtonElement).click();});
-  const countryInput = (root:HTMLElement)=>root.querySelector<HTMLInputElement>('.product-country input');
+  const countryInput = (root:HTMLElement)=>root.querySelector<HTMLSelectElement>('.product-country select');
   await until(()=>roots.every(root=>countryInput(root)?.value === 'DE'),'Both open results show the original country');
   const originalEvidence = structuredClone(history[0]!.evidence);
   await act(async()=>{
     countryInput(roots[0]!)!.value = 'SE';
-    countryInput(roots[0]!)!.dispatchEvent(new Event('input',{bubbles:true}));
+    countryInput(roots[0]!)!.dispatchEvent(new Event('change',{bubbles:true}));
   });
   await act(async()=>{ roots[0]!.querySelector<HTMLButtonElement>('.product-country button')!.click(); });
   await until(()=>roots.every(root=>countryInput(root)?.value === 'SE'),'Saving country updates both open results');
@@ -279,7 +279,7 @@ try {
   await act(async () => { editButton()!.click(); });
   const editText = roots[0]!.querySelector('textarea')!;
   assert.equal(editText.value, 'Ingredients: oats');
-  assert.equal(roots[0]!.querySelector<HTMLSelectElement>('form select')?.value, 'drink');
+  assert.equal(roots[0]!.querySelector<HTMLSelectElement>('form select:not(.country-select)')?.value, 'drink');
   assert(roots[0]!.querySelector<HTMLInputElement>('form input[type="checkbox"]')?.checked, 'Original completeness is retained');
   assert.equal(roots[0]!.querySelector<HTMLImageElement>('.photos img')?.getAttribute('src'), originalPhoto, 'Saved photos can be edited');
   await act(async () => { editText.value += ', water'; editText.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -330,18 +330,13 @@ try {
   console.log('Actual editing UI: saved and fresh results, original input/photos, identity, focus, cancel and failed-check retry verified');
 
   await tab(roots[0]!, 'scan');
-  const scanCountry = () => roots[0]!.querySelector<HTMLInputElement>('form input[maxLength="2"]')!;
+  const scanCountry = () => roots[0]!.querySelector<HTMLSelectElement>('form select.country-select')!;
   assert.equal(scanCountry().value, settings.fallbackCountry, 'A fresh scan after a manual result uses the fallback');
   await act(async () => {
-    scanCountry().value = 'ZZ'; scanCountry().dispatchEvent(new Event('input', { bubbles: true }));
+    scanCountry().value = 'SE'; scanCountry().dispatchEvent(new Event('change', { bubbles: true }));
     const textarea = roots[0]!.querySelector('textarea')!;
     textarea.value = 'Ingredients: water'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  const beforeInvalidCountry = checkRequests;
-  await submitEdit();
-  assert.equal(checkRequests, beforeInvalidCountry, 'An unknown country is rejected before sending a check');
-  assert(roots[0]!.querySelector('[role="alert"]')?.textContent?.includes('valid country code'));
-  await act(async () => { scanCountry().value = 'SE'; scanCountry().dispatchEvent(new Event('input', { bubbles: true })); });
   await submitEdit();
   await until(() => !!roots[0]!.querySelector('.verdict'), 'The manually selected scan completes');
   assert.equal(checkedInputs.at(-1)?.autoMarket, false);

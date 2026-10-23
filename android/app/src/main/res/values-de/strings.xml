@@ -138,7 +138,7 @@
     <string name="community_find">Antworten finden</string>
     <string name="community_hide">Geteilte Antworten ausblenden</string>
     <string name="community_hide_reply">Antwort ausblenden</string>
-    <string name="community_invalid_lookup">Gib einen zweistelligen Ländercode und einen gültigen Barcode oder den genauen Produktnamen und die Marke ein.</string>
+    <string name="community_invalid_lookup">Wähle ein Land und gib einen gültigen Barcode oder den genauen Produktnamen und die Marke ein.</string>
     <string name="community_load_failed">Antworten konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="community_loading">Antworten werden geladen…</string>
     <string name="community_lookup_notice">Die Suche sendet nur Produktname, Marke, Barcode und Land an den Community-Dienst auf Cloudflare.</string>
@@ -333,7 +333,7 @@
     <string name="privacy_text">Kein Konto, keine Nutzungsanalyse und kein Cloud-Verlauf. Analysierte Fotos bleiben nur im lokalen Verlauf und werden mit der Prüfung gelöscht. Metadaten werden vor dem Senden entfernt. API-Schlüssel werden mit Android Keystore verschlüsselt. Datenbank- und KI-Anfragen übermitteln deine IP-Adresse an diese Dienste.</string>
     <string name="private_model">Für lokales Ollama bezeichnet localhost dieses Android-Gerät. Nutze HTTPS für einen Server auf einem anderen Gerät.</string>
     <string name="product_country">Produktland</string>
-    <string name="product_country_hint">Wähle das Land, für das dieses Produkt verkauft wird (z. B. SE für Schweden). Gemeint ist nicht der Herstellerstandort. Eine gespeicherte Korrektur aktualisiert die Community-Antworten; prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.</string>
+    <string name="product_country_hint">Wähle das Land, für das dieses Produkt verkauft wird. Gemeint ist nicht der Herstellerstandort. Eine gespeicherte Korrektur aktualisiert die Community-Antworten; prüfe erneut, um die ursprüngliche Analyse zu aktualisieren.</string>
     <string name="product_name">Produktname (optional)</string>
     <string name="progress_database">Produktdatenbanken werden geprüft…</string>
     <string name="progress_elapsed">Vergangen: %1$d:%2$02d</string>
@@ -393,9 +393,9 @@
     <string name="result_tab_concerns">Bedenken</string>
     <string name="result_tab_ingredients">Zutaten</string>
     <string name="result_tab_sources">Quellen</string>
-    <string name="save_product_country">Land speichern</string>
     <string name="scan">Kamera</string>
     <string name="scan_hint">Fotografiere die Zutaten- oder Materialliste. Für jede Produktkategorie.</string>
+    <string name="search_countries">Länder suchen</string>
     <string name="search_history">Verlauf durchsuchen</string>
     <string name="select_model">Modell auswählen</string>
     <string name="settings">Einstellungen</string>

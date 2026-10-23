@@ -41,9 +41,7 @@ struct CheckView: View {
             Section(L("Product details")) {
                 TextField(L("Product name (optional)"), text: $store.draft.name).focused($editing, equals: "name").accessibilityIdentifier("productName")
                 TextField(L("Brand (optional)"), text: $store.draft.brand).focused($editing, equals: "brand")
-                TextField(L("Product country (e.g. SE)"), text: Binding(get: { store.draft.market }, set: { value in
-                    store.draft.market = String(value.uppercased().filter { $0.isASCII && $0.isLetter }.prefix(2)); store.draft.autoMarket = false
-                })).textInputAutocapitalization(.characters).autocorrectionDisabled().focused($editing, equals: "market")
+                CountryPicker(title: L("Product country"), selection: Binding(get: { store.draft.market }, set: { store.draft.market = $0; store.draft.autoMarket = false }))
                 Text(L(store.draft.autoMarket == false || !store.settings.automaticCountry ? "Selected manually" : "Fallback country"))
                 Text(L("Choose the country this product is sold for, not the manufacturer’s location.")).font(.footnote).foregroundStyle(.secondary)
                 Picker(L("Category"), selection: $store.draft.category) { ForEach(Category.allCases) { Text($0.label).tag($0) } }.accessibilityIdentifier("categoryPicker")

@@ -205,7 +205,6 @@
 "Privacy policy" = "Privacy policy";
 "Processing" = "Processing";
 "Product country" = "Product country";
-"Product country (e.g. SE)" = "Product country (e.g. SE)";
 "Product country unconfirmed" = "Product country unconfirmed";
 "Product details" = "Product details";
 "Product evidence and company concerns are assessed separately. This result is not an allergy assessment." = "Product evidence and company concerns are assessed separately. This result is not an allergy assessment.";
@@ -254,7 +253,6 @@
 "Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage." = "Reviewed replies are fetched automatically using only the product name, brand, barcode and country. Whole-product confirmations can update this verdict; check the date and coverage.";
 "Rotate" = "Rotate";
 "Save API key" = "Save API key";
-"Save country" = "Save country";
 "Saved ChatGPT accounts" = "Saved ChatGPT accounts";
 "Saved account" = "Saved account";
 "Saved on this device. Search, revisit, or export your results." = "Saved on this device. Search, revisit, or export your results.";
@@ -266,6 +264,7 @@
 "Search" = "Search";
 "Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there." = "Search a product type, e.g. chocolate or yogurt. Add a store to prioritize products listed there.";
 "Search checks" = "Search checks";
+"Search countries" = "Search countries";
 "Search food, cosmetics, products, beverages, and companies." = "Search food, cosmetics, products, beverages, and companies.";
 "Searches use public databases, never AI. Review the original source and market." = "Searches use public databases, never AI. Review the original source and market.";
 "Searching public records…" = "Searching public records…";

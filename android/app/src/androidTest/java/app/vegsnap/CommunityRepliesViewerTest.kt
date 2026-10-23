@@ -110,7 +110,7 @@ class CommunityRepliesViewerTest {
         val before = result.toString()
         var requests = 0
         show { requests++; assertEquals("Maker", it.brand); CommunityReplyPage(emptyList(), false) }
-        compose.onNodeWithText("Enter a two-letter country code and a valid barcode, or the exact product name and brand.").assertExists()
+        compose.onNodeWithText("Choose a country and enter a valid barcode, or the exact product name and brand.").assertExists()
         compose.runOnIdle { assertEquals(0, requests) }
         compose.onNode(hasSetTextAction() and hasText("Brand")).performScrollTo().performTextInput("Maker")
         click("Find replies")
@@ -214,7 +214,9 @@ class CommunityRepliesViewerTest {
         }
         compose.onNodeWithText("Manufacturer says vegan").assertExists()
         click("Edit product details")
-        compose.onNode(hasSetTextAction() and hasText("Country code")).performScrollTo().performTextReplacement("DE")
+        compose.onNodeWithText("Product country: 🇸🇪 Sweden").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction() and hasText("Search countries")).performTextReplacement("germ")
+        compose.onNodeWithText("Germany").performClick()
         click("Find replies")
         compose.onNodeWithText("Manufacturer says vegan").assertDoesNotExist()
         compose.onNodeWithText("Original verdict").assertExists()

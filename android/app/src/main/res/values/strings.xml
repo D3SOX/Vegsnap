@@ -138,7 +138,7 @@
     <string name="community_find">Find replies</string>
     <string name="community_hide">Hide shared replies</string>
     <string name="community_hide_reply">Hide reply</string>
-    <string name="community_invalid_lookup">Enter a two-letter country code and a valid barcode, or the exact product name and brand.</string>
+    <string name="community_invalid_lookup">Choose a country and enter a valid barcode, or the exact product name and brand.</string>
     <string name="community_load_failed">Could not load replies. Check your connection and try again.</string>
     <string name="community_loading">Loading replies…</string>
     <string name="community_lookup_notice">Lookup sends only product name, brand, barcode and country to the community service on Cloudflare.</string>
@@ -333,7 +333,7 @@
     <string name="privacy_text">No account, analytics, or cloud history. Analyzed photos are saved only in local history and removed when you delete the check. Metadata is removed before sending. API keys use Android Keystore encryption. Public database queries and AI requests reveal your IP address to those services.</string>
     <string name="private_model">For local Ollama, localhost means this Android device. Use HTTPS for a server on another device.</string>
     <string name="product_country">Product country</string>
-    <string name="product_country_hint">Choose the country this product is sold for (e.g. SE for Sweden). This is not the manufacturer’s location. Saving a correction refreshes community replies; check again to refresh the original analysis.</string>
+    <string name="product_country_hint">Choose the country this product is sold for. This is not the manufacturer’s location. Saving a correction refreshes community replies; check again to refresh the original analysis.</string>
     <string name="product_name">Product name (optional)</string>
     <string name="progress_database">Checking product databases…</string>
     <string name="progress_elapsed">Elapsed %1$d:%2$02d</string>
@@ -393,9 +393,9 @@
     <string name="result_tab_concerns">Concerns</string>
     <string name="result_tab_ingredients">Ingredients</string>
     <string name="result_tab_sources">Sources</string>
-    <string name="save_product_country">Save country</string>
     <string name="scan">Camera</string>
     <string name="scan_hint">Photograph the ingredients or material label. Every category is welcome.</string>
+    <string name="search_countries">Search countries</string>
     <string name="search_history">Search history</string>
     <string name="select_model">Choose a model</string>
     <string name="settings">Settings</string>

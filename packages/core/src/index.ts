@@ -7,7 +7,7 @@ export { validateBrowseSearch, browseSearchUrl, parseBrowsePage, browseOfflinePa
 export type { BrowseSearch, BrowseRecord, BrowsePage, BrowseSource } from './browse';
 export { PublicSearchError } from './public-search';
 export type { PublicSearchFailure } from './public-search';
-export { countryCode, packRegionName, selectProductCountry } from './market';
+export { countryCode, countryFlag, countryOptions, packRegionName, selectProductCountry } from './market';
 export { analyzeText, parseSourceIngredients, normalizeTerm, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
 export { createOpenAIProvider, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';

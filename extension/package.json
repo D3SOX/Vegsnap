@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@vegsnap/core": "workspace:*",
+    "country-flag-emoji-polyfill": "^0.1.10",
     "preact": "^11.0.1"
   },
   "devDependencies": {

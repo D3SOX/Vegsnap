@@ -16,6 +16,7 @@
       "version": "0.2.21",
       "dependencies": {
         "@vegsnap/core": "workspace:*",
+        "country-flag-emoji-polyfill": "^0.1.10",
         "preact": "^11.0.1",
       },
       "devDependencies": {
@@ -441,6 +442,8 @@
     "convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 
     "cookie": ["cookie@1.1.1", "", {}, "sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ=="],
+
+    "country-flag-emoji-polyfill": ["country-flag-emoji-polyfill@0.1.10", "", {}, "sha512-5O50p2mq/d8+4AfHz3monRQaBA4TIQ0XcKqJUhCYR6SMsLqlO4m8f87og6R1D68Z1sNXGkjLkcEccuzC6T9i5g=="],
 
     "css-select": ["css-select@7.0.0", "", { "dependencies": { "boolbase": "^2.0.0", "css-what": "^8.0.0", "domhandler": "^6.0.1", "domutils": "^4.0.2", "nth-check": "^3.0.1" } }, "sha512-snmjEVXy+1LnwXdxhYvTMj1d9tOh4HxkA1YmoayVBeeyR2C14Pum7fcxJIm4SswYspVy866eYNwlH6xC3/VH5g=="],
 

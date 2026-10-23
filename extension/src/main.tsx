@@ -4,7 +4,7 @@ import { alternativeQueryForProduct, communityLinks, countryCode, imageSupport, 
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import type { Category, CheckInput, CheckStage, Finding } from '@vegsnap/core';
-import { ProductMarket } from './product-market';
+import { CountrySelect, ProductMarket } from './product-market';
 import { Alternatives } from './alternatives';
 import { Browse } from './browse';
 import type { AlternativeSearch, BrowsePage, VeganAlternative } from '@vegsnap/core';
@@ -447,7 +447,7 @@ export function App() {
         <form onSubmit={event => { event.preventDefault(); if (!countryCode(market)) { setError(mt.invalidCountry); return; } const input = scanInput({ text, category, complete, images, market, autoMarket: marketOverride.current ? false : config.autoCountry ? true : undefined }); void check({ ...input, ...inspectedIdentity, barcode: input.barcode ?? inspectedIdentity?.barcode }); }}>
           {inspectedIdentity && <p class="hint">{inspectedIdentity.name ?? inspectedIdentity.barcode}</p>}
           <label>{t.text}<textarea ref={detailsField} value={text} onInput={event => { setText(event.currentTarget.value); if (!editingResult && !browseDraft.current) setInspectedIdentity(undefined); }} placeholder={t.placeholder} maxLength={30_000} rows={5}/></label>
-          <label>{mt.productCountry}<input value={market} maxLength={2} pattern="[A-Z]{2}" required disabled={busy} onInput={event=>{marketOverride.current = true; setMarket(event.currentTarget.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2));}}/><small>{mt.countryHint}</small></label>
+          <label>{mt.productCountry}<CountrySelect value={market} locale={config.language} disabled={busy} onChange={country=>{marketOverride.current = true; setMarket(country);}}/><small>{mt.countryHint}</small></label>
           {isPopup && !editingResult && <button type="button" class="text-button" disabled={busy} onClick={() => void act(inspect)}>{t.inspect} ↗</button>}
           <div class="form-row"><label>{t.category}<select value={category} onChange={event => setCategory(event.currentTarget.value as Category)}>{(['other', 'food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes'] as const).map(item => <option value={item}>{item === 'other' ? t.auto : t[item]}</option>)}</select></label></div>
           <label class="checkbox"><input type="checkbox" checked={complete} onChange={event => setComplete(event.currentTarget.checked)}/><span>{t.complete}<small>{t.completeHint}</small></span></label>
