@@ -13,10 +13,10 @@
   },
   "dependencies": { "@vegsnap/core": "workspace:*" },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261019.1",
-    "@types/bun": "^1.4.3",
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "@types/bun": "^1.4.4",
     "miniflare": "5.20261019.0-beta",
     "typescript": "^7.0.2",
-    "wrangler": "4.151.2"
+    "wrangler": "4.152.0"
   }
 }
