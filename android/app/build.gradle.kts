@@ -79,8 +79,8 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.5")
     implementation("androidx.room:room-ktx:2.8.5")
     ksp("androidx.room:room-compiler:2.8.5")
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
-    implementation("com.squareup.okhttp3:okhttp:5.5.0")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
     implementation("com.nimbusds:nimbus-jose-jwt:10.10")
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
@@ -88,7 +88,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20260814")
-    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
 }
 
 // Refresh once per seven days; a valid bundled snapshot also supports offline builds.
