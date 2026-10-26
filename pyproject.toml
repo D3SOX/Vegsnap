@@ -1,5 +1,5 @@
 [dependency-groups]
-lint = ["ruff==0.17.1"]
+lint = ["ruff==0.17.2"]
 
 [tool.ruff]
 # Lint only; ruff format is not used.
