@@ -44,6 +44,10 @@ updates:
       android:
         patterns: ['*']
         update-types: [minor, patch]
+    ignore:
+      # Concurrent-execution regression: https://github.com/google/ksp/issues/3286
+      - dependency-name: com.google.devtools.ksp
+        versions: ['2.3.13']
     commit-message:
       prefix: build
     open-pull-requests-limit: 5
