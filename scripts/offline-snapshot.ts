@@ -130,8 +130,8 @@ export function* parseTsv(text: string): Generator<Record<string, string>> {
       if (!['code', 'product_name', 'countries_tags', 'last_modified_t'].every(key => headers!.includes(key))) throw new Error('Missing TSV columns');
       fields = []; return;
     }
-    if (fields.length === 1 && fields[0] === '') { fields = []; return; }
-    if (fields.length !== headers.length) throw new Error('Incomplete TSV row');
+    // The export does not escape newlines inside fields, so a split record leaves fragments with too few fields; skip them.
+    if (fields.length !== headers.length) { fields = []; return; }
     const result: Record<string, string> = {};
     for (const key of ['code', 'product_name', 'brands', 'ingredients_text', 'countries_tags', 'last_modified_t']) {
       const index = headers.indexOf(key); if (index >= 0) result[key] = fields[index]!;

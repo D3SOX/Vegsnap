@@ -76,11 +76,12 @@ describe('offline snapshot build', () => {
     expect(pack.sources[1]?.url).toBe('https://world.openbeautyfacts.org');
     expect(pack.products.find(product => product.source === 'obf')?.ingredients).toBe('Aqua, glycerin');
   });
-  test('official TSV preserves escaped quotes and multiline composition, rejects truncated rows', () => {
+  test('official TSV preserves escaped quotes and multiline composition, skips records split by unescaped newlines', () => {
     const header = 'code\tproduct_name\tbrands\tingredients_text\tcountries_tags\tlast_modified_t\n';
     const text = header + '4000417025005\tFixture\tBrand\t"cocoa, ""sugar""\nsalt"\ten:germany\t1700000000\n';
     expect([...parseTsv(text)][0]?.ingredients_text).toBe('cocoa, "sugar"\nsalt');
-    expect(() => [...parseTsv(header + '4000417025005\tFixture')]).toThrow('Incomplete');
+    const split = header + '4000417025104\tSplit\tBrand\tAqua\nglycerin\ten:germany\t1700000000\n' + text.slice(header.length);
+    expect([...parseTsv(split)].map(row => row.code)).toEqual(['4000417025005']);
     expect(() => [...parseTsv(header + '"unterminated')]).toThrow('Unterminated');
   });
   test('fresh cache does no network; failed stale refresh preserves original bytes and date', async () => {
