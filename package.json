@@ -27,7 +27,7 @@
     "strings:check": "bun scripts/localization.ts --check"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.5",
+    "@biomejs/biome": "2.6.6",
     "@types/bun": "^1.4.4",
     "playwright": "1.65.0",
     "typescript": "^7.0.2"
