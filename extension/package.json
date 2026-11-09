@@ -15,7 +15,7 @@
   "dependencies": {
     "@vegsnap/core": "workspace:*",
     "country-flag-emoji-polyfill": "^0.1.10",
-    "preact": "^11.1.1"
+    "preact": "^11.2.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",
