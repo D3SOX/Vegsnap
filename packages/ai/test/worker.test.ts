@@ -36,7 +36,7 @@ beforeAll(async () => {
       IP_REQUEST_LIMIT: { namespace_id: '826404', simple: { limit: 120, period: 60 } },
     },
     bindings: { PUBLIC_ORIGIN: 'https://ai.example', TURNSTILE_SITE_KEY: 'test-site', TURNSTILE_SECRET: 'test-only',
-      OPENAI_API_KEY: 'test-only-openai', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20', DAILY_IP_CONNECT_LIMIT: '3' },
+      ANTHROPIC_API_KEY: 'test-only-anthropic', AI_ENABLED: 'true', DAILY_CHECK_LIMIT: '4', SESSION_CHECK_LIMIT: '3', DAILY_CONNECT_LIMIT: '20', PENDING_CONNECT_LIMIT: '20', DAILY_IP_CONNECT_LIMIT: '3' },
     outboundService: async request => {
       if (request.url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
         const body = await request.json() as { response: string; remoteip?: string };
@@ -55,23 +55,28 @@ beforeAll(async () => {
         const product = { name: 'Hummus chili', brand: 'Coop', weight_pretty: '200g', slug: 'produkt/hummus-chili-200g-coop', ingredients: coopText };
         return WorkerResponse.json(body.slug === '/kategori' ? { type: 'category', payload: { products: [product] } } : { type: 'product', payload: product });
       }
-      expect(request.url).toBe('https://api.openai.com/v1/responses');
-      expect(request.headers.get('Authorization')).toBe('Bearer test-only-openai');
+      expect(request.url).toBe('https://api.anthropic.com/v1/messages');
+      expect(request.headers.get('Authorization')).toBe('Bearer test-only-anthropic');
       const payload = await request.json() as Record<string, unknown>;
       upstream.push(payload);
-      if (failUpstream) return WorkerResponse.json({ error: { message: 'PRIVATE upstream key and account details' } }, { status: 500 });
-      if (invalidUpstream) return WorkerResponse.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'not json' }] }] });
+      const searching = Array.isArray(payload.tools);
+      const message = (content: unknown[]) => WorkerResponse.json({ id: 'msg_test', type: 'message', role: 'assistant', model: payload.model, content,
+        stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } });
+      if (failUpstream) return WorkerResponse.json({ type: 'error', error: { type: 'api_error', message: 'PRIVATE upstream key and account details' } }, { status: 500 });
+      if (invalidUpstream) return message([{ type: 'text', text: 'not json' }]);
       const result = catalogueMode ? { text: '', complete: false, category: 'food', name: 'Hummus med chili', brand: 'Coop', packaging: { language: 'Swedish', quantity: '200 g', variant: 'chili' }, ...(upstream.length > 1 ? { ingredientAssessments: coopTerms.map(term => ({ term, status: 'plant', explanation: 'Plant ingredient.' })) } : {}) } : needsResearch ? { text: '', complete: false, category: 'household', name: 'Tissues', brand: 'Maker', ...(discoveredBarcode ? { barcode: discoveredBarcode } : {}), ...(packagingCountry ? { packaging: { country: packagingCountry } } : {}) } : { ...extraction, text: extractionText ?? extraction.text };
-      if (companyMode) Object.assign(result, { brand: 'Maker', ...(payload.tool_choice === 'required' ? { companyAssessment: {
+      if (companyMode) Object.assign(result, { brand: 'Maker', ...(searching ? { companyAssessment: {
         brand: 'Maker', company: 'Maker Ltd', scope: 'direct', verdict: 'inconclusive', categories: [],
         summary: 'The consulted policy does not establish whether animal testing takes place.',
         sources: [{ url: 'https://maker.example/tissues', title: 'Company policy', quote: 'We review our testing policies.' }],
       } } : {}) });
       if (includeAlternatives) Object.assign(result, { alternatives: [{ name: 'Vegan chocolate', brand: 'Plant', url: 'https://maker.example/tissues', quote: 'This chocolate is vegan.' }] });
-      return WorkerResponse.json({ status: 'completed', output: [
-        ...(payload.tool_choice === 'required' ? [{ type: 'web_search_call', status: 'completed', action: { type: 'search', sources: [{ url: 'https://maker.example/tissues', title: 'Tissues' }] } }] : []),
-        { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(result) }] },
-      ] });
+      return message([
+        ...(searching ? [{ type: 'server_tool_use', id: 'srvtoolu_test', name: 'web_search', input: { query: 'Maker tissues' } },
+          { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_test', content: [{ type: 'web_search_result', url: 'https://maker.example/tissues', title: 'Tissues', encrypted_content: 'test', page_age: null }] }] : []),
+        // Citations split the answer into several text blocks.
+        { type: 'text', text: JSON.stringify(result).slice(0, 10) }, { type: 'text', text: JSON.stringify(result).slice(10) },
+      ]);
     },
   }));
   await mf.ready;
@@ -100,6 +105,9 @@ async function connect(verify = true, installationId?: string) {
   return token;
 }
 const check = (token: string, input: unknown = { images: ['data:image/jpeg;base64,AA=='], category: 'food' }) => request('/api/check', token, input);
+type Upstream = { system: { text: string }[]; messages: { content: { type: string; text?: string }[] }[] };
+const context = (payload: Record<string, unknown> | undefined) => JSON.parse((payload as unknown as Upstream).messages[0]!.content.at(-1)!.text!);
+const instructions = (payload: Record<string, unknown> | undefined) => (payload as unknown as Upstream).system[0]!.text;
 test('hosted alternative research accepts bounded public queries, requires search, and rejects scan content', async () => {
   const token = await connect();
   includeAlternatives = true;
@@ -107,9 +115,9 @@ test('hosted alternative research accepts bounded public queries, requires searc
   const response = await check(token, input);
   expect(response.status).toBe(200);
   expect(await response.json()).toHaveProperty('alternatives');
-  expect(upstream[0]?.tool_choice).toBe('required');
-  const body = upstream[0] as { input: { content: { text: string }[] }[] };
-  expect(JSON.parse(body.input[0]!.content[0]!.text).alternativeSearch).toEqual(input.alternativeSearch);
+  expect(upstream[0]).toMatchObject({ tools: [{ type: 'web_search_20250305', max_uses: 3 }] });
+  expect(instructions(upstream[0])).toContain('Search the web');
+  expect(context(upstream[0]).alternativeSearch).toEqual(input.alternativeSearch);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
   expect((await check(token, { ...input, text: 'private scan' })).status).toBe(400);
   expect((await check(token, { ...input, images: ['data:image/jpeg;base64,AA=='] })).status).toBe(400);
@@ -126,7 +134,7 @@ test('released clients retain their extraction schema when alternative search is
     expect(result).toMatchObject(extraction);
     expect(result).not.toHaveProperty('alternatives');
   }
-  expect(upstream.every(payload => !Object.hasOwn(payload, 'tool_choice'))).toBe(true);
+  expect(upstream.every(payload => !Object.hasOwn(payload, 'tools'))).toBe(true);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ state: 'connected', remaining: 1 });
 });
 function fixedLimit(maximum: number): RateLimit {
@@ -193,8 +201,8 @@ test('three photos consume one free check', async () => {
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
   expect(upstream).toHaveLength(1);
 });
-test('missing OpenAI key is disabled and never reaches upstream', async () => {
-  const env = { ...await mf.getBindings(), OPENAI_API_KEY: undefined } as unknown as Env;
+test('missing Anthropic key is disabled and never reaches upstream', async () => {
+  const env = { ...await mf.getBindings(), ANTHROPIC_API_KEY: undefined } as unknown as Env;
   const response = await worker.fetch(new Request('https://ai.example/api/check', { method: 'POST', headers: { Authorization: `Bearer ${'a'.repeat(64)}` } }), env);
   expect(response.status).toBe(503);
   expect(upstream).toHaveLength(0);
@@ -345,9 +353,10 @@ test('uses a fixed model without tools for a readable photo, and stores only cou
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ ...extraction, research: { searched: false, sources: [] } });
   expect(upstream).toHaveLength(1);
-  expect(upstream[0]).toMatchObject({ model: 'gpt-6-luna', reasoning: { effort: 'medium' }, store: false, max_output_tokens: 16_000 });
+  expect(upstream[0]).toMatchObject({ model: 'claude-sonnet-5-5', output_config: { effort: 'low' }, max_tokens: 16_000,
+    system: [{ cache_control: { type: 'ephemeral' } }], messages: [{ content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AA==' } }, { type: 'text' }] }] });
   expect(upstream[0]?.tools).toBeUndefined();
-  expect(upstream[0]).toMatchObject({ instructions: EXTRACTION_PROMPT, text: { format: { type: 'json_schema', strict: true } } });
+  expect(instructions(upstream[0])).toStartWith(`${EXTRACTION_PROMPT}\nReply with only the JSON object`);
   const db = await mf.getD1Database('DB');
   const stored = JSON.stringify((await db.prepare('SELECT * FROM sessions').all()).results);
   expect(stored).not.toContain(token);
@@ -369,29 +378,27 @@ test('a Swedish front photo retains catalogue ingredients without forwarding AI 
   expect(catalogueRequests).toHaveLength(2);
   expect(catalogueRequests.every(request => request.authorization === null)).toBe(true);
   expect(JSON.stringify(catalogueRequests)).not.toContain('image/jpeg');
-  expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
+  expect(JSON.stringify(upstream[1]?.messages)).not.toContain('image/jpeg');
 });
 test('research has a bounded six-call budget and cannot rename the observed product', async () => {
   needsResearch = true;
   expect((await check(await connect())).status).toBe(200);
   expect(upstream).toHaveLength(2);
   expect(upstream[0]?.tools).toBeUndefined();
-  expect(upstream[1]).toMatchObject({ max_tool_calls: 6, tool_choice: 'required', tools: [{ type: 'web_search', search_context_size: 'low' }],
-    text: { format: { type: 'json_schema', strict: true, schema: { properties: { name: { enum: ['Tissues'] }, brand: { enum: ['Maker'] } } } } } });
-  expect(upstream[1]?.instructions).toContain('Use at most 6 web-tool calls');
-  expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
+  expect(upstream[1]).toMatchObject({ output_config: { effort: 'medium' }, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 6 }] });
+  expect(instructions(upstream[1])).toContain('Use at most 6 web-tool calls');
+  expect(instructions(upstream[1])).toContain('"name":{"type":"string","enum":["Tissues"]},"brand":{"type":"string","enum":["Maker"]}');
+  expect(JSON.stringify(upstream[1]?.messages)).not.toContain('image/jpeg');
 });
-test('a decisive branded photo still researches the company within one free check', async () => {
+test('a decisive branded photo returns after one AI pass without company research', async () => {
   companyMode = true;
   const token = await connect();
   const response = await check(token);
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ ...extraction, brand: 'Maker', companyAssessment: { verdict: 'inconclusive' }, research: { searched: true } });
-  expect(upstream).toHaveLength(2);
-  expect(upstream[1]?.max_tool_calls).toBe(6);
-  const context = JSON.parse((upstream[1]!.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
-  expect(context.productOutcome).toBe('vegan');
-  expect(JSON.stringify(upstream[1]?.input)).not.toContain('image/jpeg');
+  const result = await response.json();
+  expect(result).toMatchObject({ ...extraction, brand: 'Maker', research: { searched: false } });
+  expect(result).not.toHaveProperty('companyAssessment');
+  expect(upstream).toHaveLength(1);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 2 });
 });
 test('concurrent checks cannot exceed the per-session allowance', async () => {
@@ -467,12 +474,12 @@ test('rejects model/prompt injection fields and invalid photos before consuming 
   expect(upstream).toHaveLength(0);
   expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 3 });
 });
-test('client text at the 30000-character boundary reaches OpenAI and preserves its transcription', async () => {
+test('client text at the 30000-character boundary reaches Claude and preserves its transcription', async () => {
   extractionText = 'x'.repeat(30_000);
   const response = await check(await connect(), { text: extractionText });
   expect(response.status).toBe(200);
   expect((await response.json() as { text: string }).text).toBe(extractionText);
-  expect(JSON.stringify(upstream[0]?.input)).toContain(extractionText);
+  expect(context(upstream[0]).text).toBe(extractionText);
 });
 test('failed upstream requests refund the allowance and never expose upstream details', async () => {
   failUpstream = true;
@@ -520,7 +527,6 @@ for (const scenario of [
     ...(scenario.context ? { countryContext: scenario.context } : {}) });
   expect(response.status).toBe(200);
   expect(upstream).toHaveLength(2);
-  const context = (payload: Record<string, unknown>) => JSON.parse((payload.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
   expect(context(upstream[0]!).market).toBe(scenario.market);
   expect(context(upstream[1]!).market).toBe(scenario.research);
   expect(JSON.stringify(upstream)).not.toContain('countryContext');
@@ -550,7 +556,7 @@ for (const scenario of [
   expect(response.status).toBe(200);
   expect(upstream).toHaveLength(2);
   expect(upstream[0]?.tools).toBeUndefined();
-  const research = JSON.parse((upstream[1]!.input as { content: { text: string }[] }[])[0]!.content[0]!.text);
+  const research = context(upstream[1]);
   expect(research.market).toBe(scenario.expected);
   expect(research.barcode).toBe(discoveredBarcode);
   expect(await response.json()).toMatchObject({ research: { market: scenario.expected } });

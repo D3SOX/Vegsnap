@@ -273,7 +273,7 @@
 "Select a saved account or connect another account." = "Wähle ein gespeichertes Konto oder verbinde ein weiteres Konto.";
 "Selected manually" = "Manuell ausgewählt";
 "Selected text and photos may be sent to your AI provider if local evidence is insufficient." = "Ausgewählter Text und Fotos können an deinen KI-Anbieter gesendet werden, wenn lokale Belege nicht ausreichen.";
-"Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile." = "Ausgewählter Text und Fotos werden über Cloudflare an OpenAI gesendet. Die Verifizierung erfolgt mit Cloudflare Turnstile.";
+"Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile." = "Ausgewählter Text und Fotos werden über Cloudflare an Anthropic (Claude) gesendet. Die Verifizierung erfolgt mit Cloudflare Turnstile.";
 "Send report" = "Meldung senden";
 "Service returned HTTP" = "Dienst meldet HTTP";
 "Settings" = "Einstellungen";

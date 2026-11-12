@@ -4,7 +4,7 @@ import type { AIExtraction, Category, CheckInput, ProviderAdapter, ProviderConfi
 import { readBoundedText } from './http';
 import { acceptsImages } from './model-capabilities';
 import { analyzeText, parseSourceIngredients, safeSourceUrl } from './analyze';
-import { applyAIEvidence, transcriptionComplete } from './ai-evidence';
+import { applyAIEvidence, compositionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
@@ -15,13 +15,15 @@ import { lookupMatspar, retainMatsparComposition, matchesMatsparIdentity } from 
 
 export const EXTRACTION_PROMPT = promptData.prompt;
 const toolBudget = (calls: number) => promptData.toolBudgetPrompt.replace('{budget}', String(calls));
-/** Strict Structured Outputs; product passes omit alternatives and the follow-up pins the extracted identity. */
-function outputFormat(options: { alternatives?: boolean; identity?: { name?: string; brand?: string } } = {}) {
+export interface AIOutputOptions { alternatives?: boolean; identity?: { name?: string; brand?: string } }
+/** Strict output schema; product passes omit alternatives and the follow-up pins the extracted identity. */
+export function aiOutputSchema(options: AIOutputOptions = {}) {
   const { alternatives, ...product } = outputSchema.properties;
   const properties = { ...product, ...(options.alternatives ? { alternatives } : {}), ...(options.identity ? {
     name: { type: 'string', enum: [options.identity.name] }, brand: { type: 'string', enum: [options.identity.brand] } } : {}) };
-  return { format: { type: 'json_schema', name: 'product_evidence', strict: true, schema: { ...outputSchema, properties, required: Object.keys(properties) } } };
+  return { ...outputSchema, properties, required: Object.keys(properties) };
 }
+const outputFormat = (options: AIOutputOptions) => ({ format: { type: 'json_schema', name: 'product_evidence', strict: true, schema: aiOutputSchema(options) } });
 /** Strict schemas express optional fields as null; validators and released clients expect them absent, as are objects whose fields were all null. */
 function withoutNulls(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(withoutNulls);
@@ -151,14 +153,17 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
 }
 /** Assess one extraction exactly as research planning sees it; shared evidence fixtures run through here. */
 export function researchAssessment(extracted: AIExtraction, input: CheckInput) {
-  const complete = transcriptionComplete(extracted, Boolean(input.images?.length));
-  const visible: CheckInput = { text: extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
+  // As in checkProduct, a checked complete supplied list stays the composition authority over a photo transcription.
+  const supplied = input.complete === true && input.text?.trim() ? input.text : undefined;
+  const complete = Boolean(supplied) || compositionComplete(input, extracted);
+  const visible: CheckInput = { text: supplied ?? extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
     name: input.name || extracted.name, brand: input.brand || extracted.brand, locale: input.locale, images: input.images };
   return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, complete), visible, extracted);
 }
+/** A decisive label returns without a search pass; company research alone does not justify the extra wait. */
 function needsResearch(extracted: AIExtraction, input: CheckInput): boolean {
   if (!extracted.name?.trim() || !extracted.brand?.trim()) return false;
-  return ['uncertain', 'conflicting'].includes(researchAssessment(extracted, input).outcome) || !sourcedCompanyAssessment(extracted);
+  return ['uncertain', 'conflicting'].includes(researchAssessment(extracted, input).outcome);
 }
 function publicResearchQuestions(extracted: AIExtraction, input: CheckInput): string[] {
   return researchAssessment(extracted, input).findings.filter(finding => finding.evidenceId?.startsWith('web-composition-') &&
@@ -205,114 +210,156 @@ export function validateProviderConfig(config: ProviderConfig): URL {
   if (config.token && /[\r\n]/.test(config.token)) throw new Error('Invalid API token.');
   return base;
 }
+/** One AI round trip. The research provider owns prompts, research planning and validation; runners only translate. */
+export interface AIPass {
+  instructions: string;
+  /** JSON product context, as the model sees it. */
+  context: string;
+  images: string[];
+  /** Web-search budget for this pass; zero disables search. */
+  searches: number;
+  /** Alternative and research passes exist to search. */
+  requireSearch: boolean;
+  output: AIOutputOptions;
+}
+export interface AIPassResult { extraction: AIExtraction; searches: number }
+export type AIPassRunner = (pass: AIPass, signal: AbortSignal) => Promise<AIPassResult>;
+export interface ResearchProviderOptions {
+  supportsVision: boolean;
+  /** Hosted checks read the label first and search only when the label leaves the verdict open. */
+  searchFirstPass?: boolean;
+  /** Public product databases; never receives AI credentials. */
+  catalogueFetcher?: typeof fetch;
+  /** Matspar catalogue lookups. */
+  matsparFetcher?: typeof fetch;
+}
+function checkAIInput(input: CheckInput, supportsVision: boolean) {
+  const images = input.images ?? [];
+  if (images.length > 3) throw new Error('Use at most three product photos per check.');
+  if (images.length && !supportsVision) throw new Error('Choose a vision-capable model for photo checks.');
+  for (const image of images) {
+    if (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(image) || image.length > 4_000_000) {
+      throw new Error('Use a locally sanitized JPEG, PNG or WebP photo smaller than 3 MB.');
+    }
+  }
+  if ((input.text?.length ?? 0) > 30_000) throw new Error('Selected text exceeds 30,000 characters.');
+}
+const productContext = (input: CheckInput) => JSON.stringify({ alternativeSearch: input.alternativeSearch, text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' });
+/** Shared extraction and web-research flow for providers with a web-search tool. */
+export function createResearchProvider(run: AIPassRunner, options: ResearchProviderOptions): ProviderAdapter {
+  return {
+    supportsWebSearch: true,
+    async extract(input, signal, countryContext): Promise<AIExtraction> {
+      checkAIInput(input, options.supportsVision);
+      const searchFirst = (options.searchFirstPass ?? true) && !input.autoMarket;
+      const deadlineSignal = AbortSignal.timeout(130_000);
+      const requestSignal = signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal;
+      const first = await run({
+        instructions: input.alternativeSearch ? `${promptData.alternativesPrompt}\n${toolBudget(3)}`
+          : searchFirst ? `${EXTRACTION_PROMPT}\n${promptData.searchPrompt}\n${toolBudget(4)}` : EXTRACTION_PROMPT,
+        context: productContext(input), images: input.images ?? [],
+        searches: input.alternativeSearch ? 3 : searchFirst ? 4 : 0, requireSearch: Boolean(input.alternativeSearch),
+        output: { alternatives: Boolean(input.alternativeSearch) },
+      }, requestSignal);
+      const extracted = first.extraction;
+      if (input.alternativeSearch) return extracted;
+      const suppliedCode = normalizeBarcode(input.barcode ?? '');
+      const extractedCode = normalizeBarcode(extracted.barcode ?? '');
+      if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {
+        throw new Error('AI identified a different product barcode; confirm the product before using its evidence.');
+      }
+      if (!needsResearch(extracted, input)) return extracted;
+      const countryInput = { ...input, market: countryContext?.fallbackMarket ?? input.market };
+      let researchMarkets = countryContext?.markets ?? [];
+      if (input.autoMarket && !suppliedCode && extractedCode) {
+        try {
+          if (countryContext?.resolveBarcode) {
+            const resolved = await countryContext.resolveBarcode(extractedCode);
+            if (!resolved) return extracted;
+            researchMarkets = resolved;
+          } else {
+            // Hosted checks resolve discovered GTINs here, using the public transport without AI credentials.
+            const product = await lookupProduct(extractedCode, { ...countryInput, fetch: options.catalogueFetcher ?? globalThis.fetch, signal: requestSignal });
+            researchMarkets = [...researchMarkets, ...product?.markets ?? []];
+          }
+        } catch (error) {
+          if (requestSignal.aborted) throw error;
+          return extracted;
+        }
+      }
+      const researchInput = { ...input, market: selectProductCountry(
+        countryInput, extracted.packaging?.country, researchMarkets,
+      ).market };
+      const withResearchMarket = (value: AIExtraction): AIExtraction => input.autoMarket && value.research?.searched
+        ? { ...value, research: { ...value.research, market: researchInput.market } } : value;
+      let catalogue: Awaited<ReturnType<typeof lookupMatspar>>;
+      const outcome = researchAssessment(extracted, input).outcome;
+      if (input.images?.length && outcome === 'uncertain') {
+        try {
+          catalogue = await lookupMatspar(extracted, researchInput, options.matsparFetcher ?? options.catalogueFetcher ?? globalThis.fetch, requestSignal);
+        } catch (error) {
+          if (requestSignal.aborted) throw error;
+        }
+      }
+      const remainingSearchCalls = Math.max(0, 6 - first.searches);
+      if (!remainingSearchCalls) return extracted;
+      try {
+        const researched = (await run({
+          instructions: [EXTRACTION_PROMPT, promptData.searchPrompt, promptData.researchPrompt, ...(catalogue ? [promptData.cataloguePrompt] : []),
+            toolBudget(remainingSearchCalls)].join('\n'),
+          context: JSON.stringify({ name: extracted.name, brand: extracted.brand,
+            packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
+            category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', productOutcome: outcome, webToolBudget: remainingSearchCalls, unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
+            ...(catalogue ? { catalogueComposition: catalogue } : {}) }),
+          images: [], searches: remainingSearchCalls, requireSearch: true, output: { identity: extracted },
+        }, requestSignal)).extraction;
+        const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);
+        return withResearchMarket(catalogue ? retainMatsparComposition(merged, catalogue) : merged);
+      } catch (error) {
+        if (signal?.aborted) throw error;
+        return withResearchMarket(catalogue ? retainMatsparComposition(extracted, catalogue) : extracted);
+      }
+    },
+  };
+}
 export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fetch = globalThis.fetch, catalogueFetcher?: typeof fetch): ProviderAdapter {
   const base = validateProviderConfig(config);
   const supportsWebSearch = base.origin === 'https://api.openai.com' && base.pathname.replace(/\/$/, '') === '/v1';
   // JSON mode is widely but not universally supported (LM Studio rejects json_object), so only known providers get it.
   const jsonMode = ['openrouter.ai', 'generativelanguage.googleapis.com'].includes(base.hostname) || base.port === '11434';
   const endpoint = new URL(`${base.pathname.replace(/\/$/, '')}/${supportsWebSearch ? 'responses' : 'chat/completions'}`, base.origin).href;
+  const supportsVision = config.supportsVision ?? acceptsImages(config.model);
+  async function send(body: unknown, signal: AbortSignal): Promise<unknown> {
+    const response = await fetcher(endpoint, {
+      method: 'POST', credentials: 'omit', redirect: 'error', signal,
+      headers: { 'Content-Type': 'application/json', ...(config.token ? { Authorization: `Bearer ${config.token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`AI provider returned HTTP ${response.status}. Check your connection, model, and allowance.`);
+    return JSON.parse(await readBoundedText(response, 100_000));
+  }
+  if (supportsWebSearch) {
+    return createResearchProvider(async (pass, signal) => {
+      const body = await send({
+        model: config.model, stream: false, store: false, max_output_tokens: 16_000, instructions: pass.instructions,
+        ...(pass.searches ? { tools: [{ type: 'web_search' }], max_tool_calls: pass.searches, include: ['web_search_call.action.sources'] } : {}),
+        ...(pass.requireSearch ? { tool_choice: 'required' } : {}),
+        text: outputFormat(pass.output),
+        input: [{ role: 'user', content: [{ type: 'input_text', text: pass.context }, ...pass.images.map(url => ({ type: 'input_image', image_url: url }))] }],
+      }, signal);
+      const searches = object(body) && Array.isArray(body.output) ? body.output.filter(item => object(item) && item.type === 'web_search_call').length : 0;
+      return { extraction: parseResponsesExtraction(body), searches };
+    }, { supportsVision, catalogueFetcher, matsparFetcher: catalogueFetcher ?? fetcher });
+  }
   return {
     supportsWebSearch,
-    async extract(input, signal, countryContext): Promise<AIExtraction> {
-      const images = input.images ?? [];
-      if (images.length > 3) throw new Error('Use at most three product photos per check.');
-      if (images.length && !(config.supportsVision ?? acceptsImages(config.model))) throw new Error('Choose a vision-capable model for photo checks.');
-      for (const image of images) {
-        if (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(image) || image.length > 4_000_000) {
-          throw new Error('Use a locally sanitized JPEG, PNG or WebP photo smaller than 3 MB.');
-        }
-      }
-      if ((input.text?.length ?? 0) > 30_000) throw new Error('Selected text exceeds 30,000 characters.');
-      const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
-        { type: 'text', text: JSON.stringify({ alternativeSearch: input.alternativeSearch, text: input.text ?? '', name: input.name, brand: input.brand, barcode: input.barcode && normalizeBarcode(input.barcode), sourceUrl: input.sourceUrl, category: input.category, complete: input.complete, locale: input.locale ?? 'en', market: input.market ?? 'DE' }) },
-        ...images.map(url => ({ type: 'image_url' as const, image_url: { url } })),
-      ];
-      const searchTools = !input.autoMarket;
-      const requestBody = supportsWebSearch ? {
-        model: config.model, stream: false, store: false, max_output_tokens: 16_000,
-        instructions: input.alternativeSearch ? `${promptData.alternativesPrompt}\n${toolBudget(3)}`
-          : searchTools ? `${EXTRACTION_PROMPT}\n${promptData.searchPrompt}\n${toolBudget(4)}` : EXTRACTION_PROMPT,
-        tools: searchTools ? [{ type: 'web_search' }] : undefined,
-        ...(input.alternativeSearch ? { tool_choice: 'required' } : {}),
-        max_tool_calls: searchTools ? input.alternativeSearch ? 3 : 4 : undefined, include: searchTools ? ['web_search_call.action.sources'] : undefined,
-        text: outputFormat({ alternatives: Boolean(input.alternativeSearch) }),
-        input: [{ role: 'user', content: content.map(part => part.type === 'text'
-          ? { type: 'input_text', text: part.text } : { type: 'input_image', image_url: part.image_url.url }) }],
-      } : { model: config.model, stream: false, max_tokens: 6000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
-        messages: [{ role: 'system', content: input.alternativeSearch ? promptData.alternativesPrompt : EXTRACTION_PROMPT }, { role: 'user', content }] };
+    async extract(input, signal): Promise<AIExtraction> {
+      checkAIInput(input, supportsVision);
+      const content = [{ type: 'text', text: productContext(input) }, ...(input.images ?? []).map(url => ({ type: 'image_url', image_url: { url } }))];
       const deadlineSignal = AbortSignal.timeout(130_000);
-      const requestSignal = signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal;
-      async function send(body: unknown): Promise<unknown> {
-        const response = await fetcher(endpoint, {
-          method: 'POST', credentials: 'omit', redirect: 'error', signal: requestSignal,
-          headers: { 'Content-Type': 'application/json', ...(config.token ? { Authorization: `Bearer ${config.token}` } : {}) },
-          body: JSON.stringify(body),
-        });
-        if (!response.ok) throw new Error(`AI provider returned HTTP ${response.status}. Check your connection, model, and allowance.`);
-        return JSON.parse(await readBoundedText(response, 100_000));
-      }
-      const body = await send(requestBody);
-      if (supportsWebSearch) {
-        const extracted = parseResponsesExtraction(body);
-        if (input.alternativeSearch) return extracted;
-        const suppliedCode = normalizeBarcode(input.barcode ?? '');
-        const extractedCode = normalizeBarcode(extracted.barcode ?? '');
-        if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {
-          throw new Error('AI identified a different product barcode; confirm the product before using its evidence.');
-        }
-        const countryInput = { ...input, market: countryContext?.fallbackMarket ?? input.market };
-        let researchMarkets = countryContext?.markets ?? [];
-        if (input.autoMarket && !suppliedCode && extractedCode) {
-          try {
-            if (countryContext?.resolveBarcode) {
-              const resolved = await countryContext.resolveBarcode(extractedCode);
-              if (!resolved) return extracted;
-              researchMarkets = resolved;
-            } else {
-              // Hosted checks resolve discovered GTINs here, using the public transport without AI credentials.
-              const product = await lookupProduct(extractedCode, { ...countryInput, fetch: catalogueFetcher ?? globalThis.fetch, signal: requestSignal });
-              researchMarkets = [...researchMarkets, ...product?.markets ?? []];
-            }
-          } catch (error) {
-            if (requestSignal.aborted) throw error;
-            return extracted;
-          }
-        }
-        const researchInput = { ...input, market: selectProductCountry(
-          countryInput, extracted.packaging?.country, researchMarkets,
-        ).market };
-        const withResearchMarket = (value: AIExtraction): AIExtraction => input.autoMarket && value.research?.searched
-          ? { ...value, research: { ...value.research, market: researchInput.market } } : value;
-        let catalogue: Awaited<ReturnType<typeof lookupMatspar>>;
-        if (input.images?.length && researchAssessment(extracted, input).outcome === 'uncertain' && needsResearch(extracted, input)) {
-          try {
-            catalogue = await lookupMatspar(extracted, researchInput, catalogueFetcher ?? fetcher, requestSignal);
-          } catch (error) {
-            if (requestSignal.aborted) throw error;
-          }
-        }
-        const usedSearchCalls = object(body) && Array.isArray(body.output)
-          ? body.output.filter(item => object(item) && item.type === 'web_search_call').length : 0;
-        const remainingSearchCalls = Math.max(0, 6 - usedSearchCalls);
-        if (!needsResearch(extracted, input) || !remainingSearchCalls) return extracted;
-        try {
-          const researched = parseResponsesExtraction(await send({ ...requestBody, tool_choice: 'required',
-            tools: [{ type: 'web_search' }], max_tool_calls: remainingSearchCalls, include: ['web_search_call.action.sources'],
-            instructions: [EXTRACTION_PROMPT, promptData.searchPrompt, promptData.researchPrompt, ...(catalogue ? [promptData.cataloguePrompt] : []),
-              toolBudget(remainingSearchCalls)].join('\n'),
-            text: outputFormat({ identity: extracted }),
-            input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ name: extracted.name, brand: extracted.brand,
-              packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
-              category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', productOutcome: researchAssessment(extracted, input).outcome, webToolBudget: remainingSearchCalls, unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
-              ...(catalogue ? { catalogueComposition: catalogue } : {}) }) }] }],
-          }));
-          const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);
-          return withResearchMarket(catalogue ? retainMatsparComposition(merged, catalogue) : merged);
-        } catch (error) {
-          if (signal?.aborted) throw error;
-          return withResearchMarket(catalogue ? retainMatsparComposition(extracted, catalogue) : extracted);
-        }
-      }
+      const body = await send({ model: config.model, stream: false, max_tokens: 6000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        messages: [{ role: 'system', content: input.alternativeSearch ? promptData.alternativesPrompt : EXTRACTION_PROMPT }, { role: 'user', content }] },
+        signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal);
       if (!object(body) || !Array.isArray(body.choices) || !object(body.choices[0])) throw new Error('AI provider returned no completion.');
       const choice = body.choices[0];
       if (choice.finish_reason !== 'stop' || !object(choice.message) || typeof choice.message.content !== 'string' || choice.message.refusal) {

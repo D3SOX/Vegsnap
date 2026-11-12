@@ -142,7 +142,7 @@ describe('AI parses source-grounded ingredient names', () => {
     expect(result.outcome).not.toBe('vegan');
   });
 
-  test('company research after animal evidence preserves the parsed medicine list', async () => {
+  test('animal evidence returns without a company research pass', async () => {
     const value = extraction();
     delete value.research;
     const requests: unknown[] = [];
@@ -154,8 +154,8 @@ describe('AI parses source-grounded ingredient names', () => {
       ] }));
     }) as typeof fetch;
     const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'supported', supportsVision: true }, fetcher);
-    await provider.extract({ category: 'other', images: ['data:image/jpeg;base64,AA=='] });
-    expect(requests).toHaveLength(2);
+    expect((await provider.extract({ category: 'other', images: ['data:image/jpeg;base64,AA=='] })).ingredients).toEqual(value.ingredients);
+    expect(requests).toHaveLength(1);
   });
 });
 

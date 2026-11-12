@@ -874,9 +874,9 @@
     ]
   },
   "app_hosted_hint": {
-    "en": "No subscription or API key needed. Verify in your browser, then return to Vegsnap. Your connection updates automatically. Selected product text and photos go through Cloudflare to OpenAI. Access expires after 24 hours; free allowances reset at midnight UTC.",
-    "de": "Kein Abo oder API-Schlüssel nötig. Im Browser bestätigen und zu Vegsnap zurückkehren. Die Verbindung wird automatisch aktualisiert. Ausgewählter Produkttext und Fotos gehen über Cloudflare an OpenAI. Der Zugang läuft nach 24 Stunden ab; kostenlose Kontingente werden um Mitternacht UTC zurückgesetzt.",
-    "sv": "Ingen prenumeration eller API-nyckel behövs. Verifiera i webbläsaren och återvänd till Vegsnap. Anslutningen uppdateras automatiskt. Vald produkttext och foton skickas via Cloudflare till OpenAI. Åtkomsten upphör efter 24 timmar; gratiskvoten återställs vid midnatt UTC.",
+    "en": "No subscription or API key needed. Verify in your browser, then return to Vegsnap. Your connection updates automatically. Selected product text and photos go through Cloudflare to Anthropic (Claude). Access expires after 24 hours; free allowances reset at midnight UTC.",
+    "de": "Kein Abo oder API-Schlüssel nötig. Im Browser bestätigen und zu Vegsnap zurückkehren. Die Verbindung wird automatisch aktualisiert. Ausgewählter Produkttext und Fotos gehen über Cloudflare an Anthropic (Claude). Der Zugang läuft nach 24 Stunden ab; kostenlose Kontingente werden um Mitternacht UTC zurückgesetzt.",
+    "sv": "Ingen prenumeration eller API-nyckel behövs. Verifiera i webbläsaren och återvänd till Vegsnap. Anslutningen uppdateras automatiskt. Vald produkttext och foton skickas via Cloudflare till Anthropic (Claude). Åtkomsten upphör efter 24 timmar; gratiskvoten återställs vid midnatt UTC.",
     "extension": [
       "app.hostedHint"
     ]
@@ -4450,9 +4450,9 @@
     ]
   },
   "hosted_ai_hint": {
-    "en": "Limited free checks without a subscription or API key. Selected product text and photos pass through Cloudflare to OpenAI. Access expires after 24 hours; allowances reset at midnight UTC.",
-    "de": "Begrenzte kostenlose Prüfungen ohne Abo oder API-Schlüssel. Ausgewählter Produkttext und Fotos gehen über Cloudflare an OpenAI. Der Zugang läuft nach 24 Stunden ab; Kontingente werden um Mitternacht UTC zurückgesetzt.",
-    "sv": "Begränsat antal gratiskontroller utan prenumeration eller API-nyckel. Vald produkttext och foton skickas via Cloudflare till OpenAI. Åtkomsten upphör efter 24 timmar; kvoterna återställs vid midnatt UTC.",
+    "en": "Limited free checks without a subscription or API key. Selected product text and photos pass through Cloudflare to Anthropic (Claude). Access expires after 24 hours; allowances reset at midnight UTC.",
+    "de": "Begrenzte kostenlose Prüfungen ohne Abo oder API-Schlüssel. Ausgewählter Produkttext und Fotos gehen über Cloudflare an Anthropic (Claude). Der Zugang läuft nach 24 Stunden ab; Kontingente werden um Mitternacht UTC zurückgesetzt.",
+    "sv": "Begränsat antal gratiskontroller utan prenumeration eller API-nyckel. Vald produkttext och foton skickas via Cloudflare till Anthropic (Claude). Åtkomsten upphör efter 24 timmar; kvoterna återställs vid midnatt UTC.",
     "android": [
       "hosted_ai_hint"
     ]
@@ -7927,12 +7927,12 @@
       "Selected text and photos may be sent to your AI provider if local evidence is insufficient."
     ]
   },
-  "selected_text_and_photos_pass_through_cloudflare_to_open_ai_verification_uses_cloudflare_turnstile": {
-    "en": "Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile.",
-    "de": "Ausgewählter Text und Fotos werden über Cloudflare an OpenAI gesendet. Die Verifizierung erfolgt mit Cloudflare Turnstile.",
-    "sv": "Vald text och valda foton skickas via Cloudflare till OpenAI. Verifieringen använder Cloudflare Turnstile.",
+  "selected_text_and_photos_pass_through_cloudflare_to_anthropic_verification_uses_cloudflare_turnstile": {
+    "en": "Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile.",
+    "de": "Ausgewählter Text und Fotos werden über Cloudflare an Anthropic (Claude) gesendet. Die Verifizierung erfolgt mit Cloudflare Turnstile.",
+    "sv": "Vald text och valda foton skickas via Cloudflare till Anthropic (Claude). Verifieringen använder Cloudflare Turnstile.",
     "ios": [
-      "Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile."
+      "Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile."
     ]
   },
   "service_returned_http": {

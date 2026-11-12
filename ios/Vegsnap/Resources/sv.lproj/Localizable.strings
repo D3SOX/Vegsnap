@@ -273,7 +273,7 @@
 "Select a saved account or connect another account." = "Välj ett sparat konto eller anslut ett annat konto.";
 "Selected manually" = "Valt manuellt";
 "Selected text and photos may be sent to your AI provider if local evidence is insufficient." = "Vald text och valda foton kan skickas till din AI-leverantör om de lokala beläggen är otillräckliga.";
-"Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile." = "Vald text och valda foton skickas via Cloudflare till OpenAI. Verifieringen använder Cloudflare Turnstile.";
+"Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile." = "Vald text och valda foton skickas via Cloudflare till Anthropic (Claude). Verifieringen använder Cloudflare Turnstile.";
 "Send report" = "Skicka rapport";
 "Service returned HTTP" = "Tjänsten svarade med HTTP";
 "Settings" = "Inställningar";

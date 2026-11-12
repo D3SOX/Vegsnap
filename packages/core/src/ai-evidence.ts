@@ -13,6 +13,14 @@ const labelNegation = /\b(?:not|non|no|never|nicht|kein(?:e|en|er|em|es)?|nein|n
 const photoCompositionHeading = /(?:^|[^\p{L}\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition)\s*[:：]/iu;
 export const transcriptionComplete = (extracted: Pick<AIExtraction, 'complete' | 'text'>, photo: boolean): boolean =>
   extracted.complete && (!photo || photoCompositionHeading.test(extracted.text));
+/** Whether a check's composition counts as complete: the caller's flag wins, then a visible heading, then the model's claim. */
+export function compositionComplete(input: Pick<CheckInput, 'complete' | 'text' | 'images'>, extracted: Pick<AIExtraction, 'complete' | 'text'>): boolean {
+  if (input.complete === false) return false;
+  if (input.images?.length) return transcriptionComplete(extracted, true);
+  // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
+  const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(input.text ?? '');
+  return localComplete && extracted.complete;
+}
 
 /** Model evidence stays explicitly attributed and cannot rewrite a known local ingredient rule. */
 export function applyAIEvidence(result: CheckResult, input: CheckInput, extracted: AIExtraction, complete: boolean): CheckResult {

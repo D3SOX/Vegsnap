@@ -3,7 +3,7 @@ import { acceptsImages, createOpenAIProvider, imageSupport } from '../src';
 
 describe('automatic model image capabilities', () => {
   test('recognizes current image-capable and known text-only models', () => {
-    for (const model of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-5.6-sol', 'gpt-4o-mini', 'gpt-4.1', 'openai/gpt-4o', 'o3', 'o4-mini']) expect(imageSupport(model)).toBe('supported');
+    for (const model of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-5.6-sol', 'gpt-4o-mini', 'gpt-4.1', 'openai/gpt-4o', 'o3', 'o4-mini', 'claude-sonnet-5-5', 'anthropic/claude-opus-5-5']) expect(imageSupport(model)).toBe('supported');
     for (const model of ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-0613', 'o1-mini', 'o1-preview', 'o3-mini']) expect(imageSupport(model)).toBe('unsupported');
   });
   test('explicit catalog metadata overrides model family guesses', () => {

@@ -1,4 +1,6 @@
-import { countryCode, createOpenAIProvider, EXTRACTION_PROMPT, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
+import Anthropic from '@anthropic-ai/sdk';
+import { countryCode, createResearchProvider, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
+import { createClaudeRunner } from './claude';
 import { readBoundedText } from '../../core/src/http';
 
 export interface Env {
@@ -10,7 +12,7 @@ export interface Env {
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET?: string;
-  OPENAI_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
   AI_ENABLED: string;
   DAILY_CHECK_LIMIT: string;
   SESSION_CHECK_LIMIT: string;
@@ -24,7 +26,7 @@ class HttpError extends Error {
 }
 const day = () => new Date().toISOString().slice(0, 10);
 const now = () => Math.floor(Date.now() / 1000);
-const enabled = (env: Env) => env.AI_ENABLED === 'true' && !!env.OPENAI_API_KEY && !!env.TURNSTILE_SECRET && !!env.TURNSTILE_SITE_KEY;
+const enabled = (env: Env) => env.AI_ENABLED === 'true' && !!env.ANTHROPIC_API_KEY && !!env.TURNSTILE_SECRET && !!env.TURNSTILE_SITE_KEY;
 function limit(value: string): number {
   if (!/^[1-9]\d{0,5}$/.test(value)) throw new HttpError(503, 'Free allowance is not configured.');
   return Number(value);
@@ -182,40 +184,26 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     throw new HttpError(session ? 429 : 401, session ? 'The free allowance is used up. It resets at midnight UTC.' : 'Connect to Vegsnap AI in settings.', session ? 'usage_limit_reached' : undefined);
   }
   // The core adapter owns prompts, validation, and search provenance. Clients supply only product data.
-  // No tools in the first pass; the research pass reserves calls for contact and company evidence.
+  // The first pass reads the label without tools; a search pass follows only when the verdict stays open.
   let calls = 0;
   let billed = false;
   let upstreamStatus: number | undefined;
-  // Bun's type definitions add fetch.preconnect, which the core adapter never calls.
-  const boundedFetch: typeof fetch = Object.assign(async (url: RequestInfo | URL, init?: RequestInit) => {
-    if (++calls > 2 || String(url) !== 'https://api.openai.com/v1/responses') throw new Error('Unexpected AI request.');
-    const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    payload.model = HOSTED_AI.model;
-    payload.reasoning = { effort: 'medium' };
-    payload.max_output_tokens = 16_000; // Reasoning tokens count against this limit.
-    payload.store = false;
-    if (payload.tool_choice === 'required') {
-      payload.tools = [{ type: 'web_search', search_context_size: 'low' }];
-      payload.max_tool_calls = Math.min(input.alternativeSearch ? 3 : 6, Number(payload.max_tool_calls));
-    } else {
-      for (const key of ['tools', 'max_tool_calls', 'include']) delete payload[key];
-      payload.instructions = EXTRACTION_PROMPT; // Without tools, web research instructions only waste context.
-    }
-    const response = await fetch(url, { ...init, body: JSON.stringify(payload), redirect: 'manual' });
-    upstreamStatus = response.status;
-    billed ||= response.ok;
-    return response;
-  }, { preconnect: fetch.preconnect });
+  const claude = createClaudeRunner(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1 }), HOSTED_AI.model, () => { billed = true; });
   try {
-    // Public catalogue requests carry no AI credentials and do not consume the two-call AI budget.
-    const extraction = await createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: HOSTED_AI.model, token: env.OPENAI_API_KEY, supportsVision: true }, boundedFetch, Object.assign((url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, redirect: 'manual' }), { preconnect: fetch.preconnect })).extract(input, request.signal, countryContext);
+    // Public catalogue requests carry no AI credentials and do not consume the two-pass AI budget.
+    const publicFetch = Object.assign((url: RequestInfo | URL, init?: RequestInit) => fetch(url, { ...init, redirect: 'manual' }), { preconnect: fetch.preconnect });
+    const extraction = await createResearchProvider(async (pass, signal) => {
+      if (++calls > 2) throw new Error('Unexpected AI request.');
+      try { return await claude(pass, signal); }
+      catch (error) { if (error instanceof Anthropic.APIError) upstreamStatus = error.status; throw error; }
+    }, { supportsVision: true, searchFirstPass: false, catalogueFetcher: publicFetch, matsparFetcher: publicFetch }).extract(input, request.signal, countryContext);
     // Released clients reject unknown extraction fields. Alternatives are opt-in.
     if (!input.alternativeSearch) delete extraction.alternatives;
     return json(extraction);
   } catch (error) {
     console.error('AI check failed', { error: error instanceof Error ? error.name : typeof error, upstreamStatus, billed });
     if (billed) throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.');
-    // Refund checks when OpenAI never returned a successful (billable) response.
+    // Refund checks when Claude never returned a successful (billable) response.
     const refund = env.DB.batch([
       env.DB.prepare('UPDATE sessions SET checks = checks - 1 WHERE token_hash = ? AND day = ? AND checks > 0').bind(tokenHash, today),
       env.DB.prepare('UPDATE installation_usage SET checks = checks - 1 WHERE installation_hash = ? AND day = ? AND checks > 0').bind(session.installation_hash, today),

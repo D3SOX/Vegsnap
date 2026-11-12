@@ -12,7 +12,7 @@
       "collected": true,
       "optional": true,
       "purpose": "App functionality",
-      "when": "An explicit AI check sends selected prepared photos to Vegsnap AI on Cloudflare and OpenAI, or the cloud provider chosen by the user.",
+      "when": "An explicit AI check sends selected prepared photos to Vegsnap AI on Cloudflare and Anthropic, or the cloud provider chosen by the user.",
       "retention": "Provider-dependent; do not claim ephemeral processing without confirming the provider's retention.",
       "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
       "shared": false,
@@ -56,7 +56,7 @@
       "collected": true,
       "optional": true,
       "purpose": "App functionality / Fraud prevention, security, and compliance",
-      "when": "Selected product input goes to optional Vegsnap AI on Cloudflare/OpenAI or another configured provider. Explicit community submissions send text/evidence. Content reports send only reviewed AI text or a reply reference plus the reason.",
+      "when": "Selected product input goes to optional Vegsnap AI on Cloudflare/Anthropic or another configured provider. Explicit community submissions send text/evidence. Content reports send only reviewed AI text or a reply reference plus the reason.",
       "retention": "AI provider-dependent. Pending community submissions expire after 30 days; rejected submissions after 7 days; approved contributions remain until withdrawn. Reports are private, deleted when handled, or expire after 30 days and are removed by the next hourly cleanup.",
       "sharing": "Declared not shared under the service-provider or explicit user-initiated transfer exceptions. This classification does not mean no data leaves the device.",
       "shared": false,
@@ -86,7 +86,7 @@
     "Review Photos or Documents and other files for community evidence uploaded through the app-opened contribution form.",
     "Disclose additional categories if an enabled provider actually collects them; verify whether any provider derives location from IP addresses.",
     "Never certify that no data is collected merely because Vegsnap has no analytics or developer-owned AI backend.",
-    "Vegsnap AI is a maintainer-operated backend: product inputs are collected when forwarded to OpenAI even though the application database does not retain them. Anonymous installation identifiers are disclosed under Device or other IDs."
+    "Vegsnap AI is a maintainer-operated backend: product inputs are collected when forwarded to Anthropic even though the application database does not retain them. Anonymous installation identifiers are disclosed under Device or other IDs."
   ],
   "sources": [
     "https://support.google.com/googleplay/android-developer/answer/10787469",

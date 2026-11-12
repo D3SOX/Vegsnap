@@ -69,11 +69,11 @@ Open an image to see the original screenshot.
 
 ## AI and evidence
 
-For free AI checks, choose **Vegsnap AI** in Settings, select **Connect to free AI** and complete verification in your browser. Return to Vegsnap to see your remaining allowance. This connection needs no ChatGPT subscription, personal API key or desktop companion. Access expires after 24 hours and allowances reset at midnight UTC. A shared service limit can make free checks unavailable. A failed check counts against your allowance only if OpenAI had already returned a response.
+For free AI checks, choose **Vegsnap AI** in Settings, select **Connect to free AI** and complete verification in your browser. Return to Vegsnap to see your remaining allowance. This connection needs no ChatGPT subscription, personal API key or desktop companion. Access expires after 24 hours and allowances reset at midnight UTC. A shared service limit can make free checks unavailable. A failed check counts against your allowance only if Anthropic had already returned a response.
 
 Product checks have a request limit per verified installation, so users sharing a mobile network or Wi-Fi connection have separate limits. A broader IP limit protects connection setup and other service requests, and each IP address can verify up to five connections per day. Temporary throttling asks you to wait a minute; exhausted daily allowances reset at midnight UTC. Up to three photos sent together count as one check.
 
-Vegsnap AI sends selected product text, prepared photos and product details through a maintainer-operated Cloudflare service to OpenAI. It does not send your saved history or personal provider credentials. See the [privacy policy](https://vegsnap.app/privacy.html) for storage and retention details.
+Vegsnap AI sends selected product text, prepared photos and product details through a maintainer-operated Cloudflare service to Anthropic's Claude API. It does not send your saved history or personal provider credentials. See the [privacy policy](https://vegsnap.app/privacy.html) for storage and retention details.
 
 ChatGPT sign-in on Android and in the browser extension requires a [ChatGPT Plus or Pro plan](https://developers.openai.com/siwc/quickstart). Free ChatGPT accounts are not supported for this connection. Android connects directly; the extension needs the desktop companion. Both support saving, switching and removing ChatGPT accounts in Settings, and prefer `gpt-6-luna` when available unless you select another model. Update the desktop companion to use account management in the extension. Switching reconnects the selected account through browser sign-in; disconnecting keeps saved accounts for later. Public database checks and local rules work without any AI connection.
 

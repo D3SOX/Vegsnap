@@ -2,7 +2,7 @@ import { resultMessages } from './i18n';
 import { analyzeText, parseSourceIngredients } from './analyze';
 import { lookupProduct, normalizeBarcode } from './database';
 import { validateAIExtraction } from './provider';
-import { applyAIEvidence, transcriptionComplete } from './ai-evidence';
+import { applyAIEvidence, compositionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { mergeResults, withoutCompositionFindings } from './merge-results';
 import { attachCompanyConcerns } from './company-concerns';
@@ -102,9 +102,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
       for (const field of ['ingredientAssessments', 'webClaims', 'webCompositions', 'contact'] as const) delete extracted[field];
       result.warnings.push(t.researchCountryChanged);
     }
-    // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
-    const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(original);
-    const complete = input.complete === false ? false : input.images?.length ? transcriptionComplete(extracted, true) : localComplete && extracted.complete;
+    const complete = compositionComplete(input, extracted);
     // A checked complete text list remains the composition authority even when a front photo is attached.
     // The photo can add label evidence, but must not silently replace or truncate supplied ingredients.
     const hasCompleteText = input.complete === true && Boolean(original.trim());

@@ -24,7 +24,7 @@ struct SettingsView: View {
                 Picker(L("Connection"), selection: $store.settings.connection) { Text(L("Vegsnap AI (free)")).tag("hosted"); Text("ChatGPT").tag("chatgpt"); Text(L("API key or local model")).tag("api") }.accessibilityIdentifier("connectionPicker")
                 if store.settings.connection == "hosted" {
                     Text(L("Free checks with a daily allowance. No ChatGPT subscription or API key required.")).font(.footnote)
-                    Text(L("Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile.")).font(.footnote).foregroundStyle(.secondary)
+                    Text(L("Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile.")).font(.footnote).foregroundStyle(.secondary)
                     if let status = store.hosted.status {
                         LabeledContent(L("Status"), value: L(status.state == "connected" ? "Connected" : "Verification pending"))
                         LabeledContent(L("Remaining checks"), value: String(status.remaining))
