@@ -28,7 +28,8 @@ interface HistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun save(entry: HistoryEntry)
     @Query("UPDATE checks SET json = :json WHERE id = :id AND json = :expectedJson")
     suspend fun updateCommunityResult(id: String, json: String, expectedJson: String): Int
-    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveAll(entries: List<HistoryEntry>)
+    /** Returns -1 for entries whose ID is already saved, so imports never replace existing checks. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNew(entries: List<HistoryEntry>): List<Long>
     @Query("DELETE FROM checks WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM checks") suspend fun clear()
 }
@@ -126,6 +127,10 @@ class CredentialStore(context: Context, namespace: String = "api") {
 }
 
 object HistoryTransfer {
+    private const val MAX_RESULTS = 1000
+    private const val MAX_BYTES = 5_000_000
+    /** Exports must stay within the import limits of every platform. */
+    fun importable(count: Int, text: String) = count <= MAX_RESULTS && text.toByteArray().size <= MAX_BYTES
     fun export(entries: List<HistoryEntry>, locale: String = "en"): String = JSONObject().put("schemaVersion", 1)
         .put("exportedAt", java.time.Instant.now().toString())
         .put("results", JSONArray(entries.map { publicResult(withoutCommunityReplies(JSONObject(it.json)), locale) })).toString(2)
@@ -151,11 +156,11 @@ object HistoryTransfer {
         return clean
     }
     fun parse(text: String, locale: String = "en"): List<HistoryEntry> {
-        require(text.toByteArray().size <= 5_000_000) { "History file exceeds 5 MB" }
+        require(text.toByteArray().size <= MAX_BYTES) { "History file exceeds 5 MB" }
         val document = JSONObject(text)
         require(document.getInt("schemaVersion") == 1)
         val results = document.getJSONArray("results")
-        require(results.length() <= 1000)
+        require(results.length() <= MAX_RESULTS)
         return (0 until results.length()).map { index ->
             val result = results.getJSONObject(index)
             require(result.getInt("schemaVersion") == 1)
@@ -189,7 +194,8 @@ object HistoryTransfer {
                     }
                 }
             }
-            java.time.Instant.parse(result.getString("checkedAt"))
+            // Room sorts this column as text, so store one UTC form regardless of the imported offset.
+            val checkedAt = java.time.OffsetDateTime.parse(result.getString("checkedAt")).toInstant().toString()
             val clean = publicResult(result, locale)
             if (clean.has("companyAssessment")) {
                 val notice = ResultStrings.importedAssessmentNotice(locale)
@@ -197,7 +203,7 @@ object HistoryTransfer {
                 val retained = (0 until warnings.length()).map { warnings.getString(it) }.filter { it != notice }.take(99)
                 clean.put("warnings", JSONArray(retained + notice))
             }
-            HistoryEntry(clean.getString("id"), clean.getString("title"), clean.getString("checkedAt"), clean.toString())
+            HistoryEntry(clean.getString("id"), clean.getString("title"), checkedAt, clean.toString())
         }
     }
 }

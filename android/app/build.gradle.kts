@@ -34,7 +34,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     sourceSets["main"].assets.directories.add("../../data")
     sourceSets["main"].assets.directories.add("../../contracts")
     testOptions { unitTests.all { it.systemProperty("vegsnap.repo", rootDir.parentFile.absolutePath) } }

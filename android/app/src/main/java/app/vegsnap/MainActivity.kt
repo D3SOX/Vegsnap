@@ -419,7 +419,7 @@ internal fun ColumnScope.AIConnectionSettings(settings: AppSettings, model: Vegs
                 TextButton(onClick = { model.disconnectChatGPT() }, modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) {
                     Text(stringResource(R.string.chatgpt_disconnect))
                 }
-                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) },
+                TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage"))) } },
                     modifier = Modifier.heightIn(min = 48.dp), enabled = !settings.offline) { Text(stringResource(R.string.chatgpt_usage)) }
             }
             if (!settings.offline && settings.chatgptModel.isBlank()) {

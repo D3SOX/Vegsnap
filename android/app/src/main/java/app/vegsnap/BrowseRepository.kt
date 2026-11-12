@@ -138,7 +138,7 @@ internal class BrowseRepository(
         return BrowsePage(records, next)
     }
     private suspend fun request(url: HttpUrl): JSONObject = suspendCancellableCoroutine { continuation ->
-        val request = Request.Builder().url(url).header("User-Agent", "Vegsnap/0.1 (Android; explicit database browsing)")
+        val request = Request.Builder().url(url).header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} (Android; explicit database browsing)")
             .header("Accept", "application/json").build()
         val call = http.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }

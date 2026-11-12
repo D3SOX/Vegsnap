@@ -126,7 +126,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
                 val extracted = extraction.value
                 contactExtraction = extracted
                 onProgress(CheckStage.EVALUATING)
-                val localComplete = extractionInput.complete ?: Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:", RegexOption.IGNORE_CASE).containsMatchIn(extractionInput.text)
+                val localComplete = extractionInput.complete ?: compositionHeading.containsMatchIn(extractionInput.text)
                 val complete = extractionInput.complete != false && (if (photos.isNotEmpty() && settings.vision) transcriptionComplete(extracted, true) else localComplete && extracted.getBoolean("complete"))
                 val recognizedBarcode = extracted.optString("barcode").takeIf(::validGtin).orEmpty()
                 require(barcode.isBlank() || recognizedBarcode.isBlank() || barcode.padStart(14, '0') == recognizedBarcode.padStart(14, '0')) { "AI identified a different product" }
@@ -256,7 +256,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         }
         for (domain in domains) {
             val request = Request.Builder().url("https://world.$domain/api/v3/product/$barcode.json?fields=code,product_name,product_name_de,ingredients_text,ingredients_text_de,brands,last_modified_t,countries_tags")
-                .header("User-Agent", "Vegsnap/0.1 (Android; local personal product checks)").build()
+                .header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} (Android; local personal product checks)").build()
             val response = productRequests.product(request.url.toString()) { request(request, allowNotFound = true) } ?: continue
             val product = response.optJSONObject("product") ?: continue
             val returned = product.optString("code")
@@ -571,7 +571,7 @@ internal fun mergeResearch(first: JSONObject, followup: JSONObject) {
 
 fun validTextExtraction(original: String, extracted: String): Boolean {
     fun normalized(value: String) = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKC).lowercase(java.util.Locale.ROOT).replace(Regex("\\s+"), " ").trim()
-    val heading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\\s*:\\s*", RegexOption.IGNORE_CASE).find(original)
+    val heading = compositionHeading.find(original)
     val body = heading?.let { original.substring(it.range.last + 1) } ?: original
     return normalized(extracted) in setOf(normalized(original), normalized(body))
 }

@@ -87,7 +87,9 @@ class CommunityHistoryTest {
         override suspend fun ids() = rows.value.map { it.id }
         override suspend fun find(id: String) = rows.value.find { it.id == id }
         override suspend fun save(entry: HistoryEntry) { rows.value = rows.value.filter { it.id != entry.id } + entry }
-        override suspend fun saveAll(entries: List<HistoryEntry>) { entries.forEach { save(it) } }
+        override suspend fun insertNew(entries: List<HistoryEntry>) = entries.map { entry ->
+            if (find(entry.id) != null) -1L else { save(entry); 1L }
+        }
         override suspend fun delete(id: String) { rows.value = rows.value.filter { it.id != id } }
         override suspend fun clear() { rows.value = emptyList() }
         override suspend fun updateCommunityResult(id: String, json: String, expectedJson: String): Int {

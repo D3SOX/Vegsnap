@@ -89,12 +89,12 @@ class HistoryPhotosTest {
         assertTrue(store.files("orphan").isEmpty())
     }
 
-    @Test fun `import replaces matching photo evidence but does not touch another record`() = withStore { _, store ->
-        store.save("matching", listOf(byteArrayOf(1))) { }
-        store.save("other", listOf(byteArrayOf(2))) { }
-        store.importResults(listOf("matching")) { }
-        assertTrue(store.files("matching").isEmpty())
-        assertEquals(1, store.files("other").size)
+    @Test fun `import clears stale photo evidence only for newly added records`() = withStore { _, store ->
+        store.save("added", listOf(byteArrayOf(1))) { }
+        store.save("existing", listOf(byteArrayOf(2))) { }
+        store.importResults { listOf("added") }
+        assertTrue(store.files("added").isEmpty())
+        assertEquals(1, store.files("existing").size)
     }
 
     @Test fun `imported identifiers cannot escape the app history directory`() = withStore { root, store ->
