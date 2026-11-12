@@ -176,7 +176,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val savedInput = input.copy(name = result.getJSONObject("identity").optString("name"), category = result.getString("category"))
                 withContext(Dispatchers.IO) {
                     historyPhotos.save(result.getString("id"), emptyList(), savedInput) {
-                        database.history().save(HistoryEntry(result.getString("id"), result.getString("title"), result.getString("checkedAt"), json))
+                        database.history().save(HistoryEntry(result.getString("id"), result.getString("title"), historySortKey(result.getString("checkedAt")), json))
                     }
                 }
                 if (barcodeCoordinator.accepts(observation) && !state.value.capturing && state.value.photos.isEmpty()) update { it.copy(result = json) }

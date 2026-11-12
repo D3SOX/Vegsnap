@@ -150,6 +150,10 @@ class EvaluatorTest {
         val imported = HistoryTransfer.parse(JSONObject().put("schemaVersion", 1).put("results", results).toString())
         assertEquals(listOf("2026-01-01T10:00:00.000Z", "2026-01-01T11:00:00.500Z", "2026-01-01T11:00:00.000Z"), imported.map { it.checkedAt })
         assertEquals(listOf("check-1", "check-2", "check-0"), imported.sortedByDescending { it.checkedAt }.map { it.id })
+        // A check created on the device at an exact second has no fraction in Instant.toString().
+        val local = historySortKey(java.time.Instant.parse("2026-01-01T11:00:01Z").toString())
+        assertEquals("2026-01-01T11:00:01.000Z", local)
+        assertTrue(local > imported[1].checkedAt)
     }
     @Test fun historyPreservesTranslationsAndRegeneratesSafeErrorsInAppLanguage() {
         val result = evaluator.evaluate(CheckInput("milk", "food"))

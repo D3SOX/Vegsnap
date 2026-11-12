@@ -20,6 +20,10 @@ import javax.crypto.spec.GCMParameterSpec
 
 @Entity(tableName = "checks")
 data class HistoryEntry(@PrimaryKey val id: String, val title: String, val checkedAt: String, val json: String)
+
+private val sortableTimestamp = java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
+/** Room sorts [HistoryEntry.checkedAt] as text, so every check stores one fixed-width UTC form. */
+internal fun historySortKey(checkedAt: String): String = sortableTimestamp.format(java.time.OffsetDateTime.parse(checkedAt))
 @Dao
 interface HistoryDao {
     @Query("SELECT * FROM checks ORDER BY checkedAt DESC") fun observe(): Flow<List<HistoryEntry>>
@@ -129,8 +133,6 @@ class CredentialStore(context: Context, namespace: String = "api") {
 object HistoryTransfer {
     private const val MAX_RESULTS = 1000
     private const val MAX_BYTES = 5_000_000
-    // Millisecond precision matches Instant.now().toString() for checks created on the device.
-    private val sortableTimestamp = java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
     /** Exports must stay within the import limits of every platform. */
     fun importable(count: Int, text: String) = count <= MAX_RESULTS && text.toByteArray().size <= MAX_BYTES
     fun export(entries: List<HistoryEntry>, locale: String = "en"): String = JSONObject().put("schemaVersion", 1)
@@ -196,8 +198,7 @@ object HistoryTransfer {
                     }
                 }
             }
-            // Room sorts this column as text, so store one fixed-width UTC form regardless of the imported offset.
-            val checkedAt = sortableTimestamp.format(java.time.OffsetDateTime.parse(result.getString("checkedAt")))
+            val checkedAt = historySortKey(result.getString("checkedAt"))
             val clean = publicResult(result, locale)
             if (clean.has("companyAssessment")) {
                 val notice = ResultStrings.importedAssessmentNotice(locale)
