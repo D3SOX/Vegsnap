@@ -129,6 +129,8 @@ class CredentialStore(context: Context, namespace: String = "api") {
 object HistoryTransfer {
     private const val MAX_RESULTS = 1000
     private const val MAX_BYTES = 5_000_000
+    // Millisecond precision matches Instant.now().toString() for checks created on the device.
+    private val sortableTimestamp = java.time.format.DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(java.time.ZoneOffset.UTC)
     /** Exports must stay within the import limits of every platform. */
     fun importable(count: Int, text: String) = count <= MAX_RESULTS && text.toByteArray().size <= MAX_BYTES
     fun export(entries: List<HistoryEntry>, locale: String = "en"): String = JSONObject().put("schemaVersion", 1)
@@ -194,8 +196,8 @@ object HistoryTransfer {
                     }
                 }
             }
-            // Room sorts this column as text, so store one UTC form regardless of the imported offset.
-            val checkedAt = java.time.OffsetDateTime.parse(result.getString("checkedAt")).toInstant().toString()
+            // Room sorts this column as text, so store one fixed-width UTC form regardless of the imported offset.
+            val checkedAt = sortableTimestamp.format(java.time.OffsetDateTime.parse(result.getString("checkedAt")))
             val clean = publicResult(result, locale)
             if (clean.has("companyAssessment")) {
                 val notice = ResultStrings.importedAssessmentNotice(locale)

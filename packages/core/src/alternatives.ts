@@ -19,7 +19,7 @@ const strings = (value: unknown): string[] => Array.isArray(value) ? value.filte
 const text = (value: unknown, maximum = 300) => typeof value === 'string' ? value.trim().slice(0, maximum) : '';
 // Keep negation within a clause; contradictory evidence is not a recommendation.
 const veganClaim = /\bvegan(?:e[nmrs]?|sk[ta]?)?\b/i;
-const negatedVeganClaim = /\b(?:not|non|never|no\s+(?:longer|more)|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?|sk[ta]?)?\b|\bvegan(?:e[nmrs]?|sk[ta]?)?\b\s*[:?=-]\s*(?:no|false|nein|nej|falskt)\b/i;
+const negatedVeganClaim = /\b(?:not|non|never|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?|sk[ta]?)?\b|\bno\s+(?:longer|more)\s+(?:\w+\s+)?vegan(?:e[nmrs]?|sk[ta]?)?\b|\bvegan(?:e[nmrs]?|sk[ta]?)?\b\s*[:?=-]\s*(?:no|false|nein|nej|falskt)\b/i;
 const veganLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
 /** Start with the product type rather than requiring the substitute to share its brand/animal ingredient. */
 export function alternativeQueryForProduct(name: string, brand = '', animalTerms: string[] = []): string {

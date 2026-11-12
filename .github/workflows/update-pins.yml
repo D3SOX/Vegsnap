@@ -47,12 +47,17 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -C "$BRANCH"
           git commit -qam "build: update $SUMMARY"
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')
           if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet HEAD FETCH_HEAD; then
-            echo "$BRANCH already contains this update."
-            exit 0
+            if [ -n "$pr" ]; then
+              echo "#$pr already contains this update."
+              exit 0
+            fi
+            # The branch is current, but an earlier run stopped before opening its pull request.
+          else
+            git push -f origin "$BRANCH"
           fi
-          git push -f origin "$BRANCH"
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+          if [ -z "$pr" ]; then
             gh pr create --head "$BRANCH" --title "build: update $SUMMARY" \
               --body "Weekly update of a version Dependabot cannot track. Check the upstream release notes before merging."
           else

@@ -33,6 +33,7 @@ struct BrowseView: View {
         }.navigationTitle(L("Browse"))
             .onChange(of: source) { _, _ in resetSearch() }
             .onChange(of: store.settings.offline) { _, _ in resetSearch() }
+            .onChange(of: store.settings.defaultCountry) { _, _ in resetSearch() }
             .onDisappear { cancelSearch() }
     }
     private func resetSearch() { cancelSearch(); records = []; next = nil; searched = false; failure = nil }
