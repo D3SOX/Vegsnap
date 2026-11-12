@@ -1,5 +1,6 @@
 import { communityIdentityKey, communityMatchRules, SubmissionError, validateCommunitySubmission, type CommunityReply, type CommunitySubmission } from '@vegsnap/core/community';
 import { normalizeBarcode } from '@vegsnap/core/barcode';
+import { rateLimitAddress } from '@vegsnap/core/http';
 import { cleanEvidence, MAX_EVIDENCE_BYTES } from './evidence';
 import { ReportError, submitReport, reviewReports } from './reports';
 
@@ -85,7 +86,7 @@ async function verifyChallenge(token: string, env: Env): Promise<void> {
 async function submit(request: Request, env: Env): Promise<Response> {
   if (env.SUBMISSIONS_ENABLED !== 'true') throw new HttpError(503, 'Submissions are not open yet.');
   if (request.headers.get('Origin') !== env.PUBLIC_ORIGIN) throw new HttpError(403, 'Submit using the Vegsnap form.');
-  const { success } = await env.SUBMISSION_LIMIT.limit({ key: `submit:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
+  const { success } = await env.SUBMISSION_LIMIT.limit({ key: `submit:${rateLimitAddress(request.headers.get('CF-Connecting-IP'))}` });
   if (!success) throw new HttpError(429, 'Too many submissions. Try again in a minute.');
   const contentType = request.headers.get('Content-Type') ?? '';
   if (!contentType.startsWith('multipart/form-data;')) throw new HttpError(415, 'Use the submission form.');
