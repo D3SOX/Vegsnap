@@ -319,3 +319,16 @@ describe('researched product composition', () => {
     expect(result.outcome).toBe('vegan');
   });
 });
+
+test('an incomplete supplied list still researches when the model calls its transcription complete', async () => {
+  for (const input of [{ text: 'oats, water', complete: false }, { text: 'oats, water' }] satisfies CheckInput[]) {
+    const requests: unknown[] = [];
+    const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'test' }, (async (_url: string | URL | Request, init?: RequestInit) => {
+      requests.push(JSON.parse(String(init?.body)));
+      const extraction = { text: 'oats, water', ingredients: ['oats', 'water'], complete: true, category: 'food', name: 'Oat drink', brand: 'Maker' };
+      return Response.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(extraction) }] }] });
+    }) as unknown as typeof fetch);
+    await provider.extract({ ...input, category: 'food', autoMarket: true });
+    expect(requests).toHaveLength(2);
+  }
+});

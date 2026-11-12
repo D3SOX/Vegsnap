@@ -4,7 +4,7 @@ import type { AIExtraction, Category, CheckInput, ProviderAdapter, ProviderConfi
 import { readBoundedText } from './http';
 import { acceptsImages } from './model-capabilities';
 import { analyzeText, parseSourceIngredients, safeSourceUrl } from './analyze';
-import { applyAIEvidence, transcriptionComplete } from './ai-evidence';
+import { applyAIEvidence, compositionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
@@ -153,7 +153,7 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
 }
 /** Assess one extraction exactly as research planning sees it; shared evidence fixtures run through here. */
 export function researchAssessment(extracted: AIExtraction, input: CheckInput) {
-  const complete = transcriptionComplete(extracted, Boolean(input.images?.length));
+  const complete = compositionComplete(input, extracted);
   const visible: CheckInput = { text: extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
     name: input.name || extracted.name, brand: input.brand || extracted.brand, locale: input.locale, images: input.images };
   return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, complete), visible, extracted);
