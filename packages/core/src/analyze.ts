@@ -15,7 +15,7 @@ const materialSection = new RegExp(String.raw`(?:^|\n)[^\S\r\n]*${materialRoles}
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 const leadingConjunction = /^(?:and\/or|und\/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\S)/u;
 export function normalizeTerm(text: string): string {
-  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/\d+(?:[.,]\d+)?\s*%/g, '')
+  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\b(?:organic|bio)\b/g, '').replace(materialPrefix, '')
     .replace(additivePrefix, '').replace(/^\s*(?:gemüse|vegetables|grönsaker)\s*[-–:]\s*(?=\S)/iu, '')
     .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(leadingConjunction, '');
@@ -35,7 +35,7 @@ export function compositionTerms(text: string, materialContext = false): string[
     value = value.slice(0, group.index!) + '(' + expanded + ')' + value.slice(end);
   }
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
-  return value.replace(/\d+(?:[.,]\d+)?\s*%/g, '')
+  return value.replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
     .replace(insAfterRole, role => role.replace(/(?<![\p{L}\p{N}])(?:[iI][nN][sS]\s?)?(?<![eE][\s-])(\d{3,4}[a-h]?)(?!\p{N})/gu, 'e$1'))
     .replace(additiveGroup, '')
