@@ -1,0 +1,62 @@
+name: Update pinned tools
+# Dependabot cannot track these pins: the Rust toolchain, SwiftLint and the Tesseract OCR models.
+on:
+  schedule:
+    - cron: '43 5 * * 1' # weekly, Monday 05:43 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-pins
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        pin: [rust, swiftlint, tessdata]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Update ${{ matrix.pin }}
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          summary=$(bun scripts/update-pins.ts '${{ matrix.pin }}')
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+      - name: Open or refresh the pull request
+        if: steps.update.outputs.summary != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUMMARY: ${{ steps.update.outputs.summary }}
+          BRANCH: pins/${{ matrix.pin }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C "$BRANCH"
+          git commit -qam "build: update $SUMMARY"
+          if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet HEAD FETCH_HEAD; then
+            echo "$BRANCH already contains this update."
+            exit 0
+          fi
+          git push -f origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$BRANCH" --title "build: update $SUMMARY" \
+              --body "Weekly update of a version Dependabot cannot track. Check the upstream release notes before merging."
+          else
+            gh pr edit "$BRANCH" --title "build: update $SUMMARY"
+          fi
+          # Pull requests opened with GITHUB_TOKEN do not start pull_request workflows, so run the checks explicitly.
+          gh workflow run check.yml --ref "$BRANCH"

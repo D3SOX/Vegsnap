@@ -27,7 +27,7 @@ jobs:
           java-version: '21'
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version-file: package.json
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Validate release
         env:
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.4
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - name: Archive and package unsigned iOS app
         env:
@@ -162,10 +162,12 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Load pinned tool versions
+        run: grep -v '^#' .github/pins.env >> "$GITHUB_ENV"
       - name: Test companion
         run: |
-          rustup toolchain install 1.98.1 --profile minimal
-          cargo +1.98.1 test --locked --manifest-path companion/Cargo.toml
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          cargo "+$RUST_TOOLCHAIN" test --locked --manifest-path companion/Cargo.toml
       - name: Build companion
         env:
           VEGSNAP_COMPANION_PLATFORM: ${{ matrix.platform }}
@@ -174,9 +176,9 @@ jobs:
           cp LICENSE companion-release/
           case "$VEGSNAP_COMPANION_PLATFORM" in
             macos-universal)
-              rustup +1.98.1 target add aarch64-apple-darwin x86_64-apple-darwin
-              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target aarch64-apple-darwin
-              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
+              rustup "+$RUST_TOOLCHAIN" target add aarch64-apple-darwin x86_64-apple-darwin
+              cargo "+$RUST_TOOLCHAIN" build --locked --release --manifest-path companion/Cargo.toml --target aarch64-apple-darwin
+              cargo "+$RUST_TOOLCHAIN" build --locked --release --manifest-path companion/Cargo.toml --target x86_64-apple-darwin
               lipo -create companion/target/{aarch64-apple-darwin,x86_64-apple-darwin}/release/vegsnap-companion -output "$RUNNER_TEMP/vegsnap-companion"
               companion/macos/bundle.sh "$RUNNER_TEMP/vegsnap-companion" companion-release
               lipo "companion-release/Vegsnap Companion.app/Contents/MacOS/vegsnap-companion" -verify_arch arm64 x86_64
@@ -184,13 +186,13 @@ jobs:
               ;;
             windows-x86_64)
               # A static C runtime spares users the Visual C++ Redistributable.
-              RUSTFLAGS='-C target-feature=+crt-static' cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+              RUSTFLAGS='-C target-feature=+crt-static' cargo "+$RUST_TOOLCHAIN" build --locked --release --manifest-path companion/Cargo.toml
               cp companion/target/release/vegsnap-companion.exe companion-artifacts/vegsnap-companion-windows-x86_64.exe
               ;;
             linux-x86_64)
-              cargo +1.98.1 build --locked --release --manifest-path companion/Cargo.toml
+              cargo "+$RUST_TOOLCHAIN" build --locked --release --manifest-path companion/Cargo.toml
               cp companion/target/release/vegsnap-companion companion-release/
-              vegsnap_dbus_manifest=$(cargo +1.98.1 metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
+              vegsnap_dbus_manifest=$(cargo "+$RUST_TOOLCHAIN" metadata --locked --manifest-path companion/Cargo.toml --format-version 1 --filter-platform x86_64-unknown-linux-gnu | python -c 'import json,sys; print(next(p["manifest_path"] for p in json.load(sys.stdin)["packages"] if p["name"] == "libdbus-sys"))')
               cp "$(dirname "$vegsnap_dbus_manifest")/vendor/dbus/COPYING" companion-release/DBUS-COPYING
               tar -czf companion-artifacts/vegsnap-companion-linux-x86_64.tar.gz -C companion-release .
               ;;
