@@ -18,3 +18,14 @@ export async function readBoundedText(response: Response, maxBytes: number): Pro
     }
   } finally { reader.releaseLock(); }
 }
+
+/** Rate-limit key for a client address. One IPv6 host usually controls a whole /64, so key IPv6 by that prefix. */
+export function rateLimitAddress(address: string | null): string {
+  if (!address) return 'unknown';
+  if (!address.includes(':') || address.includes('.')) return address; // IPv4, including IPv4-mapped IPv6
+  const [head = '', tail] = address.toLowerCase().split('::');
+  const left = head ? head.split(':') : [];
+  const right = tail ? tail.split(':') : [];
+  const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right];
+  return `${groups.slice(0, 4).map(group => group.replace(/^0+(?=.)/, '')).join(':')}::/64`;
+}

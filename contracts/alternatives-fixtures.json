@@ -29,6 +29,8 @@
     {"quote": "Nicht für eine vegane Ernährung geeignet.", "accepted": false},
     {"quote": "Kein geeigneter veganer Ersatz.", "accepted": false},
     {"quote": "Non-vegan chocolate.", "accepted": false},
+    {"quote": "This product is no longer vegan.", "accepted": false},
+    {"quote": "No more vegan options in this range.", "accepted": false},
     {"quote": "Vegan: no.", "accepted": false},
     {"quote": "Vegan? Nein.", "accepted": false},
     {"quote": "Vegan = false.", "accepted": false},

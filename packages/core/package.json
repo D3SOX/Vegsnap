@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./community": "./src/community.ts",
     "./content-reports": "./src/content-reports.ts",
-    "./barcode": "./src/barcode.ts"
+    "./barcode": "./src/barcode.ts",
+    "./http": "./src/http.ts"
   },
   "scripts": { "test": "bun test", "typecheck": "tsc --noEmit" },
   "devDependencies": { "@types/bun": "^1.4.4", "typescript": "^7.0.2" }

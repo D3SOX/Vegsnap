@@ -125,6 +125,13 @@ describe('AI privacy and validation', () => {
     expect(result.basis).toBe('composition');
     expect(result.usedAI).toBe(true);
   });
+  test('AI accepts a heading-free transcription of a French ingredient list', async () => {
+    const result = await checkProduct({ text: 'Ingrédients: water, salt', category: 'other' }, {
+      mode: 'explicit', provider: { extract: async () => extraction },
+    });
+    expect(result.aiStatus).toBe('text');
+    expect(result.outcome).toBe('vegan');
+  });
   test('Auto remains unknown without AI and offline mode cannot infer from a connected provider', async () => {
     const extract = mock(async () => extraction);
     const input = { text: 'water, salt', category: 'other' as const, complete: true };

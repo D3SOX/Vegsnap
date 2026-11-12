@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { createGunzip } from 'node:zlib';
 import { normalizeBarcode } from '../packages/core/src/database';
 import { OFFLINE_MAX_BYTES, OFFLINE_MAX_PRODUCTS, validateOfflineSnapshot } from '../packages/core/src/offline';
+import { version } from '../package.json';
+
+const USER_AGENT = `Vegsnap/${version} (build-time offline snapshot)`;
 
 export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 type SnapshotFetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -182,7 +185,7 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   if (!bytes) {
     const domain = DOMAIN[source];
     const url = `https://static.${domain}.org/data/en.${domain}.org.products.csv.gz`;
-    const response = await fetcher(url, { headers: { 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' }, redirect: 'error', signal: AbortSignal.timeout(60_000) });
+    const response = await fetcher(url, { headers: { 'User-Agent': USER_AGENT }, redirect: 'error', signal: AbortSignal.timeout(60_000) });
     if (!response.ok) throw new Error(`${source} export HTTP ${response.status}`);
     bytes = await boundedBytes(response.body, 32 * 1024 * 1024);
     const temporary = `${path}.${crypto.randomUUID()}.tmp`;
@@ -256,7 +259,7 @@ async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Pro
     if (age >= 0 && age < CACHE_TTL_MS && entry?.bytes === Bun.file(path).size) return { path, retrievedAt: entry.retrievedAt as string };
   } catch { /* Missing/invalid cache is refreshed from the official export. */ }
   // The static URL redirects to the current file on Open Food Facts' S3 bucket.
-  const response = await fetcher(FOOD_EXPORT, { headers: { 'User-Agent': 'Vegsnap/0.1 (build-time offline snapshot)' }, signal: AbortSignal.timeout(1_800_000) });
+  const response = await fetcher(FOOD_EXPORT, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(1_800_000) });
   if (!response.ok) throw new Error(`off export HTTP ${response.status}`);
   if (Number(response.headers.get('content-length') ?? 0) > FOOD_EXPORT_BYTES) throw new Error('Download exceeds size bound');
   const temporary = `${path}.${crypto.randomUUID()}.tmp`;

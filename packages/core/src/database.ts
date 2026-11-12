@@ -4,6 +4,7 @@ import type { CheckInput, CheckOptions, DatabaseProduct } from './types';
 import { readBoundedText } from './http';
 import { countryCode, selectProductCountry } from './market';
 import { resultMessages } from './i18n';
+import { version } from '../package.json';
 
 export const DATABASES = [
   { id: 'off', name: 'Open Food Facts', origin: 'https://world.openfoodfacts.org', category: 'food' },
@@ -47,7 +48,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
     const url = new URL(`/api/v3/product/${code}.json`, db.origin);
     url.searchParams.set('fields', FIELDS);
     // Browser fetch cannot reliably override User-Agent; app identification remains in the URL.
-    url.searchParams.set('app_name', 'Vegsnap'); url.searchParams.set('app_version', '0.1.0');
+    url.searchParams.set('app_name', 'Vegsnap'); url.searchParams.set('app_version', version);
     try {
       const response = await fetcher(url.href, {
         headers: { Accept: 'application/json' }, credentials: 'omit', redirect: 'error',

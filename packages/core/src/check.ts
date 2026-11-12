@@ -1,5 +1,5 @@
 import { resultMessages } from './i18n';
-import { analyzeText, parseSourceIngredients } from './analyze';
+import { analyzeText, compositionHeadingWords, parseSourceIngredients } from './analyze';
 import { lookupProduct, normalizeBarcode } from './database';
 import { validateAIExtraction } from './provider';
 import { applyAIEvidence, compositionComplete } from './ai-evidence';
@@ -92,7 +92,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     // With text-only input, preserve the entire supplied composition: a substring could omit an unknown ingredient.
     const canonical = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
     const original = input.text ?? '';
-    const composition = original.replace(/^[\s\S]*?(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:\s*/i, '');
+    const composition = original.replace(new RegExp(`^[\\s\\S]*?(?:${compositionHeadingWords})\\s*:\\s*`, 'i'), '');
     if (!input.images?.length && extracted.text && ![canonical(original), canonical(composition)].includes(canonical(extracted.text))) {
       throw new Error('AI extraction changed the supplied text; the original evidence was kept.');
     }
@@ -117,7 +117,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     const parsed = parseSourceIngredients(authoritativeText, extracted.ingredients);
     const extractedResult = analyzeText(aiInput, options.now, extracted.ingredients);
     extractedResult.usedAI = true;
-    extractedResult.evidence = extracted.text ? [{ id: 'ai-extraction', kind: 'ai_extraction', title: 'AI transcription — check against the original',
+    extractedResult.evidence = extracted.text ? [{ id: 'ai-extraction', kind: 'ai_extraction', title: t.aiTranscriptionTitle,
       excerpt: extracted.text, retrievedAt: result.checkedAt }] : [];
     extractedResult.findings = extractedResult.findings.map(finding => ({ ...finding, evidenceId: 'ai-extraction' }));
     if (extracted.text) extractedResult.warnings.push(t.aiTranscriptionUnverified);
