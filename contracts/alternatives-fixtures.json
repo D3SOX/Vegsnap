@@ -32,6 +32,7 @@
     {"quote": "This product is no longer vegan.", "accepted": false},
     {"quote": "No more vegan options in this range.", "accepted": false},
     {"quote": "This product is no longer certified vegan.", "accepted": false},
+    {"quote": "This product is no longer suitable for a vegan diet.", "accepted": false},
     {"quote": "This product no longer contains dairy and is vegan.", "accepted": true},
     {"quote": "No more palm oil, and still vegan.", "accepted": true},
     {"quote": "Vegan: no.", "accepted": false},
