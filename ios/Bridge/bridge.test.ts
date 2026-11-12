@@ -16,7 +16,7 @@ function harness(response: (url: string, body?: string) => { status: number; bod
   const context = createContext({
     Date: class extends Date { static now() { return now; } },
     nativeUUID: () => crypto.randomUUID(), nativeByteCount: (value: string) => Buffer.byteLength(value),
-    nativeURL: (value: string, base: string) => { try { const u = new URL(value, base || undefined); return JSON.stringify(Object.fromEntries(['href', 'origin', 'protocol', 'hostname', 'pathname', 'username', 'password', 'search', 'hash'].map(key => [key, u[key as keyof URL]]))); } catch { return 'null'; } },
+    nativeURL: (value: string, base: string) => { try { const u = new URL(value, base || undefined); return JSON.stringify(Object.fromEntries(['href', 'origin', 'protocol', 'hostname', 'port', 'pathname', 'username', 'password', 'search', 'hash'].map(key => [key, u[key as keyof URL]]))); } catch { return 'null'; } },
     nativeLanguage: (value: string) => ({ Swedish: 'sv', svenska: 'sv', swe: 'sv', sv: 'sv', German: 'de', Deutsch: 'de', de: 'de' }[value] ?? 'en'),
     nativeTimer: (ms: number, callback: () => void) => { timers.push({ at: now + ms, callback }); }, nativeCancelFetch: () => {}, nativeProgress: () => {},
     nativeFetch: (_id: string, url: string, raw: string, callback: (status: number, text: string, error: string) => void) => {

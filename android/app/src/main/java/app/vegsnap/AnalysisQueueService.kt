@@ -62,7 +62,7 @@ internal suspend fun publishAnalysisResult(job: AnalysisJob, result: JSONObject,
     photos: () -> List<ByteArray>, exists: suspend (String) -> Boolean,
     previous: suspend (String) -> JSONObject? = { null }, persist: suspend (HistoryEntry) -> Unit) {
     if (job.historyId != null) previous(job.resultId)?.let { retainPreviousResearch(result, it) }
-    val entry = HistoryEntry(job.resultId, result.getString("title"), result.getString("checkedAt"), result.toString())
+    val entry = HistoryEntry(job.resultId, result.getString("title"), historySortKey(result.getString("checkedAt")), result.toString())
     if (exists(job.resultId)) {
         if (job.historyId != null) persist(entry)
     } else {

@@ -1,5 +1,5 @@
 import { resultMessages } from './i18n';
-import { analyzeText, parseSourceIngredients, compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
+import { analyzeText, compositionHeadingWords, parseSourceIngredients, compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
 import { mergeResults, withoutCompositionFindings } from './merge-results';
 import type { AIExtraction, CheckInput, CheckResult, Finding } from './types';
 
@@ -10,7 +10,7 @@ const veganCertifications = new Set(['v-label', 'v label', 'v-label vegan', 'v l
 const animalFree = /\b(?:no|without|ohne|frei\s+von|kein\w*|inga|ingen|utan)\s+(?:animal|tierisch|animalisk)\w*/gi;
 const labelNegation = /\b(?:not|non|no|never|nicht|kein(?:e|en|er|em|es)?|nein|niemals|un(?:suitable|geeignet)|inte|ej|nej|icke|ingen|olämplig)\b|[✗✘❌]/i;
 /** Photo transcriptions only count as complete when a composition heading is visible, not just because the model says so. */
-const photoCompositionHeading = /(?:^|[^\p{L}\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition)\s*[:：]/iu;
+const photoCompositionHeading = /(?:^|[^\p{L}\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\s*[:：]/iu;
 export const transcriptionComplete = (extracted: Pick<AIExtraction, 'complete' | 'text'>, photo: boolean): boolean =>
   extracted.complete && (!photo || photoCompositionHeading.test(extracted.text));
 /** Whether a check's composition counts as complete: the caller's flag wins, then a visible heading, then the model's claim. */
@@ -18,7 +18,7 @@ export function compositionComplete(input: Pick<CheckInput, 'complete' | 'text' 
   if (input.complete === false) return false;
   if (input.images?.length) return transcriptionComplete(extracted, true);
   // Leading whitespace must stay on its line so blank lines are not rescanned from every newline.
-  const localComplete = input.complete ?? /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:/i.test(input.text ?? '');
+  const localComplete = input.complete ?? new RegExp(`(?:^|\\n)[^\\S\\r\\n]*(?:${compositionHeadingWords})\\s*:`, 'i').test(input.text ?? '');
   return localComplete && extracted.complete;
 }
 

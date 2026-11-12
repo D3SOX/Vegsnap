@@ -234,6 +234,7 @@
     <string name="history">Historik</string>
     <string name="history_count">%1$d sparade</string>
     <string name="history_error">Den lokala historiken kunde inte uppdateras. Försök igen.</string>
+    <string name="history_export_too_large">Historiken är för stor för att exporteras (högst 1 000 resultat och 5 MB). Ingen fil skapades.</string>
     <string name="history_notice">Exporterade kontroller innehåller produktbelägg och text, men inga foton eller inloggningsuppgifter.</string>
     <string name="hosted_ai">Vegsnap AI</string>
     <string name="hosted_ai_connect">Anslut till gratis AI</string>

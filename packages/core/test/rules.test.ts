@@ -189,3 +189,14 @@ describe('extended animal matching', () => {
     expect(result.findings.map(item => [item.term, item.status])).toEqual([['e471', 'ambiguous'], ['zucker', 'plant'], ['milchschokolade: e471', 'animal']]);
   });
 });
+
+describe('untrusted composition text', () => {
+  test('a long digit run is not scanned quadratically when stripping percentages', () => {
+    // Quadratic backtracking needs about 5 s here; linear matching needs a few milliseconds.
+    // The wide margin tolerates a slow or paused CI runner.
+    const digits = '0'.repeat(60_000);
+    const started = performance.now();
+    expect(normalizeTerm(`${digits} sugar 12.5 %`)).toBe(`${digits} sugar`);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  }, 30_000);
+});

@@ -44,7 +44,7 @@ export function call(operation: string, json: string): string {
     case 'mergeOCR': {
       const result = args.result as core.CheckResult;
       if (result.usedAI || result.outcome !== 'uncertain') return JSON.stringify(result);
-      const text = (args.text as string).match(/(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition)\s*:[\s\S]*/i)?.[0];
+      const text = (args.text as string).match(new RegExp(`(?:^|\\n)[^\\S\\r\\n]*(?:${core.compositionHeadingWords})\\s*:[\\s\\S]*`, 'i'))?.[0];
       if (text) {
         const ocr = core.analyzeText({ ...args.input, text: text.slice(0, 30000), complete: false });
         ocr.evidence.forEach(e => { e.kind = 'ocr'; e.title = core.resultMessages[core.appLocale(args.input.locale)].ocrTitle; });

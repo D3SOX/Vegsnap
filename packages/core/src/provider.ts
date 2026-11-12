@@ -31,13 +31,6 @@ function withoutNulls(value: unknown): unknown {
   return object(value) ? Object.fromEntries(Object.entries(value).filter(([, field]) => field !== null && !allNull(field))
     .map(([key, field]) => [key, withoutNulls(field)])) : value;
 }
-export const PROVIDER_PRESETS = [
-  { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-  { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
-  { id: 'gemini', name: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
-  { id: 'ollama', name: 'Ollama', baseUrl: 'http://127.0.0.1:11434/v1' },
-  { id: 'custom', name: 'Custom', baseUrl: '' },
-] as const;
 const categories: Category[] = ['food', 'drink', 'cosmetics', 'household', 'clothing', 'shoes', 'other'];
 function object(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function validIngredientList(value: unknown): value is string[] {

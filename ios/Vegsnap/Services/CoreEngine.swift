@@ -34,6 +34,7 @@ import JavaScriptCore
             parts["origin"] = "\(scheme)://\(hostname)\(port)"
             parts["protocol"] = scheme + ":"
             parts["hostname"] = hostname
+            parts["port"] = c.port.map(String.init) ?? ""
             parts["pathname"] = c.percentEncodedPath.isEmpty ? "/" : c.percentEncodedPath
             parts["username"] = c.user ?? ""
             parts["password"] = c.password ?? ""

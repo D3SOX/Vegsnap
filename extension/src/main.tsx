@@ -387,10 +387,18 @@ export function App() {
     if (!imageUrl) return;
     const url = new URL(imageUrl);
     if (url.protocol !== 'https:') throw new Error(t.remoteImageUnsupported);
-    if (!(await requestDataConsent(CONTENT_DATA, { origins: [`${url.protocol}//${url.hostname}/*`] }))) throw new Error(t.dataConsentDenied);
-    const response = await contentFetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
-    if (!response.ok) throw new Error(t.imageLoadFailed);
-    setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
+    const origins = [`${url.protocol}//${url.hostname}/*`];
+    // Access granted only for this image is revoked afterwards; stores and AI endpoints already hold theirs.
+    // Query without awaiting first: Firefox only keeps the user gesture for a synchronous request.
+    const held = browser.permissions.contains({ origins });
+    if (!(await requestDataConsent(CONTENT_DATA, { origins }))) throw new Error(t.dataConsentDenied);
+    try {
+      const response = await contentFetch(url, { credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(20_000) });
+      if (!response.ok) throw new Error(t.imageLoadFailed);
+      setImages([await sanitizeImage(await readImageResponse(response))]); setImageUrl(undefined);
+    } finally {
+      if (!(await held)) await browser.permissions.remove({ origins }).catch(() => false);
+    }
   }
   function exportHistory() {
     setError(''); setNotice('');

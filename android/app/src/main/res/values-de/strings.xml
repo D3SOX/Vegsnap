@@ -234,6 +234,7 @@
     <string name="history">Verlauf</string>
     <string name="history_count">%1$d gespeichert</string>
     <string name="history_error">Der lokale Verlauf konnte nicht aktualisiert werden. Bitte versuche es erneut.</string>
+    <string name="history_export_too_large">Der Verlauf ist zu groß für den Export (maximal 1.000 Ergebnisse und 5 MB). Es wurde keine Datei erstellt.</string>
     <string name="history_notice">Exportierte Prüfungen enthalten Produktbelege und Text, aber keine Fotos oder Zugangsdaten.</string>
     <string name="hosted_ai">Vegsnap KI</string>
     <string name="hosted_ai_connect">Kostenlose KI verbinden</string>

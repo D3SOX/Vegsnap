@@ -4399,6 +4399,9 @@
     "en": "History is too large to export (maximum 1,000 results and 5 MB). No file was created.",
     "de": "Der Verlauf ist zu groß für den Export (maximal 1.000 Ergebnisse und 5 MB). Es wurde keine Datei erstellt.",
     "sv": "Historiken är för stor för att exporteras (högst 1 000 resultat och 5 MB). Ingen fil skapades.",
+    "android": [
+      "history_export_too_large"
+    ],
     "ios": [
       "History is too large to export (maximum 1,000 results and 5 MB). No file was created."
     ],
@@ -6912,6 +6915,9 @@
     "savedResult": true,
     "androidResult": [
       "aiTranscriptionTitle"
+    ],
+    "core": [
+      "result.aiTranscriptionTitle"
     ]
   },
   "result_ai_transcription_unverified": {

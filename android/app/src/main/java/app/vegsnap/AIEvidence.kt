@@ -102,7 +102,7 @@ internal fun validateAIEvidence(extracted: JSONObject) {
 private val animalFree = Regex("\\b(?:no|without|ohne|frei\\s+von|kein\\w*|inga|ingen|utan)\\s+(?:animal|tierisch|animalisk)\\w*", RegexOption.IGNORE_CASE)
 private val labelNegation = Regex("\\b(?:not|non|no|never|nicht|kein(?:e|en|er|em|es)?|nein|niemals|un(?:suitable|geeignet)|inte|ej|nej|icke|ingen|olämplig)\\b|[✗✘❌]", RegexOption.IGNORE_CASE)
 /** Photo transcriptions only count as complete when a composition heading is visible, not just because the model says so. */
-private val photoCompositionHeading = Regex("(?:^|[^\\p{L}\\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition)\\s*[:：]", RegexOption.IGNORE_CASE)
+private val photoCompositionHeading = Regex("(?:^|[^\\p{L}\\p{N}])(?:ingredients?|ingredienser|zutaten|inci|inhaltsstoffe|innehåll|materials?|obermaterial|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\\s*[:：]", RegexOption.IGNORE_CASE)
 internal fun transcriptionComplete(extracted: JSONObject, photo: Boolean): Boolean =
     extracted.optBoolean("complete") && (!photo || photoCompositionHeading.containsMatchIn(extracted.optString("text")))
 

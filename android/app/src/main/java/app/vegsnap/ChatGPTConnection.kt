@@ -237,7 +237,7 @@ internal suspend fun <T> withChatGPTSession(loadSession: suspend () -> JSONObjec
 }
 
 internal fun chatGPTRequestBody(model: String, prompt: String, text: String, images: List<String>, requireResearch: Boolean, allowResearch: Boolean, format: JSONObject? = null): JSONObject {
-    require(model.isNotBlank() && model.length <= 200 && text.length <= 32_000 && images.size <= 3)
+    require(model.isNotBlank() && model.length <= 200 && text.length <= 200_000 && images.size <= 3)
     val content = JSONArray().put(JSONObject().put("type", "input_text").put("text", text.ifBlank { "Read the product labels in these photos." }))
     images.forEach { require(it.startsWith("data:image/jpeg;base64,") && it.length <= 4_000_000); content.put(JSONObject().put("type", "input_image").put("image_url", it)) }
     // The ChatGPT plan endpoint rejects max_tool_calls; the caller states the allowance in the prompt.

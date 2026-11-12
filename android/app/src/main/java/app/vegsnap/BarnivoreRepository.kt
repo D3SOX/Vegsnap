@@ -31,7 +31,7 @@ internal class BarnivoreRepository(
         return parseBarnivoreSearch(document.getString("html"), locale, document.getString("copiedAt"))
     }
     private suspend fun fetch(url: HttpUrl): String = suspendCancellableCoroutine<String> { continuation ->
-            val call = http.newCall(Request.Builder().url(url).header("User-Agent", "Vegsnap/0.1 (explicit beverage lookup)").build())
+            val call = http.newCall(Request.Builder().url(url).header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} (explicit beverage lookup)").build())
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {

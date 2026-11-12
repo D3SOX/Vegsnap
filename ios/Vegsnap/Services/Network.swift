@@ -37,7 +37,7 @@ enum Network {
     }
     static func get(_ url: URL, limit: Int = 2_000_000, redirects: Bool = false) async throws -> Data {
         var request = URLRequest(url: url)
-        request.setValue("Vegsnap/0.2 (iOS; explicit product lookup)", forHTTPHeaderField: "User-Agent")
+        request.setValue("Vegsnap/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "") (iOS; explicit product lookup)", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await read(request, limit: limit, redirects: redirects)
         guard (200..<300).contains(response.statusCode) else { throw AppError("\(L("Service returned HTTP")) \(response.statusCode)") }
         return data

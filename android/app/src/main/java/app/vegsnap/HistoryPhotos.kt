@@ -59,9 +59,9 @@ internal class HistoryPhotoStore(private val root: File) {
         root.listFiles()?.filter { it.name !in keep }?.forEach { it.deleteRecursively() }
     }
 
-    suspend fun importResults(ids: List<String>, persist: suspend () -> Unit) = writes.withLock {
-        persist()
-        // An imported result with the same ID must not inherit unrelated previous photo evidence.
-        ids.forEach { directory(it).deleteRecursively() }
+    /** [persist] returns the IDs it added; existing checks keep their photos. */
+    suspend fun importResults(persist: suspend () -> List<String>) = writes.withLock {
+        // A newly imported result must not inherit photo evidence left by an incomplete write.
+        persist().forEach { directory(it).deleteRecursively() }
     }
 }

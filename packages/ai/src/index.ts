@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { countryCode, createResearchProvider, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
+import { rateLimitAddress, readBoundedText } from '@vegsnap/core/http';
 import { createClaudeRunner } from './claude';
-import { readBoundedText } from '../../core/src/http';
 
 export interface Env {
   DB: D1Database;
@@ -41,7 +41,7 @@ async function body(request: Request, maximum: number): Promise<unknown> {
 }
 const hex = (buffer: ArrayBuffer) => Array.from(new Uint8Array(buffer), byte => byte.toString(16).padStart(2, '0')).join('');
 const sha256 = async (value: string) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
-const clientIp = (request: Request) => request.headers.get('CF-Connecting-IP') ?? 'unknown';
+const clientIp = (request: Request) => rateLimitAddress(request.headers.get('CF-Connecting-IP'));
 // Keyed so stored IP hashes cannot be reversed by enumerating addresses.
 async function hashIp(request: Request, env: Env): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.TURNSTILE_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -142,7 +142,7 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     try {
       verification = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(10_000),
-        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge, ...(request.headers.has('CF-Connecting-IP') ? { remoteip: clientIp(request) } : {}) }),
+        body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: value.challenge, ...(request.headers.has('CF-Connecting-IP') ? { remoteip: request.headers.get('CF-Connecting-IP') } : {}) }),
       });
       result = await verification.json();
     } catch { throw new HttpError(502, 'Verification could not be checked. Please verify again.'); }
@@ -202,7 +202,8 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     return json(extraction);
   } catch (error) {
     console.error('AI check failed', { error: error instanceof Error ? error.name : typeof error, upstreamStatus, billed });
-    if (billed) throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.');
+    // An abort can leave Claude billing for work already done, so only refund upstream failures.
+    if (billed || request.signal.aborted) throw new HttpError(502, 'AI could not complete this check. Its allowance was consumed; local evidence is still available.');
     // Refund checks when Claude never returned a successful (billable) response.
     const refund = env.DB.batch([
       env.DB.prepare('UPDATE sessions SET checks = checks - 1 WHERE token_hash = ? AND day = ? AND checks > 0').bind(tokenHash, today),

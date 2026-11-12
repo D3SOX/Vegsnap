@@ -67,7 +67,7 @@ class MarketingScreenshotTest {
             SettingsStore(target).save(AppSettings(offline = true, connection = "database", startTab = "manual"))
             ApplicationHistoryDatabase.get(target).history().apply {
                 clear()
-                saveAll((0..2).map { i ->
+                insertNew((0..2).map { i ->
                     val r = results.getJSONObject(i)
                     HistoryEntry(r.getString("id"), r.getJSONObject("identity").getString("name"), r.getString("checkedAt"), r.toString())
                 })

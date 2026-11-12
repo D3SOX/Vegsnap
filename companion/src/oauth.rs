@@ -16,6 +16,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use url::Url;
 use uuid::{Uuid, Variant};
 
+const USER_AGENT: &str = concat!("Vegsnap/", env!("CARGO_PKG_VERSION"));
 const ISSUER: &str = "https://auth.openai.com";
 const TOKEN_URL: &str = "https://auth.openai.com/api/accounts/oauth/token";
 const RESOURCE: &str = "https://api.openai.com/v1";
@@ -424,7 +425,7 @@ fn client() -> Result<Client> {
         .timeout(Duration::from_secs(120))
         .connect_timeout(Duration::from_secs(15))
         .redirect(reqwest::redirect::Policy::none())
-        .user_agent("Vegsnap/0.1.0")
+        .user_agent(USER_AGENT)
         .build()
         .map_err(|_| "Cannot initialize the connection.".into())
 }
@@ -729,12 +730,12 @@ fn complete_sign_in<T>(writer: &mut impl Write, finish: impl FnOnce() -> Result<
         Ok(_) => callback_response(
             "200 OK",
             "Connected to ChatGPT",
-            "Return to Vegsnap in Firefox. You can close this tab.",
+            "Return to Vegsnap in your browser. You can close this tab.",
         ),
         Err(error) => callback_response(
             "502 Bad Gateway",
             "Could not connect to ChatGPT",
-            &format!("{error} Return to Vegsnap in Firefox to try again."),
+            &format!("{error} Return to Vegsnap in your browser to try again."),
         ),
     };
     // Closing the browser tab must not discard a successfully stored connection.
@@ -815,7 +816,7 @@ pub fn sign_in(payload: Value) -> Result<Value> {
                 let response = callback_response(
                     "400 Bad Request",
                     "Could not complete sign-in",
-                    &format!("{error} Return to Vegsnap in Firefox to try again."),
+                    &format!("{error} Return to Vegsnap in your browser to try again."),
                 );
                 let _ = socket.write_all(response.as_bytes());
                 // Ignore unrelated connections; a valid-state refusal ends this attempt.
@@ -978,7 +979,9 @@ pub fn models() -> Result<Value> {
 fn check_content(payload: CheckPayload) -> Result<(String, Vec<Value>)> {
     if payload.model.trim().is_empty()
         || payload.model.len() > 200
-        || payload.text.len() > 32_000
+        // `text` is a JSON envelope; the extension bounds each field. 30,000 characters of
+        // escaped or non-ASCII text can exceed 100,000 bytes once encoded.
+        || payload.text.len() > 256_000
         || payload.image_data_urls.len() > 3
     {
         return Err("Invalid model or product text length.".into());
@@ -1023,12 +1026,22 @@ fn extraction_json(text: &str) -> Option<Value> {
 }
 
 fn same_product(first: &Value, next: &Value, name_field: &str) -> bool {
+    use unicode_normalization::UnicodeNormalization;
+
+    // Same normalization as core: NFKC, lowercase, collapsed whitespace.
+    let key = |value: &Value| {
+        value.as_str().map(|text| {
+            text.nfkc()
+                .collect::<String>()
+                .to_lowercase()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+    };
     [("name", name_field), ("brand", "brand")]
         .iter()
-        .all(|(left, right)| {
-            first[*left].as_str().map(|text| text.trim().to_lowercase())
-                == next[*right].as_str().map(|text| text.trim().to_lowercase())
-        })
+        .all(|(left, right)| key(&first[*left]) == key(&next[*right]))
 }
 
 // Only already-consulted, matching public composition may supply follow-up terms.
@@ -1468,7 +1481,7 @@ fn lookup_product_countries(
     let client = Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(5))
-        .user_agent("Vegsnap/0.1.0")
+        .user_agent(USER_AGENT)
         .build()
         .map_err(|_| "Cannot initialize public product lookup.")?;
     for origin in product_country_origins(category) {
@@ -1589,44 +1602,13 @@ fn research_if_needed(
     if !same_product(&original, &next, "name") {
         return first;
     }
-    // Keep both sides of conflicts. Refuse an oversized merge instead of truncating evidence.
-    for (field, limit) in [
-        ("ingredientAssessments", 100),
-        ("webClaims", 5),
-        ("webCompositions", 3),
-    ] {
-        let mut merged = original[field].as_array().cloned().unwrap_or_default();
-        for value in next[field].as_array().into_iter().flatten() {
-            if !merged.contains(value) {
-                merged.push(value.clone());
-            }
-        }
-        if merged.len() > limit {
-            return first;
-        }
-        if !merged.is_empty() {
-            original[field] = json!(merged);
-        }
-    }
-    let mut sources = first.research["sources"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    for source in researched.research["sources"]
-        .as_array()
-        .into_iter()
-        .flatten()
-    {
-        if !sources
-            .iter()
-            .any(|existing| existing["url"] == source["url"])
-        {
-            sources.push(source.clone());
-        }
-    }
-    if sources.len() > 50 {
-        return first;
-    }
+    merge_research_evidence(&mut original, &next);
+    let sources = merge_research_sources(
+        &original,
+        &next,
+        &first.research["sources"],
+        &researched.research["sources"],
+    );
     // Clients validate these optional assessments against the merged tool sources
     // and product identity. Malformed optional fields must not discard evidence.
     if let Some(contact) = next.get("contact").filter(|value| value.is_object()) {
@@ -1644,6 +1626,75 @@ fn research_if_needed(
         research,
         search_calls: first.search_calls + researched.search_calls,
     }
+}
+
+/// Bound merged evidence by priority (contradicting evidence, then original, then new)
+/// instead of dropping a whole follow-up. Mirrors core's `mergeResearch`.
+fn merge_research_evidence(original: &mut Value, next: &Value) {
+    for (field, limit, priority) in [
+        ("ingredientAssessments", 100, Some(("status", "animal"))),
+        ("webClaims", 5, Some(("claim", "not_vegan"))),
+        ("webCompositions", 3, None),
+    ] {
+        let mut merged = original[field].as_array().cloned().unwrap_or_default();
+        for value in next[field].as_array().into_iter().flatten() {
+            if !merged.contains(value) {
+                merged.push(value.clone());
+            }
+        }
+        if let Some((key, value)) = priority {
+            // Stable, so original entries stay ahead of new ones within each priority.
+            merged.sort_by_key(|entry| entry[key] != value);
+        }
+        merged.truncate(limit);
+        if !merged.is_empty() {
+            original[field] = json!(merged);
+        }
+    }
+}
+
+/// Keep cited sources ahead of uncited ones when the merged list exceeds its limit.
+fn merge_research_sources(
+    merged: &Value,
+    next: &Value,
+    first_sources: &Value,
+    next_sources: &Value,
+) -> Vec<Value> {
+    let mut sources = first_sources.as_array().cloned().unwrap_or_default();
+    for source in next_sources.as_array().into_iter().flatten() {
+        if !sources
+            .iter()
+            .any(|existing| existing["url"] == source["url"])
+        {
+            sources.push(source.clone());
+        }
+    }
+    let mut cited: Vec<&Value> = Vec::new();
+    for field in ["webClaims", "webCompositions"] {
+        cited.extend(
+            merged[field]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|item| &item["url"]),
+        );
+    }
+    for extraction in [merged, next] {
+        let contact = &extraction["contact"];
+        cited.extend([&contact["sourceUrl"], &contact["url"]]);
+        let company = &extraction["companyAssessment"];
+        cited.push(&company["ownershipSourceUrl"]);
+        cited.extend(
+            company["sources"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|item| &item["url"]),
+        );
+    }
+    sources.sort_by_key(|source| !cited.contains(&&source["url"]));
+    sources.truncate(50);
+    sources
 }
 
 static PROMPTS: std::sync::LazyLock<Value> = std::sync::LazyLock::new(|| {
@@ -2700,7 +2751,7 @@ mod tests {
     }
 
     #[test]
-    fn followup_retains_conflicting_public_evidence_and_refuses_overflow() {
+    fn followup_retains_conflicting_public_evidence_and_trims_overflow() {
         for (field, limit) in [("webClaims", 5), ("webCompositions", 3), ("sources", 50)] {
             for count in [1, limit] {
                 let mut first = research_fixture(false);
@@ -2721,8 +2772,6 @@ mod tests {
                     original[field] = json!(entries);
                 }
                 first.text = original.to_string();
-                let saved_text = first.text.clone();
-                let saved_research = first.research.clone();
                 let result = research_if_needed(first, &[], None, |_| {
                     let mut next = research_fixture(true);
                     let mut value = extraction_json(&next.text).unwrap();
@@ -2735,19 +2784,40 @@ mod tests {
                     next.text = value.to_string();
                     Ok(next)
                 });
-                if count == limit {
-                    assert_eq!(result.text, saved_text, "{field}");
-                    assert_eq!(result.research, saved_research, "{field}");
+                let merged = extraction_json(&result.text).unwrap();
+                let entries = if field == "sources" {
+                    &result.research[field]
                 } else {
-                    let merged = extraction_json(&result.text).unwrap();
-                    let entries = if field == "sources" {
-                        &result.research[field]
-                    } else {
-                        &merged[field]
-                    };
-                    assert_eq!(entries.as_array().unwrap().len(), 2, "{field}");
-                    assert_eq!(entries[0], public_entry(0));
-                }
+                    &merged[field]
+                };
+                // Equal-priority overflow keeps the original entries in order.
+                assert_eq!(
+                    entries.as_array().unwrap().len(),
+                    (count + 1).min(limit),
+                    "{field}"
+                );
+                assert_eq!(entries[0], public_entry(0));
+            }
+        }
+    }
+
+    #[test]
+    fn research_merges_match_shared_fixtures() {
+        let fixtures: Value =
+            serde_json::from_str(include_str!("../../contracts/evidence-fixtures.json")).unwrap();
+        for case in fixtures["researchMerges"].as_array().unwrap() {
+            let mut merged = case["original"].clone();
+            merge_research_evidence(&mut merged, &case["researched"]);
+            for field in ["webClaims", "webCompositions"] {
+                let urls: Vec<&Value> = merged[field]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|item| &item["url"])
+                    .collect();
+                let expected: Vec<&Value> =
+                    case["expected"][field].as_array().unwrap().iter().collect();
+                assert_eq!(urls, expected, "{}: {field}", case["name"]);
             }
         }
     }
@@ -2856,15 +2926,15 @@ mod tests {
         });
         let merged = extraction_json(&result.text).unwrap();
         assert_eq!(merged["ingredientAssessments"].as_array().unwrap().len(), 2);
-        assert_eq!(merged["ingredientAssessments"][0]["status"], "plant");
-        assert_eq!(merged["ingredientAssessments"][1]["status"], "animal");
+        assert_eq!(merged["ingredientAssessments"][0]["status"], "animal");
+        assert_eq!(merged["ingredientAssessments"][1]["status"], "plant");
         assert_eq!(merged["webClaims"][0]["claim"], "not_vegan");
         assert!(merged.get("research").is_none());
         assert_eq!(result.research, actual_research);
     }
 
     #[test]
-    fn assessment_limit_preserves_first_instead_of_dropping_a_contradiction() {
+    fn assessment_limit_keeps_a_contradiction_ahead_of_older_assessments() {
         for original_count in [99, 100] {
             let mut first = research_fixture(false);
             let mut value = extraction_json(&first.text).unwrap();
@@ -2872,8 +2942,6 @@ mod tests {
                 json!({"term":format!("unfamiliar ingredient {index}"),"status":"plant","explanation":"First assessment"})
             ).collect::<Vec<_>>());
             first.text = value.to_string();
-            let original_text = first.text.clone();
-            let original_research = first.research.clone();
             let result = research_if_needed(first, &[], None, |_| {
                 let mut next = research_fixture(true);
                 let mut value = extraction_json(&next.text).unwrap();
@@ -2882,18 +2950,12 @@ mod tests {
                 next.text = value.to_string();
                 Ok(next)
             });
-            if original_count == 100 {
-                assert_eq!(result.text, original_text);
-                assert_eq!(result.research, original_research);
-            } else {
-                let merged = extraction_json(&result.text).unwrap();
-                assert_eq!(
-                    merged["ingredientAssessments"].as_array().unwrap().len(),
-                    100
-                );
-                assert_eq!(merged["ingredientAssessments"][99]["status"], "animal");
-                assert_eq!(merged["webCompositions"].as_array().unwrap().len(), 1);
-            }
+            let merged = extraction_json(&result.text).unwrap();
+            let assessments = merged["ingredientAssessments"].as_array().unwrap();
+            assert_eq!(assessments.len(), 100);
+            assert_eq!(assessments[0]["status"], "animal");
+            assert_eq!(assessments[1]["term"], "unfamiliar ingredient 0");
+            assert_eq!(merged["webCompositions"].as_array().unwrap().len(), 1);
         }
     }
 

@@ -284,7 +284,12 @@ export default defineBackground(() => {
             });
             return { ok: true, result: updated };
           }
-          case 'delete': await changeHistory(() => history('delete', typeof message.id === 'string' ? message.id : undefined)); return { ok: true, result: null };
+          case 'delete': {
+            // Only an omitted ID clears everything; a malformed one must not.
+            const id = message.id;
+            if (id !== undefined && typeof id !== 'string') throw new Error('Invalid history request.');
+            await changeHistory(() => history('delete', id)); return { ok: true, result: null };
+          }
           case 'hide-reply': {
             if (typeof message.id !== 'string') throw new Error('Invalid reply reference.');
             const id = message.id;

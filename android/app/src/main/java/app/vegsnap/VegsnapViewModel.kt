@@ -2,6 +2,7 @@ package app.vegsnap
 
 import android.app.Application
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -175,7 +176,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 val savedInput = input.copy(name = result.getJSONObject("identity").optString("name"), category = result.getString("category"))
                 withContext(Dispatchers.IO) {
                     historyPhotos.save(result.getString("id"), emptyList(), savedInput) {
-                        database.history().save(HistoryEntry(result.getString("id"), result.getString("title"), result.getString("checkedAt"), json))
+                        database.history().save(HistoryEntry(result.getString("id"), result.getString("title"), historySortKey(result.getString("checkedAt")), json))
                     }
                 }
                 if (barcodeCoordinator.accepts(observation) && !state.value.capturing && state.value.photos.isEmpty()) update { it.copy(result = json) }
@@ -700,8 +701,17 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     }
     private fun appLocale(): String = appLanguage(getApplication<Application>().resources.configuration.locales[0].language)
     fun export(uri: Uri) { viewModelScope.launch(Dispatchers.IO) {
-        runCatching { getApplication<Application>().contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(HistoryTransfer.export(history.value, appLocale())) } }
-            .onFailure { update { it.copy(message = R.string.network_error) } }
+        val resolver = getApplication<Application>().contentResolver
+        runCatching {
+            val entries = history.value
+            val text = HistoryTransfer.export(entries, appLocale())
+            if (!HistoryTransfer.importable(entries.size, text)) {
+                runCatching { DocumentsContract.deleteDocument(resolver, uri) }
+                update { it.copy(message = R.string.history_export_too_large) }
+                return@launch
+            }
+            resolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(text) }
+        }.onFailure { update { it.copy(message = R.string.network_error) } }
     } }
     fun import(uri: Uri) { viewModelScope.launch(Dispatchers.IO) {
         runCatching {
@@ -713,7 +723,10 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
                 output.toString()
             }
             val entries = HistoryTransfer.parse(text, appLocale())
-            historyPhotos.importResults(entries.map { it.id }) { database.history().saveAll(entries) }
+            historyPhotos.importResults {
+                val rows = database.history().insertNew(entries)
+                entries.filterIndexed { index, _ -> rows[index] != -1L }.map { it.id }
+            }
         }.onFailure { update { it.copy(message = R.string.network_error) } }
     } }
 }

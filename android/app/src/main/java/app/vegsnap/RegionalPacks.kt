@@ -83,7 +83,7 @@ internal class HttpRegionalPackDownload(private val http: OkHttpClient = OkHttpC
         var location = url
         for (redirect in 0..5) {
             require(validPackUrl(location))
-            val request = Request.Builder().url(location).header("Accept", "application/json").header("User-Agent", "Vegsnap/0.1 Android").build()
+            val request = Request.Builder().url(location).header("Accept", "application/json").header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} Android").build()
             val call = http.newCall(request)
             val cancellation = launch(start = CoroutineStart.UNDISPATCHED) { try { awaitCancellation() } finally { call.cancel() } }
             var next: String? = null

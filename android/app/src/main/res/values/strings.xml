@@ -234,6 +234,7 @@
     <string name="history">History</string>
     <string name="history_count">%1$d saved</string>
     <string name="history_error">Could not update local history. Please try again.</string>
+    <string name="history_export_too_large">History is too large to export (maximum 1,000 results and 5 MB). No file was created.</string>
     <string name="history_notice">Exported checks contain product evidence and text, but no photos or credentials.</string>
     <string name="hosted_ai">Vegsnap AI</string>
     <string name="hosted_ai_connect">Connect to free AI</string>

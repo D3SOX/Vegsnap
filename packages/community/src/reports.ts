@@ -1,4 +1,5 @@
 import { SubmissionError } from '@vegsnap/core/community';
+import { rateLimitAddress } from '@vegsnap/core/http';
 import { validateContentReport, type ContentReport, type ResultReport } from '@vegsnap/core/content-reports';
 import type { Env } from './index';
 
@@ -14,7 +15,7 @@ export async function submitReport(request: Request, env: Env): Promise<Response
   const origin = request.headers.get('Origin');
   if (origin && origin !== env.PUBLIC_ORIGIN && !extensionOrigin.test(origin)) throw new ReportError(403, 'Use Vegsnap to report content.');
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) throw new ReportError(415, 'Use a JSON request.');
-  const { success } = await env.SUBMISSION_LIMIT.limit({ key: `report:${request.headers.get('CF-Connecting-IP') ?? 'unknown'}` });
+  const { success } = await env.SUBMISSION_LIMIT.limit({ key: `report:${rateLimitAddress(request.headers.get('CF-Connecting-IP'))}` });
   if (!success) throw new ReportError(429, 'Too many reports. Try again in a minute.');
   const reader = request.body?.getReader();
   if (!reader) throw new ReportError(400, 'The report is missing.');

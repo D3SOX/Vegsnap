@@ -8,9 +8,9 @@ export type { BrowseSearch, BrowseRecord, BrowsePage, BrowseSource } from './bro
 export { PublicSearchError } from './public-search';
 export type { PublicSearchFailure } from './public-search';
 export { countryCode, countryFlag, countryOptions, packRegionName, selectProductCountry } from './market';
-export { analyzeText, parseSourceIngredients, normalizeTerm, safeSourceUrl } from './analyze';
+export { analyzeText, compositionHeadingWords, parseSourceIngredients, normalizeTerm, safeSourceUrl } from './analyze';
 export { lookupProduct, normalizeBarcode, DATABASES } from './database';
-export { createOpenAIProvider, createResearchProvider, aiOutputSchema, parseAIExtraction, validateAIExtraction, validateProviderConfig, PROVIDER_PRESETS, EXTRACTION_PROMPT } from './provider';
+export { createOpenAIProvider, createResearchProvider, aiOutputSchema, parseAIExtraction, validateAIExtraction, validateProviderConfig, EXTRACTION_PROMPT } from './provider';
 export type { AIPass, AIPassResult, AIPassRunner, AIOutputOptions, ResearchProviderOptions } from './provider';
 export { HOSTED_AI, createHostedAIProvider } from './hosted-ai';
 export { checkProduct } from './check';

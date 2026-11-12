@@ -15,7 +15,7 @@ const materialSection = new RegExp(String.raw`(?:^|\n)[^\S\r\n]*${materialRoles}
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 const leadingConjunction = /^(?:and\/or|und\/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\S)/u;
 export function normalizeTerm(text: string): string {
-  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/\d+(?:[.,]\d+)?\s*%/g, '')
+  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\b(?:organic|bio)\b/g, '').replace(materialPrefix, '')
     .replace(additivePrefix, '').replace(/^\s*(?:gemüse|vegetables|grönsaker)\s*[-–:]\s*(?=\S)/iu, '')
     .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(leadingConjunction, '');
@@ -35,7 +35,7 @@ export function compositionTerms(text: string, materialContext = false): string[
     value = value.slice(0, group.index!) + '(' + expanded + ')' + value.slice(end);
   }
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
-  return value.replace(/\d+(?:[.,]\d+)?\s*%/g, '')
+  return value.replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
     .replace(insAfterRole, role => role.replace(/(?<![\p{L}\p{N}])(?:[iI][nN][sS]\s?)?(?<![eE][\s-])(\d{3,4}[a-h]?)(?!\p{N})/gu, 'e$1'))
     .replace(additiveGroup, '')
@@ -201,7 +201,9 @@ export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | un
     compoundStems.find(stem => mentioned(remainder, stem, false));
   return alias ? aliasRules.get(alias) : undefined;
 }
-const heading = /(?:^|\n)[^\S\r\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\s*:\s*/i;
+/** Composition headings for every supported label language; reuse this list so platforms do not drift. */
+export const compositionHeadingWords = 'ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset';
+const heading = new RegExp(`(?:^|\\n)[^\\S\\r\\n]*(?:${compositionHeadingWords})\\s*:\\s*`, 'i');
 const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b(?!\s+(?:eine?[nrs]?|einer) (?:oder mehrere|der folgenden)(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\b(?!\s+(?:een|één) of meer(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\p{L}\p{N}])(?!\s+(?:one or more|either|any (?:one )?of|une? ou plusieurs|l'une? des|uno o (?:más|varios)|alguno de|uno o più|uno dei|een of meer|en eller flere|ett eller flera|én eller flere|yksi tai useampi)(?![\p{L}\p{N}])(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))/iu;
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;

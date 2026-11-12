@@ -25,7 +25,7 @@ private val materialSection = Regex("(?:^|\\n)\\s*$materialRoles\\s*:", RegexOpt
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 private val leadingConjunction = Regex("^(?:and/or|und/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\\S)")
 internal fun normalizeCompositionTerm(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace('’', '\'')
-    .replace(Regex("[_*\"]"), "").replace(Regex("(?<=\\p{L}{4})\\d{1,2}$"), "").replace(Regex("\\d+(?:[.,]\\d+)?\\s*%"), "")
+    .replace(Regex("[_*\"]"), "").replace(Regex("(?<=\\p{L}{4})\\d{1,2}$"), "").replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
     .replace(Regex("\\b(?:organic|bio)\\b"), "")
     .replace(materialPrefix, "")
     .replace(additivePrefix, "").replace(Regex("^\\s*(?:gemüse|vegetables|grönsaker)\\s*[-–:]\\s*(?=\\S)"), "")
@@ -46,7 +46,7 @@ internal fun compositionTerms(text: String, materialContext: Boolean = false): L
         value = value.take(group.range.first) + "(" + expanded + ")" + value.substring(end)
     }
     if (materialContext || materialSection.containsMatchIn(text)) value = value.replace("/", ",")
-    return value.replace(Regex("\\d+(?:[.,]\\d+)?\\s*%"), "")
+    return value.replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
         .replace(Regex("\\(\\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\\s*\\)", RegexOption.IGNORE_CASE), "")
         .replace(insAfterRole) { insNumber.replace(it.value, "e$1") }
         .replace(additiveGroup, "")
