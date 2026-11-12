@@ -153,8 +153,10 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
 }
 /** Assess one extraction exactly as research planning sees it; shared evidence fixtures run through here. */
 export function researchAssessment(extracted: AIExtraction, input: CheckInput) {
-  const complete = compositionComplete(input, extracted);
-  const visible: CheckInput = { text: extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
+  // As in checkProduct, a checked complete supplied list stays the composition authority over a photo transcription.
+  const supplied = input.complete === true && input.text?.trim() ? input.text : undefined;
+  const complete = Boolean(supplied) || compositionComplete(input, extracted);
+  const visible: CheckInput = { text: supplied ?? extracted.text, complete, category: input.category && input.category !== 'other' ? input.category : extracted.category,
     name: input.name || extracted.name, brand: input.brand || extracted.brand, locale: input.locale, images: input.images };
   return applyWebEvidence(applyAIEvidence(analyzeText(visible, undefined, extracted.ingredients), visible, extracted, complete), visible, extracted);
 }

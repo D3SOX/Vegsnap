@@ -332,3 +332,14 @@ test('an incomplete supplied list still researches when the model calls its tran
     expect(requests).toHaveLength(2);
   }
 });
+
+test('a complete supplied list, not the photo transcription, decides whether to research', async () => {
+  const requests: unknown[] = [];
+  const provider = createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'test', supportsVision: true }, (async (_url: string | URL | Request, init?: RequestInit) => {
+    requests.push(JSON.parse(String(init?.body)));
+    const extraction = { text: 'Ingredients: oats, water', ingredients: ['oats', 'water'], complete: true, category: 'food', name: 'Oat drink', brand: 'Maker' };
+    return Response.json({ status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: JSON.stringify(extraction) }] }] });
+  }) as unknown as typeof fetch);
+  await provider.extract({ text: 'Ingredients: oats, E471', complete: true, images: ['data:image/jpeg;base64,AA=='], category: 'food', autoMarket: true });
+  expect(requests).toHaveLength(2);
+});
