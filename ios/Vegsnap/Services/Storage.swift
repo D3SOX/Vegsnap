@@ -79,7 +79,11 @@ enum HistoryTransfer {
             var clean = result
             clean.aiError = nil // Never display untrusted provider error copy from a transfer.
             clean.manufacturerContact = nil // Contact must be re-established against source evidence.
-            if clean.companyAssessment != nil { clean.warnings.append(L("Imported company assessment: sources and quotations have not been verified on this device.")) }
+            if clean.companyAssessment != nil {
+                // Stay within the 100-warning import limit so the record can be exported and imported again.
+                let notice = L("Imported company assessment: sources and quotations have not been verified on this device.")
+                clean.warnings = Array(clean.warnings.filter { $0 != notice }.prefix(99)) + [notice]
+            }
             return clean
         }
     }

@@ -52,8 +52,8 @@ struct BrowseView: View {
                 let page: BrowsePage
                 if store.settings.offline {
                     guard [.food, .beauty, .products].contains(submittedSource) else { throw AppError(L("This source requires an internet connection.")) }
-                    struct Arguments: Encodable { var source: String; var query: String; var offset: Int }
-                    let products: [OfflineBrowseProduct] = try store.engine.call("offlineSearch", Arguments(source: submittedSource.rawValue, query: submittedQuery, offset: cursor))
+                    struct Arguments: Encodable { var source: String; var query: String; var offset: Int; var market: String }
+                    let products: [OfflineBrowseProduct] = try store.engine.call("offlineSearch", Arguments(source: submittedSource.rawValue, query: submittedQuery, offset: cursor, market: store.settings.defaultCountry))
                     page = BrowsePage(records: products.map { $0.record(source: submittedSource, locale: store.locale) }, next: products.count == 20 ? cursor + 20 : nil)
                 } else { page = try await service.search(submittedQuery, source: submittedSource, cursor: cursor, locale: store.locale) }
                 try Task.checkCancellation()
