@@ -201,8 +201,12 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   const rows: unknown[] = [];
   for (const row of parseTsv(text)) {
     if (rows.length >= 200_000) throw new Error('Non-food export exceeds row bound');
-    rows.push({ ...row, last_modified_t: Number(row.last_modified_t) });
+    // The exports have labelled the _t and _datetime columns in swapped order, so last_modified_t may hold an ISO date.
+    const modified = row.last_modified_t ?? '';
+    rows.push({ ...row, last_modified_t: /^\d+$/.test(modified) ? Number(modified) : Math.floor(Date.parse(modified) / 1000) });
   }
+  // An unreadable export must fail the refresh so the previous pack is kept, instead of silently dropping the source.
+  if (!rows.some(row => normalizeProduct(row, source))) throw new Error(`${source} export has no usable products`);
   return { source, rows, retrievedAt };
 }
 /** Locates one field without splitting the line, so the millions of products outside every region cost a partial scan each. */

@@ -145,6 +145,27 @@ describe('offline snapshot build', () => {
       expect(await readdir(folder)).toEqual(['pack.json']);
     } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
   });
+  test('non-food exports with ISO dates under last_modified_t still fill packs; an export with no usable products keeps the old pack', async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-')), sourceCache = await mkdtemp(join(tmpdir(), 'vegsnap-offline-cache-'));
+    try {
+      const output = join(folder, 'pack.json');
+      // The official exports have labelled the _t and _datetime columns in swapped order.
+      const nonfood = (code: string, modified: string) => new Response(Bun.gzipSync('code\tproduct_name\tbrands\tingredients_text\tcountries_tags\tlast_modified_t\n' +
+        `${code}\tFixture cream\tFixture\tAqua, glycerin\ten:germany\t${modified}\n`));
+      const fetcher = (modified: string) => (async (url: string | URL | Request) => String(url).includes('openbeautyfacts') ? nonfood('4000417025104', modified)
+        : String(url).includes('openproductsfacts') ? nonfood('4000417025203', modified) : exported([row]));
+      expect(await refreshSnapshot({ output, sourceCache, region: 'germany', now: date, fetcher: fetcher('2025-07-04T06:14:46Z'), log: () => {} })).toBe('updated');
+      const pack = JSON.parse(await readFile(output, 'utf8'));
+      expect(pack.sources.map((source: { id: string }) => source.id)).toEqual(['off', 'obf', 'opf']);
+      expect(pack.products.find((product: { source: string }) => product.source === 'obf')?.last_modified_t).toBe(1751609686);
+      const original = await readFile(output, 'utf8');
+      await rm(sourceCache, { recursive: true, force: true });
+      const warnings: string[] = [];
+      expect(await refreshSnapshot({ output, sourceCache, region: 'germany', force: true, now: date, fetcher: fetcher('not a date'), log: message => warnings.push(message) })).toBe('stale');
+      expect(await readFile(output, 'utf8')).toBe(original);
+      expect(warnings.some(message => message.includes('obf export has no usable products'))).toBe(true);
+    } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
+  });
   test('several packs share one export download and keep their cached siblings', async () => {
     const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-')), sourceCache = await mkdtemp(join(tmpdir(), 'vegsnap-offline-cache-'));
     try {
