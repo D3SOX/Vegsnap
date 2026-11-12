@@ -192,9 +192,11 @@ describe('extended animal matching', () => {
 
 describe('untrusted composition text', () => {
   test('a long digit run is not scanned quadratically when stripping percentages', () => {
-    const digits = '0'.repeat(20_000);
+    // Quadratic backtracking needs about 5 s here; linear matching needs a few milliseconds.
+    // The wide margin tolerates a slow or paused CI runner.
+    const digits = '0'.repeat(60_000);
     const started = performance.now();
     expect(normalizeTerm(`${digits} sugar 12.5 %`)).toBe(`${digits} sugar`);
-    expect(performance.now() - started).toBeLessThan(100);
-  });
+    expect(performance.now() - started).toBeLessThan(1_000);
+  }, 30_000);
 });
