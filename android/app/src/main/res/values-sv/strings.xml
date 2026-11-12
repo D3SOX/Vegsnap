@@ -238,7 +238,7 @@
     <string name="hosted_ai">Vegsnap AI</string>
     <string name="hosted_ai_connect">Anslut till gratis AI</string>
     <string name="hosted_ai_error">Gratis-AI:n är inte tillgänglig, har gått ut eller så är kvoten förbrukad. Försök ansluta igen senare. Databaskontroller, ChatGPT och din egen API-nyckel fungerar fortfarande.</string>
-    <string name="hosted_ai_hint">Begränsat antal gratiskontroller utan prenumeration eller API-nyckel. Vald produkttext och foton skickas via Cloudflare till OpenAI. Åtkomsten upphör efter 24 timmar; kvoterna återställs vid midnatt UTC.</string>
+    <string name="hosted_ai_hint">Begränsat antal gratiskontroller utan prenumeration eller API-nyckel. Vald produkttext och foton skickas via Cloudflare till Anthropic (Claude). Åtkomsten upphör efter 24 timmar; kvoterna återställs vid midnatt UTC.</string>
     <string name="hosted_ai_pending">Slutför verifieringen i webbläsaren och återvänd till Vegsnap. Anslutningen uppdateras automatiskt.</string>
     <string name="hosted_ai_refresh">Uppdatera anslutning</string>
     <string name="hosted_ai_refresh_hint">Anslut för att få din gratiskvot.</string>

@@ -18,7 +18,8 @@ export function imageSupport(model: string, metadata?: unknown): ImageSupport {
       return modalities.some(item => item.toLowerCase() === 'image') ? 'supported' : 'unsupported';
     }
   }
-  const id = model.toLowerCase().trim().replace(/^openai\//, '');
+  const id = model.toLowerCase().trim().replace(/^(?:openai|anthropic)\//, '');
+  if (/^claude-(?:3|opus|sonnet|haiku|fable|mythos)(?:[.-]|$)/.test(id)) return 'supported';
   if (/^(?:gpt-3\.5(?:-|$)|gpt-4(?:-(?:0314|0613|32k)(?:-|$)|$)|o1-(?:mini|preview)(?:-|$)|o3-mini(?:-|$))/.test(id)) return 'unsupported';
   if (/^(?:gpt-4o(?:-|$)|gpt-4\.(?:1|5)(?:-|$)|gpt-4-(?:turbo|vision)(?:-|$)|gpt-[56](?:[.-]|$)|o1(?:-|$)|o3(?:-|$)|o4-mini(?:-|$))/.test(id)) return 'supported';
   return 'unknown';

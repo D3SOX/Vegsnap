@@ -273,7 +273,7 @@
 "Select a saved account or connect another account." = "Select a saved account or connect another account.";
 "Selected manually" = "Selected manually";
 "Selected text and photos may be sent to your AI provider if local evidence is insufficient." = "Selected text and photos may be sent to your AI provider if local evidence is insufficient.";
-"Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile." = "Selected text and photos pass through Cloudflare to OpenAI. Verification uses Cloudflare Turnstile.";
+"Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile." = "Selected text and photos pass through Cloudflare to Anthropic (Claude). Verification uses Cloudflare Turnstile.";
 "Send report" = "Send report";
 "Service returned HTTP" = "Service returned HTTP";
 "Settings" = "Settings";
