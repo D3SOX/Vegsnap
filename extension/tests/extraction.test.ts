@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { extractProducts, safeProductUrl, validGtin, isCurrentProductAnchor } from '../src/extraction';
+import { extractProducts, safeProductUrl, validGtin } from '../src/extraction';
 import { allowBackground, isBackgroundRequest, isCheckInput, scanInput, pendingInput, inspectedInput } from '../src/protocol';
 import { readImageResponse } from '../src/images';
 import { endpointOrigin, parseSettings } from '../src/settings';
@@ -11,13 +11,6 @@ describe('product identity', () => {
     expect(inspectedInput({ selection: '', title, products: [{ name: 'Trainers', barcode: '4006381333931' }] })).toEqual({ text: '', name: 'Trainers', barcode: '4006381333931' });
     expect(inspectedInput({ selection: 'Obermaterial: Leder/Synthetik', title, products: [] })).toEqual({ text: 'Obermaterial: Leder/Synthetik' });
     expect(inspectedInput({ selection: 'unknown fabric', title, products: [] })).toEqual({ text: 'unknown fabric' });
-  });
-  test('recycled marketplace cards and removed anchors cannot retain a prior product badge', () => {
-    const url = 'https://www.zalando.de/canvas-shoe';
-    expect(isCurrentProductAnchor({ isConnected: true, href: url }, url, 'https://www.zalando.de/search')).toBe(true);
-    expect(isCurrentProductAnchor({ isConnected: true, href: 'https://www.zalando.de/leather-shoe' }, url, 'https://www.zalando.de/search')).toBe(false);
-    expect(isCurrentProductAnchor({ isConnected: false, href: url }, url, url)).toBe(false);
-    expect(isCurrentProductAnchor({ isConnected: true }, url, 'https://www.zalando.de/leather-shoe')).toBe(false);
   });
   test('accepts exact GTIN checksums and rejects SKU-like numbers', () => {
     expect(validGtin('4006381333931')).toBe('4006381333931');

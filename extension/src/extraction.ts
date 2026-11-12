@@ -1,8 +1,4 @@
 export interface PageProduct { name: string; brand?: string; barcode?: string; url?: string; }
-/** A recycled marketplace card must not retain another product's result. */
-export function isCurrentProductAnchor(anchor: { isConnected: boolean; href?: string }, expectedUrl: string, pageUrl: string): boolean {
-  return anchor.isConnected && (anchor.href ?? pageUrl) === expectedUrl;
-}
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 export function validGtin(value: unknown): string | undefined {
   if (typeof value !== 'string' || !/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(value)) return;
