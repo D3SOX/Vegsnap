@@ -46,6 +46,12 @@ describe('rule data', () => {
     }
     for (const head of rules.extendedMatching.freeFromHeads) expect(aliasRule.get(normalizeTerm(head))?.status ?? 'plant').not.toBe('animal');
   });
+  test('preparation words are single words that never name an ingredient', () => {
+    for (const word of rules.extendedMatching.preparationWords) {
+      expect(word).toMatch(/^[\p{L}-]+$/u);
+      expect(aliasRule.has(normalizeTerm(word))).toBe(false);
+    }
+  });
   test('with-words and conjunctions are single words that never name an ingredient', () => {
     for (const word of [...rules.extendedMatching.withWords, ...rules.extendedMatching.conjunctions]) {
       expect(word).toMatch(/^\p{L}+$/u);
@@ -59,7 +65,7 @@ describe('extended animal matching', () => {
     expect(ruleForTerm('milk powder from alpine milk')?.id).toBe('milk');
     expect(ruleForTerm('alpenmilchpulver')?.id).toBe('milk');
     expect(ruleForTerm('rindsleder')?.id).toBe('leather');
-    for (const [term, id] of [['alpenvollmilchschokoladenstückchen', 'milk'], ['skummjölksyoghurtpulver', 'milk'], ['bio-kuhmilchpulver', 'milk'], ['h-milch-anteil', 'milk'], ['äggulepulver', 'egg'], ['hühnereiweiß', 'egg']] as const) expect(ruleForTerm(term)?.id).toBe(id);
+    for (const [term, id] of [['alpenvollmilchschokoladenstückchen', 'milk'], ['skummjölksyoghurtpulver', 'milk'], ['bio-kuhmilchpulver', 'milk'], ['h-milch-anteil', 'milk'], ['äggulepulver', 'egg'], ['hühnereiweiß', 'egg'], ['heringsfilets', 'fish'], ['makrelenfilets', 'fish'], ['hähnchenbrustfilet', 'meat']] as const) expect(ruleForTerm(term)?.id).toBe(id);
     const result = analyzeText({ text: 'Ingredients: sugar, milk powder from alpine milk', category: 'food' });
     expect(result.findings.map(item => [item.term, item.status, item.ruleId])).toEqual([['sugar', 'plant', 'sugar'], ['milk powder from alpine milk', 'animal', 'milk']]);
   });
@@ -107,13 +113,14 @@ describe('extended animal matching', () => {
     for (const [term, id] of [['lait écrémé en poudre', 'milk'], ['poudre de lait entier', 'milk'], ['leche desnatada en polvo', 'milk'], ['latte intero in polvere', 'milk'], ['magere melkpoeder', 'milk'],
       ['melkchocolade', 'milk'], ['roomboter', 'butter'], ["jaune d'œuf", 'egg'], ['huevos camperos', 'egg'], ["tuorlo d'uovo", 'egg'], ['kippenvlees', 'meat'], ['ansjovisextract', 'fish'], ['garnalenpasta', 'shellfish'],
       ['jambon de porc', 'meat'], ['gélatine de bœuf', 'gelatin'], ['miel de fleurs', 'honey'], ['queso curado', 'cheese'], ['formaggio grana', 'cheese'], ['lactosérum', 'whey'], ['caseinato de sodio', 'casein'],
-      ["lait entier issu de l'agriculture biologique", 'milk'], ['salmon from aquaculture', 'fish'], ["saumon d'aquaculture", 'fish'], ['lachs aus aquakultur', 'fish'], ['aroma en melkpoeder', 'milk'], ['huile végétale - oeufs entiers', 'egg']] as const) {
+      ["lait entier issu de l'agriculture biologique", 'milk'], ['salmon from aquaculture', 'fish'], ["saumon d'aquaculture", 'fish'], ['lachs aus aquakultur', 'fish'], ['aroma en melkpoeder', 'milk'], ['huile végétale - oeufs entiers', 'egg'],
+      ['filets de maquereaux', 'fish'], ['harengs fumés', 'fish'], ['creme entière de normandie', 'cream'], ["miels de fleurs issus de l'agriculture biologique", 'honey']] as const) {
       expect(ruleForTerm(term)?.id).toBe(id);
     }
   });
   test('French, Spanish, Italian and Dutch plant drinks, nut butters, negations and flavours never match an animal rule', () => {
     for (const term of ['lait végétal', 'leche vegetal', 'latte vegetale', 'plantaardige melk', 'fromage végétal', 'lait de coco', "lait d'amande", 'leche de soja', 'latte di mandorla', 'kokosmelk', 'havermelk', 'pindakaas', 'notenboter', 'cacaoboter', 'beurre de cacao', 'manteca de cacao', 'burro di cacao',
-      'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'manteca vegetal', 'manteca de palma', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij',
+      'tomate coeur de boeuf', 'melkzuurbacteriën', 'vruchtvlees', 'kokosvlees', 'honingmeloen', 'miel de caña', 'nata de coco', 'carne de soja', 'manteca vegetal', 'manteca de palma', 'sans lait', 'sin leche', 'senza latte', 'zonder melk', 'lactosevrij', 'melkvrij', 'ne contient ni lait ni soja', 'non contiene né latte né uova',
       'saveur fromage', 'sabor a queso', 'gusto formaggio', 'kaassmaak', 'store at room temperature', 'viscose lining', 'weizenmehl', 'vis en acier']) {
       expect(ruleForTerm(term)?.status ?? 'unknown').not.toBe('animal');
     }
@@ -167,10 +174,21 @@ describe('extended animal matching', () => {
     for (const term of ['synthetic hydroxyapatite', 'synthetisches hydroxylapatit', 'tricalcium phosphate', 'e341', 'calcium citrate', 'e333']) expect(ruleForTerm(term)?.status).toBe('plant');
     for (const term of ['microcrystalline hydroxyapatite', 'bovine hydroxyapatite', 'hydroxyapatite from bone', 'bone phosphate', 'e542', 'nacre', 'pearl powder', 'calcium citrate from oyster shells']) expect(ruleForTerm(term)?.status).toBe('animal');
   });
-  test('plant and ambiguous rules only match exactly', () => {
+  test('plant and ambiguous rules only match exactly, apart from preparation words, a concentrate source and conjunctions of exact aliases', () => {
     expect(ruleForTerm('natural flavouring with vanilla')).toBeUndefined();
     expect(ruleForTerm('e471 from palm oil')).toBeUndefined();
     expect(ruleForTerm('wheat flour blend')).toBeUndefined();
+    for (const [term, id] of [['geröstete mandeln', 'almond'], ['gegrillte rote paprika', 'bell-pepper'], ['noisettes torréfiées', 'hazelnut'], ['torkade aprikoser', 'apricot'],
+      ['doppelt konzentriertes tomatenmark', 'tomato-products'], ['orangensaft aus fruchtkonzentrat', 'orange'], ['lime juice concentrate', 'lime'],
+      ['rapeseed and soybean', 'rapeseed'], ['palm oil and/or sunflower oil', 'vegetable-oil'], ['branntweinessig / weingeistessig', 'spirit-vinegar']] as const) {
+      expect(ruleForTerm(term)?.id).toBe(id);
+    }
+    // The least certain part decides, and any unknown part keeps the whole term unknown.
+    for (const [term, id] of [['zucker und ei', 'egg'], ['sugar and whey', 'whey'], ['salt and natural flavouring', 'flavouring'], ['gesalzene butter', 'butter'], ['black pudding', 'meat']] as const) {
+      expect(ruleForTerm(term)?.id).toBe(id);
+    }
+    // Only a fruit or juice concentrate is set aside; another source keeps the term open.
+    for (const term of ['roasted mystery', 'salt and mystery powder', 'red snapper', 'salt from stock concentrate']) expect(ruleForTerm(term)).toBeUndefined();
   });
   test('AI-split terms and local guards share the extended matching without duplicate findings', () => {
     const text = 'Ingredients: sugar, alpine milk powder, kapselhülle: gelatine';

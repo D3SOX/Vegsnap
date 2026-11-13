@@ -24,12 +24,16 @@ private val materialPrefix = Regex("^\\s*$materialRoles\\s*:\\s*", RegexOption.I
 private val materialSection = Regex("(?:^|\\n)\\s*$materialRoles\\s*:", RegexOption.IGNORE_CASE)
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 private val leadingConjunction = Regex("^(?:and/or|und/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\\S)")
+// US labels introduce minor ingredients after their percentage is removed ("contains 2% or less of: salt", "less than 2% of", "contains one or more of the following:").
+private val quantityLeadIn = Regex("^(?:contains\\s+)?(?:(?:less\\s+than|or\\s+less)(?:\\s+of)?(?:\\s+each\\s+of\\s+the\\s+following)?|one\\s+or\\s+more\\s+of\\s+the\\s+following)\\s*:?\\s*(?=\\S)")
+// US labels also state an additive's purpose ("BHT added to preserve freshness", "(for color)", "as preservatives"). The closed vocabulary never covers an ingredient ("to retain fish moisture" keeps the fish).
+private val purposeNote = Regex("(?:^|\\s+)(?:added\\s+)?(?:(?:to|for)\\s+(?:(?:preserve|protect|maintain|retain|promote|prevent|keep)\\s+)?(?:the\\s+|its\\s+)?(?:freshness|flavou?r|colou?r|moisture|quality|caking|texture|tartness)|as\\s+(?:an?\\s+)?(?:preservatives?|antioxidants?))$")
 internal fun normalizeCompositionTerm(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace('’', '\'')
-    .replace(Regex("[_*\"]"), "").replace(Regex("(?<=\\p{L}{4})\\d{1,2}$"), "").replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
+    .replace(Regex("[_*\"]"), "").replace(Regex("(?<=\\p{L}{4})\\d{1,2}\\s*$"), "").replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
     .replace(Regex("\\b(?:organic|bio)\\b"), "")
     .replace(materialPrefix, "")
     .replace(additivePrefix, "").replace(Regex("^\\s*(?:gemüse|vegetables|grönsaker)\\s*[-–:]\\s*(?=\\S)"), "")
-    .replace(Regex("\\s+"), " ").trim().trimEnd('.', '!').trim().replace(leadingConjunction, "")
+    .replace(Regex("\\s+"), " ").trim().trimEnd('.', '!').trim().replace(quantityLeadIn, "").replace(leadingConjunction, "").replace(purposeNote, "")
 internal fun compositionTerms(text: String, materialContext: Boolean = false): List<String> {
     var value = text.replace(Regex("&(?:quot|#34);"), "\"").replace(Regex("&(?:apos|#39);"), "'").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").lines().filterNot { Regex("^\\s*[*†]\\s*(?:Allergioita tai intoleransseja aiheuttavat aineet korostettu|Ämnen som kan orsaka allergier eller intoleranser (?:är|har) markerade)\\.?\\s*$", RegexOption.IGNORE_CASE).matches(it) }.joinToString("\n")
     val groups = Regex("\\b(?:vitamins?|vitamine[ns]?|vitaminer|vitamiinit|vitaminas|vitamini)\\s*\\(", RegexOption.IGNORE_CASE).findAll(value).toList()
@@ -48,6 +52,8 @@ internal fun compositionTerms(text: String, materialContext: Boolean = false): L
     if (materialContext || materialSection.containsMatchIn(text)) value = value.replace("/", ",")
     return value.replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
         .replace(Regex("\\(\\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\\s*\\)", RegexOption.IGNORE_CASE), "")
+        // A bare purpose after an ingredient ("annatto extract (color)", "sodium benzoate (preservative)"); a listed "color" on its own stays an unspecified colour.
+        .replace(Regex("(?<=[\\p{L}\\p{N}])\\s*\\(\\s*(?:colou?r|(?:an?\\s+)?preservatives?|antioxidants?)\\s*\\)", RegexOption.IGNORE_CASE), "")
         .replace(insAfterRole) { insNumber.replace(it.value, "e$1") }
         .replace(additiveGroup, "")
         .split(Regex("[,;()\\n\\[\\]{}]")).map(::normalizeCompositionTerm).filter { it.isNotEmpty() }
@@ -75,7 +81,7 @@ internal fun containsWord(text: String, word: String): Boolean {
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
 // A bare Finnish "ei" is never a negation: it is the German egg ("Ei und Milch"); only its fixed phrases ("ei sisällä", "ei lisättyä") are.
-private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di"
+private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né"
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
 private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?|vrije?"
 // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst").
@@ -97,6 +103,33 @@ private fun words(value: String): List<String> = wordOrJoiner.findAll(value).map
 internal fun component(prefix: Int, stem: String, suffix: Int): Boolean {
     val modifier = prefix == 0 || prefix >= 3 && stem.length >= 4
     return modifier && (suffix == 0 || suffix >= 4)
+}
+
+// The source of a juice or purée adds nothing to it ("Orangensaft aus Fruchtkonzentrat", "apple juice from concentrate", "jus de pomme à base de concentré").
+// Only a fruit or juice concentrate counts; another source ("salt from stock concentrate") stays part of the term.
+private val concentrateSource = Regex("\\s+(?:aus|from|från|av|fra|uit|à base de|a base de|de|da)\\s+(?:(?:[\\p{L}-]+\\s+)?[\\p{L}-]*(?:saft|frucht|frukt|juice|fruit|jus)[\\s-]?)?(?:konzentrat|concentrate|koncentrat|concentré|concentrés|concentrado|concentrato|concentraat|konsentrat)$")
+/**
+ * Without an animal mention, a prepared ingredient or a conjunction of known ingredients ("phosphorsäure und zitronensäure") takes their exact rules:
+ * preparation words and colours at either end and a concentrate source are set aside, the least certain part decides, and any unknown part leaves the term unknown.
+ */
+private class PreparedIngredients(private val words: Set<String>, conjunctions: String, private val exactRule: (String) -> JSONObject?) {
+    private val conjunctionSplit = Regex("\\s+(?:and/or|und/oder|och/eller|et/ou|y/o|$conjunctions)\\s+|\\s*(?:&|/)\\s*")
+    /** The head a preparation word, colour or concentrate source describes: "geröstete mandeln" is "mandeln", "noisettes torréfiées" is "noisettes". */
+    private fun head(term: String): String {
+        val parts = term.replace(concentrateSource, "").split(' ')
+        var start = 0
+        var end = parts.size
+        while (end - start > 1 && parts[start] in words) start++
+        while (end - start > 1 && parts[end - 1] in words) end--
+        return parts.subList(start, end).joinToString(" ")
+    }
+    fun rule(term: String): JSONObject? {
+        val head = head(term)
+        val rules = head.split(conjunctionSplit).map { exactRule(head(normalizeCompositionTerm(it))) }
+        if (rules.size < 2 && head == term || null in rules) return null
+        val known = rules.filterNotNull()
+        return known.firstOrNull { it.getString("status") == "animal" } ?: known.firstOrNull { it.getString("status") == "ambiguous" } ?: known.first()
+    }
 }
 
 class Evaluator(private val rulesDocument: JSONObject) {
@@ -231,15 +264,17 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         return value
     }
-    /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
+    // E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
+    private val exactRule: (String) -> JSONObject? = { term -> aliasRules[term] ?: additiveNumber.matchEntire(term)?.let { aliasRules["e${it.groupValues[1]}"] } }
+    private val prepared = PreparedIngredients(extendedTerms("preparationWords").toSet(), conjunctions, exactRule)
+    /** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule, and only then a prepared or conjoined form of exact aliases. */
     private fun ruleForTerm(term: String): JSONObject? {
-        // E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
-        (aliasRules[term] ?: additiveNumber.matchEntire(term)?.let { aliasRules["e${it.groupValues[1]}"] })?.let { return it }
+        exactRule(term)?.let { return it }
         val remainder = withoutPlantExceptions(term)
         val alias = animalAliases.firstOrNull { mentioned(remainder, it, true) }
             ?: exactOnlyContexts.firstOrNull { (contextAlias, context) -> mentioned(remainder, contextAlias, true, context) }?.first
             ?: compoundStems.firstOrNull { mentioned(remainder, it, false) }
-        return alias?.let { aliasRules[it] }
+        return alias?.let { aliasRules[it] } ?: prepared.rule(term)
     }
     fun evaluate(input: CheckInput, parsedIngredients: List<String>? = null): JSONObject {
         val now = Instant.now().toString()
@@ -256,7 +291,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
         val crossContact = JSONArray().apply { precaution?.let { put(body.substring(it.range.first).trim()) } }
         // A barcode identifies a product; it is not a composition term.
         val identityOnly = headingMatch == null && input.complete != true && input.name.isNotBlank() &&
-            normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && aliasRules[normalizeCompositionTerm(composition)] == null
+            normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && ruleForTerm(normalizeCompositionTerm(composition)) == null
         val fallback = if (validGtin(composition.trim()) || identityOnly) emptyList() else compositionTerms(composition, input.category in setOf("shoes", "clothing")).distinct()
         val parsed = parsedIngredients?.let { parseSourceIngredients(input.text, JSONArray(it)) }
         // AI supplies the split; omissions and misleading compound assessments cannot erase known origins.

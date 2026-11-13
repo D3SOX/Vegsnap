@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { checkProduct, createOpenAIProvider, parseAIExtraction } from '../src';
+import { checkProduct, createOpenAIProvider, createResearchProvider, parseAIExtraction } from '../src';
 import type { AIExtraction, CheckInput } from '../src';
 import prompts from '../../../contracts/ai-extraction-prompt.json';
 
@@ -126,6 +126,61 @@ describe('grounded web research', () => {
     const unlisted = await check({ ...base, webClaims: [{ ...claim, sourceType: 'certification' }], research });
     expect(unlisted.outcome).toBe('uncertain');
     expect(unlisted.evidence.at(-1)).toMatchObject({ url, kind: 'ai_extraction', claim: 'vegan' });
+  });
+  test('a manufacturer claim settles on the site of any one brand a database lists, never on a site named after the joined list', async () => {
+    const listed = { ...base, brand: 'Allos, Maker', webClaims: [{ ...claim, brand: 'Allos, Maker' }] };
+    const result = await check({ ...listed, research });
+    expect(result.outcome).toBe('vegan');
+    expect(result.basis).toBe('manufacturer');
+    const joined = 'https://allosmaker.example/products/tissues';
+    const lookalike = await check({ ...listed, webClaims: [{ ...listed.webClaims[0]!, url: joined }], research: { searched: true, sources: [{ url: joined, title: 'Soft tissues' }] } });
+    expect(lookalike.outcome).toBe('uncertain');
+  });
+  test('a barcode check hands its community record to the research pass, never to the label-reading pass', async () => {
+    const code = '4000000000006';
+    const passes: { instructions: string; context: string }[] = [];
+    const provider = createResearchProvider(async pass => {
+      passes.push(pass);
+      return { searches: 0, extraction: { text: '', complete: false, category: 'food', name: 'Oats', brand: 'Maker',
+        ...(passes.length > 1 ? { research: { searched: true, sources: [] } } : {}) } };
+    }, { supportsVision: true, searchFirstPass: false });
+    const fetcher = (async () => Response.json({ product: { code, product_name: 'Oats', brands: 'Maker', ingredients_text: 'Hafer, Salz', countries_tags: ['en:germany'] } })) as unknown as typeof fetch;
+    await checkProduct({ barcode: code, name: 'Oats', brand: 'Maker', market: 'DE', category: 'food' }, { mode: 'explicit', provider, fetch: fetcher });
+    expect(passes).toHaveLength(2);
+    expect(passes[0]!.context).not.toContain('Hafer');
+    expect(JSON.parse(passes[1]!.context).databaseComposition).toEqual({ productName: 'Oats', brand: 'Maker', text: 'Hafer, Salz', complete: false,
+      url: `https://world.openfoodfacts.org/product/${code}`, sourceType: 'database' });
+    expect(passes[1]!.instructions).toContain(prompts.databasePrompt);
+  });
+  test('a barcode the AI discovers on a photo brings its community record into the research pass', async () => {
+    const code = '4000000000006';
+    const passes: { context: string }[] = [];
+    const provider = createResearchProvider(async pass => {
+      passes.push(pass);
+      return { searches: 0, extraction: { text: '', complete: false, category: 'food', name: 'Oats', brand: 'Maker', barcode: code,
+        ...(passes.length > 1 ? { research: { searched: true, sources: [] } } : {}) } };
+    }, { supportsVision: true, searchFirstPass: false });
+    const fetcher = (async () => Response.json({ product: { code, product_name: 'Oats', brands: 'Maker', ingredients_text: 'Hafer, Salz', countries_tags: ['en:germany'] } })) as unknown as typeof fetch;
+    await checkProduct({ images: ['data:image/jpeg;base64,AA=='], market: 'DE', autoMarket: true, category: 'food' }, { mode: 'explicit', provider, fetch: fetcher });
+    expect(passes).toHaveLength(2);
+    expect(JSON.parse(passes[1]!.context).databaseComposition).toMatchObject({ text: 'Hafer, Salz', url: `https://world.openfoodfacts.org/product/${code}` });
+    // The hosted service resolves the discovered barcode itself.
+    passes.length = 0;
+    await createResearchProvider(async pass => {
+      passes.push(pass);
+      return { searches: 0, extraction: { text: '', complete: false, category: 'food', name: 'Oats', brand: 'Maker', barcode: code } };
+    }, { supportsVision: true, searchFirstPass: false, catalogueFetcher: fetcher }).extract({ images: ['data:image/jpeg;base64,AA=='], market: 'DE', autoMarket: true, category: 'food' }, undefined, { fallbackMarket: 'DE', markets: [] });
+    expect(JSON.parse(passes[1]!.context).databaseComposition).toMatchObject({ text: 'Hafer, Salz' });
+    // A manually chosen country gets the record too, on both paths.
+    passes.length = 0;
+    await checkProduct({ images: ['data:image/jpeg;base64,AA=='], market: 'DE', autoMarket: false, category: 'food' }, { mode: 'explicit', provider, fetch: fetcher });
+    expect(JSON.parse(passes[1]!.context)).toMatchObject({ market: 'DE', databaseComposition: { text: 'Hafer, Salz' } });
+    passes.length = 0;
+    await createResearchProvider(async pass => {
+      passes.push(pass);
+      return { searches: 0, extraction: { text: '', complete: false, category: 'food', name: 'Oats', brand: 'Maker', barcode: code } };
+    }, { supportsVision: true, searchFirstPass: false, catalogueFetcher: fetcher }).extract({ images: ['data:image/jpeg;base64,AA=='], market: 'DE', category: 'food' });
+    expect(JSON.parse(passes[1]!.context).databaseComposition).toMatchObject({ text: 'Hafer, Salz' });
   });
   test('compatible providers report unsupported search and cannot inject research JSON', async () => {
     const provider = createOpenAIProvider({ baseUrl: 'https://compatible.example/v1', model: 'selected', supportsVision: true }, (async () => reply({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(base) } }] })) as unknown as typeof fetch);

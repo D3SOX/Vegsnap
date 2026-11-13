@@ -680,6 +680,15 @@ class WebEvidenceTest {
         extracted.put("name", "Basic tissues").getJSONArray("webClaims").getJSONObject(0).put("url", "https://invented.example/claim")
         assertEquals("uncertain", applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
     }
+    @Test fun manufacturerClaimSettlesOnTheSiteOfAnyOneListedBrand() {
+        val input = CheckInput(category = "household", name = "Basic tissues")
+        for ((url, outcome) in listOf("https://www.ica.se/tissues" to "vegan", "https://www.coopica.se/tissues" to "uncertain")) {
+            val extracted = brandExtraction().put("brand", "Coop, ICA")
+            extracted.getJSONArray("webClaims").getJSONObject(0).put("url", url).put("brand", "Coop, ICA")
+            extracted.put("research", responseResearch(providerResponse(extracted.toString(), url)))
+            assertEquals(url, outcome, applyWebEvidence(evaluator.evaluate(input), input, extracted, evaluator.veganCertifiers).getString("outcome"))
+        }
+    }
     @Test fun incompleteToolCannotGroundSourceAndAnimalConflictSurvives() {
         val extracted = brandExtraction()
         val response = providerResponse(extracted.toString(), "https://www.ica.se/tissues")

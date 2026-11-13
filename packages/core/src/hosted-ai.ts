@@ -19,7 +19,7 @@ export function createHostedAIProvider(token: string, fetcher: typeof fetch = gl
         method: 'POST', credentials: 'omit', redirect: 'error',
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(135_000)]) : AbortSignal.timeout(135_000),
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...product, ...(context ? { countryContext: context } : {}) }),
+        body: JSON.stringify({ ...product, ...(context ? { countryContext: context } : {}), ...(countryContext?.database ? { databaseComposition: countryContext.database } : {}) }),
       });
       if (!response.ok) throw new Error(`Vegsnap AI returned HTTP ${response.status}. Check your connection and free allowance in settings.`);
       return validateAIExtraction(JSON.parse(await readBoundedText(response, 100_000)), { allowResearch: true });

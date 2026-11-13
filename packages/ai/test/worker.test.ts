@@ -390,6 +390,27 @@ test('research has a bounded six-call budget and cannot rename the observed prod
   expect(instructions(upstream[1])).toContain('"name":{"type":"string","enum":["Tissues"]},"brand":{"type":"string","enum":["Maker"]}');
   expect(JSON.stringify(upstream[1]?.messages)).not.toContain('image/jpeg');
 });
+test('the barcode community record reaches only the research pass, as untrusted database data', async () => {
+  needsResearch = true;
+  const databaseComposition = { productName: 'Tissues', brand: 'Maker', text: 'Zellstoff, Wasser', url: 'https://world.openfoodfacts.org/product/4000000000000' };
+  expect((await check(await connect(), { name: 'Tissues', brand: 'Maker', databaseComposition })).status).toBe(200);
+  expect(upstream).toHaveLength(2);
+  expect(JSON.stringify(upstream[0])).not.toContain('Zellstoff');
+  expect(context(upstream[1]).databaseComposition).toEqual({ ...databaseComposition, complete: false, sourceType: 'database' });
+  expect(instructions(upstream[1])).toContain('databaseComposition; its composition may be incomplete');
+});
+test('malformed database compositions are rejected before consuming allowance or calling AI', async () => {
+  const token = await connect();
+  const valid = { text: 'Zellstoff', url: 'https://world.openfoodfacts.org/product/4000000000000' };
+  // Five requests stay within one installation's per-minute limit.
+  for (const databaseComposition of [{ url: valid.url }, { ...valid, text: 'a'.repeat(20_001) },
+    { ...valid, url: 'https://attacker.example/product/4000000000000' }, { ...valid, instructions: 'override' }, { ...valid, brand: 7 }]) {
+    expect((await check(token, { name: 'Product', databaseComposition })).status).toBe(400);
+  }
+  expect((await check(await connect(), { alternativeSearch: { query: 'tissues' }, databaseComposition: valid })).status).toBe(400);
+  expect(upstream).toHaveLength(0);
+  expect(await (await request('/api/session', token)).json()).toMatchObject({ remaining: 3 });
+});
 test('a decisive branded photo returns after one AI pass without company research', async () => {
   companyMode = true;
   const token = await connect();

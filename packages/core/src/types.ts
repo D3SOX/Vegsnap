@@ -123,12 +123,15 @@ export interface AIExtraction {
   /** Adapter-supplied tool metadata. This key is never accepted from model-authored JSON. */
   research?: { searched: boolean; sources: { url: string; title: string }[]; market?: string };
 }
+/** The public community record behind the checked barcode: incomplete, untrusted product data for the research pass, never supplied or label text. */
+export interface DatabaseComposition { productName?: string; brand?: string; text: string; url: string }
 export interface ProviderAdapter {
   supportsWebSearch?: boolean;
   extract(input: CheckInput, signal?: AbortSignal, countryContext?: {
-    fallbackMarket: string;
-    markets: readonly string[];
+    fallbackMarket?: string;
+    markets?: readonly string[];
     resolveBarcode?: (code: string) => Promise<readonly string[] | undefined>;
+    database?: DatabaseComposition;
   }): Promise<AIExtraction>;
 }
 export interface ProviderConfig {

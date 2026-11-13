@@ -25,6 +25,16 @@ test('manual and legacy hosted checks retain the original product-only request',
     .extract({ name: 'Product', market: 'SE', autoMarket });
   expect(bodies).toEqual([{ name: 'Product', market: 'SE' }, { name: 'Product', market: 'SE' }]);
 });
+test('hosted checks forward the barcode community record separately from supplied text', async () => {
+  let body: unknown;
+  const fetcher = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+    body = JSON.parse(String(init?.body));
+    return Response.json({ text: '', category: 'food', complete: false });
+  }, { preconnect: globalThis.fetch.preconnect });
+  const database = { productName: 'Oats', brand: 'Maker', text: 'Hafer', url: 'https://world.openfoodfacts.org/product/4000000000000' };
+  await createHostedAIProvider('a'.repeat(64), fetcher).extract({ name: 'Oats', market: 'DE' }, undefined, { database });
+  expect(body).toEqual({ name: 'Oats', market: 'DE', databaseComposition: database });
+});
 test('missing hosted session prevents network access', async () => {
   let calls = 0;
   const fetcher = Object.assign(async () => { calls++; return Response.json({}); }, { preconnect: globalThis.fetch.preconnect });

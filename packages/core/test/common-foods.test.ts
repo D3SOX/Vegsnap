@@ -34,4 +34,7 @@ describe('common food composition coverage', () => {
     expect(compositionTerms('Gemüse - Paprika')).toEqual(['paprika']);
     expect(compositionTerms('Verdickungsmittel ()')).toEqual(['verdickungsmittel']);
   });
+  test('a footnote marker is dropped even when a space precedes the separator', () => {
+    expect(compositionTerms('Kakaomasse1 , Haferflocken¹ , Zucker')).toEqual(['kakaomasse', 'haferflocken', 'zucker']);
+  });
 });

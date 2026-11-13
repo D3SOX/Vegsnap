@@ -231,13 +231,14 @@ internal fun applyWebEvidence(result: JSONObject, input: CheckInput, extracted: 
     }
     if (claims.isEmpty()) return consultedOnly()
     // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-    // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
-    val brandKey = java.text.Normalizer.normalize(extracted.optString("brand"), java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
+    // The model's sourceType and contact are not ownership proof: the second-level site name must equal one whole brand.
+    // Database brand fields list several brands separated by commas ("Allos, Tartex"); each listed brand counts on its own.
+    val brandKeys = extracted.optString("brand").split(',').map { java.text.Normalizer.normalize(it, java.text.Normalizer.Form.NFKD).lowercase(java.util.Locale.ROOT).replace(Regex("[^a-z0-9]"), "") }.filter { it.length >= 3 }
     val trust = claims.map { item ->
         val host = requireNotNull(item.getString("url").toHttpUrlOrNull()).host.lowercase(java.util.Locale.ROOT)
         when {
             certifiers.any { host == it || host.endsWith(".$it") } -> "certification"
-            item.getString("sourceType") == "manufacturer" && brandKey.length >= 3 && siteLabel(host).replace("-", "") == brandKey -> "manufacturer"
+            item.getString("sourceType") == "manufacturer" && siteLabel(host).replace("-", "") in brandKeys -> "manufacturer"
             else -> null
         }
     }

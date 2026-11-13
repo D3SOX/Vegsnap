@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { countryCode, createResearchProvider, HOSTED_AI, type CheckInput, type ProviderAdapter } from '@vegsnap/core';
+import { countryCode, createResearchProvider, HOSTED_AI, type CheckInput, type DatabaseComposition, type ProviderAdapter } from '@vegsnap/core';
 import { rateLimitAddress, readBoundedText } from '@vegsnap/core/http';
 import { createClaudeRunner } from './claude';
 
@@ -54,13 +54,13 @@ async function hashToken(request: Request): Promise<string> {
 }
 const PENDING_IP_CONNECT_LIMIT = 3;
 function product(value: unknown): { input: CheckInput; countryContext: Parameters<ProviderAdapter['extract']>[2] } {
-  const fields = ['alternativeSearch', 'text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext'];
+  const fields = ['alternativeSearch', 'text', 'name', 'brand', 'barcode', 'sourceUrl', 'market', 'locale', 'category', 'complete', 'images', 'countryContext', 'databaseComposition'];
   if (!record(value) || Object.keys(value).some(key => !fields.includes(key))) throw new HttpError(400, 'Invalid product input.');
   if (value.alternativeSearch !== undefined && (!record(value.alternativeSearch) ||
     Object.keys(value.alternativeSearch).some(key => !['query', 'store'].includes(key)) ||
     typeof value.alternativeSearch.query !== 'string' || value.alternativeSearch.query.trim().length < 2 || value.alternativeSearch.query.length > 200 ||
     value.alternativeSearch.store !== undefined && (typeof value.alternativeSearch.store !== 'string' || value.alternativeSearch.store.length > 100) ||
-    value.text || value.images || value.countryContext)) throw new HttpError(400, 'Invalid alternative search.');
+    value.text || value.images || value.countryContext || value.databaseComposition)) throw new HttpError(400, 'Invalid alternative search.');
   for (const [key, maximum] of [['text', 30_000], ['name', 300], ['brand', 300], ['barcode', 30], ['sourceUrl', 2000], ['market', 2]] as const) {
     if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > maximum)) throw new HttpError(400, `Invalid ${key}.`);
   }
@@ -70,7 +70,14 @@ function product(value: unknown): { input: CheckInput; countryContext: Parameter
   if (value.images !== undefined && (!Array.isArray(value.images) || value.images.length > 3 || value.images.some(image =>
       typeof image !== 'string' || image.length > 4_000_000 || !/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(image)))) throw new HttpError(400, 'Invalid product photos.');
   if (!value.text && !value.name && !(Array.isArray(value.images) && value.images.length)) throw new HttpError(400, 'Add product text or a photo.');
-  const { countryContext, ...input } = value;
+  const { countryContext, databaseComposition: database, ...input } = value;
+  // The client's community record for the barcode; untrusted product data that only feeds the research pass.
+  if (database !== undefined && (!record(database) || Object.keys(database).some(key => !['productName', 'brand', 'text', 'url'].includes(key)) ||
+      typeof database.text !== 'string' || !database.text.trim() || database.text.length > 20_000 ||
+      typeof database.url !== 'string' || database.url.length > 2000 || !/^https:\/\/world\.open(?:food|beauty|products)facts\.org\/product\/\d{8,14}$/.test(database.url) ||
+      ['productName', 'brand'].some(key => database[key] !== undefined && (typeof database[key] !== 'string' || (database[key] as string).length > 300)))) {
+    throw new HttpError(400, 'Invalid database composition.');
+  }
   if (countryContext !== undefined && (!record(countryContext) ||
       Object.keys(countryContext).some(key => !['fallbackMarket', 'markets'].includes(key)) ||
       typeof countryContext.fallbackMarket !== 'string' || countryCode(countryContext.fallbackMarket) !== countryContext.fallbackMarket ||
@@ -79,7 +86,8 @@ function product(value: unknown): { input: CheckInput; countryContext: Parameter
     throw new HttpError(400, 'Invalid product country context.');
   }
   return { input: { ...input, ...(countryContext ? { autoMarket: true } : {}) } as CheckInput,
-    countryContext: countryContext as Parameters<ProviderAdapter['extract']>[2] };
+    countryContext: countryContext || database ? { ...(countryContext as { fallbackMarket: string; markets: string[] } | undefined),
+      ...(database ? { database: database as unknown as DatabaseComposition } : {}) } : undefined };
 }
 async function route(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const path = new URL(request.url).pathname;
