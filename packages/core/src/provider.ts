@@ -9,7 +9,7 @@ import { applyWebEvidence } from './web-evidence';
 import { parseManufacturerContact } from './manufacturer-contact';
 import { parseCompanyAssessment, sourcedCompanyAssessment } from './company-assessment';
 import { normalizeBarcode } from './barcode';
-import { lookupProduct } from './database';
+import { databaseComposition, lookupProduct } from './database';
 import { countryCode, selectProductCountry } from './market';
 import { lookupMatspar, retainMatsparComposition, matchesMatsparIdentity } from './matspar-catalogue';
 
@@ -264,6 +264,7 @@ export function createResearchProvider(run: AIPassRunner, options: ResearchProvi
       if (!needsResearch(extracted, input)) return extracted;
       const countryInput = { ...input, market: countryContext?.fallbackMarket ?? input.market };
       let researchMarkets = countryContext?.markets ?? [];
+      let database = countryContext?.database;
       if (input.autoMarket && !suppliedCode && extractedCode) {
         try {
           if (countryContext?.resolveBarcode) {
@@ -274,10 +275,19 @@ export function createResearchProvider(run: AIPassRunner, options: ResearchProvi
             // Hosted checks resolve discovered GTINs here, using the public transport without AI credentials.
             const product = await lookupProduct(extractedCode, { ...countryInput, fetch: options.catalogueFetcher ?? globalThis.fetch, signal: requestSignal });
             researchMarkets = [...researchMarkets, ...product?.markets ?? []];
+            database ??= databaseComposition(product);
           }
         } catch (error) {
           if (requestSignal.aborted) throw error;
           return extracted;
+        }
+      } else if (!suppliedCode && extractedCode && !database) {
+        // A manually chosen country keeps its research market; the discovered record only adds its ingredients, and a failed lookup never blocks research.
+        try {
+          if (countryContext?.resolveBarcode) await countryContext.resolveBarcode(extractedCode);
+          else database = databaseComposition(await lookupProduct(extractedCode, { ...countryInput, fetch: options.catalogueFetcher ?? globalThis.fetch, signal: requestSignal }));
+        } catch (error) {
+          if (requestSignal.aborted) throw error;
         }
       }
       const researchInput = { ...input, market: selectProductCountry(
@@ -295,15 +305,18 @@ export function createResearchProvider(run: AIPassRunner, options: ResearchProvi
         }
       }
       const remainingSearchCalls = Math.max(0, 6 - first.searches);
+      database ??= countryContext?.database;
       if (!remainingSearchCalls) return extracted;
       try {
         const researched = (await run({
           instructions: [EXTRACTION_PROMPT, promptData.searchPrompt, promptData.researchPrompt, ...(catalogue ? [promptData.cataloguePrompt] : []),
-            toolBudget(remainingSearchCalls)].join('\n'),
+            ...(database ? [promptData.databasePrompt] : []), toolBudget(remainingSearchCalls)].join('\n'),
           context: JSON.stringify({ name: extracted.name, brand: extracted.brand,
             packaging: extracted.packaging, barcode: normalizeBarcode(input.barcode ?? '') ?? normalizeBarcode(extracted.barcode ?? ''),
             category: extracted.category, market: researchInput.market, locale: input.locale ?? 'en', productOutcome: outcome, webToolBudget: remainingSearchCalls, unresolvedIngredients: publicResearchQuestions(extracted, researchInput),
-            ...(catalogue ? { catalogueComposition: catalogue } : {}) }),
+            ...(catalogue ? { catalogueComposition: catalogue } : {}),
+            // The barcode's community record, so the research pass assesses its ingredients (as Android does) without treating it as label text.
+            ...(database ? { databaseComposition: { productName: database.productName, brand: database.brand, text: database.text, complete: false, url: database.url, sourceType: 'database' } } : {}) }),
           images: [], searches: remainingSearchCalls, requireSearch: true, output: { identity: extracted },
         }, requestSignal)).extraction;
         const merged = mergeResearch(extracted, catalogue && matchesMatsparIdentity(researched, extracted) ? { ...researched, name: extracted.name, brand: extracted.brand } : researched);

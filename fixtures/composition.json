@@ -2667,5 +2667,226 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "french-neither-nor-allergen-statement",
+    "input": {
+      "text": "Ingrédients: Eau, avoine, huile de colza, sel. Ne contient ni lait ni soja",
+      "category": "drink"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "french-mackerel-fillets",
+    "input": {
+      "text": "Ingrédients: Filets de maquereaux (60%), eau, carottes, sel",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "french-whole-cream-unaccented",
+    "input": {
+      "text": "Ingrédients: CREME entière de Normandie, stabilisant: carraghénanes",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-herring-fillet-compound",
+    "input": {
+      "text": "Zutaten: Heringsfilets 55 %, Tomatenmark, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "footnote-marker-before-spaced-separator",
+    "input": {
+      "text": "Zutaten: Haferflocken1 , Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-chicken-fillet-compound",
+    "input": {
+      "text": "Ingredienser: Kycklingfilé 60 %, vatten, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-scientific-fish-name",
+    "input": {
+      "text": "Ingredienser: Fileter av alaskapollock (Theragra chalcogramma), vetemjöl, rapsolja",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "swedish-crab-extract",
+    "input": {
+      "text": "Ingredienser: vatten, salt, krabbextrakt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "us-one-word-almondmilk",
+    "input": {
+      "text": "Ingredients: almondmilk, sea salt",
+      "category": "drink"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "name-copied-into-composition-still-names-honey",
+    "input": {
+      "text": "Miel de fleurs",
+      "name": "Miel de fleurs",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "prepared-plant-ingredients",
+    "input": {
+      "text": "Zutaten: geröstete Mandeln, gegrillte rote Paprika, schwarzer Pfeffer, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "prepared-french-and-swedish-plant-ingredients",
+    "input": {
+      "text": "Ingredienser: torkade aprikoser, rostade hasselnötter, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "concentrate-source-and-conjoined-plant-acids",
+    "input": {
+      "text": "Zutaten: Wasser, Orangensaft aus Fruchtkonzentrat, Phosphorsäure und Zitronensäure",
+      "category": "drink"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "conjoined-term-keeps-its-animal-part",
+    "input": {
+      "text": "Zutaten: Weizenmehl, Zucker und Ei",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "prepared-unknown-stays-unknown",
+    "input": {
+      "text": "Ingredients: roasted mystery, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "us-minor-ingredient-lead-ins",
+    "input": {
+      "text": "Ingredients: corn, palm oil and/or sunflower oil, contains 2% or less of: salt, citric acid",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "us-purpose-notes",
+    "input": {
+      "text": "Ingredients: potatoes, cottonseed oil, salt, annatto extract (color), BHT added to preserve freshness",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "us-purpose-note-keeps-an-animal-mention",
+    "input": {
+      "text": "Ingredients: water, sodium tripolyphosphate (to retain fish moisture)",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "us-unspecified-color-stays-open",
+    "input": {
+      "text": "Ingredients: water, sugar, color",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "uncertain",
+      "basis": "insufficient"
+    }
+  },
+  {
+    "id": "us-lead-in-without-contains",
+    "input": {
+      "text": "Ingredients: corn, 2% or less of: salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

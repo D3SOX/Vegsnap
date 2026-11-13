@@ -1,6 +1,6 @@
 import { normalizeBarcode } from './barcode';
 export { normalizeBarcode } from './barcode';
-import type { CheckInput, CheckOptions, DatabaseProduct } from './types';
+import type { CheckInput, CheckOptions, DatabaseComposition, DatabaseProduct } from './types';
 import { readBoundedText } from './http';
 import { countryCode, selectProductCountry } from './market';
 import { resultMessages } from './i18n';
@@ -106,4 +106,9 @@ function remember(state: ClientState, key: string, value: DatabaseProduct | null
     if (oldest) state.cache.delete(oldest);
   }
   state.cache.set(key, { value, expires });
+}
+/** A record's composition for the AI research pass, within the hosted service's field limits; records without ingredients or a source page give none. */
+export function databaseComposition(product: DatabaseProduct | null | undefined): DatabaseComposition | undefined {
+  return product?.input.text && product.evidence.url
+    ? { productName: product.input.name?.slice(0, 300), brand: product.input.brand?.slice(0, 300), text: product.input.text.slice(0, 20_000), url: product.evidence.url } : undefined;
 }

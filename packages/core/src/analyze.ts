@@ -14,11 +14,15 @@ const materialSection = new RegExp(String.raw`(?:^|\n)[^\S\r\n]*${materialRoles}
 
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 const leadingConjunction = /^(?:and\/or|und\/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\S)/u;
+// US labels introduce minor ingredients after their percentage is removed ("contains 2% or less of: salt", "less than 2% of", "contains one or more of the following:").
+const quantityLeadIn = /^(?:contains\s+)?(?:(?:less\s+than|or\s+less)(?:\s+of)?(?:\s+each\s+of\s+the\s+following)?|one\s+or\s+more\s+of\s+the\s+following)\s*:?\s*(?=\S)/u;
+// US labels also state an additive's purpose ("BHT added to preserve freshness", "(for color)", "as preservatives"). The closed vocabulary never covers an ingredient ("to retain fish moisture" keeps the fish).
+const purposeNote = /(?:^|\s+)(?:added\s+)?(?:(?:to|for)\s+(?:(?:preserve|protect|maintain|retain|promote|prevent|keep)\s+)?(?:the\s+|its\s+)?(?:freshness|flavou?r|colou?r|moisture|quality|caking|texture|tartness)|as\s+(?:an?\s+)?(?:preservatives?|antioxidants?))$/u;
 export function normalizeTerm(text: string): string {
-  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}$/u, '').replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
+  return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}\s*$/u, '').replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\b(?:organic|bio)\b/g, '').replace(materialPrefix, '')
     .replace(additivePrefix, '').replace(/^\s*(?:gemüse|vegetables|grönsaker)\s*[-–:]\s*(?=\S)/iu, '')
-    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(leadingConjunction, '');
+    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(quantityLeadIn, '').replace(leadingConjunction, '').replace(purposeNote, '');
 }
 
 /** Discard typography notes only, retaining genuine allergen and subingredient text. */
@@ -37,6 +41,8 @@ export function compositionTerms(text: string, materialContext = false): string[
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
   return value.replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
+    // A bare purpose after an ingredient ("annatto extract (color)", "sodium benzoate (preservative)"); a listed "color" on its own stays an unspecified colour.
+    .replace(/(?<=[\p{L}\p{N}])\s*\(\s*(?:colou?r|(?:an?\s+)?preservatives?|antioxidants?)\s*\)/giu, '')
     .replace(insAfterRole, role => role.replace(/(?<![\p{L}\p{N}])(?:[iI][nN][sS]\s?)?(?<![eE][\s-])(\d{3,4}[a-h]?)(?!\p{N})/gu, 'e$1'))
     .replace(additiveGroup, '')
     .split(/[,;\n()[\]{}]/).map(normalizeTerm).filter(Boolean);
@@ -81,7 +87,7 @@ const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?|vrije?';
 // A bare Finnish "ei" is never a negation: it is the German egg ("Ei und Milch"); only its fixed phrases ("ei sisällä", "ei lisättyä") are.
 const qualified = (qualifiers: string) => String.raw`(?:non|nicht|icke)[-–]?(?:${qualifiers})\p{L}{0,2}|(?:${qualifiers})[-–]?\s?(?:${freeFrom})`;
 const domainNegations = qualifierDomains.map(domain => ({ pattern: new RegExp(`^(?:${qualified(domain.qualifiers)})$`, 'u'), rules: domain.rules }));
-const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di`;
+const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
 const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|saveur\w*|go[uû]t\w*|sabor\w*|gusto\w*|smaak\w*|smag\w*|maku\w*|vegaan\w*|(?<!\p{L})(?:cultures?|kultur\w*)`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
@@ -189,17 +195,44 @@ function withoutPlantExceptions(term: string): string {
   return value;
 }
 const additiveNumber = /^e[\s-]?(\d{3,4}[a-h]?)(?:\s?\(?(?:i{1,3}|iv|v|vi)\)?)?$/u;
-/** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule. */
-export function ruleForTerm(term: string): (typeof rulesData.rules)[number] | undefined {
-  // E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
+type Rule = (typeof rulesData.rules)[number];
+// E numbers come spaced, hyphenated or with a roman subgroup ("e-471", "e500ii").
+const exactRule = (term: string): Rule | undefined => {
   const number = additiveNumber.exec(term)?.[1];
-  const exact = aliasRules.get(term) ?? (number ? aliasRules.get(`e${number}`) : undefined);
+  return aliasRules.get(term) ?? (number ? aliasRules.get(`e${number}`) : undefined);
+};
+const preparationWords = new Set(rulesData.extendedMatching.preparationWords.map(normalizeTerm));
+// The source of a juice or purée adds nothing to it ("Orangensaft aus Fruchtkonzentrat", "apple juice from concentrate", "jus de pomme à base de concentré").
+// Only a fruit or juice concentrate counts; another source ("salt from stock concentrate") stays part of the term.
+const concentrateSource = /\s+(?:aus|from|från|av|fra|uit|à base de|a base de|de|da)\s+(?:(?:[\p{L}-]+\s+)?[\p{L}-]*(?:saft|frucht|frukt|juice|fruit|jus)[\s-]?)?(?:konzentrat|concentrate|koncentrat|concentré|concentrés|concentrado|concentrato|concentraat|konsentrat)$/u;
+const conjunctionSplit = new RegExp(String.raw`\s+(?:and/or|und/oder|och/eller|et/ou|y/o|${conjunctions})\s+|\s*(?:&|/)\s*`, 'u');
+/** The head a preparation word, colour or concentrate source describes: "geröstete mandeln" is "mandeln", "noisettes torréfiées" is "noisettes". */
+function preparedHead(term: string): string {
+  const words = term.replace(concentrateSource, '').split(' ');
+  let start = 0, end = words.length;
+  while (end - start > 1 && preparationWords.has(words[start]!)) start++;
+  while (end - start > 1 && preparationWords.has(words[end - 1]!)) end--;
+  return words.slice(start, end).join(' ');
+}
+/** Without an animal mention, a prepared ingredient or a conjunction of known ingredients ("phosphorsäure und zitronensäure") takes their exact rules; the least certain part decides, and any unknown part leaves the term unknown. */
+function preparedRule(term: string): Rule | undefined {
+  const head = preparedHead(term);
+  const rules = head.split(conjunctionSplit).map(part => exactRule(preparedHead(normalizeTerm(part))));
+  if (rules.length > 1 || head !== term) {
+    if (!rules.length || rules.some(rule => !rule)) return undefined;
+    return rules.find(rule => rule!.status === 'animal') ?? rules.find(rule => rule!.status === 'ambiguous') ?? rules[0];
+  }
+  return undefined;
+}
+/** An exact alias wins; otherwise an unmodified animal alias as a whole word, or a compound stem, inside the term identifies the rule, and only then a prepared or conjoined form of exact aliases. */
+export function ruleForTerm(term: string): Rule | undefined {
+  const exact = exactRule(term);
   if (exact) return exact;
   const remainder = withoutPlantExceptions(term);
   const alias = animalAliases.find(item => mentioned(remainder, item, true)) ??
     exactOnlyContexts.find(item => mentioned(remainder, item.alias, true, item.context))?.alias ??
     compoundStems.find(stem => mentioned(remainder, stem, false));
-  return alias ? aliasRules.get(alias) : undefined;
+  return alias ? aliasRules.get(alias) : preparedRule(term);
 }
 /** Composition headings for every supported label language; reuse this list so platforms do not drift. */
 export const compositionHeadingWords = 'ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset';
@@ -225,7 +258,7 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const ingredients = precautionMatch ? body.slice(0, precautionMatch.index) : body;
   const crossContact = precautionMatch ? [body.slice(precautionMatch.index).trim()] : [];
   // A barcode identifies a product; it is not a composition term.
-  const identityOnly = !headingMatch && !input.complete && input.name && normalizeTerm(ingredients) === normalizeTerm(input.name) && !aliasRules.has(normalizeTerm(ingredients));
+  const identityOnly = !headingMatch && !input.complete && input.name && normalizeTerm(ingredients) === normalizeTerm(input.name) && !ruleForTerm(normalizeTerm(ingredients));
   const fallback = normalizeBarcode(ingredients) || identityOnly ? [] : compositionTerms(ingredients, ['shoes', 'clothing'].includes(input.category ?? 'other'));
   const parsed = parseSourceIngredients(text, parsedIngredients);
   // AI selects the actual ingredients; local animal/ambiguous rules remain a veto

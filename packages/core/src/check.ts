@@ -1,6 +1,6 @@
 import { resultMessages } from './i18n';
 import { analyzeText, compositionHeadingWords, parseSourceIngredients } from './analyze';
-import { lookupProduct, normalizeBarcode, veganDatabaseLabels } from './database';
+import { databaseComposition, lookupProduct, normalizeBarcode, veganDatabaseLabels } from './database';
 import { validateAIExtraction } from './provider';
 import { applyAIEvidence, compositionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
@@ -9,7 +9,7 @@ import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
 import { applyCompanyAssessment } from './company-assessment';
 import { databaseCountryWarning, selectProductCountry } from './market';
-import type { CheckInput, CheckOptions, CheckResult, DatabaseProduct } from './types';
+import type { CheckInput, CheckOptions, CheckResult, DatabaseComposition, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
   const t = resultMessages[input.locale ?? 'en'];
@@ -41,6 +41,8 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   const markets: string[] = [];
   const evidenceMarkets: string[][] = [];
   let packagingCountry: string | undefined;
+  let database: DatabaseComposition | undefined;
+  const remember = (product: DatabaseProduct) => { database ??= databaseComposition(product); };
   const finish = () => {
     result.identity = {...result.identity,...selectProductCountry(input,packagingCountry,markets)};
     for (const countries of evidenceMarkets) {
@@ -58,14 +60,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now), input.locale); return true; }
+      if (local) { remember(local); markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now), input.locale); return true; }
       if (options.offline) {
         result.warnings.push(t.offlineMissing);
         return;
       }
       const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
         category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
-      if (product) { markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now), input.locale); }
+      if (product) { remember(product); markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now), input.locale); }
       else result.warnings.push(t.databaseMissing);
       return true;
     } catch (error) {
@@ -87,8 +89,14 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
   try {
     options.onProgress?.('ai');
     const extractionInput = { ...input, market: selectProductCountry(input, undefined, markets).market };
-    const extracted = validateAIExtraction(await options.provider.extract(extractionInput, options.signal,
-      { fallbackMarket: input.market ?? 'DE', markets, resolveBarcode: async code => await lookup(code) ? [...markets] : undefined }), { allowResearch: true });
+    const context: NonNullable<Parameters<NonNullable<CheckOptions['provider']>['extract']>[2]> = { fallbackMarket: input.market ?? 'DE', markets,
+      // A barcode the AI discovers on a photo brings its record into the research pass that follows.
+      resolveBarcode: async code => {
+        if (!await lookup(code)) return undefined;
+        if (database) context.database = database;
+        return [...markets];
+      }, ...(database ? { database } : {}) };
+    const extracted = validateAIExtraction(await options.provider.extract(extractionInput, options.signal, context), { allowResearch: true });
     options.onProgress?.('evaluating');
     const suppliedCode = input.barcode && normalizeBarcode(input.barcode);
     const extractedCode = extracted.barcode && normalizeBarcode(extracted.barcode);

@@ -52,12 +52,13 @@ export function applyWebEvidence(result: CheckResult, input: CheckInput, extract
     identityKey(claim.productName) === name && identityKey(claim.brand) === brand);
   if (!claims.length) return compositions.length ? result : consultedOnly();
   // Only a brand-owned site or a known certifier may settle a verdict; other positive claims are shown, never decisive.
-  // The model's sourceType and contact are not ownership proof: the second-level site name must equal the whole brand.
-  const brandKey = (extracted.brand ?? '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // The model's sourceType and contact are not ownership proof: the second-level site name must equal one whole brand.
+  // Database brand fields list several brands separated by commas ("Allos, Tartex"); each listed brand counts on its own.
+  const brandKeys = (extracted.brand ?? '').split(',').map(brand => brand.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g, '')).filter(key => key.length >= 3);
   const trust = claims.map(claim => {
     const host = new URL(claim.url).hostname.toLowerCase();
     if (veganCertifiers.some(domain => host === domain || host.endsWith(`.${domain}`))) return 'certification' as const;
-    if (claim.sourceType === 'manufacturer' && brandKey.length >= 3 && siteLabel(host).replace(/-/g, '') === brandKey) return 'manufacturer' as const;
+    if (claim.sourceType === 'manufacturer' && brandKeys.includes(siteLabel(host).replace(/-/g, ''))) return 'manufacturer' as const;
     return undefined;
   });
   const evidence: Evidence[] = claims.map((claim, index) => ({
