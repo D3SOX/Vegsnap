@@ -151,6 +151,11 @@ describe('grounded web research', () => {
     expect(JSON.parse(passes[1]!.context).databaseComposition).toEqual({ productName: 'Oats', brand: 'Maker', text: 'Hafer, Salz', complete: false,
       url: `https://world.openfoodfacts.org/product/${code}`, sourceType: 'database' });
     expect(passes[1]!.instructions).toContain(prompts.databasePrompt);
+    // Community identity fields stay within the hosted service's limits.
+    passes.length = 0;
+    const long = (async () => Response.json({ product: { code, product_name: 'O'.repeat(400), brands: 'M'.repeat(400), ingredients_text: 'Hafer', countries_tags: ['en:germany'] } })) as unknown as typeof fetch;
+    await checkProduct({ barcode: code, name: 'Oats', brand: 'Maker', market: 'DE', category: 'food' }, { mode: 'explicit', provider, fetch: long });
+    expect(JSON.parse(passes[1]!.context).databaseComposition).toMatchObject({ productName: 'O'.repeat(300), brand: 'M'.repeat(300) });
   });
   test('a barcode the AI discovers on a photo brings its community record into the research pass', async () => {
     const code = '4000000000006';

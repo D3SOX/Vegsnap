@@ -107,8 +107,8 @@ function remember(state: ClientState, key: string, value: DatabaseProduct | null
   }
   state.cache.set(key, { value, expires });
 }
-/** A record's composition for the AI research pass; records without ingredients or a source page give none. */
+/** A record's composition for the AI research pass, within the hosted service's field limits; records without ingredients or a source page give none. */
 export function databaseComposition(product: DatabaseProduct | null | undefined): DatabaseComposition | undefined {
   return product?.input.text && product.evidence.url
-    ? { productName: product.input.name, brand: product.input.brand, text: product.input.text.slice(0, 20_000), url: product.evidence.url } : undefined;
+    ? { productName: product.input.name?.slice(0, 300), brand: product.input.brand?.slice(0, 300), text: product.input.text.slice(0, 20_000), url: product.evidence.url } : undefined;
 }
