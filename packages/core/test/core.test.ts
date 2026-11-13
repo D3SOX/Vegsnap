@@ -9,7 +9,7 @@ const now = () => new Date('2026-10-05T10:00:00Z');
 const code = '4006381333931';
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 const product = (text = 'water, salt', extra: Record<string, unknown> = {}) => ({ status: 'success', product: {
-  code, product_name: 'Example', ingredients_text: text, countries_tags: ['en:germany'], labels_tags: ['en:vegan'], ...extra,
+  code, product_name: 'Example', ingredients_text: text, countries_tags: ['en:germany'], ...extra,
 } });
 
 describe('shared composition fixtures', () => {
@@ -58,8 +58,8 @@ describe('public database boundaries', () => {
     await expect(lookupProduct('4006381333932', { fetch: fetcher })).rejects.toThrow('checksum');
     expect(fetcher).not.toHaveBeenCalled();
   });
-  test('preserves exact identity and source licensing without promoting tags to certification', async () => {
-    const fetcher = mock(async () => response(product())) as unknown as typeof fetch;
+  test('preserves exact identity and source licensing without promoting other tags to certification', async () => {
+    const fetcher = mock(async () => response(product('water, salt', { labels_tags: ['en:organic', 'en:vegetarian'] }))) as unknown as typeof fetch;
     const result = await checkProduct({ barcode: code, category: 'food' }, { mode: 'background', fetch: fetcher, now });
     expect(result.outcome).toBe('uncertain');
     expect(result.basis).toBe('insufficient');
@@ -67,6 +67,15 @@ describe('public database boundaries', () => {
     expect(result.evidence.at(-1)?.license).toContain('ODbL');
     await checkProduct({ barcode: code, category: 'food' }, { mode: 'background', fetch: fetcher, now });
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  test('a recorded vegan label settles open origins but never outweighs animal ingredients', async () => {
+    const label = { labels_tags: ['en:vegetarian', 'en:vegan', 'en:v-label-international-vegan'] };
+    const check = (text: string) => checkProduct({ barcode: code, category: 'food', locale: 'de' }, { mode: 'background', now,
+      fetch: mock(async () => response(product(text, label))) as unknown as typeof fetch });
+    const vegan = await check('Zucker, Kakaomasse, Aprikosenkerne, natürliches Orangen-Aroma, Emulgator: Lecithine');
+    expect(vegan).toMatchObject({ outcome: 'vegan', basis: 'packaging', title: 'Vegan-Label laut Produktdatenbank', questions: [] });
+    expect(vegan.warnings).toContain('Vegan-Label aus einer gemeinschaftlich gepflegten Datenbank; Echtheit und Zertifizierungsregister wurden nicht geprüft.');
+    expect(await check('Zucker, Magermilchpulver, Lecithine')).toMatchObject({ outcome: 'conflicting', basis: 'insufficient' });
   });
   test('tries beauty and general products when food has no record', async () => {
     const urls: string[] = [];

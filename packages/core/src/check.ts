@@ -1,6 +1,6 @@
 import { resultMessages } from './i18n';
 import { analyzeText, compositionHeadingWords, parseSourceIngredients } from './analyze';
-import { lookupProduct, normalizeBarcode } from './database';
+import { lookupProduct, normalizeBarcode, veganDatabaseLabels } from './database';
 import { validateAIExtraction } from './provider';
 import { applyAIEvidence, compositionComplete } from './ai-evidence';
 import { applyWebEvidence } from './web-evidence';
@@ -22,7 +22,14 @@ function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () =>
   result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:|Den här posten anger andra marknader|Annan marknad:)/.test(warning)));
   // Database label tags are community assertions, not independently verified registry claims.
   if (product.labels.length) result.warnings.push(`${t.databaseLabelsPrefix}${product.labels.join(', ')}`);
-  return result;
+  if (!product.labels.some(label => veganDatabaseLabels.has(label))) return result;
+  // A recorded vegan label settles open origins (lecithin, flavourings), but never outweighs animal ingredients.
+  const conflict = result.outcome === 'not_vegan' || result.findings.some(item => item.status === 'animal');
+  return { ...result, outcome: conflict ? 'conflicting' : 'vegan', basis: conflict ? 'insufficient' : 'packaging',
+    title: conflict ? t.conflictingEvidence : t.databaseVeganLabel,
+    summary: conflict ? t.databaseLabelConflictSummary : t.databaseLabelSummary,
+    questions: conflict ? result.questions : [],
+    warnings: [...result.warnings, t.databaseLabelCaution] };
 }
 
 /** One bounded AI workflow (with an optional identity-only research follow-up); no AI request can run in background or offline mode. */

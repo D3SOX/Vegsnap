@@ -236,6 +236,8 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         result.getJSONObject("identity").put("barcode", barcode).put("match", if (barcode.isBlank()) "unconfirmed" else "exact_barcode")
         database.second.optString("databaseBrand").takeIf { it.isNotBlank() }?.let { result.getJSONObject("identity").put("brand", it) }
         database.second.remove("databaseBrand")
+        val labels = database.second.optJSONArray("databaseLabels").stringValues()
+        database.second.remove("databaseLabels")
         if (warnCountry) databaseCountryWarning(market, compositionMarkets, database.first.locale)?.let { result.getJSONArray("warnings").put(it) }
         if (database.second.has("offlineSnapshotDate")) {
             val date = database.second.getString("offlineSnapshotDate").take(10)
@@ -243,7 +245,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             result.getJSONArray("warnings").put(ResultStrings.offlineSnapshotCaution(database.first.locale).replace("{date}", date))
         }
         result.getJSONArray("warnings").put(ResultStrings.communityRecordCaution(database.first.locale))
-        return companyConcerns.attach(result, database.first.locale)
+        return companyConcerns.attach(applyDatabaseLabels(result, labels, database.first.locale), database.first.locale)
     }
     private suspend fun lookup(barcode: String, input: CheckInput, offline: Boolean = false): Pair<CheckInput, JSONObject>? {
         offlineDatabase?.lookup(input.copy(barcode = barcode))?.let { return it }
@@ -255,7 +257,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             else -> listOf("openfoodfacts.org", "openbeautyfacts.org", "openproductsfacts.org")
         }
         for (domain in domains) {
-            val request = Request.Builder().url("https://world.$domain/api/v3/product/$barcode.json?fields=code,product_name,product_name_de,ingredients_text,ingredients_text_de,brands,last_modified_t,countries_tags")
+            val request = Request.Builder().url("https://world.$domain/api/v3/product/$barcode.json?fields=code,product_name,product_name_de,ingredients_text,ingredients_text_de,brands,last_modified_t,countries_tags,labels_tags")
                 .header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} (Android; local personal product checks)").build()
             val response = productRequests.product(request.url.toString()) { request(request, allowNotFound = true) } ?: continue
             val product = response.optJSONObject("product") ?: continue
@@ -268,7 +270,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             val name = product.optString(if (input.locale == "de") "product_name_de" else "product_name").ifBlank { product.optString("product_name") }
             val category = if (input.category == "other") when (domain) { "openfoodfacts.org" -> "food"; "openbeautyfacts.org" -> "cosmetics"; else -> "other" } else input.category
             val evidence = JSONObject().put("id", "$domain:$barcode").put("kind", "database").put("title", domain)
-                .put("databaseBrand", product.optString("brands")).put("productMarkets", markets)
+                .put("databaseBrand", product.optString("brands")).put("databaseLabels", product.optJSONArray("labels_tags") ?: JSONArray()).put("productMarkets", markets)
                 .put("compositionMarkets", markets).put("url", "https://world.$domain/product/$barcode").put("excerpt", text).put("retrievedAt", java.time.Instant.now().toString()).put("license", "ODbL-1.0")
             if (product.optLong("last_modified_t") > 0) evidence.put("sourceDate", java.time.Instant.ofEpochSecond(product.getLong("last_modified_t")).toString())
             // Community ingredient fields may be partial. Explicit completeness is deliberately not inferred.

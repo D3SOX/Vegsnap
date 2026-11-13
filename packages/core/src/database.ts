@@ -11,6 +11,8 @@ export const DATABASES = [
   { id: 'obf', name: 'Open Beauty Facts', origin: 'https://world.openbeautyfacts.org', category: 'cosmetics' },
   { id: 'opf', name: 'Open Products Facts', origin: 'https://world.openproductsfacts.org', category: 'other' },
 ] as const;
+/** Open Facts label tags include their parents, so any vegan certification also carries en:vegan. */
+export const veganDatabaseLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
 const FIELDS = 'code,product_name,product_name_de,brands,ingredients_text,ingredients_text_de,countries_tags,labels_tags,last_modified_t';
 type LookupOptions = Pick<CheckOptions, 'fetch' | 'signal' | 'now'> & Pick<CheckInput,'category'|'market'|'locale'|'autoMarket'>;
 type Entry = { expires: number; value: DatabaseProduct | null };
