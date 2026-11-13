@@ -7,8 +7,24 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.File
 
 class OpenFactsProductsTest {
+    private val evaluator = Evaluator(JSONObject(File(requireNotNull(System.getProperty("vegsnap.repo")), "data/rules.json").readText()))
+
+    @Test fun recordedVeganLabelSettlesOpenOriginsButNeverOutweighsAnimalIngredients() {
+        val labels = listOf("en:vegetarian", "en:vegan", "en:v-label-international-vegan")
+        fun check(text: String, tags: List<String> = labels) =
+            applyDatabaseLabels(evaluator.evaluate(CheckInput(text, "food", locale = "de")), tags, "de")
+        val vegan = check("Zucker, Kakaomasse, Aprikosenkerne, natürliches Orangen-Aroma, Emulgator: Lecithine")
+        assertEquals("vegan", vegan.getString("outcome"))
+        assertEquals("packaging", vegan.getString("basis"))
+        assertEquals(0, vegan.getJSONArray("questions").length())
+        assertTrue(vegan.getJSONArray("warnings").toString().contains(ResultStrings.databaseLabelCaution("de")))
+        assertEquals("conflicting", check("Zucker, Magermilchpulver, Lecithine").getString("outcome"))
+        assertEquals("uncertain", check("Zucker, Lecithine", listOf("en:vegetarian", "en:organic")).getString("outcome"))
+    }
+
     @Test fun sharedGateSpacesDistinctRequestsAndCachesDefensiveCopies() = runBlocking {
         var clock = 0L
         val starts = mutableListOf<Long>()

@@ -116,6 +116,26 @@
       "sv": "Databasen är inte tillgänglig; lokal analys används."
     },
     {
+      "en": "Vegan label from a community-maintained database; authenticity and certification registry were not checked.",
+      "de": "Vegan-Label aus einer gemeinschaftlich gepflegten Datenbank; Echtheit und Zertifizierungsregister wurden nicht geprüft.",
+      "sv": "Veganmärkningen kommer från en gemenskapsunderhållen databas; äkthet och certifieringsregister kontrollerades inte."
+    },
+    {
+      "en": "The vegan label in the product database conflicts with the ingredient assessment. Check the product variant and evidence.",
+      "de": "Das Vegan-Label in der Produktdatenbank widerspricht der Zutatenbewertung. Produktvariante und Belege prüfen.",
+      "sv": "Veganmärkningen i produktdatabasen står i konflikt med ingrediensbedömningen. Kontrollera produktvarianten och beläggen."
+    },
+    {
+      "en": "The product database lists a vegan label, and its ingredients show nothing animal-derived. Check the label on the package.",
+      "de": "Die Produktdatenbank nennt ein Vegan-Label, und die dort erfassten Zutaten enthalten nichts Tierisches. Das Label auf der Verpackung prüfen.",
+      "sv": "Produktdatabasen anger en veganmärkning och ingredienserna där innehåller inget animaliskt. Kontrollera märkningen på förpackningen."
+    },
+    {
+      "en": "Vegan label in product database",
+      "de": "Vegan-Label laut Produktdatenbank",
+      "sv": "Veganmärkning enligt produktdatabasen"
+    },
+    {
       "en": "Manufacturer composition (AI)",
       "de": "Zusammensetzung laut Hersteller (KI)",
       "sv": "Sammansättning enligt tillverkaren (AI)"

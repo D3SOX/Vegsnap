@@ -30,7 +30,6 @@ internal fun alternativeUrl(input: AlternativeQuery, root: HttpUrl, storeOnly: B
             addQueryParameter("tagtype_1", "stores"); addQueryParameter("tag_contains_1", "contains"); addQueryParameter("tag_1", input.store.trim())
         } }.build()
 }
-private val veganLabels = setOf("en:vegan", "en:vegan-society", "en:vegan-society-approved", "en:v-label-vegan", "en:certified-vegan")
 internal fun parsePublicAlternatives(document: JSONObject, input: AlternativeQuery, evaluator: Evaluator): List<VeganAlternative> {
     val products = document.optJSONArray("products") ?: throw BrowseException(BrowseFailure.UNAVAILABLE)
     if (document.has("error") || document.has("errors")) throw BrowseException(BrowseFailure.UNAVAILABLE)
@@ -42,7 +41,7 @@ internal fun parsePublicAlternatives(document: JSONObject, input: AlternativeQue
             else product.optString("product_name").ifBlank { product.optString("product_name_de") }).trim().take(300)
         val labels = product.optJSONArray("labels_tags").stringValues()
         if (!code.matches(Regex("[0-9]{8,14}")) || name.isBlank() || code.padStart(14, '0') == input.excludeBarcode.padStart(14, '0') ||
-            labels.none { it in veganLabels } || "en:non-vegan" in product.optJSONArray("ingredients_analysis_tags").stringValues()) return@mapNotNull null
+            labels.none { it in veganDatabaseLabels } || "en:non-vegan" in product.optJSONArray("ingredients_analysis_tags").stringValues()) return@mapNotNull null
         val composition = product.optString("ingredients_text").ifBlank { product.optString("ingredients_text_de") }.take(20000)
         if (composition.isNotBlank() && evaluator.evaluate(CheckInput(text = composition, category = input.category)).optString("outcome") == "not_vegan") return@mapNotNull null
         val countries = product.optJSONArray("countries_tags").stringValues().mapNotNull(::productCountryCode)
@@ -50,7 +49,7 @@ internal fun parsePublicAlternatives(document: JSONObject, input: AlternativeQue
         val stores = product.optString("stores").take(1000).split(Regex("[,;]")).map { it.trim() }.filter { it.isNotBlank() }
         val storeMatch = input.store.isNotBlank() && (stores + product.optJSONArray("stores_tags").stringValues()).any { alternativeKey(it) == alternativeKey(input.store) }
         VeganAlternative("${source.name}:$code", name, product.optString("brands").take(300), source.root + "product/" + code,
-            source.title, labels.filter { it in veganLabels }.joinToString(", "), storeMatch, stores.ifEmpty { if (storeMatch) listOf(input.store) else emptyList() }, input.market in countries, code)
+            source.title, labels.filter { it in veganDatabaseLabels }.joinToString(", "), storeMatch, stores.ifEmpty { if (storeMatch) listOf(input.store) else emptyList() }, input.market in countries, code)
     }
     return rankAlternatives(items, input)
 }

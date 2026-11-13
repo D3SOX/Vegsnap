@@ -1,5 +1,5 @@
 import type { AIExtraction, Category, Locale, ProviderAdapter } from './types';
-import { DATABASES } from './database';
+import { DATABASES, veganDatabaseLabels } from './database';
 import { countryCode } from './market';
 import { locales } from './locale';
 import { analyzeText, safeSourceUrl } from './analyze';
@@ -20,7 +20,6 @@ const text = (value: unknown, maximum = 300) => typeof value === 'string' ? valu
 // Keep negation within a clause; contradictory evidence is not a recommendation.
 const veganClaim = /\bvegan(?:e[nmrs]?|sk[ta]?)?\b/i;
 const negatedVeganClaim = /\b(?:not|non|never|cannot|inte|icke|ej|aldrig|ingen|inget|inga|nicht|kein\w*|\w+n['’]t)\b[^.!?;\n]*\bvegan(?:e[nmrs]?|sk[ta]?)?\b|\bno\s+(?:longer|more)\s+(?:\w+\s+)?vegan(?:e[nmrs]?|sk[ta]?)?\b|\bno\s+(?:longer|more)\s+(?:suitable|fit|appropriate|eligible|acceptable)\s+(?:for|as)\s+(?:an?\s+|the\s+)?vegan(?:s|e[nmrs]?|sk[ta]?)?\b|\bvegan(?:e[nmrs]?|sk[ta]?)?\b\s*[:?=-]\s*(?:no|false|nein|nej|falskt)\b/i;
-const veganLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
 /** Start with the product type rather than requiring the substitute to share its brand/animal ingredient. */
 export function alternativeQueryForProduct(name: string, brand = '', animalTerms: string[] = []): string {
   const omit = new Set([brand, ...animalTerms].flatMap(value => key(value).split(' ')).filter(Boolean));
@@ -59,7 +58,7 @@ export function parsePublicAlternatives(document: unknown, raw: AlternativeSearc
     const code = text(product.code, 30), name = text(input.locale === 'de' ? product.product_name_de || product.product_name : product.product_name || product.product_name_de);
     if (!/^\d{8,14}$/.test(code) || !name || code.padStart(14, '0') === input.excludeBarcode?.padStart(14, '0')) continue;
     const labels = strings(product.labels_tags), analysis = strings(product.ingredients_analysis_tags);
-    if (!labels.some(label => veganLabels.has(label)) || analysis.includes('en:non-vegan')) continue;
+    if (!labels.some(label => veganDatabaseLabels.has(label)) || analysis.includes('en:non-vegan')) continue;
     const composition = text(product.ingredients_text || product.ingredients_text_de, 20000);
     if (composition && analyzeText({ text: composition, category: input.category }).outcome === 'not_vegan') continue;
     const countries = strings(product.countries_tags).map(countryCode).filter(Boolean);
@@ -68,7 +67,7 @@ export function parsePublicAlternatives(document: unknown, raw: AlternativeSearc
     const storeKeys = [...stores, ...strings(product.stores_tags)].map(key);
     const storeMatch = !!input.store && storeKeys.includes(key(input.store));
     items.push({ id: `${db.id}:${code}`, barcode: code, name, brand: text(product.brands), url: `${db.origin}/product/${code}`,
-      source: db.name, evidence: labels.filter(label => veganLabels.has(label)).join(', '),
+      source: db.name, evidence: labels.filter(label => veganDatabaseLabels.has(label)).join(', '),
       stores: stores.length ? stores : storeMatch ? [input.store!] : [], storeMatch, marketListed: countries.includes(input.market) });
   }
   return rankAlternatives(items, input);
