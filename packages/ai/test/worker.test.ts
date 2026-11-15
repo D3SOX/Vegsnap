@@ -149,11 +149,16 @@ async function fixedIPWindow(): Promise<Env> {
   // Model one fixed window so guard tests cannot straddle Miniflare's wall-clock reset.
   return { ...await mf.getBindings(), IP_REQUEST_LIMIT: fixedLimit(120), SESSION_REQUEST_LIMIT: fixedLimit(30) } as unknown as Env;
 }
+async function freshInstallationWindow() {
+  // Miniflare aligns rate-limit windows to the wall clock, so a burst must not straddle a minute boundary.
+  while (60_000 - Date.now() % 60_000 < 5_000) await Bun.sleep(100);
+}
 
 test('one installation cannot throttle another installation sharing its mobile IP', async () => {
   const first = await connect();
   const second = await connect();
   const ip = '198.51.100.10';
+  await freshInstallationWindow();
   for (let i = 0; i < 5; i++) expect((await request('/api/check', first, { text: '' }, 'POST', ip)).status).toBe(400);
   const throttled = await request('/api/check', first, { text: 'Ingredients: oats' }, 'POST', ip);
   expect(throttled.status).toBe(429);
@@ -167,6 +172,7 @@ test('verified installation throttling survives IP changes and additional sessio
   const installation = crypto.getRandomValues(new Uint8Array(32)).toHex();
   const first = await connect(true, installation);
   const second = await connect(true, installation);
+  await freshInstallationWindow();
   for (let i = 0; i < 5; i++) expect((await request('/api/check', first, { text: '' })).status).toBe(400);
   const response = await check(second);
   expect(response.status).toBe(429);
