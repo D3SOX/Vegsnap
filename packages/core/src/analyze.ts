@@ -250,9 +250,16 @@ const labelledSection = /^\s*\p{L}[\p{L} '-]{0,40}:/u;
 export function splitPrecaution(body: string): { ingredients: string; crossContact: string[]; tail: string } {
   let ingredients = '', tail = '', offset = 0, afterSentence = false;
   const crossContact: string[] = [];
+  // After a bracketed precaution the list resumes only to the end of its sentence ("salt (may contain nuts). Made in…").
+  let listEnd = Infinity;
+  const sentenceEnd = (from: number) => { const found = /[.!](?=\s|$)|\n/.exec(body.slice(from)); return found ? from + found.index + 1 : body.length; };
+  const take = (until: number) => {
+    if (!afterSentence && until > listEnd) { ingredients += body.slice(offset, listEnd); offset = listEnd; afterSentence = true; }
+    if (afterSentence) tail += body.slice(offset, until); else ingredients += body.slice(offset, until);
+  };
   for (let match = precaution.exec(body.slice(offset)); match; match = precaution.exec(body.slice(offset))) {
     const start = offset + match.index;
-    if (afterSentence) tail += body.slice(offset, start); else ingredients += body.slice(offset, start);
+    take(start);
     // Depth over the whole body, so an outer bracket stays open after an inner precaution closes.
     let depth = 0;
     for (const char of body.slice(0, start)) depth = '(['.includes(char) ? depth + 1 : ')]'.includes(char) ? Math.max(0, depth - 1) : depth;
@@ -262,16 +269,13 @@ export function splitPrecaution(body: string): { ingredients: string; crossConta
       else if (')]'.includes(body[index]!) && !level--) { end = index; break; }
     }
     const bracketed = end >= 0;
-    if (!bracketed) {
-      const after = start + match[0].length;
-      const sentence = /[.!](?=\s|$)|\n/.exec(body.slice(after));
-      end = sentence ? after + sentence.index + 1 : body.length;
-    }
+    if (!bracketed) end = sentenceEnd(start + match[0].length);
     crossContact.push(body.slice(start, end).trim());
     offset = end;
+    if (bracketed && !afterSentence) listEnd = Math.min(listEnd, sentenceEnd(end));
     afterSentence ||= !bracketed;
   }
-  if (afterSentence) tail += body.slice(offset); else ingredients += body.slice(offset);
+  take(body.length);
   return { ingredients, crossContact, tail };
 }
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {

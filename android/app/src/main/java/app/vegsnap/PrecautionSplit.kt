@@ -12,22 +12,32 @@ internal fun splitPrecaution(body: String): PrecautionSplit {
     val crossContact = mutableListOf<String>()
     var offset = 0
     var afterSentence = false
+    // After a bracketed precaution the list resumes only to the end of its sentence ("salt (may contain nuts). Made in…").
+    var listEnd = Int.MAX_VALUE
+    fun take(until: Int) {
+        if (!afterSentence && until > listEnd) { ingredients.append(body, offset, listEnd); offset = listEnd; afterSentence = true }
+        (if (afterSentence) tail else ingredients).append(body, offset, until)
+    }
     // Search the remaining text, as the TypeScript core does, and keep positions absolute.
     fun next() = compositionPrecaution.find(body.substring(offset))?.let { (it.range.first + offset)..(it.range.last + offset) }
     var match = next()
     while (match != null) {
         val start = match.first
-        (if (afterSentence) tail else ingredients).append(body, offset, start)
+        take(start)
         val close = closingBracket(body, start)
-        val end = close ?: Regex("[.!](?=\\s|$)|\\n").find(body, match.last + 1)?.let { it.range.first + 1 } ?: body.length
+        val end = close ?: sentenceEnd(body, match.last + 1)
         crossContact += body.substring(start, end).trim()
         offset = end
+        if (close != null && !afterSentence) listEnd = minOf(listEnd, sentenceEnd(body, end))
         afterSentence = afterSentence || close == null
         match = next()
     }
-    (if (afterSentence) tail else ingredients).append(body, offset, body.length)
+    take(body.length)
     return PrecautionSplit(ingredients.toString(), crossContact, tail.toString())
 }
+private val sentenceBoundary = Regex("[.!](?=\\s|$)|\\n")
+/** The position after the sentence that continues at [from], or the end of [text]. */
+private fun sentenceEnd(text: String, from: Int): Int = sentenceBoundary.find(text, from)?.let { it.range.first + 1 } ?: text.length
 /** The bracket closing the one a precaution at [start] was opened in, if any; depth counts the whole text before it. */
 private fun closingBracket(text: String, start: Int): Int? {
     val open = text.take(start).fold(0) { depth, char -> when (char) { '(', '[' -> depth + 1; ')', ']' -> maxOf(0, depth - 1); else -> depth } }
