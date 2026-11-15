@@ -57,9 +57,9 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'browse' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
-  // What the window shows now, so an async step never acts on a view the user has left.
-  const view = useRef<{ tab: typeof tab; result?: string }>({ tab });
-  view.current = { tab, result: storedResult?.id };
+  // Counts view changes, so an async step never acts on a view the user has left, even after returning to it.
+  const view = useRef(0);
+  useEffect(() => { view.current++; }, [tab, storedResult?.id]);
   // Photos stay out of shared state: each check's photos are loaded once, only while they can be shown.
   const [photos, setPhotos] = useState<Record<string, string[]>>({});
   const requestedPhotos = useRef(new Set<string>());
@@ -229,9 +229,9 @@ export function App() {
     if (!saved) {
       const opened = view.current;
       try { saved = (await request<Record<string, string[]>>({ type: 'history-photos', ids: [storedResult.id] }))[storedResult.id]; }
-      catch (error) { if (view.current.tab === opened.tab && view.current.result === opened.result) setError(error instanceof Error ? error.message : String(error)); return; }
+      catch (error) { if (view.current === opened) setError(error instanceof Error ? error.message : String(error)); return; }
       // The user may have moved on while the photos loaded; never replace what they are doing now.
-      if (view.current.tab !== opened.tab || view.current.result !== opened.result) return;
+      if (view.current !== opened) return;
     }
     const input = editableInput({ ...storedResult, photos: saved });
     const barcodeInText = input.barcode !== undefined && textBarcode(input.text ?? '') === input.barcode;
