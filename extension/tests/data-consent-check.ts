@@ -13,7 +13,7 @@ mock.module('wxt/browser', () => ({ browser: {
     async request(request: typeof requests[number]) { requests.push(request); return false; },
   },
 } }));
-const { CONTENT_DATA, ACCOUNT_DATA, AI_DATA, requestDataConsent, contentFetch, aiFetch } = await import('../src/data-consent');
+const { CONTENT_DATA, ACCOUNT_DATA, AI_DATA, requestDataConsent, contentFetch, aiFetch, catalogueFetch } = await import('../src/data-consent');
 const { companion } = await import('../src/companion');
 const originalFetch = globalThis.fetch;
 globalThis.fetch = Object.assign(async () => { networkCalls++; return new Response('{}'); }, { preconnect: originalFetch.preconnect }) as typeof fetch;
@@ -44,5 +44,11 @@ try {
   await contentFetch('https://example.invalid');
   await requestDataConsent(AI_DATA, { origins: ['https://api.example.invalid/*'] });
   assert.deepEqual(requests.at(-1), { origins: ['https://api.example.invalid/*'] }, 'Firefox-only permission fields never reach Chrome');
+  const beforeCatalogue = networkCalls;
+  await assert.rejects(() => catalogueFetch('https://api.matspar.se/slug', { method: 'POST', body: '{}' }), /Matspar/);
+  await assert.rejects(() => catalogueFetch(new Request('https://api.matspar.se/slug')), /Matspar/);
+  assert.equal(networkCalls, beforeCatalogue, 'Matspar search terms are never sent from the extension, whose origin its CORS policy rejects');
+  await catalogueFetch('https://world.openfoodfacts.org/api/v2/product/4006381333931.json');
+  assert.equal(networkCalls, beforeCatalogue + 1, 'Other catalogue lookups still use the AI data boundary');
   console.log('Data consent: no network/native transmission before opt-in or after revocation; Chrome host requests preserved');
 } finally { globalThis.fetch = originalFetch; }

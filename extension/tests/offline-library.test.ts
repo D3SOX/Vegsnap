@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { OfflineSnapshot } from '@vegsnap/core';
+import { validateOfflineSnapshot, type OfflineSnapshot } from '@vegsnap/core';
 import { createOfflineLibrary } from '../src/offline-library';
 const bundle: OfflineSnapshot = { schemaVersion: 1, generatedAt: '2026-10-05T10:00:00Z', region: 'Bundled DE/EU', sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T09:00:00Z' }], products: [] };
 const extra: OfflineSnapshot = { ...bundle, region: 'Sweden', products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: 'Example', ingredients: 'milk', countries_tags: ['en:sweden'], last_modified_t: 1760000000 }] };
@@ -34,3 +34,16 @@ test('imported packs are bounded by their total size', async () => {
   await library.import(large('D'));
   expect((await library.info()).filter(pack => !pack.bundled).map(pack => pack.region).sort()).toEqual(['B', 'C', 'D']);
 }, 60_000);
+test('a start validates and indexes the bundled pack once', async () => {
+  // Every validation reads schemaVersion a fixed number of times; info() and lookups never do.
+  const counted = () => { const reads = { count: 0 }; return { reads, pack: new Proxy(structuredClone(extra), { get(target, key, receiver) { if (key === 'schemaVersion') reads.count++; return Reflect.get(target, key, receiver); } }) }; };
+  const single = counted();
+  validateOfflineSnapshot(single.pack);
+  const started = counted();
+  const library = createOfflineLibrary({ read: async () => [], put: async () => {}, remove: async () => {} }, started.pack);
+  const index = await library.index();
+  expect(await library.info()).toHaveLength(1);
+  expect(await library.index()).toBe(index);
+  expect(index.lookup('4006381333931', { market: 'SE' })?.input.name).toBe('Example');
+  expect(started.reads.count).toBe(single.reads.count);
+});

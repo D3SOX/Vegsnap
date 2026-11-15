@@ -38,6 +38,8 @@ let startupWait: Promise<void> | undefined;
 let checkWait: Promise<void> | undefined;
 let cacheWait: Promise<void> | undefined;
 let cacheRequests = 0;
+const photoRequests: string[][] = [];
+function withoutPhotos(item: HistoryResult): HistoryResult { const { photos: _photos, ...rest } = item; return rest; }
 let checkError = false;
 const checkedInputs: CheckInput[] = [];
 const checkedPreviousIds: (string | undefined)[] = [];
@@ -71,7 +73,8 @@ mock.module('wxt/browser', () => ({ browser: {
           const { images, ...input } = message.input;
           return { ok: true, result: { ...fixtureResult, id: `check-${checkRequests}`, input, ...(images?.length ? { photos: images } : {}), ...(checkConsent ? { onlineConsent: checkConsent } : {}) } };
         }
-        case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history, hasKey: false, offlinePacks, hiddenReplies }) };
+        case 'state': await startupWait; return { ok: true, result: structuredClone({ settings, history: history.map(withoutPhotos), hasKey: false, offlinePacks, hiddenReplies }) };
+        case 'history-photos': photoRequests.push([...message.ids]); return { ok: true, result: Object.fromEntries(history.flatMap(item => message.ids.includes(item.id) && item.photos?.length ? [[item.id, item.photos]] : [])) };
         case 'hide-reply': hiddenReplies = [...new Set([...hiddenReplies, message.id])]; changed(); break;
         case 'restore-replies': hiddenReplies = []; changed(); break;
         case 'remove-offline-pack': offlinePacks = offlinePacks.filter(pack => pack.bundled || pack.region !== message.region); changed(); break;
@@ -81,8 +84,8 @@ mock.module('wxt/browser', () => ({ browser: {
         case 'cache-community-result': {
           cacheRequests++; await cacheWait;
           const index = history.findIndex(item => item.id === message.result.id);
-          if (index < 0 || JSON.stringify(history[index]) !== message.expected) return { ok: true, result: null };
-          history[index] = structuredClone(message.result); changed();
+          if (index < 0 || JSON.stringify(withoutPhotos(history[index]!)) !== message.expected) return { ok: true, result: null };
+          history[index] = { ...structuredClone(message.result), ...(history[index]!.photos ? { photos: history[index]!.photos } : {}) }; changed();
           return { ok: true, result: message.result };
         }
         case 'set-result-market': {
@@ -271,10 +274,17 @@ try {
   assert.equal(checkRequests, beforeEdit, 'Cancel does not run a check');
 
   const originalPhoto = 'data:image/jpeg;base64,YQ==';
-  history = [{ ...fixtureResult, identity: { ...fixtureResult.identity, brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE' },
+  // Check IDs are unique and windows load each check's photos once, so this saved photo check gets its own ID.
+  const photoRequestsBefore = photoRequests.length;
+  history = [{ ...fixtureResult, id: 'saved-photo-check', identity: { ...fixtureResult.identity, brand: 'Fixture Maker', barcode: '4006381333931', market: 'SE' },
     input: { text: 'Ingredients: oats', category: 'drink', complete: true, sourceUrl: 'https://www.amazon.se/dp/TEST123456' }, photos: [originalPhoto] }];
   changed(); await tab(roots[0]!, 'history');
   await until(() => historyItems(roots[0]!).length === 1, 'Editable saved check is available');
+  await until(() => !!roots[0]!.querySelector('.history-thumbnail'), 'The history list loads the saved photo on request');
+  const loadedPhotoRequests = photoRequests.length;
+  assert(loadedPhotoRequests - photoRequestsBefore <= roots.length && photoRequests.slice(photoRequestsBefore).every(ids => ids.join() === 'saved-photo-check'), 'Each window requests only the new check\'s photos, once');
+  changed(); await flush();
+  assert.equal(photoRequests.length, loadedPhotoRequests, 'A refresh does not request loaded photos again');
   await act(async () => { (historyItems(roots[0]!)[0] as HTMLButtonElement).click(); });
   await act(async () => { editButton()!.click(); });
   const editText = roots[0]!.querySelector('textarea')!;
@@ -302,7 +312,7 @@ try {
   await act(async () => { editButton()!.click(); });
   await act(async () => {
     const textarea = roots[0]!.querySelector('textarea')!;
-    textarea.value += ' 5012345678900'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.value += ' EAN 5012345678900'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await submitEdit();
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Correcting a saved barcode produces a new result');
@@ -310,7 +320,7 @@ try {
   await act(async () => { editButton()!.click(); });
   await act(async () => {
     const textarea = roots[0]!.querySelector('textarea')!;
-    textarea.value = textarea.value.replace('5012345678900', '').trim(); textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.value = textarea.value.replace('EAN 5012345678900', '').trim(); textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await submitEdit();
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Removing a text barcode produces a new result');
@@ -322,7 +332,7 @@ try {
   await act(async () => { editButton()!.click(); });
   await act(async () => {
     const textarea = roots[0]!.querySelector('textarea')!;
-    textarea.value += ' 4006381333931'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.value += ' EAN 4006381333931'; textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
   await submitEdit();
   await until(() => !!roots[0]!.querySelector('.verdict'), 'Adding a barcode produces a new result');

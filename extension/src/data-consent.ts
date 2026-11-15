@@ -34,3 +34,10 @@ export const aiFetch: typeof fetch = Object.assign(async (...args: Parameters<ty
   await requireDataConsent(AI_DATA);
   return fetch(...args);
 }, { preconnect: globalThis.fetch.preconnect });
+// Matspar's API only allows its own website as a CORS origin, so browsers block extension requests.
+// Skip that catalogue without sending the search terms; other catalogue lookups use the AI boundary.
+export const catalogueFetch: typeof fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+  const [input] = args;
+  if ((input instanceof Request ? input.url : String(input)).startsWith('https://api.matspar.se/')) throw new Error('Matspar is not available in the extension.');
+  return aiFetch(...args);
+}, { preconnect: globalThis.fetch.preconnect });

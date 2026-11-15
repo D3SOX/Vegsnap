@@ -45,7 +45,7 @@ export interface Settings {
 export const defaultSettings: Settings = { language: 'en', connection: 'hosted', baseUrl: HOSTED_AI.baseUrl, model: HOSTED_AI.model, stores: [], saveHistory: true, autoCountry: true, fallbackCountry: 'DE' };
 export function endpointOrigin(endpoint: string): string {
   const url = new URL(endpoint);
-  if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) throw new Error('Use HTTPS, or HTTP on localhost, without credentials or query parameters.');
+  if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) throw new Error('Use HTTPS, or HTTP on localhost, without credentials or query parameters.');
   // Firefox match patterns do not support ports. The request and credential stay
   // bound to the original full endpoint even though the host permission is wider.
   return `${url.protocol}//${url.hostname}/*`;

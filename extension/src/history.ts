@@ -13,6 +13,10 @@ export function editableInput(result: HistoryResult): CheckInput {
     images: [...(result.photos ?? [])],
   };
 }
+export function withoutPhotos(result: HistoryResult): HistoryResult {
+  const { photos: _photos, ...rest } = result;
+  return rest;
+}
 export function historyExport(results: HistoryResult[]): CheckResult[] {
   return results.map(saved => {
     const { photos: _photos, input: _input, communityOriginal: _community, ...result } = withoutCommunityHistory(saved);

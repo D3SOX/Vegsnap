@@ -21,6 +21,14 @@ class VisibilityObserver {
   show(target: Element) { if (this.observed.has(target)) this.callback([{ target, isIntersecting: true }]); }
 }
 Object.assign(globalThis, { window, document, location: window.location, MutationObserver: window.MutationObserver, IntersectionObserver: VisibilityObserver });
+// Badges use closed shadow roots; keep the test's own reference the way the content script does.
+const shadowRoots = new WeakMap<Element, ShadowRoot>();
+const attachShadow = window.HTMLElement.prototype.attachShadow;
+window.HTMLElement.prototype.attachShadow = function (this: InstanceType<typeof window.HTMLElement>, init: Parameters<typeof attachShadow>[0]) {
+  const root = attachShadow.call(this, init);
+  shadowRoots.set(this as unknown as Element, root as unknown as ShadowRoot);
+  return root;
+};
 const domListeners = new Set<{ target: EventTarget; type: string; listener: EventListenerOrEventListenerObject }>();
 for (const target of [document, domWindow]) {
   const add = target.addEventListener.bind(target), remove = target.removeEventListener.bind(target);
@@ -56,7 +64,7 @@ const { default: definition } = await import('../entrypoints/store.content');
 const script = definition as unknown as { main(ctx: TestContext): void };
 const fixture = (name: string) => Bun.file(new URL(`fixtures/stores/${name}.html`, import.meta.url)).text();
 const badges = () => [...document.querySelectorAll<HTMLElement>('[data-vegsnap-badge]')];
-const button = (host: HTMLElement) => host.shadowRoot!.querySelector<HTMLButtonElement>('button')!;
+const button = (host: HTMLElement) => shadowRoots.get(host)!.querySelector<HTMLButtonElement>('button')!;
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 try {
   document.body.innerHTML = await fixture('amazon');
@@ -64,6 +72,7 @@ try {
   const first = context(); script.main(first.ctx);
   assert.equal(badges().length, 2, 'Amazon cards without barcodes still show explicit check buttons');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Check'));
+  assert(badges().every(host => host.shadowRoot === null), 'Store pages cannot read badge verdicts through an open shadow root');
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
   assert(badges().every(host => button(host).textContent === 'Vegsnap · Kontrollera'), 'Idle badges follow the language saved in Vegsnap');
   await settle();
@@ -168,6 +177,28 @@ try {
   assert.equal(pendingHost.title, '');
   fifth.invalidate();
   assert.equal(badges().length, 0);
+
+  // Cached answers cost no database request, so the next visible badge is looked up without the pacing delay.
+  for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
+  for (const cached of [true, false]) {
+    document.body.innerHTML = await fixture('dm-current');
+    lookups.length = 0;
+    const paced = context(); script.main(paced.ctx);
+    await settle();
+    const pacedHost = badges()[0]!;
+    const pacedVisibility = VisibilityObserver.instances.at(-1)!;
+    pacedVisibility.show(pacedHost);
+    await settle();
+    lookups.shift()!({ ok: true, cached, result: { identity: { match: 'exact_barcode' }, title: 'Composition appears vegan', summary: 'Database evidence' } });
+    await settle();
+    // A language switch re-queues the same badge for a fresh lookup.
+    for (const listener of storageListeners) listener({ settings: { newValue: { language: cached ? 'sv' : 'de' } } }, 'local');
+    pacedVisibility.show(pacedHost);
+    await settle(); await settle();
+    assert.equal(lookups.length, cached ? 1 : 0, cached ? 'A cached answer does not delay the next lookup' : 'A database answer still paces the next lookup');
+    for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
+    paced.invalidate();
+  }
   console.log('Content lifecycle: explicit product buttons, visible database-only checks, late-result rejection, language switches, reinjection and disable cleanup verified');
 } finally {
   const shared = globalThis as typeof globalThis & { __vegsnapStoreCleanup?: () => void };

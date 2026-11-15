@@ -1,5 +1,5 @@
 import bundled from '../../data/offline/bundle.json';
-import { validateOfflineSnapshot, type OfflineSnapshot } from '@vegsnap/core';
+import type { OfflineSnapshot } from '@vegsnap/core';
 import { createOfflineLibrary, type OfflinePackStorage } from './offline-library';
 
 async function database(): Promise<IDBDatabase> {
@@ -33,6 +33,7 @@ const storage: OfflinePackStorage = {
 };
 let library: ReturnType<typeof createOfflineLibrary> | undefined;
 export function offlineLibrary() {
-  library ??= createOfflineLibrary(storage, validateOfflineSnapshot(bundled));
+  // Validated when the library first builds its index.
+  library ??= createOfflineLibrary(storage, bundled as OfflineSnapshot);
   return library;
 }

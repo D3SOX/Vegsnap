@@ -14,6 +14,7 @@ export { createOpenAIProvider, createResearchProvider, aiOutputSchema, parseAIEx
 export type { AIPass, AIPassResult, AIPassRunner, AIOutputOptions, ResearchProviderOptions } from './provider';
 export { HOSTED_AI, createHostedAIProvider } from './hosted-ai';
 export { checkProduct } from './check';
+export { AIFailure } from './ai-error';
 export { OfflineProductIndex, validateOfflineSnapshot, parseOfflineSnapshot, OFFLINE_MAX_BYTES } from './offline';
 export type { OfflineSnapshot, OfflinePackInfo } from './offline';
 export { imageSupport, acceptsImages, type ImageSupport } from './model-capabilities';

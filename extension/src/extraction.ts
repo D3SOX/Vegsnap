@@ -1,11 +1,9 @@
+import { normalizeBarcode } from '@vegsnap/core/barcode';
 export interface PageProduct { name: string; brand?: string; barcode?: string; url?: string; }
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+/** Digits only: unlike normalizeBarcode, spaced or hyphenated page values are not accepted. */
 export function validGtin(value: unknown): string | undefined {
-  if (typeof value !== 'string' || !/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(value)) return;
-  const digits = [...value].map(Number);
-  const check = digits.pop();
-  const sum = digits.reverse().reduce((total, n, i) => total + n * (i % 2 === 0 ? 3 : 1), 0);
-  return (10 - sum % 10) % 10 === check ? value : undefined;
+  return typeof value === 'string' && /^\d+$/.test(value) ? normalizeBarcode(value) : undefined;
 }
 export function extractProducts(json: unknown): PageProduct[] {
   const result: PageProduct[] = [];

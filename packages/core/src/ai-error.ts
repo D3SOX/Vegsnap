@@ -2,9 +2,12 @@ import { resultMessages } from './i18n';
 import type { AIErrorCode, Locale } from './types';
 
 type ResultMessage = keyof typeof resultMessages.en;
-/** A classified AI failure. The English message is for logs and tests; users see the localized copy for its code. */
+/**
+ * A classified AI failure. The English message is for logs and tests; users see the localized copy for its code,
+ * or `display`: fixed, actionable copy from trusted local code such as the desktop companion, never provider text.
+ */
 export class AIFailure extends Error {
-  constructor(readonly code: AIErrorCode, message: string, readonly messageKey?: ResultMessage) { super(message); }
+  constructor(readonly code: AIErrorCode, message: string, readonly messageKey?: ResultMessage, readonly display?: string) { super(message); }
 }
 
 const messageKeys: Record<AIErrorCode, ResultMessage> = {
@@ -48,6 +51,7 @@ export function aiErrorCode(error: unknown): AIErrorCode {
 export function aiError(error: unknown, locale: Locale = 'en', hosted = false): { code: AIErrorCode; message: string } {
   const t = resultMessages[locale];
   const code = aiErrorCode(error);
+  if (error instanceof AIFailure && error.display) return { code, message: error.display };
   const key = error instanceof AIFailure && error.messageKey ? error.messageKey
     : hosted && code === 'quota' ? 'hostedQuotaError' : hosted && code === 'rate_limit' ? 'hostedRateLimitError' : messageKeys[code];
   return { code, message: t[key] };
