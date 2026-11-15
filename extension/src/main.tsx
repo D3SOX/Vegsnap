@@ -57,9 +57,10 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'browse' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
-  // Counts view changes, so an async step never acts on a view the user has left, even after returning to it.
-  const view = useRef(0);
-  useEffect(() => { view.current++; }, [tab, storedResult?.id]);
+  // Counts view changes during render, before any effect runs, so an async step never acts on a view the
+  // user has left, even after returning to it.
+  const shown = useRef({ tab, result: storedResult?.id, changes: 0 });
+  if (shown.current.tab !== tab || shown.current.result !== storedResult?.id) shown.current = { tab, result: storedResult?.id, changes: shown.current.changes + 1 };
   // Photos stay out of shared state: each check's photos are loaded once, only while they can be shown.
   const [photos, setPhotos] = useState<Record<string, string[]>>({});
   const requestedPhotos = useRef(new Set<string>());
@@ -227,11 +228,11 @@ export function App() {
     // Editing must not drop saved photos whose request has not returned yet.
     let saved = photos[storedResult.id];
     if (!saved) {
-      const opened = view.current;
+      const opened = shown.current.changes;
       try { saved = (await request<Record<string, string[]>>({ type: 'history-photos', ids: [storedResult.id] }))[storedResult.id]; }
-      catch (error) { if (view.current === opened) setError(error instanceof Error ? error.message : String(error)); return; }
+      catch (error) { if (shown.current.changes === opened) setError(error instanceof Error ? error.message : String(error)); return; }
       // The user may have moved on while the photos loaded; never replace what they are doing now.
-      if (view.current !== opened) return;
+      if (shown.current.changes !== opened) return;
     }
     const input = editableInput({ ...storedResult, photos: saved });
     const barcodeInText = input.barcode !== undefined && textBarcode(input.text ?? '') === input.barcode;
