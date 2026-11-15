@@ -142,9 +142,12 @@ export function communityMatchRules(submission: CommunitySubmission): CommunityM
   return rules;
 }
 
+/** Recipes change: an old vegan confirmation no longer settles a verdict, while an old not-vegan reply still fails safe. */
+export const COMMUNITY_VEGAN_REPLY_MAX_AGE_DAYS = 730;
 /** Apply only current, matched and reviewed whole-product claims to a display copy. */
 export function applyCommunityReplies(result: CheckResult, replies: CommunityReply[], locale: string, baseUrl = service.baseUrl, now = new Date()): CheckResult {
-  const eligible = replies.filter(reply => reply.scope === 'whole_product' && reply.claim !== 'inconclusive' && reply.match !== 'candidate');
+  const current = (reply: CommunityReply) => reply.claim !== 'vegan' || now.getTime() - Date.parse(`${reply.repliedOn}T00:00:00Z`) <= COMMUNITY_VEGAN_REPLY_MAX_AGE_DAYS * 86_400_000;
+  const eligible = replies.filter(reply => reply.scope === 'whole_product' && reply.claim !== 'inconclusive' && reply.match !== 'candidate' && current(reply));
   if (!eligible.length) return result;
   const t = resultMessages[appLocale(locale)];
   const positive = eligible.some(reply => reply.claim === 'vegan'), negative = eligible.some(reply => reply.claim === 'not_vegan');
