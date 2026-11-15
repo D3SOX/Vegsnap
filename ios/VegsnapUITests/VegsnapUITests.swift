@@ -39,10 +39,10 @@ import UIKit
     func testCheckHistoryAndRelaunch() {
         launch(); capture("check-light")
         app.textFields["productName"].tap(); app.textFields["productName"].typeText("Honey granola")
-        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        dismissKeyboard()
         let text = app.descendants(matching: .any).matching(identifier: "ingredients").firstMatch
         reveal(text, forTap: true); text.tap(); text.typeText("Ingredients: oats, honey, salt")
-        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        dismissKeyboard()
         reveal(app.buttons["checkProduct"], forTap: true); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.staticTexts["Not vegan"].waitForExistence(timeout: 20)); capture("result-light")
         app.navigationBars.buttons["Done"].tap()
@@ -63,10 +63,10 @@ import UIKit
         app.navigationBars.buttons.element(boundBy: 0).tap()
         selectTab("Check")
         app.textFields["productName"].tap(); app.textFields["productName"].typeText("Honey granola")
-        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        dismissKeyboard()
         let text = app.descendants(matching: .any).matching(identifier: "ingredients").firstMatch
         reveal(text, forTap: true); text.tap(); text.typeText("Ingredients: oats, honey, salt")
-        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        dismissKeyboard()
         reveal(app.buttons["checkProduct"], forTap: true); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.staticTexts["Not vegan"].waitForExistence(timeout: 20))
         app.buttons["Vegan alternatives"].tap()
@@ -79,7 +79,7 @@ import UIKit
         launch()
         let barcode = app.textFields["barcode"]
         reveal(barcode, forTap: true); barcode.tap(); barcode.typeText("12345678")
-        if app.toolbars.buttons["Done"].exists { app.toolbars.buttons["Done"].tap() }
+        dismissKeyboard()
         app.swipeUp(); app.buttons["checkProduct"].tap()
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 10)); app.alerts.buttons["OK"].tap()
         app.terminate(); launch(reset: false)
@@ -92,6 +92,13 @@ import UIKit
         XCTAssertTrue(app.staticTexts["Quaker Oats"].firstMatch.waitForExistence(timeout: 10))
         capture("browse-light")
         selectTab("Settings"); XCTAssertTrue(app.switches["offlineMode"].waitForExistence(timeout: 10)); capture("settings-light")
+    }
+    func dismissKeyboard() {
+        // A busy simulator can show the keyboard toolbar late. A keyboard left open
+        // covers the middle of the screen, so later swipes cannot scroll the form.
+        let done = app.toolbars.buttons["Done"]
+        if done.waitForExistence(timeout: 5) { done.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 10))
     }
     func reveal(_ element: XCUIElement, scrollingDown: Bool = false, forTap: Bool = false) {
         for _ in 0..<8 {
