@@ -312,11 +312,15 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   // animal term in a labelled section there still vetoes ("Coating: beeswax").
   // A negated label ("Free from: milk") or item ("Contains: milk, no soy") names what the product does not contain.
   const tailTerms = tail.split(/[.!](?=\s|$)|\n/).filter(sentence => labelledSection.test(sentence) && !negatedBefore.test(normalizeTerm(sentence.slice(0, sentence.indexOf(':')))))
-    .flatMap(sentence => compositionTerms(sentence)).filter(term => !negatedBefore.test(term));
+    .flatMap(sentence => compositionTerms(sentence));
   const tailGuards = tailTerms.flatMap(term => {
     const value = normalizeTerm(term.slice(term.lastIndexOf(':') + 1));
-    // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
-    return [value, term, ...value.split(conjunctionSplit).map(normalizeTerm)].filter(item => exactRule(item)?.status === 'animal').slice(0, 1);
+    // "Contains: milk and eggs" declares each conjunct. A negation covers its conjunct and the ones after it
+    // ("no milk or eggs", "milk and no soy"); an unnegated whole term still wins when it is an alias itself.
+    const conjuncts = value.split(conjunctionSplit).map(normalizeTerm);
+    const firstNegated = conjuncts.findIndex(part => negatedBefore.test(part));
+    const parts = firstNegated < 0 ? conjuncts : conjuncts.slice(0, firstNegated);
+    return [...(negatedBefore.test(value) ? [] : [value, term]), ...parts].filter(item => exactRule(item)?.status === 'animal').slice(0, 1);
   });
   const tokens = [...(parsed ? [...parsed, ...guards] : fallback), ...tailGuards];
   const findings: Finding[] = [...new Set(tokens)].map(term => {

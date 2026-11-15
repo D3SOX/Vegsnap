@@ -311,11 +311,15 @@ class Evaluator(private val rulesDocument: JSONObject) {
         // A negated label ("Free from: milk") or item ("Contains: milk, no soy") names what the product does not contain.
         val tailTerms = split.tail.split(Regex("[.!](?=\\s|$)|\\n"))
             .filter { labelledSection.containsMatchIn(it) && !negatedBefore.containsMatchIn(normalizeCompositionTerm(it.substringBefore(':'))) }
-            .flatMap { compositionTerms(it) }.filterNot { negatedBefore.containsMatchIn(it) }
+            .flatMap { compositionTerms(it) }
         val tailGuards = tailTerms.mapNotNull { term ->
             val value = normalizeCompositionTerm(term.substringAfterLast(':'))
-            // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
-            (listOf(value, term) + value.split(tailConjunction).map(::normalizeCompositionTerm)).firstOrNull { exactRule(it)?.optString("status") == "animal" }
+            // "Contains: milk and eggs" declares each conjunct. A negation covers its conjunct and the ones after it
+            // ("no milk or eggs", "milk and no soy"); an unnegated whole term still wins when it is an alias itself.
+            val parts = value.split(tailConjunction).map(::normalizeCompositionTerm)
+            val firstNegated = parts.indexOfFirst { negatedBefore.containsMatchIn(it) }.let { if (it < 0) parts.size else it }
+            ((if (negatedBefore.containsMatchIn(value)) emptyList() else listOf(value, term)) + parts.take(firstNegated))
+                .firstOrNull { exactRule(it)?.optString("status") == "animal" }
         }
         val tokens = ((if (parsed != null) parsed + guards else fallback) + tailGuards).distinct()
         val findings = JSONArray()
