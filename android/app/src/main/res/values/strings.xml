@@ -432,7 +432,7 @@
     <string name="tour_control_body">No Vegsnap account is required. Choose how much to share and how many checks run at once.</string>
     <string name="tour_done">Start checking</string>
     <string name="tour_evidence">Read the evidence level</string>
-    <string name="tour_evidence_body">Each evidence level has its own icon and color, also shown in History. Open a result to see its sources.</string>
+    <string name="tour_evidence_body">All of these mean vegan. Icon and color show what the result is based on, also in History. Open a result to see its sources.</string>
     <string name="tour_local">Local history, explicit AI</string>
     <string name="tour_local_body">History and photos stay on this device. Explicit AI checks send selected content to your provider. Database searches send product identifiers or search terms, never camera frames.</string>
     <string name="tour_maker">Manufacturer says vegan</string>
@@ -441,7 +441,7 @@
     <string name="tour_nonvegan">Not vegan</string>
     <string name="tour_nonvegan_body">Identified animal-derived ingredients or materials are explained in the result.</string>
     <string name="tour_packaging">Visible label</string>
-    <string name="tour_packaging_body">A vegan claim or mark is visible on the packaging. Authenticity and the certification registry have not been checked.</string>
+    <string name="tour_packaging_body">The packaging or a product database shows a vegan claim or mark. Authenticity and the certification registry have not been checked.</string>
     <string name="tour_photo">Add the missing detail</string>
     <string name="tour_photo_body">Photograph the front and the complete ingredients or materials. Tap Check to use your chosen AI when database evidence is missing.</string>
     <string name="tour_progress">Step %1$d of %2$d</string>
@@ -457,8 +457,8 @@
     <string name="vegan">Ingredients/materials appear vegan</string>
     <string name="vegan_certification_source">Certification source says vegan</string>
     <string name="vegan_certified">Certified vegan</string>
-    <string name="vegan_label_visible">Vegan label visible</string>
     <string name="vegan_manufacturer">Manufacturer says vegan</string>
+    <string name="vegan_per_label">Label says vegan</string>
     <string name="vision">This model accepts images</string>
     <string name="vision_unknown">Image support is not listed; photo checks will try this model.</string>
     <string name="vision_unsupported">The selected model does not support images. Choose a vision model for photo checks.</string>

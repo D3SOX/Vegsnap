@@ -8559,9 +8559,9 @@
     ]
   },
   "tour_evidence_body": {
-    "en": "Each evidence level has its own icon and color, also shown in History. Open a result to see its sources.",
-    "de": "Jede Belegstufe hat ein eigenes Symbol und eine eigene Farbe, auch im Verlauf. Öffne ein Ergebnis, um seine Quellen zu sehen.",
-    "sv": "Varje beläggsnivå har en egen ikon och färg, som även visas i Historik. Öppna ett resultat för att se dess källor.",
+    "en": "All of these mean vegan. Icon and color show what the result is based on, also in History. Open a result to see its sources.",
+    "de": "All diese Ergebnisse bedeuten vegan. Symbol und Farbe zeigen, worauf das Ergebnis beruht, auch im Verlauf. Öffne ein Ergebnis, um seine Quellen zu sehen.",
+    "sv": "Alla dessa betyder vegansk. Ikon och färg visar vad resultatet bygger på, även i Historik. Öppna ett resultat för att se dess källor.",
     "android": [
       "tour_evidence_body"
     ]
@@ -8615,9 +8615,9 @@
     ]
   },
   "tour_packaging_body": {
-    "en": "A vegan claim or mark is visible on the packaging. Authenticity and the certification registry have not been checked.",
-    "de": "Auf der Verpackung ist eine Vegan-Aussage oder ein Siegel zu sehen. Echtheit und Zertifizierungsregister wurden nicht geprüft.",
-    "sv": "Ett veganpåstående eller en veganmärkning är synlig på förpackningen. Äkthet och certifieringsregister har inte kontrollerats.",
+    "en": "The packaging or a product database shows a vegan claim or mark. Authenticity and the certification registry have not been checked.",
+    "de": "Die Verpackung oder eine Produktdatenbank zeigt eine Vegan-Aussage oder ein Siegel. Echtheit und Zertifizierungsregister wurden nicht geprüft.",
+    "sv": "Förpackningen eller en produktdatabas visar ett veganpåstående eller en veganmärkning. Äkthet och certifieringsregister har inte kontrollerats.",
     "android": [
       "tour_packaging_body"
     ]
@@ -8816,14 +8816,6 @@
       "result.veganCertified"
     ]
   },
-  "vegan_label_visible": {
-    "en": "Vegan label visible",
-    "de": "Vegan-Kennzeichnung sichtbar",
-    "sv": "Veganmärkning synlig",
-    "android": [
-      "vegan_label_visible"
-    ]
-  },
   "vegan_manufacturer": {
     "en": "Manufacturer says vegan",
     "de": "Laut Hersteller vegan",
@@ -8841,6 +8833,14 @@
     "sv": "Vegsnap AI (gratis)",
     "ios": [
       "Vegsnap AI (free)"
+    ]
+  },
+  "vegan_per_label": {
+    "en": "Label says vegan",
+    "de": "Laut Kennzeichnung vegan",
+    "sv": "Vegansk enligt märkningen",
+    "android": [
+      "vegan_per_label"
     ]
   },
   "vegsnap_ai_is_unavailable_try_again_later": {

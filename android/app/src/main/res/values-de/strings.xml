@@ -432,7 +432,7 @@
     <string name="tour_control_body">Kein Vegsnap-Konto nötig. Wähle, was du teilst und wie viele Prüfungen gleichzeitig laufen.</string>
     <string name="tour_done">Loslegen</string>
     <string name="tour_evidence">Die Belegstufe verstehen</string>
-    <string name="tour_evidence_body">Jede Belegstufe hat ein eigenes Symbol und eine eigene Farbe, auch im Verlauf. Öffne ein Ergebnis, um seine Quellen zu sehen.</string>
+    <string name="tour_evidence_body">All diese Ergebnisse bedeuten vegan. Symbol und Farbe zeigen, worauf das Ergebnis beruht, auch im Verlauf. Öffne ein Ergebnis, um seine Quellen zu sehen.</string>
     <string name="tour_local">Lokaler Verlauf, bewusste KI-Nutzung</string>
     <string name="tour_local_body">Verlauf und Fotos bleiben auf diesem Gerät. Bewusste KI-Prüfungen senden ausgewählte Inhalte an deinen Anbieter. Datenbankabfragen senden Produktkennungen oder Suchbegriffe, niemals Kamerabilder.</string>
     <string name="tour_maker">Hersteller sagt vegan</string>
@@ -441,7 +441,7 @@
     <string name="tour_nonvegan">Nicht vegan</string>
     <string name="tour_nonvegan_body">Erkannte tierische Zutaten oder Materialien werden erklärt. Widersprüchliche Belege werden angezeigt, statt still verworfen zu werden.</string>
     <string name="tour_packaging">Sichtbare Kennzeichnung</string>
-    <string name="tour_packaging_body">Auf der Verpackung ist eine Vegan-Aussage oder ein Siegel zu sehen. Echtheit und Zertifizierungsregister wurden nicht geprüft.</string>
+    <string name="tour_packaging_body">Die Verpackung oder eine Produktdatenbank zeigt eine Vegan-Aussage oder ein Siegel. Echtheit und Zertifizierungsregister wurden nicht geprüft.</string>
     <string name="tour_photo">Fehlende Details ergänzen</string>
     <string name="tour_photo_body">Fotografiere die Vorderseite und die vollständigen Zutaten oder Materialien. Tippe auf Prüfen, um bei fehlenden Datenbankbelegen deine KI zu nutzen.</string>
     <string name="tour_progress">Schritt %1$d von %2$d</string>
@@ -457,8 +457,8 @@
     <string name="vegan">Zutaten/Materialien erscheinen vegan</string>
     <string name="vegan_certification_source">Laut Zertifizierungsquelle vegan</string>
     <string name="vegan_certified">Vegan zertifiziert</string>
-    <string name="vegan_label_visible">Vegan-Kennzeichnung sichtbar</string>
     <string name="vegan_manufacturer">Laut Hersteller vegan</string>
+    <string name="vegan_per_label">Laut Kennzeichnung vegan</string>
     <string name="vision">Dieses Modell unterstützt Bilder</string>
     <string name="vision_unknown">Die Bildunterstützung ist nicht angegeben. Fotoprüfungen versuchen es mit diesem Modell.</string>
     <string name="vision_unsupported">Das gewählte Modell unterstützt keine Bilder. Wähle für Fotoprüfungen ein bildfähiges Modell.</string>
