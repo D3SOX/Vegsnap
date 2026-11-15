@@ -34,7 +34,7 @@ export default defineContentScript({
       for (const [host, binding] of badges) {
         const label = labels.get(host);
         if (label) label.textContent = t.check;
-        host.removeAttribute('title');
+        label?.parentElement?.removeAttribute('title');
         if (binding.product.barcode) { observer.unobserve(host); observer.observe(host); }
       }
     }
@@ -66,7 +66,8 @@ export default defineContentScript({
             cached = response.ok && response.cached === true;
             if (!lookupCurrent()) return;
             if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : t.check;
-            host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
+            // The tooltip stays inside the closed root; the host element is readable by store scripts.
+            if (label?.parentElement) label.parentElement.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
           } catch { if (label && lookupCurrent()) label.textContent = t.check; }
           // Pace database lookups; answers from the background cache cost no request.
           if (!cached) await new Promise(resolve => setTimeout(resolve, 1600));

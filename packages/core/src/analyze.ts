@@ -246,29 +246,32 @@ const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kan
  * A precaution ends at its closing bracket or at the end of its sentence. A bracketed one resumes the list
  * ("oil (may contain palm oil), whey"); after a sentence, the tail is only checked for exact animal terms.
  */
+const labelledSection = /^\s*\p{L}[\p{L} '-]{0,40}:/u;
 export function splitPrecaution(body: string): { ingredients: string; crossContact: string[]; tail: string } {
-  let ingredients = '', tail = '', rest = body, afterSentence = false;
+  let ingredients = '', tail = '', offset = 0, afterSentence = false;
   const crossContact: string[] = [];
-  for (let match = precaution.exec(rest); match; match = precaution.exec(rest)) {
-    const before = rest.slice(0, match.index);
-    if (afterSentence) tail += before; else ingredients += before;
+  for (let match = precaution.exec(body.slice(offset)); match; match = precaution.exec(body.slice(offset))) {
+    const start = offset + match.index;
+    if (afterSentence) tail += body.slice(offset, start); else ingredients += body.slice(offset, start);
+    // Depth over the whole body, so an outer bracket stays open after an inner precaution closes.
     let depth = 0;
-    for (const char of before) depth = '(['.includes(char) ? depth + 1 : ')]'.includes(char) ? Math.max(0, depth - 1) : depth;
+    for (const char of body.slice(0, start)) depth = '(['.includes(char) ? depth + 1 : ')]'.includes(char) ? Math.max(0, depth - 1) : depth;
     let end = -1;
-    for (let index = match.index, level = 0; depth && index < rest.length; index++) {
-      if ('(['.includes(rest[index]!)) level++;
-      else if (')]'.includes(rest[index]!) && !level--) { end = index; break; }
+    for (let index = start, level = 0; depth && index < body.length; index++) {
+      if ('(['.includes(body[index]!)) level++;
+      else if (')]'.includes(body[index]!) && !level--) { end = index; break; }
     }
     const bracketed = end >= 0;
     if (!bracketed) {
-      const sentence = /[.!](?=\s|$)|\n/.exec(rest.slice(match.index + match[0].length));
-      end = sentence ? match.index + match[0].length + sentence.index + 1 : rest.length;
+      const after = start + match[0].length;
+      const sentence = /[.!](?=\s|$)|\n/.exec(body.slice(after));
+      end = sentence ? after + sentence.index + 1 : body.length;
     }
-    crossContact.push(rest.slice(match.index, end).trim());
-    rest = rest.slice(end);
+    crossContact.push(body.slice(start, end).trim());
+    offset = end;
     afterSentence ||= !bracketed;
   }
-  if (afterSentence) tail += rest; else ingredients += rest;
+  if (afterSentence) tail += body.slice(offset); else ingredients += body.slice(offset);
   return { ingredients, crossContact, tail };
 }
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
@@ -301,8 +304,14 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
     const guard = candidates.find(item => status(item) === 'animal') ?? candidates.find(item => status(item) === 'ambiguous');
     return guard ? [guard] : [];
   });
-  // Text after a precaution sentence is not the list ("Store cool"), but an exact animal term there still vetoes ("Coating: beeswax").
-  const tailGuards = compositionTerms(tail).flatMap(term => [normalizeTerm(term.slice(term.lastIndexOf(':') + 1)), term].filter(item => exactRule(item)?.status === 'animal').slice(0, 1));
+  // Text after a precaution sentence is not the list ("Store cool", "Made in a facility that handles milk"), but an exact
+  // animal term in a labelled section there still vetoes ("Coating: beeswax").
+  const sections = tail.split(/[.!](?=\s|$)|\n/).filter(sentence => labelledSection.test(sentence)).join('\n');
+  const tailGuards = compositionTerms(sections).flatMap(term => {
+    const value = normalizeTerm(term.slice(term.lastIndexOf(':') + 1));
+    // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
+    return [value, term, ...value.split(conjunctionSplit).map(normalizeTerm)].filter(item => exactRule(item)?.status === 'animal').slice(0, 1);
+  });
   const tokens = [...(parsed ? [...parsed, ...guards] : fallback), ...tailGuards];
   const findings: Finding[] = [...new Set(tokens)].map(term => {
     const rule = ruleForTerm(term);

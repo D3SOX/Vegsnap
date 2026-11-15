@@ -153,6 +153,7 @@ class Evaluator(private val rulesDocument: JSONObject) {
     // ("natural flavouring / milk powder") unless a hyphen shares one head across it ("Huhn-/Pouletgeschmack", "mjölk-/mælkepulver"). Both word lists are data shared with the TypeScript core and match whole words only, so "y", "o" and "e" never match inside a word or an E-number.
     private val withWords = extendedTerms("withWords").joinToString("|")
     private val conjunctions = extendedTerms("conjunctions").joinToString("|")
+    private val tailConjunction = Regex("\\s+(?:and/or|und/oder|och/eller|et/ou|y/o|$conjunctions)\\s+|\\s*(?:&|/)\\s*")
     private val phrase = Regex("(?:^|[^\\p{L}\\p{N}])(?:$withWords)(?=$|[^\\p{L}\\p{N}])")
     private val conjunct = Regex("(?:^|[^\\p{L}\\p{N}])(?:$withWords|$conjunctions|&)(?=$|[^\\p{L}\\p{N}])|(?<![-–])/")
     private val conjunction = Regex("$conjunctions|&|/")
@@ -305,9 +306,13 @@ class Evaluator(private val rulesDocument: JSONObject) {
             val candidates = if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term) else listOf(term)
             candidates.firstOrNull { status(it) == "animal" } ?: candidates.firstOrNull { status(it) == "ambiguous" }
         }
-        // Text after a precaution sentence is not the list ("Store cool"), but an exact animal term there still vetoes ("Coating: beeswax").
-        val tailGuards = compositionTerms(split.tail).mapNotNull { term ->
-            listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term).firstOrNull { exactRule(it)?.optString("status") == "animal" }
+        // Text after a precaution sentence is not the list ("Store cool", "Made in a facility that handles milk"), but an exact
+        // animal term in a labelled section there still vetoes ("Coating: beeswax").
+        val sections = split.tail.split(Regex("[.!](?=\\s|$)|\\n")).filter { labelledSection.containsMatchIn(it) }.joinToString("\n")
+        val tailGuards = compositionTerms(sections).mapNotNull { term ->
+            val value = normalizeCompositionTerm(term.substringAfterLast(':'))
+            // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
+            (listOf(value, term) + value.split(tailConjunction).map(::normalizeCompositionTerm)).firstOrNull { exactRule(it)?.optString("status") == "animal" }
         }
         val tokens = ((if (parsed != null) parsed + guards else fallback) + tailGuards).distinct()
         val findings = JSONArray()

@@ -4,6 +4,7 @@ import type { CheckInput, CheckOptions, DatabaseComposition, DatabaseProduct } f
 import { readBoundedText } from './http';
 import { countryCode, selectProductCountry } from './market';
 import { resultMessages } from './i18n';
+import { AIFailure } from './ai-error';
 import { version } from '../package.json';
 
 export const DATABASES = [
@@ -74,9 +75,10 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       const requestedMarket = selectProductCountry(options,undefined,markets).market;
       const differentMarket = markets.length > 0 && !markets.some(tag => countryCode(tag) === requestedMarket);
       if (differentMarket && !options.autoMarket) {
-        // The product exists; the other databases would only repeat the same mismatch.
-        errors.splice(0, errors.length, t.databaseMarketMissing.replace('{market}', requestedMarket));
-        break;
+        // Another database may list the market for this code; the warning is shown once either way.
+        const mismatch = t.databaseMarketMissing.replace('{market}', requestedMarket);
+        if (!errors.includes(mismatch)) errors.push(mismatch);
+        continue;
       }
       const localized = (field: string) => [options.locale && options.locale !== 'en' ? product[`${field}_${options.locale}`] : undefined, product[field], product[`${field}_de`]]
         .map(string).find(value => value !== undefined);
@@ -99,7 +101,8 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       return structuredClone(value);
     } catch (error) {
       if (options.signal?.aborted) throw error;
-      errors.push(t.databaseSourceFailed.replace('{database}', db.name));
+      // Local fixed copy (such as a missing data-sharing permission) names its own fix.
+      errors.push(error instanceof AIFailure && error.display ? error.display : t.databaseSourceFailed.replace('{database}', db.name));
     }
   }
   if (errors.length) throw new Error(errors.join(' '));

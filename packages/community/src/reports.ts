@@ -47,14 +47,22 @@ export async function submitReport(request: Request, env: Env): Promise<Response
   catch (error) { if (error instanceof SubmissionError) throw new ReportError(400, error.message); throw error; }
   if (report.kind === 'community' && !await env.DB.prepare("SELECT id FROM submissions WHERE id=? AND status='approved'").bind(report.contentId).first()) throw new ReportError(404, 'This reply is no longer published.');
   const now = new Date().toISOString(), day = now.slice(0, 10);
+  const hash = await clientHash(request, env, day);
   const client = await env.DB.prepare('INSERT INTO report_ip_budget(day, client, count) VALUES (?, ?, 1) ON CONFLICT(day, client) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count')
-    .bind(day, await clientHash(request, env, day), DAILY_REPORTS_PER_CLIENT).first();
+    .bind(day, hash, DAILY_REPORTS_PER_CLIENT).first();
   if (!client) throw new ReportError(429, 'You have sent the maximum number of reports for today. Try tomorrow.');
+  // A report that is not stored must not use up the client's allowance.
+  const refundClient = () => env.DB.prepare('UPDATE report_ip_budget SET count=count-1 WHERE day=? AND client=? AND count > 0').bind(day, hash).run();
   const budget = await env.DB.prepare('INSERT INTO report_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count').bind(day, DAILY_REPORTS).first();
-  if (!budget) throw new ReportError(429, 'The daily report limit has been reached. Try tomorrow.');
+  if (!budget) { await refundClient(); throw new ReportError(429, 'The daily report limit has been reached. Try tomorrow.'); }
   const id = crypto.randomUUID();
-  await env.DB.prepare('INSERT INTO content_reports(id, kind, content_id, text, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, report.kind, report.contentId, report.text, report.reason, report.result ? JSON.stringify(report.result) : '', now).run();
+  try {
+    await env.DB.prepare('INSERT INTO content_reports(id, kind, content_id, text, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, report.kind, report.contentId, report.text, report.reason, report.result ? JSON.stringify(report.result) : '', now).run();
+  } catch (error) {
+    await Promise.allSettled([refundClient(), env.DB.prepare('UPDATE report_budget SET count=count-1 WHERE day=? AND count > 0').bind(day).run()]);
+    throw error;
+  }
   return Response.json({ id }, { status: 201 });
 }
 

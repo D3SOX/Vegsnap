@@ -274,8 +274,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             val returned = product.optString("code")
             if (!validGtin(returned) || returned.padStart(14, '0') != barcode.padStart(14, '0')) throw IOException("Product identity mismatch")
             val markets = product.optJSONArray("countries_tags") ?: JSONArray()
-            // The product exists; the other databases would only repeat the same market mismatch.
-            if (input.autoMarket == false && markets.length() > 0 && markets.stringValues().none { productCountryCode(it) == input.market }) return null
+            if (input.autoMarket == false && markets.length() > 0 && markets.stringValues().none { productCountryCode(it) == input.market }) continue
             val market = selectProductCountry(input, markets = markets.stringValues()).first
             fun localized(field: String) = listOfNotNull("${field}_${input.locale}".takeIf { input.locale != "en" }, field, "${field}_de")
                 .map { product.optString(it) }.firstOrNull { it.isNotBlank() }.orEmpty()

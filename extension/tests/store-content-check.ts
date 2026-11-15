@@ -153,11 +153,12 @@ try {
   lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Composition appears vegan', summary: 'Database evidence' } });
   await settle();
   assert.equal(button(languageHost).textContent, 'Vegsnap · Composition appears vegan');
-  assert.equal(languageHost.title, 'Database evidence');
+  assert.equal(button(languageHost).title, 'Database evidence');
+  assert.equal(languageHost.title, '', 'The badge host exposes no verdict to store scripts');
   assert(!visibility.observed.has(languageHost), 'A completed lookup is not repeated while the language stays the same');
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'sv' } } }, 'local');
   assert.equal(button(languageHost).textContent, 'Vegsnap · Kontrollera', 'A language switch resets completed badges');
-  assert.equal(languageHost.title, '');
+  assert.equal(button(languageHost).title, '');
   assert(visibility.observed.has(languageHost), 'A reset badge is checked again in the new language once visible');
   for (const listener of storageListeners) listener({ settings: { newValue: { language: 'en' } } }, 'local');
   fourth.invalidate();
@@ -174,7 +175,7 @@ try {
   lookups.shift()!({ ok: true, result: { identity: { match: 'exact_barcode' }, title: 'Old English result', summary: 'Old English summary' } });
   await settle();
   assert.equal(button(pendingHost).textContent, 'Vegsnap · Kontrollera', 'A pending lookup cannot restore an old-language result after a switch');
-  assert.equal(pendingHost.title, '');
+  assert.equal(button(pendingHost).title, '');
   fifth.invalidate();
   assert.equal(badges().length, 0);
 

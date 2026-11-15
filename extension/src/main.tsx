@@ -57,6 +57,9 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'browse' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
+  // What the window shows now, so an async step never acts on a view the user has left.
+  const view = useRef<{ tab: typeof tab; result?: string }>({ tab });
+  view.current = { tab, result: storedResult?.id };
   // Photos stay out of shared state: each check's photos are loaded once, only while they can be shown.
   const [photos, setPhotos] = useState<Record<string, string[]>>({});
   const requestedPhotos = useRef(new Set<string>());
@@ -224,8 +227,11 @@ export function App() {
     // Editing must not drop saved photos whose request has not returned yet.
     let saved = photos[storedResult.id];
     if (!saved) {
+      const opened = view.current;
       try { saved = (await request<Record<string, string[]>>({ type: 'history-photos', ids: [storedResult.id] }))[storedResult.id]; }
-      catch (error) { setError(error instanceof Error ? error.message : String(error)); return; }
+      catch (error) { if (view.current.tab === opened.tab && view.current.result === opened.result) setError(error instanceof Error ? error.message : String(error)); return; }
+      // The user may have moved on while the photos loaded; never replace what they are doing now.
+      if (view.current.tab !== opened.tab || view.current.result !== opened.result) return;
     }
     const input = editableInput({ ...storedResult, photos: saved });
     const barcodeInText = input.barcode !== undefined && textBarcode(input.text ?? '') === input.barcode;
@@ -460,7 +466,8 @@ export function App() {
         <ProductMarket market={storedResult!.identity.market} source={storedResult!.identity.marketSource} locale={config.language} disabled={busy} onSave={country=>act(async ()=>{
           const original = storedResult!;
           const corrected = savedHistory.some(item=>item.id === original.id)
-            ? keepPhotos(await request<HistoryResult>({type:'set-result-market',id:original.id,market:country}))
+            // Metadata only: the reply omits photos, so the loaded ones stay.
+            ? await request<HistoryResult>({type:'set-result-market',id:original.id,market:country})
             : {...original,identity:{...original.identity,market:country,marketSource:'manual' as const}};
           setOnlineCheck(undefined);
           setResult(current=>current?.id === original.id ? corrected : current);

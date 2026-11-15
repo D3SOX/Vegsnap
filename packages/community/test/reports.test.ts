@@ -123,6 +123,14 @@ test('one client cannot use up the shared daily report budget', async () => {
   expect((await submit(report, { 'CF-Connecting-IP': '198.51.100.46' })).status).toBe(201);
   expect(await db.prepare('SELECT count FROM report_budget').first('count')).toBe(2);
 });
+test('a report that cannot be stored gives both allowances back', async () => {
+  const db = await mf.getD1Database('DB');
+  await db.prepare("CREATE TRIGGER fail_report BEFORE INSERT ON content_reports BEGIN SELECT RAISE(ABORT, 'test failure'); END").run();
+  try { expect((await submit(report, { 'CF-Connecting-IP': '198.51.100.47' })).status).not.toBe(201); }
+  finally { await db.prepare('DROP TRIGGER fail_report').run(); }
+  expect(await db.prepare('SELECT count FROM report_ip_budget').first('count')).toBe(0);
+  expect(await db.prepare('SELECT count FROM report_budget').first('count')).toBe(0);
+});
 test('the report queue pages through every report oldest first', async () => {
   const db = await mf.getD1Database('DB');
   const ids = Array.from({ length: 51 }, (_, i) => `${(0xfffffff0 - i).toString(16)}-0000-4000-8000-000000000000`);

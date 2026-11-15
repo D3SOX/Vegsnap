@@ -166,14 +166,14 @@ test('country options list every product country with a flag and localized name 
   expect(options.find(option => option.code === 'SE')).toEqual({ code: 'SE', name: 'Sverige', flag: '🇸🇪' });
   expect(options.findIndex(option => option.code === 'AT')).toBeGreaterThan(options.findIndex(option => option.code === 'SE'));
 });
-test('a market mismatch stops the lookup instead of repeating it in every database', async () => {
+test('a market mismatch in every database is reported once', async () => {
   const urls: string[] = [];
   const fetcher = Object.assign(async (url: string | URL | Request) => {
     urls.push(String(url));
     return Response.json({ status: 'success', product: { code: '4006381333931', countries_tags: ['en:germany'] } });
   }, { preconnect: fetch.preconnect });
   const result = await checkProduct({ market: 'SE', autoMarket: false, barcode: '4006381333931', category: 'cosmetics', locale: 'de' }, { mode: 'background', fetch: fetcher });
-  expect(urls).toHaveLength(1);
+  expect(urls).toHaveLength(3);
   expect(result.warnings.filter(warning => warning.includes('nennt SE nicht'))).toHaveLength(1);
 });
 test('Swedish database fields are requested and preferred for Swedish users', async () => {
