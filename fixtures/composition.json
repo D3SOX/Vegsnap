@@ -2987,5 +2987,16 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "square-bracket-precaution-resumes-list",
+    "input": {
+      "text": "Ingredients: sugar [may contain nuts], whey, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

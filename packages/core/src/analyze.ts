@@ -65,8 +65,8 @@ function containsWord(text: string, word: string): boolean {
 export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
   if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
   const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
-  const split = splitPrecaution(source);
-  const intentional = `${split.ingredients} ${split.tail}`;
+  // Text after a precaution sentence only vetoes through exact local terms, never through an AI split.
+  const intentional = splitPrecaution(source).ingredients;
   const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
   return terms.every(term => containsWord(intentional, term)) ? [...new Set(terms.map(normalizeTerm))] : undefined;
 }
@@ -253,11 +253,11 @@ export function splitPrecaution(body: string): { ingredients: string; crossConta
     const before = rest.slice(0, match.index);
     if (afterSentence) tail += before; else ingredients += before;
     let depth = 0;
-    for (const char of before) depth = char === '(' ? depth + 1 : char === ')' ? Math.max(0, depth - 1) : depth;
+    for (const char of before) depth = '(['.includes(char) ? depth + 1 : ')]'.includes(char) ? Math.max(0, depth - 1) : depth;
     let end = -1;
     for (let index = match.index, level = 0; depth && index < rest.length; index++) {
-      if (rest[index] === '(') level++;
-      else if (rest[index] === ')' && !level--) { end = index; break; }
+      if ('(['.includes(rest[index]!)) level++;
+      else if (')]'.includes(rest[index]!) && !level--) { end = index; break; }
     }
     const bracketed = end >= 0;
     if (!bracketed) {

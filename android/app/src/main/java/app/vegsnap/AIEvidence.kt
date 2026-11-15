@@ -20,8 +20,8 @@ private fun canonicalIngredientSource(text: String): String = java.text.Normaliz
 internal fun parseSourceIngredients(text: String, items: JSONArray?): List<String>? {
     if (items == null || items.length() !in 1..100) return null
     val source = canonicalIngredientSource(text)
-    val split = splitPrecaution(source)
-    val intentional = "${split.ingredients} ${split.tail}"
+    // Text after a precaution sentence only vetoes through exact local terms, never through an AI split.
+    val intentional = splitPrecaution(source).ingredients
     val terms = mutableListOf<String>()
     for (index in 0 until items.length()) {
         val value = items.opt(index) as? String ?: return null

@@ -62,7 +62,7 @@ export function App() {
   const requestedPhotos = useRef(new Set<string>());
   function keepPhotos(value: HistoryResult): HistoryResult {
     const { photos: supplied, ...result } = value;
-    if (supplied?.length) { requestedPhotos.current.add(result.id); setPhotos(current => ({ ...current, [result.id]: supplied })); }
+    requestedPhotos.current.add(result.id); setPhotos(current => ({ ...current, [result.id]: supplied ?? [] }));
     return result;
   }
   const [editingResult, setEditingResult] = useState<HistoryResult>();
@@ -191,7 +191,8 @@ export function App() {
     if (!ids.length) return;
     for (const id of ids) requestedPhotos.current.add(id);
     request<Record<string, string[]>>({ type: 'history-photos', ids })
-      .then(found => setPhotos(current => ({ ...current, ...Object.fromEntries(ids.flatMap(id => found[id]?.length ? [[id, found[id]]] : [])) })))
+      // An empty list records a check without photos, so editing it need not wait.
+      .then(found => setPhotos(current => ({ ...current, ...Object.fromEntries(ids.map(id => [id, found[id] ?? []])) })))
       .catch(() => { for (const id of ids) requestedPhotos.current.delete(id); });
   }, [tab, savedHistory, storedResult?.id]);
   useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state, account.selectedAccount]);
@@ -218,9 +219,15 @@ export function App() {
       await settingsWrites.current;
       const checked = await runCheck(input, editingResult?.id); newScan(); setResult(checked); await refresh(); });
   }
-  function editResult() {
+  async function editResult() {
     if (!storedResult) return;
-    const input = editableInput({ ...storedResult, photos: photos[storedResult.id] });
+    // Editing must not drop saved photos whose request has not returned yet.
+    let saved = photos[storedResult.id];
+    if (!saved) {
+      try { saved = (await request<Record<string, string[]>>({ type: 'history-photos', ids: [storedResult.id] }))[storedResult.id]; }
+      catch (error) { setError(error instanceof Error ? error.message : String(error)); return; }
+    }
+    const input = editableInput({ ...storedResult, photos: saved });
     const barcodeInText = input.barcode !== undefined && textBarcode(input.text ?? '') === input.barcode;
     setEditingResult(storedResult); setResult(undefined); setTab('scan');
     marketOverride.current = input.autoMarket !== true && storedResult.identity.marketSource !== 'fallback';
@@ -435,7 +442,7 @@ export function App() {
       {result ? <section class="result">
         <button type="button" class="text-button" onClick={newScan}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
-        <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
+        <button class="edit-details" type="button" disabled={busy} onClick={() => void editResult()}>{t.editDetails}</button>
         {result.outcome === 'not_vegan' && <Alternatives researchEnabled={alternativeResearchEnabled} key={`${result.id}:${result.identity.market}`} config={config} initialQuery={alternativeQueryForProduct(result.identity.name ?? '', result.identity.brand, result.findings.filter(finding => finding.status === 'animal').map(finding => finding.term))} category={result.category} market={result.identity.market} excludeBarcode={result.identity.barcode} research={researchAlternatives}/>}
         {photos[result.id]?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{photos[result.id]!.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>

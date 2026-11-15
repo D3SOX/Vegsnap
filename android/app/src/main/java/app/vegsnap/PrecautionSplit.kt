@@ -26,13 +26,13 @@ internal fun splitPrecaution(body: String): PrecautionSplit {
 }
 /** The bracket closing the one a precaution at [start] was opened in, if any. */
 private fun closingBracket(text: String, start: Int): Int? {
-    val open = text.take(start).fold(0) { depth, char -> when (char) { '(' -> depth + 1; ')' -> maxOf(0, depth - 1); else -> depth } }
+    val open = text.take(start).fold(0) { depth, char -> when (char) { '(', '[' -> depth + 1; ')', ']' -> maxOf(0, depth - 1); else -> depth } }
     if (open == 0) return null
     var level = 0
     for (index in start until text.length) {
         when (text[index]) {
-            '(' -> level++
-            ')' -> if (level == 0) return index else level--
+            '(', '[' -> level++
+            ')', ']' -> if (level == 0) return index else level--
         }
     }
     return null

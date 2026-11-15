@@ -1,4 +1,5 @@
 import { resultMessages } from './i18n';
+import { readBoundedText } from './http';
 import type { AIErrorCode, Locale } from './types';
 
 type ResultMessage = keyof typeof resultMessages.en;
@@ -28,7 +29,7 @@ const envelopeCodes: [AIErrorCode, string[]][] = [
 /** Same classification as Android: a known provider error code wins over the HTTP status. The body is never kept. */
 export async function httpFailure(response: Response, service: string): Promise<AIFailure> {
   let envelope: unknown;
-  try { envelope = JSON.parse((await response.text()).slice(0, 65_536)); } catch { envelope = undefined; }
+  try { envelope = JSON.parse(await readBoundedText(response, 65_536)); } catch { envelope = undefined; }
   const record = (value: unknown) => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
   const outer = record(envelope);
   const error = record(outer?.error) ?? outer;
@@ -42,7 +43,8 @@ export async function httpFailure(response: Response, service: string): Promise<
 
 export function aiErrorCode(error: unknown): AIErrorCode {
   if (error instanceof AIFailure) return error.code;
-  if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
+  // JavaScriptCore (the iOS bridge) has no DOMException, so match the name only.
+  if ((error as { name?: unknown } | null)?.name === 'TimeoutError') return 'timeout';
   if (error instanceof TypeError) return 'network';
   if (error instanceof SyntaxError) return 'invalid_response';
   return 'unknown';

@@ -24,3 +24,12 @@ test('a changed transcription is reported in the user language', async () => {
   expect(result.aiError?.code).toBe('invalid_response');
   expect(result.warnings).toContain('AI-tolkningen ändrade den angivna texten; de ursprungliga beläggen behölls.');
 });
+test('classification works without DOMException, as in JavaScriptCore', async () => {
+  const { aiErrorCode } = await import('../src/ai-error');
+  const original = globalThis.DOMException;
+  try {
+    // @ts-expect-error simulate a runtime without the constructor
+    delete globalThis.DOMException;
+    expect(aiErrorCode(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))).toBe('timeout');
+  } finally { globalThis.DOMException = original; }
+});

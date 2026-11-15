@@ -296,3 +296,9 @@ describe('AI privacy and validation', () => {
     expect(cancelled).toBe(true);
   });
 });
+test('an AI split cannot ground terms in a precaution statement tail', () => {
+  const text = 'Ingredients: water, salt. May contain milk. Made in a facility that also handles milk.';
+  const result = analyzeText({ text, category: 'food' }, () => new Date('2026-01-01T00:00:00Z'), ['water', 'salt', 'milk']);
+  expect(result.outcome).toBe('vegan');
+  expect(result.findings.some(item => item.ruleId === 'milk')).toBe(false);
+});
