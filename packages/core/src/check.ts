@@ -9,6 +9,8 @@ import { attachCompanyConcerns } from './company-concerns';
 import { applyManufacturerContact } from './manufacturer-contact';
 import { applyCompanyAssessment } from './company-assessment';
 import { databaseCountryWarning, selectProductCountry } from './market';
+import { AIFailure, aiError } from './ai-error';
+import { marketWarning } from './message-match';
 import type { CheckInput, CheckOptions, CheckResult, DatabaseComposition, DatabaseProduct } from './types';
 
 function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () => Date): CheckResult {
@@ -19,7 +21,7 @@ function databaseResult(product: DatabaseProduct, input: CheckInput, now?: () =>
   result.identity.match = 'exact_barcode';
   result.warnings.push(t.communityRecordCaution);
   // Country warnings are evaluated after packaging and database clues are combined.
-  result.warnings.push(...(product.warnings ?? []).filter(warning => !/^(This record lists other markets|Dieser Datensatz nennt andere Märkte|Different market:|Abweichender Markt:|Den här posten anger andra marknader|Annan marknad:)/.test(warning)));
+  result.warnings.push(...(product.warnings ?? []).filter(warning => !marketWarning.test(warning)));
   // Database label tags are community assertions, not independently verified registry claims.
   if (product.labels.length) result.warnings.push(`${t.databaseLabelsPrefix}${product.labels.join(', ')}`);
   if (!product.labels.some(label => veganDatabaseLabels.has(label))) return result;
@@ -58,16 +60,29 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     if (checked.has(lookupKey)) return;
     checked.add(lookupKey);
     if (options.offlineProducts || !options.offline) options.onProgress?.('database');
+    const use = (product: DatabaseProduct) => {
+      remember(product); markets.push(...product.markets ?? []); evidenceMarkets.push(product.evidenceMarkets ?? product.markets ?? []);
+      result = mergeResults(result, databaseResult(product, input, options.now), input.locale);
+    };
+    const online = () => lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
+      category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
     try {
       const local = options.offlineProducts?.lookup(code, input);
-      if (local) { remember(local); markets.push(...local.markets ?? []); evidenceMarkets.push(local.evidenceMarkets ?? local.markets ?? []); result = mergeResults(result, databaseResult(local, input, options.now), input.locale); return true; }
+      if (local) {
+        // Packs carry no labels, so an open pack verdict is refreshed from the live record, whose vegan label may settle it.
+        if (!options.offline && mergeResults(result, databaseResult(local, input, options.now), input.locale).outcome === 'uncertain') {
+          const product = await online().catch(error => { if (options.signal?.aborted) throw error; return null; });
+          if (product) { use(product); return true; }
+        }
+        use(local);
+        return true;
+      }
       if (options.offline) {
         result.warnings.push(t.offlineMissing);
         return;
       }
-      const product = await lookupProduct(code, { fetch: options.fetch, signal: options.signal, now: options.now,
-        category: input.category, market: input.market, locale: input.locale, autoMarket: input.autoMarket });
-      if (product) { remember(product); markets.push(...product.markets ?? []); evidenceMarkets.push(product.markets ?? []); result = mergeResults(result, databaseResult(product, input, options.now), input.locale); }
+      const product = await online();
+      if (product) use(product);
       else result.warnings.push(t.databaseMissing);
       return true;
     } catch (error) {
@@ -101,7 +116,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     const suppliedCode = input.barcode && normalizeBarcode(input.barcode);
     const extractedCode = extracted.barcode && normalizeBarcode(extracted.barcode);
     if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {
-      throw new Error('AI identified a different product barcode; confirm the product before using its evidence.');
+      throw new AIFailure('invalid_response', 'AI identified a different product barcode; confirm the product before using its evidence.', 'aiBarcodeMismatch');
     }
     if (extractedCode) await lookup(extractedCode);
     // With text-only input, preserve the entire supplied composition: a substring could omit an unknown ingredient.
@@ -109,7 +124,7 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     const original = input.text ?? '';
     const composition = original.replace(new RegExp(`^[\\s\\S]*?(?:${compositionHeadingWords})\\s*:\\s*`, 'i'), '');
     if (!input.images?.length && extracted.text && ![canonical(original), canonical(composition)].includes(canonical(extracted.text))) {
-      throw new Error('AI extraction changed the supplied text; the original evidence was kept.');
+      throw new AIFailure('invalid_response', 'AI extraction changed the supplied text; the original evidence was kept.', 'aiTextChanged');
     }
     packagingCountry = extracted.packaging?.country;
     if (extracted.research?.market && extracted.research.market !== selectProductCountry(input, packagingCountry, markets).market) {
@@ -148,8 +163,9 @@ export async function checkProduct(input: CheckInput, options: CheckOptions): Pr
     result = applyCompanyAssessment(result, input, extracted);
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    result.warnings.push(error instanceof Error ? error.message : t.aiCheckFailed);
-    result.aiStatus = error instanceof Error && /vision-capable/.test(error.message) ? 'vision_disabled' : 'failed';
+    result.aiError = aiError(error, input.locale, options.provider.hosted);
+    result.warnings.push(result.aiError.message);
+    result.aiStatus = error instanceof AIFailure && error.code === 'unsupported_model' && /vision-capable/.test(error.message) ? 'vision_disabled' : 'failed';
   }
   return finish();
 }

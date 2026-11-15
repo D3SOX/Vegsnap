@@ -13,7 +13,7 @@ export const DATABASES = [
 ] as const;
 /** Open Facts label tags include their parents, so any vegan certification also carries en:vegan. */
 export const veganDatabaseLabels = new Set(['en:vegan', 'en:vegan-society', 'en:vegan-society-approved', 'en:v-label-vegan', 'en:certified-vegan']);
-const FIELDS = 'code,product_name,product_name_de,brands,ingredients_text,ingredients_text_de,countries_tags,labels_tags,last_modified_t';
+const FIELDS = 'code,product_name,product_name_de,product_name_sv,brands,ingredients_text,ingredients_text_de,ingredients_text_sv,countries_tags,labels_tags,last_modified_t';
 type LookupOptions = Pick<CheckOptions, 'fetch' | 'signal' | 'now'> & Pick<CheckInput,'category'|'market'|'locale'|'autoMarket'>;
 type Entry = { expires: number; value: DatabaseProduct | null };
 type ClientState = { cache: Map<string, Entry>; requests: Map<string, number[]> };
@@ -27,8 +27,9 @@ function list(value: unknown): string[] { return Array.isArray(value) ? value.fi
 
 /** Exact GTIN only: no fuzzy title matches, no search-as-you-type or image downloads. */
 export async function lookupProduct(barcode: string, options: LookupOptions = {}): Promise<DatabaseProduct | null> {
+  const t = resultMessages[options.locale ?? 'en'];
   const code = normalizeBarcode(barcode);
-  if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
+  if (!code) throw new Error(t.invalidBarcode);
   const fetcher = options.fetch ?? globalThis.fetch;
   let state = clients.get(fetcher);
   if (!state) { state = { cache: new Map(), requests: new Map() }; clients.set(fetcher, state); }
@@ -45,7 +46,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       continue;
     }
     const recent = (state.requests.get(db.id) ?? []).filter(time => now().getTime() - time < 60_000);
-    if (recent.length >= 15) { errors.push(`${db.name}: request limit reached; try again in a minute.`); continue; }
+    if (recent.length >= 15) { errors.push(t.databaseRateLimited.replace('{database}', db.name)); continue; }
     recent.push(now().getTime()); state.requests.set(db.id, recent);
     const url = new URL(`/api/v3/product/${code}.json`, db.origin);
     url.searchParams.set('fields', FIELDS);
@@ -73,14 +74,18 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       const requestedMarket = selectProductCountry(options,undefined,markets).market;
       const differentMarket = markets.length > 0 && !markets.some(tag => countryCode(tag) === requestedMarket);
       if (differentMarket && !options.autoMarket) {
-        throw new Error(`The database record does not list ${requestedMarket}; confirm the market before using it.`);
+        // The product exists; the other databases would only repeat the same mismatch.
+        errors.splice(0, errors.length, t.databaseMarketMissing.replace('{market}', requestedMarket));
+        break;
       }
-      const text = options.locale === 'de' ? string(product.ingredients_text_de) ?? string(product.ingredients_text) : string(product.ingredients_text) ?? string(product.ingredients_text_de);
-      const name = options.locale === 'de' ? string(product.product_name_de) ?? string(product.product_name) : string(product.product_name) ?? string(product.product_name_de);
+      const localized = (field: string) => [options.locale && options.locale !== 'en' ? product[`${field}_${options.locale}`] : undefined, product[field], product[`${field}_de`]]
+        .map(string).find(value => value !== undefined);
+      const text = localized('ingredients_text');
+      const name = localized('product_name');
       const modified = typeof product.last_modified_t === 'number' && Number.isFinite(product.last_modified_t) ? new Date(product.last_modified_t * 1000) : undefined;
       const value: DatabaseProduct = {
         markets,
-        warnings: differentMarket ? [resultMessages[options.locale ?? 'en'].countryMismatchWarning.replace('{market}', requestedMarket)] : [],
+        warnings: differentMarket ? [t.countryMismatchWarning.replace('{market}', requestedMarket)] : [],
         input: { barcode: code, name, brand: string(product.brands), text, complete: false,
           category: options.category && options.category !== 'other' ? options.category : db.category,
           locale: options.locale, market: requestedMarket, sourceUrl: `${db.origin}/product/${code}` },
@@ -94,7 +99,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
       return structuredClone(value);
     } catch (error) {
       if (options.signal?.aborted) throw error;
-      errors.push(`${db.name}: ${error instanceof Error ? error.message : 'lookup failed'}`);
+      errors.push(t.databaseSourceFailed.replace('{database}', db.name));
     }
   }
   if (errors.length) throw new Error(errors.join(' '));

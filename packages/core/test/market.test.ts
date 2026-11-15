@@ -4,6 +4,8 @@ import { OfflineProductIndex, type OfflineSnapshot } from '../src/offline';
 import { lookupProduct } from '../src/database';
 
 const automatic = { market: 'DE', autoMarket: true };
+// An open offline verdict is refreshed from the live record; these products have none.
+const noLiveRecord = Object.assign(async () => new Response('', { status: 404 }), { preconnect: fetch.preconnect });
 test('AI extraction and research use the selected country while preserving the original fallback', async () => {
   const cases = [
     { autoMarket: true, markets: [], packaging: 'Sweden', initial: 'DE', research: 'SE', source: 'packaging' },
@@ -32,7 +34,7 @@ test('AI extraction and research use the selected country while preserving the o
     }]);
     const input = { market: 'DE', autoMarket: scenario.autoMarket, images: ['data:image/jpeg;base64,AA=='],
       ...(!discovered && scenario.markets.length ? { barcode: '4006381333931' } : {}) };
-    const result = await checkProduct(input, { mode: 'explicit', offlineProducts: index,
+    const result = await checkProduct(input, { mode: 'explicit', offlineProducts: index, fetch: noLiveRecord,
       provider: createOpenAIProvider({ baseUrl: 'https://api.openai.com/v1', model: 'fixture', supportsVision: true }, fetcher, catalogueFetcher) });
     expect(requests).toHaveLength(2);
     expect(JSON.parse(requests[0]!.input[0]!.content[0]!.text).market).toBe(discovered ? 'DE' : scenario.initial);
@@ -103,7 +105,7 @@ test('a manual country retains untagged barcode evidence with an explicit countr
 test('final warnings use the chosen offline composition while conflicting snapshots remain ambiguous', async () => {
   const pack = (country: string, modified: number): OfflineSnapshot => ({ schemaVersion: 1, generatedAt: '2026-10-05T00:00:00Z', region: country, sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T00:00:00Z' }], products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: '', ingredients: 'unspecified flavouring', countries_tags: [country], last_modified_t: modified }] });
   const index = new OfflineProductIndex([pack('en:germany', 2), pack('en:sweden', 1)]);
-  const result = await checkProduct({ ...automatic, barcode: '4006381333931', images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', offlineProducts: index, provider: { extract: async () => ({ text: '', category: 'food', complete: false, packaging: { country: 'SE' } }) } });
+  const result = await checkProduct({ ...automatic, barcode: '4006381333931', images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', offlineProducts: index, fetch: noLiveRecord, provider: { extract: async () => ({ text: '', category: 'food', complete: false, packaging: { country: 'SE' } }) } });
   expect(result.identity).toMatchObject({ market: 'SE', marketSource: 'packaging' });
   expect(result.warnings.join(' ')).toContain('other markets than SE');
 });
@@ -130,14 +132,14 @@ test('automatic discovered-barcode lookup failure preserves extraction and skips
   expect(result.identity).toMatchObject({ market: 'DE', marketSource: 'fallback', barcode: '4006381333931' });
   expect(result.usedAI).toBe(true);
   expect(result.webSearchStatus).toBe('not_used');
-  expect(result.warnings.join(' ')).toContain('Database unavailable');
+  expect(result.warnings.join(' ')).toContain('Open Food Facts: lookup failed.');
 });
 test('remote research cannot assess a different country selected from a local barcode record', async () => {
   const index = new OfflineProductIndex([{ schemaVersion: 1, generatedAt: '2026-10-05T00:00:00Z', region: 'fixture',
     sources: [{ id: 'off', url: 'https://world.openfoodfacts.org', license: 'ODbL-1.0', retrievedAt: '2026-10-05T00:00:00Z' }],
     products: [{ source: 'off', code: '4006381333931', name: 'Example', brands: 'Maker', ingredients: 'unspecified flavouring', countries_tags: ['en:germany'], last_modified_t: 1 }],
   }]);
-  const result = await checkProduct({ ...automatic, images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', offlineProducts: index,
+  const result = await checkProduct({ ...automatic, images: ['data:image/jpeg;base64,AA=='] }, { mode: 'explicit', offlineProducts: index, fetch: noLiveRecord,
     provider: { supportsWebSearch: true, extract: async () => ({ text: '', complete: false, category: 'food', name: 'Example', brand: 'Maker', barcode: '4006381333931',
       research: { searched: true, sources: [{ url: 'https://maker.example/product', title: 'Product' }], market: 'SE' },
       contact: { productName: 'Example', brand: 'Maker', sourceUrl: 'https://maker.example/product', url: 'https://maker.example/product' },
@@ -163,4 +165,25 @@ test('country options list every product country with a flag and localized name 
   expect(options).toHaveLength(249);
   expect(options.find(option => option.code === 'SE')).toEqual({ code: 'SE', name: 'Sverige', flag: '🇸🇪' });
   expect(options.findIndex(option => option.code === 'AT')).toBeGreaterThan(options.findIndex(option => option.code === 'SE'));
+});
+test('a market mismatch stops the lookup instead of repeating it in every database', async () => {
+  const urls: string[] = [];
+  const fetcher = Object.assign(async (url: string | URL | Request) => {
+    urls.push(String(url));
+    return Response.json({ status: 'success', product: { code: '4006381333931', countries_tags: ['en:germany'] } });
+  }, { preconnect: fetch.preconnect });
+  const result = await checkProduct({ market: 'SE', autoMarket: false, barcode: '4006381333931', category: 'cosmetics', locale: 'de' }, { mode: 'background', fetch: fetcher });
+  expect(urls).toHaveLength(1);
+  expect(result.warnings.filter(warning => warning.includes('nennt SE nicht'))).toHaveLength(1);
+});
+test('Swedish database fields are requested and preferred for Swedish users', async () => {
+  let requested = '';
+  const fetcher = Object.assign(async (url: string | URL | Request) => {
+    requested = String(url);
+    return Response.json({ status: 'success', product: { code: '7340191191914', product_name: 'Hummus', product_name_sv: 'Hummus med chili',
+      ingredients_text: 'chickpeas', ingredients_text_sv: 'kikärtor', countries_tags: ['en:sweden'] } });
+  }, { preconnect: fetch.preconnect });
+  const product = await lookupProduct('7340191191914', { fetch: fetcher, locale: 'sv', market: 'SE' });
+  expect(new URL(requested).searchParams.get('fields')).toContain('ingredients_text_sv');
+  expect(product?.input).toMatchObject({ name: 'Hummus med chili', text: 'kikärtor' });
 });

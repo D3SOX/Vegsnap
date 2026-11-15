@@ -64,11 +64,22 @@ class OfflineDatabaseTest {
         assertFalse(snapshot.has("offlineSnapshotDate"))
         assertTrue(result.getJSONArray("warnings").toString().contains("2026-10-05"))
     }
-    @Test fun `online checks consult snapshots before making public requests`() = withDatabase { database, _ ->
+    @Test fun `online checks consult snapshots before making public requests`() = runBlocking {
+        val folder = Files.createTempDirectory("vegsnap-offline-test").toFile()
+        try {
+            val database = OfflineDatabase({ document(ingredients = "milk").toString().byteInputStream() }, folder)
+            var requests = 0
+            val result = repository(database) { requests++ }.check(CheckInput(barcode = "4006381333931", category = "food"), emptyList(), AppSettings(aiEnabled = false), "")
+            assertEquals(0, requests)
+            assertEquals("not_vegan", result.getString("outcome"))
+        } finally { folder.deleteRecursively() }
+    }
+    @Test fun `an open snapshot verdict is refreshed online and kept when the network fails`() = withDatabase { database, _ ->
         var requests = 0
         val result = repository(database) { requests++ }.check(CheckInput(barcode = "4006381333931"), emptyList(), AppSettings(aiEnabled = false), "")
-        assertEquals(0, requests)
+        assertTrue(requests > 0)
         assertEquals("Sample drink", result.getString("title"))
+        assertEquals("uncertain", result.getString("outcome"))
     }
     @Test fun `offline absence remains unknown and identity-only records still match`() = withDatabase { database, _ ->
         val repository = repository(database)

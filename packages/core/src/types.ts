@@ -127,6 +127,8 @@ export interface AIExtraction {
 export interface DatabaseComposition { productName?: string; brand?: string; text: string; url: string }
 export interface ProviderAdapter {
   supportsWebSearch?: boolean;
+  /** The Vegsnap AI service, whose quota and rate-limit failures use their own copy. */
+  hosted?: boolean;
   extract(input: CheckInput, signal?: AbortSignal, countryContext?: {
     fallbackMarket?: string;
     markets?: readonly string[];
