@@ -3031,5 +3031,27 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "precaution-tail-free-from-ignored",
+    "input": {
+      "text": "Ingredients: water, salt. May contain nuts. Free from: milk, eggs.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "precaution-tail-negated-contains-ignored",
+    "input": {
+      "text": "Ingredients: water, salt. May contain nuts. Contains: no milk or eggs.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

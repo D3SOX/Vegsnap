@@ -306,7 +306,8 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   });
   // Text after a precaution sentence is not the list ("Store cool", "Made in a facility that handles milk"), but an exact
   // animal term in a labelled section there still vetoes ("Coating: beeswax").
-  const sections = tail.split(/[.!](?=\s|$)|\n/).filter(sentence => labelledSection.test(sentence)).join('\n');
+  // A negated section ("Free from: milk", "Contains: no milk or eggs") lists what the product does not contain.
+  const sections = tail.split(/[.!](?=\s|$)|\n/).filter(sentence => labelledSection.test(sentence) && !negatedBefore.test(normalizeTerm(sentence))).join('\n');
   const tailGuards = compositionTerms(sections).flatMap(term => {
     const value = normalizeTerm(term.slice(term.lastIndexOf(':') + 1));
     // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
