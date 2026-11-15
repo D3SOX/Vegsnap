@@ -102,7 +102,7 @@ export async function lookupProduct(barcode: string, options: LookupOptions = {}
     } catch (error) {
       if (options.signal?.aborted) throw error;
       // Local fixed copy (such as a missing data-sharing permission) names its own fix.
-      errors.push(error instanceof AIFailure && error.display ? error.display : t.databaseSourceFailed.replace('{database}', db.name));
+      errors.push(error instanceof AIFailure && error.messageKey ? t[error.messageKey] : t.databaseSourceFailed.replace('{database}', db.name));
     }
   }
   if (errors.length) throw new Error(errors.join(' '));

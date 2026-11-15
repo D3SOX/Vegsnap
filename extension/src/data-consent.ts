@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import { AIFailure } from '@vegsnap/core';
+import { AIFailure, resultMessages } from '@vegsnap/core';
 
 export const CONTENT_DATA = ['websiteContent', 'browsingActivity'] as const;
 export const ACCOUNT_DATA = ['authenticationInfo', 'personallyIdentifyingInfo'] as const;
@@ -23,9 +23,8 @@ export async function hasDataConsent(data: readonly DataType[]): Promise<boolean
 }
 
 export async function requireDataConsent(data: readonly DataType[]): Promise<void> {
-  // Fixed copy with the only way to recover, so failed checks show it instead of a generic retry hint.
-  const message = 'Allow data sharing for this feature in Firefox’s extension permissions, or use local checks.';
-  if (!(await hasDataConsent(data))) throw new AIFailure('request_rejected', message, undefined, message);
+  // Names the only way to recover, so failed checks show it (localized) instead of a generic retry hint.
+  if (!(await hasDataConsent(data))) throw new AIFailure('request_rejected', resultMessages.en.dataSharingRequired, 'dataSharingRequired');
 }
 
 // Check at the network boundary, including after consent is revoked.

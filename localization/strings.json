@@ -7267,6 +7267,14 @@
       "countryUnknownWarning"
     ]
   },
+  "result_data_sharing_required": {
+    "en": "Allow data sharing for this feature in Firefox’s extension permissions, or use local checks.",
+    "de": "Erlaube die Datenfreigabe für diese Funktion in den Erweiterungsberechtigungen von Firefox oder prüfe lokal.",
+    "sv": "Tillåt datadelning för den här funktionen i Firefox tilläggsbehörigheter, eller kontrollera lokalt.",
+    "core": [
+      "result.dataSharingRequired"
+    ]
+  },
   "result_database_failed_with_ai": {
     "en": "Database unavailable; AI evidence has been kept.",
     "de": "Datenbank nicht erreichbar; KI-Belege bleiben erhalten.",

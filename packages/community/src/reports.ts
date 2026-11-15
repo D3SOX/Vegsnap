@@ -53,7 +53,9 @@ export async function submitReport(request: Request, env: Env): Promise<Response
   if (!client) throw new ReportError(429, 'You have sent the maximum number of reports for today. Try tomorrow.');
   // A report that is not stored must not use up the client's allowance.
   const refundClient = () => env.DB.prepare('UPDATE report_ip_budget SET count=count-1 WHERE day=? AND client=? AND count > 0').bind(day, hash).run();
-  const budget = await env.DB.prepare('INSERT INTO report_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count').bind(day, DAILY_REPORTS).first();
+  let budget: unknown;
+  try { budget = await env.DB.prepare('INSERT INTO report_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count').bind(day, DAILY_REPORTS).first(); }
+  catch (error) { await refundClient().catch(() => {}); throw error; }
   if (!budget) { await refundClient(); throw new ReportError(429, 'The daily report limit has been reached. Try tomorrow.'); }
   const id = crypto.randomUUID();
   try {

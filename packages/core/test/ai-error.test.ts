@@ -33,3 +33,9 @@ test('classification works without DOMException, as in JavaScriptCore', async ()
     expect(aiErrorCode(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))).toBe('timeout');
   } finally { globalThis.DOMException = original; }
 });
+test('a local failure with a message key is shown in the user language', async () => {
+  const { AIFailure } = await import('../src/ai-error');
+  const result = await checkProduct({ text: 'Zutaten: Wasser, Aroma', locale: 'de' }, { mode: 'explicit',
+    provider: { extract: async () => { throw new AIFailure('request_rejected', 'Allow data sharing.', 'dataSharingRequired'); } } });
+  expect(result.aiError).toEqual({ code: 'request_rejected', message: 'Erlaube die Datenfreigabe für diese Funktion in den Erweiterungsberechtigungen von Firefox oder prüfe lokal.' });
+});
