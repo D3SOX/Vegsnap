@@ -308,10 +308,11 @@ class Evaluator(private val rulesDocument: JSONObject) {
         }
         // Text after a precaution sentence is not the list ("Store cool", "Made in a facility that handles milk"), but an exact
         // animal term in a labelled section there still vetoes ("Coating: beeswax").
-        // A negated section ("Free from: milk", "Contains: no milk or eggs") lists what the product does not contain.
-        val sections = split.tail.split(Regex("[.!](?=\\s|$)|\\n"))
-            .filter { labelledSection.containsMatchIn(it) && !negatedBefore.containsMatchIn(normalizeCompositionTerm(it)) }.joinToString("\n")
-        val tailGuards = compositionTerms(sections).mapNotNull { term ->
+        // A negated label ("Free from: milk") or item ("Contains: milk, no soy") names what the product does not contain.
+        val tailTerms = split.tail.split(Regex("[.!](?=\\s|$)|\\n"))
+            .filter { labelledSection.containsMatchIn(it) && !negatedBefore.containsMatchIn(normalizeCompositionTerm(it.substringBefore(':'))) }
+            .flatMap { compositionTerms(it) }.filterNot { negatedBefore.containsMatchIn(it) }
+        val tailGuards = tailTerms.mapNotNull { term ->
             val value = normalizeCompositionTerm(term.substringAfterLast(':'))
             // "Contains: milk and eggs" declares each conjunct; the whole term still wins when it is an alias itself.
             (listOf(value, term) + value.split(tailConjunction).map(::normalizeCompositionTerm)).firstOrNull { exactRule(it)?.optString("status") == "animal" }

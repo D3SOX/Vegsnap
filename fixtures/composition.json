@@ -3053,5 +3053,16 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "precaution-tail-negated-item-keeps-others",
+    "input": {
+      "text": "Ingredients: water, salt. May contain nuts. Contains: milk, no soy.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]
