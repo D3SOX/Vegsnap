@@ -43,7 +43,10 @@ function reviewForm(record) {
     select.value = record[name]; const title = element('label',label); title.htmlFor = select.id; form.append(title,select);
   }
   const publish = element('input'); publish.type = 'checkbox'; publish.name = 'evidencePublic'; publish.checked = record.evidencePublic;
-  const consent = element('label',null,'checkbox'); consent.append(publish,element('span','Publish the attachment too: I checked that it contains no personal information, including PDF metadata.'));
+  publish.disabled = !record.evidencePublishable;
+  const consent = element('label',null,'checkbox'); consent.append(publish,element('span',record.evidencePublishable
+    ? 'Publish the attachment too: I checked that it contains no personal information.'
+    : 'PDF attachments stay private: they can hide metadata, embedded files and text under redaction boxes. Only PNG screenshots can be published.'));
   const note = element('textarea'); note.name = 'reviewNote'; note.id = `${record.id}-reviewNote`; note.maxLength = 2000; note.value = record.reviewNote;
   const noteLabel = element('label','Private review note'); noteLabel.htmlFor = note.id;
   form.append(consent,noteLabel,note);
@@ -64,18 +67,18 @@ function reviewForm(record) {
     } catch (error) {
       if (error.field) fieldError(form,error.field,error.message); else message(error.message,true);
       for (const button of form.querySelectorAll('button')) button.disabled = false;
-      download.disabled = !record.hasEvidence;
+      download.disabled = !record.hasEvidence; publish.disabled = !record.evidencePublishable;
     }
   }); return form;
 }
 async function load() {
   const current = ++generation;
   if (document.querySelector('#queue-type').value === 'reports') {
-    const value = await api('/api/review/reports', {headers:headers()});
+    const value = await api(`/api/review/reports?${new URLSearchParams({cursor})}`, {headers:headers()});
     if (current !== generation || !token) return;
     records.replaceChildren(...value.reports.map(reportCard));
     if (!value.reports.length) records.append(element('p','No content reports.','notice'));
-    nextCursor = null; document.querySelector('#next').hidden = true;
+    nextCursor = value.nextCursor; document.querySelector('#next').hidden = !nextCursor;
     document.querySelector('#status').disabled = true;
     return;
   }

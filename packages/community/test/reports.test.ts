@@ -8,7 +8,7 @@ beforeAll(async () => { mf = await fixture(); }, 30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
   const db = await mf.getD1Database('DB');
-  await db.batch(['content_reports', 'report_budget', 'submissions', 'submission_budget'].map(table => db.prepare(`DELETE FROM ${table}`)));
+  await db.batch(['content_reports', 'report_budget', 'report_ip_budget', 'submissions', 'submission_budget'].map(table => db.prepare(`DELETE FROM ${table}`)));
 });
 const report = { kind: 'ai', contentId: '', text: 'Reviewed AI excerpt', reason: 'Offensive content' };
 const auth = { Authorization: `Bearer ${adminToken}` };
@@ -30,7 +30,7 @@ test('native reports stay private and require moderator authentication to view a
   expect(queue.headers.get('Cache-Control')).toBe('no-store');
   expect(await (await request('/api/snapshot')).text()).not.toContain(report.text);
   expect((await request(`/api/review/reports/${id}`, { method: 'DELETE', headers: auth })).status).toBe(200);
-  expect(await (await request('/api/review/reports', { headers: auth })).json()).toEqual({ reports: [] });
+  expect(await (await request('/api/review/reports', { headers: auth })).json()).toEqual({ reports: [], nextCursor: null });
 });
 test('unknown fields invalid references and invalid lengths never enter the report database', async () => {
   for (const body of [{ ...report, credentials: 'private' }, { ...report, reason: '' }, { ...report, text: 'x'.repeat(8001) },
@@ -72,7 +72,7 @@ test('wrong-result reports store structured verdict context that moderators can 
   expect(page).toContain('Reported wrong result');
   expect(await (await request('/api/snapshot')).text()).not.toContain('vitamin-d');
   expect((await request(`/api/review/reports/${id}`, { method: 'DELETE', headers: auth })).status).toBe(200);
-  expect(await (await request('/api/review/reports', { headers: auth })).json()).toEqual({ reports: [] });
+  expect(await (await request('/api/review/reports', { headers: auth })).json()).toEqual({ reports: [], nextCursor: null });
 });
 test('wrong-result reports with invalid structure, oversized lists or private fields are rejected', async () => {
   for (const body of [{ ...resultReport, result: undefined }, { ...resultReport, text: 'private history' }, { ...resultReport, contentId: 'private-history-id' },
@@ -106,7 +106,31 @@ test('hourly cleanup removes expired reports and old budgets', async () => {
   const db = await mf.getD1Database('DB');
   await db.prepare("UPDATE content_reports SET created_at='2000-01-01T00:00:00Z'").run();
   await db.prepare("UPDATE report_budget SET day='2000-01-01'").run();
+  await db.prepare("UPDATE report_ip_budget SET day='2000-01-01'").run();
   await worker.scheduled({} as Parameters<typeof worker.scheduled>[0], await mf.getBindings() as unknown as Env);
   expect(await db.prepare('SELECT COUNT(*) FROM content_reports').first('COUNT(*)')).toBe(0);
   expect(await db.prepare('SELECT COUNT(*) FROM report_budget').first('COUNT(*)')).toBe(0);
+  expect(await db.prepare('SELECT COUNT(*) FROM report_ip_budget').first('COUNT(*)')).toBe(0);
+});
+test('one client cannot use up the shared daily report budget', async () => {
+  const headers = { 'CF-Connecting-IP': '198.51.100.45' };
+  expect((await submit(report, headers)).status).toBe(201);
+  const db = await mf.getD1Database('DB');
+  const row = await db.prepare('SELECT client, count FROM report_ip_budget').first<{ client: string; count: number }>();
+  expect(row?.count).toBe(1); expect(row?.client).not.toContain('198.51.100.45');
+  await db.prepare('UPDATE report_ip_budget SET count=20').run();
+  expect((await submit(report, headers)).status).toBe(429);
+  expect((await submit(report, { 'CF-Connecting-IP': '198.51.100.46' })).status).toBe(201);
+  expect(await db.prepare('SELECT count FROM report_budget').first('count')).toBe(2);
+});
+test('the report queue pages through every report oldest first', async () => {
+  const db = await mf.getD1Database('DB');
+  const ids = Array.from({ length: 51 }, (_, i) => `${(0xfffffff0 - i).toString(16)}-0000-4000-8000-000000000000`);
+  await db.batch(ids.map((id, i) => db.prepare("INSERT INTO content_reports(id, kind, text, reason, created_at) VALUES (?, 'ai', 'x', 'r', ?)")
+    .bind(id, new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString())));
+  const first = await (await request('/api/review/reports', { headers: auth })).json() as { reports: { id: string }[]; nextCursor: string };
+  expect(first.reports.map(row => row.id)).toEqual(ids.slice(0, 50));
+  const second = await (await request(`/api/review/reports?cursor=${encodeURIComponent(first.nextCursor)}`, { headers: auth })).json();
+  expect(second).toMatchObject({ reports: [{ id: ids[50] }], nextCursor: null });
+  expect((await request('/api/review/reports?cursor=bad', { headers: auth })).status).toBe(400);
 });
