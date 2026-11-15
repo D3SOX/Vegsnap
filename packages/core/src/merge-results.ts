@@ -1,3 +1,4 @@
+import { originQuestionLocale } from './message-match';
 import { resultMessages } from './i18n';
 import type { CheckResult, Evidence, Finding, Locale } from './types';
 import { normalizeTerm } from './analyze';
@@ -46,10 +47,10 @@ export function withoutDatabaseRuleMisses(findings: Finding[], evidence: Evidenc
 /** Keep existing origin questions aligned with the ingredients still requiring clarification. */
 export function reconcileOriginQuestions(questions: string[], findings: Finding[], locale?: Locale): string[] {
   const unresolved = [...new Set(findings.filter(item => item.status === 'unknown' || item.status === 'ambiguous').map(item => locale ? item.displayTerm ?? item.term : item.term))];
-  const originQuestion = /^(?:Confirm the origin of:|Die Herkunft dieser Zutaten klären:|Confirm the source of the ambiguous|Die Herkunft unklarer|Bekräfta ursprunget för)/;
   return questions.flatMap(question => {
-    if (!originQuestion.test(question)) return [question];
-    const t = resultMessages[locale ?? (question.startsWith('Die Herkunft') ? 'de' : question.startsWith('Bekräfta') ? 'sv' : 'en')];
+    const questionLocale = originQuestionLocale(question);
+    if (!questionLocale) return [question];
+    const t = resultMessages[locale ?? questionLocale];
     return unresolved.length ? [`${t.originQuestionPrefix}${unresolved.join(', ')}.`] : [];
   });
 }

@@ -2888,5 +2888,104 @@
       "outcome": "vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "bracketed-precaution-resumes-list",
+    "input": {
+      "text": "Ingredients: potatoes, vegetable oil (may contain sunflower, corn or canola oil), whey, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "bracketed-kann-enthalten-resumes-list",
+    "input": {
+      "text": "Zutaten: Zucker, pflanzliches Öl (kann Palmöl enthalten), Vollmilchpulver, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "precaution-tail-exact-animal-term",
+    "input": {
+      "text": "Ingredients: sugar, cocoa. May contain nuts. Coating: beeswax, shellac",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "precaution-tail-statement-ignored",
+    "input": {
+      "text": "Ingredients: water, salt. May contain milk. Made in a facility that also handles milk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "organic-prefix-hyphen",
+    "input": {
+      "text": "Zutaten: Kartoffeln, Bio-Ei, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "allergen-statement-sentence",
+    "input": {
+      "text": "Ingredients: flour, sugar. Contains: wheat.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "allergen-statement-animal",
+    "input": {
+      "text": "Ingredients: flour, sugar. Contains: milk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "german-rind",
+    "input": {
+      "text": "Zutaten: Rind, Salz",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "pearl-barley-is-plant",
+    "input": {
+      "text": "Ingredients: pearl barley, water, salt",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "vegan",
+      "basis": "composition"
+    }
   }
 ]

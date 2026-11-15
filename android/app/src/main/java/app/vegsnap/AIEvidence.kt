@@ -20,8 +20,8 @@ private fun canonicalIngredientSource(text: String): String = java.text.Normaliz
 internal fun parseSourceIngredients(text: String, items: JSONArray?): List<String>? {
     if (items == null || items.length() !in 1..100) return null
     val source = canonicalIngredientSource(text)
-    val precaution = compositionPrecaution.find(source)
-    val intentional = if (precaution == null) source else source.take(precaution.range.first)
+    val split = splitPrecaution(source)
+    val intentional = "${split.ingredients} ${split.tail}"
     val terms = mutableListOf<String>()
     for (index in 0 until items.length()) {
         val value = items.opt(index) as? String ?: return null
@@ -192,7 +192,7 @@ internal fun applyAIEvidence(result: JSONObject, input: CheckInput, extracted: J
     val labels = extracted.optJSONArray("labelObservations") ?: JSONArray()
     val observations = (0 until labels.length()).map { labels.getJSONObject(it) }.filter {
         val text = it.getString("text")
-        Regex("\\bvegans?\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
+        Regex("\\bvegan(?:s|e[nrs]?|sk[at]?|[oa]s?)?\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) &&
             !Regex("\\b(?:vegetarian|vegetarisch|vegetarisk)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text) && !labelNegation.containsMatchIn(text.replace(animalFree, " ")) &&
             (it.getString("kind") == "vegan_claim" || normalizeCompositionTerm(it.getString("name")) in veganLabels)
     }

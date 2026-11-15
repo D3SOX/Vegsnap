@@ -92,7 +92,10 @@
       "voita",
       "valle",
       "vis",
-      "rund"
+      "rund",
+      "rind",
+      "pearl",
+      "pearls"
     ],
     "exactOnlyContexts": [
       {
@@ -1981,7 +1984,10 @@
         "goma laca",
         "gommalacca",
         "schellak",
-        "sellakka"
+        "sellakka",
+        "confectioner's glaze",
+        "confectioners' glaze",
+        "confectioners glaze"
       ],
       "explanation": {
         "en": "Shellac is derived from insects.",
@@ -2392,7 +2398,17 @@
         "av gris",
         "black pudding",
         "white pudding",
-        "blodpudding"
+        "blodpudding",
+        "rind",
+        "schaf",
+        "schaffleisch",
+        "schmaltz",
+        "ox bile",
+        "ox gall",
+        "oxgall",
+        "bile",
+        "ochsengalle",
+        "rindergalle"
       ],
       "explanation": {
         "en": "Meat and animal fats are animal-derived.",
@@ -4842,7 +4858,14 @@
         "l cystein",
         "cystein",
         "l-cystein hydrochloride",
-        "l-cysteine hydrochloride"
+        "l-cysteine hydrochloride",
+        "e921",
+        "e 921",
+        "l-cystine",
+        "l cystine",
+        "cystine",
+        "l-cystin",
+        "cystin"
       ],
       "explanation": {
         "en": "L-cysteine can be made from different sources; confirm the actual origin.",
@@ -5952,7 +5975,11 @@
         "surdejskultur",
         "hapatteet",
         "jogurttihapate",
-        "skyrhapatteet"
+        "skyrhapatteet",
+        "milk cultures",
+        "milk culture",
+        "cream cultures",
+        "cream culture"
       ],
       "explanation": {
         "en": "Starter organisms are microbial, but this term alone does not establish the origin of culture carriers or growth media.",
@@ -14438,7 +14465,8 @@
         "présure animale",
         "cuajo animal",
         "caglio animale",
-        "dierlijk stremsel"
+        "dierlijk stremsel",
+        "pepsin"
       ],
       "explanation": {
         "en": "Animal rennet is taken from the stomachs of calves, lambs or kids.",
@@ -21601,7 +21629,9 @@
         "oyster shell powder",
         "austernschalenpulver",
         "ostronskalspulver",
-        "os de porc"
+        "os de porc",
+        "pearl",
+        "pearls"
       ],
       "explanation": {
         "en": "Horn, bone, ivory, pearls, shells, coral, natural sponges and animal glues come from animals.",
@@ -22237,7 +22267,6 @@
       "id": "plant-fibres",
       "status": "plant",
       "aliases": [
-        "bio-baumwolle",
         "biobaumwolle",
         "ekologisk bomull",
         "ekobomull",
@@ -22374,7 +22403,6 @@
         "linen blend",
         "leinenmischung",
         "linneblandning",
-        "bio-leinen",
         "ekologiskt linne",
         "half linen",
         "halbleinen",

@@ -11,7 +11,7 @@ data class CheckInput(val text: String = "", val category: String = "other", val
     val name: String = "", val barcode: String = "", val locale: String = "en", val truncated: Boolean = false,
     val market: String = "DE", val autoMarket: Boolean? = null)
 
-internal val compositionHeading = Regex("(?:^|\\n)\\s*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\\s*:\\s*", RegexOption.IGNORE_CASE)
+internal val compositionHeading = Regex("(?:^|\\n)[^\\S\\r\\n]*(?:ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset)\\s*:\\s*", RegexOption.IGNORE_CASE)
 internal val compositionPrecaution = Regex("\\b(?:may contain|kan innehålla spår av|kann spuren von|kann\\b(?!\\s+(?:eine?[nrs]?|einer) (?:oder mehrere|der folgenden)(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\\b(?!\\s+(?:een|één) of meer(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\\p{L}\\p{N}])(?!\\s+(?:one or more|either|any (?:one )?of|une? ou plusieurs|l'une? des|uno o (?:más|varios)|alguno de|uno o più|uno dei|een of meer|en eller flere|ett eller flera|én eller flere|yksi tai useampi)(?![\\p{L}\\p{N}])(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))", RegexOption.IGNORE_CASE)
 private const val ADDITIVE_ROLES = "(?:säuerungsmittel|säureregulator(?:en)?|farbstoff(?:e)?|emulgator(?:en)?|verdickungsmittel|stabilisator(?:en)?|konservierungsstoff(?:e)?|antioxidationsmittel|backtriebmittel|geliermittel|überzugsmittel|süßungsmittel|süssungsmittel|acidity regulators?|acidifiers?|colou?r(?:ing)?s?|emulsifiers?|thickeners?|stabilisers?|stabilizers?|preservatives?|antioxidants?|raising agents?|gelling agents?|glazing agents?|sweeteners?|surhetsreglerande medel|syror|färgämnen?|förtjockningsmedel|stabiliseringsmedel|emulgeringsmedel|konserveringsmedel|antioxidationsmedel|bakpulver|jäsmedel|sötningsmedel|geleringsmedel|gelatineringsmedel|humectants?|firming agents?|flavou?r enhancers?|bulking agents?|anti-?caking agents?|flour treatment agents?|emulsifying salts?|acidity correctors?|food acids?|acids?(?= *:)|mineral salts?|vegetable gums?|leavening(?: agents?)?|feuchthaltemittel|geschmacksverstärker|trennmittel|mehlbehandlungsmittel|festigungsmittel|füllstoffe?|schmelzsalze?|syra|fuktighetsbevarande medel|smakförstärkare|klumpförebyggande medel|ytbehandlingsmedel|mjölbehandlingsmedel|fyllnadsmedel|acidifiants?|correcteurs? d['’]acidité|[ée]mulsifiants?|[ée]paississants?|stabilisants?|gélifiants?|conservateurs?|antioxydants?|colorants?|édulcorants?|affermissants?|exhausteurs? de go[uû]t|agents? de traitement de la farine|agents? d['’]enrobage|agents? de charge|poudres? à lever|agents? levants?|anti-?agglomérants?|séquestrants?|sels? de fonte|acidulantes?|correctores? de (?:la )?acidez|reguladores? de (?:la )?acidez|emulgentes?|emulsionantes?|espesantes?|estabilizantes?|estabilizadores?|gelificantes?|conservadores?|conservantes?|antioxidantes?|colorantes?|edulcorantes?|potenciadores? del sabor|gasificantes?|impulsores?|agentes? de recubrimiento|humectantes?|antiaglomerantes?|sales fundentes|acidificant[ei]|correttor[ei] di acidità|regolator[ei] di acidità|emulsionant[ei]|addensant[ei]|stabilizzant[ei]|gelificant[ei]|conservant[ei]|antiossidant[ei]|colorant[ei]|edulcorant[ei]|esaltator[ei] di sapidità|agent[ei] lievitant[ei]|agent[ei] di rivestimento|umidificant[ei]|antiagglomerant[ei]|agent[ei] di carica|sali di fusione|zuurteregelaars?|voedingszu(?:ur|ren)|verdikkingsmiddel(?:en)?|geleermiddel(?:en)?|conserveermiddel(?:en)?|antioxidanten|kleurstof(?:fen)?|zoetstof(?:fen)?|smaakversterkers?|rijsmiddel(?:en)?|glansmiddel(?:en)?|bevochtigingsmiddel(?:en)?|antiklontermiddel(?:en)?|meelverbeteraars?|verstevigingsmiddel(?:en)?|emulgatorer|fortykningsmid(?:del|ler)|konserveringsmid(?:del|ler)|surhetsregulerende mid(?:del|ler)|surhedsregulerende mid(?:del|ler)|antioksidant(?:er)?|antioxidanter|fargestoff(?:er)?|farvestof(?:fer)?|stabilisatorer|søtstoff(?:er)?|sødestof(?:fer)?|hevemid(?:del|ler)|hævemid(?:del|ler)|smaksforsterker|smagsforstærker|fuktighetsbevarende middel|fugtighedsbevarende middel|melbehandlingsmiddel|overflatebehandlingsmiddel|overfladebehandlingsmiddel|geleringsmiddel|(?:emulgointi|happamuudensäätö|säilöntä|sakeuttamis|stabilointi|väri|makeutus|kohotus|hapettumisenesto|kostutus|paakkuuntumisenesto|pintakäsittely|hyytelöimis)aine(?:et)?|arominvahven(?:ne|teet)|jauhonparanne|farge|farve|konsistensmid(?:del|ler)|fuktighetsbevarer|antiklump(?:e|nings)mid(?:del|ler)|surheitsregulerande mid(?:del|lar)|surhetsregulator(?:er)?|smeltesalt(?:er)?|melbehandlingsmidler|syrer?(?= *:)|nostatusaine(?:et)?|värit?|kosteudensäilyttäjä|hap(?:po|ot)(?= *:))"
 private val additivePrefix = Regex("^\\s*$ADDITIVE_ROLES(?:\\s*:\\s*|\\s+)(?=\\S)", RegexOption.IGNORE_CASE)
@@ -21,19 +21,22 @@ private val insNumber = Regex("(?<![\\p{L}\\p{N}])(?:[iI][nN][sS]\\s?)?(?<![eE][
 private val additiveGroup = Regex("(?<![\\p{L}\\p{N}])$ADDITIVE_ROLES\\s*:?\\s*(?=\\(\\s*[\\p{L}\\p{N}])", RegexOption.IGNORE_CASE)
 private const val materialRoles = "(?:upper(?: material)?|lining|inner material|insole|outsole|sole|oberstoff|obermaterial|außenmaterial|aussenmaterial|innenmaterial|innensohle|decksohle|laufsohle|futter|sohle|ovandel|foder|innersula|yttersula)"
 private val materialPrefix = Regex("^\\s*$materialRoles\\s*:\\s*", RegexOption.IGNORE_CASE)
-private val materialSection = Regex("(?:^|\\n)\\s*$materialRoles\\s*:", RegexOption.IGNORE_CASE)
+private val materialSection = Regex("(?:^|\\n)[^\\S\\r\\n]*$materialRoles\\s*:", RegexOption.IGNORE_CASE)
 // A list split before its last item leaves the conjunction on it ("sugar, and salt", "and/or sunflower oil").
 private val leadingConjunction = Regex("^(?:and/or|und/oder|and|und|och|og|ja|et|ou|y|ed|en|or|oder|eller) (?=\\S)")
 // US labels introduce minor ingredients after their percentage is removed ("contains 2% or less of: salt", "less than 2% of", "contains one or more of the following:").
 private val quantityLeadIn = Regex("^(?:contains\\s+)?(?:(?:less\\s+than|or\\s+less)(?:\\s+of)?(?:\\s+each\\s+of\\s+the\\s+following)?|one\\s+or\\s+more\\s+of\\s+the\\s+following)\\s*:?\\s*(?=\\S)")
 // US labels also state an additive's purpose ("BHT added to preserve freshness", "(for color)", "as preservatives"). The closed vocabulary never covers an ingredient ("to retain fish moisture" keeps the fish).
 private val purposeNote = Regex("(?:^|\\s+)(?:added\\s+)?(?:(?:to|for)\\s+(?:(?:preserve|protect|maintain|retain|promote|prevent|keep)\\s+)?(?:the\\s+|its\\s+)?(?:freshness|flavou?r|colou?r|moisture|quality|caking|texture|tartness)|as\\s+(?:an?\\s+)?(?:preservatives?|antioxidants?))$")
+// An allergen statement after the list ("Contains: wheat.", "Enthält: Milch") names ingredients already declared.
+private val allergenLeadIn = Regex("^(?:contains|enthält|innehåller)\\s*:\\s*(?=\\S)")
+private val allergenSentence = Regex("[.!]\\s+(?=(?:contains|enthält|innehåller)\\s*:)", RegexOption.IGNORE_CASE)
 internal fun normalizeCompositionTerm(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace('’', '\'')
     .replace(Regex("[_*\"]"), "").replace(Regex("(?<=\\p{L}{4})\\d{1,2}\\s*$"), "").replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
-    .replace(Regex("\\b(?:organic|bio)\\b"), "")
+    .replace(Regex("\\b(?:organic|bio)\\b-?"), "")
     .replace(materialPrefix, "")
     .replace(additivePrefix, "").replace(Regex("^\\s*(?:gemüse|vegetables|grönsaker)\\s*[-–:]\\s*(?=\\S)"), "")
-    .replace(Regex("\\s+"), " ").trim().trimEnd('.', '!').trim().replace(quantityLeadIn, "").replace(leadingConjunction, "").replace(purposeNote, "")
+    .replace(Regex("\\s+"), " ").trim().trimEnd('.', '!').trim().replace(allergenLeadIn, "").replace(quantityLeadIn, "").replace(leadingConjunction, "").replace(purposeNote, "")
 internal fun compositionTerms(text: String, materialContext: Boolean = false): List<String> {
     var value = text.replace(Regex("&(?:quot|#34);"), "\"").replace(Regex("&(?:apos|#39);"), "'").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").lines().filterNot { Regex("^\\s*[*†]\\s*(?:Allergioita tai intoleransseja aiheuttavat aineet korostettu|Ämnen som kan orsaka allergier eller intoleranser (?:är|har) markerade)\\.?\\s*$", RegexOption.IGNORE_CASE).matches(it) }.joinToString("\n")
     val groups = Regex("\\b(?:vitamins?|vitamine[ns]?|vitaminer|vitamiinit|vitaminas|vitamini)\\s*\\(", RegexOption.IGNORE_CASE).findAll(value).toList()
@@ -50,6 +53,7 @@ internal fun compositionTerms(text: String, materialContext: Boolean = false): L
         value = value.take(group.range.first) + "(" + expanded + ")" + value.substring(end)
     }
     if (materialContext || materialSection.containsMatchIn(text)) value = value.replace("/", ",")
+    value = value.replace(allergenSentence, ", ")
     return value.replace(Regex("(?<!\\d)\\d+(?:[.,]\\d+)?\\s*%"), "")
         .replace(Regex("\\(\\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\\s*\\)", RegexOption.IGNORE_CASE), "")
         // A bare purpose after an ingredient ("annatto extract (color)", "sodium benzoate (preservative)"); a listed "color" on its own stays an unspecified colour.
@@ -81,7 +85,7 @@ internal fun containsWord(text: String, word: String): Boolean {
 // A negation covers the ingredient it introduces: the words up to the first plant or ambiguous ingredient ("no added sugar milk chocolate" keeps milk)
 // or the hyphenated word ("non-GMO whole milk"), and a conjunction carries it on ("without milk and eggs", "no milk or eggs").
 // A bare Finnish "ei" is never a negation: it is the German egg ("Ei und Milch"); only its fixed phrases ("ei sisällä", "ei lisättyä") are.
-private const val NEGATIONS = "no|non|not|without|ohne|kein\\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né"
+private const val NEGATIONS = "no|non|not|without|ohne|kein[\\p{L}\\p{N}_]*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né"
 // A free-from suffix ("milk-free", "laktosefrei", "glutenfreie", "mjölkfritt", "fleischlos").
 private const val FREE_FROM = "free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?|vrije?"
 // A negation fused with an animal qualifier ("non-dairy milk", "animal-free collagen", "tierfreies Kollagen", "fleischlose Wurst").
@@ -91,7 +95,7 @@ private data class QualifierDomain(val qualifiers: String, val rules: Set<String
 private data class WordContext(val before: Regex, val after: Regex)
 private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
-private const val MODIFIERS = "vegan\\w*|plant|plant-based|pflanzlich\\w*|växtbaserad\\w*|vegetabilisk\\w*|faux|fake|artificial|künstlich\\w*|synthetic\\w*|synthetisch\\w*|kunst\\w*|konst\\w*|syntet\\w*|imitation\\w*|imitiert\\w*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r\\w*|aroma\\w*|ar[oô]m\\w*|geschmack\\w*|smak\\w*|saveur\\w*|go[uû]t\\w*|sabor\\w*|gusto\\w*|smaak\\w*|smag\\w*|maku\\w*|vegaan\\w*|(?<!\\p{L})(?:cultures?|kultur\\w*)"
+private const val MODIFIERS = "vegan[\\p{L}\\p{N}_]*|plant|plant-based|pflanzlich[\\p{L}\\p{N}_]*|växtbaserad[\\p{L}\\p{N}_]*|vegetabilisk[\\p{L}\\p{N}_]*|faux|fake|artificial|künstlich[\\p{L}\\p{N}_]*|synthetic[\\p{L}\\p{N}_]*|synthetisch[\\p{L}\\p{N}_]*|kunst[\\p{L}\\p{N}_]*|konst[\\p{L}\\p{N}_]*|syntet[\\p{L}\\p{N}_]*|imitation[\\p{L}\\p{N}_]*|imitiert[\\p{L}\\p{N}_]*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r[\\p{L}\\p{N}_]*|aroma[\\p{L}\\p{N}_]*|ar[oô]m[\\p{L}\\p{N}_]*|geschmack[\\p{L}\\p{N}_]*|smak[\\p{L}\\p{N}_]*|saveur[\\p{L}\\p{N}_]*|go[uû]t[\\p{L}\\p{N}_]*|sabor[\\p{L}\\p{N}_]*|gusto[\\p{L}\\p{N}_]*|smaak[\\p{L}\\p{N}_]*|smag[\\p{L}\\p{N}_]*|maku[\\p{L}\\p{N}_]*|vegaan[\\p{L}\\p{N}_]*|(?<!\\p{L})(?:cultures?|kultur[\\p{L}\\p{N}_]*)"
 private val modifiedBefore = Regex("(?:^|[^\\p{L}])(?:$MODIFIERS)(?:$|[^\\p{L}])")
 // A free-from suffix covers the word it is attached to, a head noun of the claim and a conjunction list before it ("milk-free", "milk protein-free", "milk and egg free", "milch- und eifrei"), not "milk from free range cows".
 private val freeSuffix = Regex("(?:$FREE_FROM)(?=$|[^\\p{L}])")
@@ -286,9 +290,9 @@ class Evaluator(private val rulesDocument: JSONObject) {
             materialMatch != null -> input.text.substring(materialMatch.range.first).trim()
             else -> input.text
         }
-        val precaution = compositionPrecaution.find(body)
-        val composition = if (precaution == null) body else body.take(precaution.range.first)
-        val crossContact = JSONArray().apply { precaution?.let { put(body.substring(it.range.first).trim()) } }
+        val split = splitPrecaution(body)
+        val composition = split.ingredients
+        val crossContact = JSONArray(split.crossContact)
         // A barcode identifies a product; it is not a composition term.
         val identityOnly = headingMatch == null && input.complete != true && input.name.isNotBlank() &&
             normalizeCompositionTerm(composition) == normalizeCompositionTerm(input.name) && ruleForTerm(normalizeCompositionTerm(composition)) == null
@@ -301,7 +305,11 @@ class Evaluator(private val rulesDocument: JSONObject) {
             val candidates = if (':' in term) listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term) else listOf(term)
             candidates.firstOrNull { status(it) == "animal" } ?: candidates.firstOrNull { status(it) == "ambiguous" }
         }
-        val tokens = if (parsed != null) (parsed + guards).distinct() else fallback
+        // Text after a precaution sentence is not the list ("Store cool"), but an exact animal term there still vetoes ("Coating: beeswax").
+        val tailGuards = compositionTerms(split.tail).mapNotNull { term ->
+            listOf(normalizeCompositionTerm(term.substringAfterLast(':')), term).firstOrNull { exactRule(it)?.optString("status") == "animal" }
+        }
+        val tokens = ((if (parsed != null) parsed + guards else fallback) + tailGuards).distinct()
         val findings = JSONArray()
         for (term in tokens) {
             val rule = ruleForTerm(term)
