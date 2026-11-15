@@ -63,6 +63,8 @@ jobs:
           VEGSNAP_KEYSTORE_PATH: ${{ runner.temp }}/vegsnap-release.p12
           VEGSNAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           VEGSNAP_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          # Local builds reuse the checked-in snapshot; releases refresh it when it is older than seven days.
+          VEGSNAP_OFFLINE_SNAPSHOT: refresh
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease bundleRelease
       - name: Build extension packages
@@ -70,6 +72,7 @@ jobs:
           CHROMIUM_EXTENSION_KEY: ${{ secrets.CHROMIUM_EXTENSION_KEY }}
           VEGSNAP_EXTENSION_KEY_PATH: ${{ runner.temp }}/vegsnap-extension.pem
           VEGSNAP_CHROMIUM_BINARY: google-chrome
+          VEGSNAP_OFFLINE_SNAPSHOT: refresh
         run: |
           umask 077
           printf '%s' "$CHROMIUM_EXTENSION_KEY" > "$VEGSNAP_EXTENSION_KEY_PATH"

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CACHE_TTL_MS, createSnapshot, normalizeProduct, refreshSnapshot, refreshSnapshots, regionQueries, parseTsv, selectFood } from './offline-snapshot';
+import { CACHE_TTL_MS, createSnapshot, exportTimestamp, normalizeProduct, refreshSnapshot, refreshSnapshots, regionQueries, parseTsv, selectFood } from './offline-snapshot';
 
 const row = { code: '4000417025005', product_name: 'Fixture chocolate', brands: 'Fixture', ingredients_text: 'Cocoa, sugar',
   countries_tags: 'en:germany', last_modified_t: 1_700_000_000 };
@@ -36,6 +36,14 @@ describe('offline snapshot build', () => {
     expect(regionQueries('germany')[0]?.limit).toBe(30_000);
     expect(createSnapshot('germany', [rows], date).products).toHaveLength(12_000);
     expect(createSnapshot('de-eu', [rows], date).products).toHaveLength(10_000);
+  });
+  test('food and non-food exports read Unix and swapped ISO modification timestamps alike', async () => {
+    expect(exportTimestamp('1751609686')).toBe(1751609686);
+    expect(exportTimestamp('2025-07-04T06:14:46Z')).toBe(1751609686);
+    expect(Number.isNaN(exportTimestamp('not a date'))).toBe(true);
+    const selected = (await selectFood(['germany'], lines(tsv([{ ...row, last_modified_t: '2025-07-04T06:14:46Z' }]))))[0]![0]![0];
+    expect((selected as { last_modified_t: number }).last_modified_t).toBe(1751609686);
+    expect(normalizeProduct(selected)?.last_modified_t).toBe(1751609686);
   });
   test('food export keeps the most-scanned usable products per recipe, ignoring literal quotes', async () => {
     const swedish = { ...row, code: '7310865004703', countries_tags: 'en:sweden', unique_scans_n: 50 };
@@ -101,28 +109,41 @@ describe('offline snapshot build', () => {
       expect(await readdir(folder)).toEqual(['pack.json']);
     } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
   });
-  test('VEGSNAP_OFFLINE_SNAPSHOT=cached reuses an expired snapshot without network, fails without one, refreshes when forced', async () => {
+  test('cached mode reuses an expired snapshot without network, fails without one, refreshes when forced', async () => {
     const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-')), sourceCache = await mkdtemp(join(tmpdir(), 'vegsnap-offline-cache-'));
-    const previous = process.env.VEGSNAP_OFFLINE_SNAPSHOT;
-    process.env.VEGSNAP_OFFLINE_SNAPSHOT = 'cached';
     try {
       const output = join(folder, 'pack.json');
       let requests = 0;
       const fetcher = (async () => { requests++; throw new Error('network unavailable'); });
       const now = new Date(+date + 10 * CACHE_TTL_MS);
-      await expect(refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now, fetcher, log: () => {} })).rejects.toThrow('No usable germany snapshot');
+      await expect(refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', mode: 'cached', now, fetcher, log: () => {} })).rejects.toThrow('VEGSNAP_OFFLINE_SNAPSHOT=refresh');
       expect(requests).toBe(0);
       const original = JSON.stringify(createSnapshot('germany', [[row]], date));
       await writeFile(output, original);
-      expect(await refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now, fetcher, log: () => {} })).toBe('cached');
+      expect(await refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', mode: 'cached', now, fetcher, log: () => {} })).toBe('cached');
       expect(requests).toBe(0);
       expect(await readFile(output, 'utf8')).toBe(original);
-      expect(await refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', now, fetcher, force: true, log: () => {} })).toBe('stale');
+      expect(await refreshSnapshot({ output, sourceCache, includeNonfood: false, region: 'germany', mode: 'cached', now, fetcher, force: true, log: () => {} })).toBe('stale');
       expect(requests).toBe(1);
-    } finally {
-      if (previous === undefined) delete process.env.VEGSNAP_OFFLINE_SNAPSHOT; else process.env.VEGSNAP_OFFLINE_SNAPSHOT = previous;
-      await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true });
-    }
+    } finally { await rm(folder, { recursive: true, force: true }); await rm(sourceCache, { recursive: true, force: true }); }
+  });
+  test('the command line keeps the checked-in snapshot unless a refresh is requested', async () => {
+    const script = join(import.meta.dir, 'offline-snapshot.ts');
+    const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-'));
+    try {
+      const run = async (mode: string | undefined) => {
+        const env = { ...process.env };
+        if (mode === undefined) delete env.VEGSNAP_OFFLINE_SNAPSHOT; else env.VEGSNAP_OFFLINE_SNAPSHOT = mode;
+        // A missing output shows which mode ran without touching the network or the real bundle.
+        const child = Bun.spawn(['bun', script, '--output', join(folder, 'missing.json')], { env, stdout: 'pipe', stderr: 'pipe' });
+        return { code: await child.exited, stderr: await new Response(child.stderr).text() };
+      };
+      const defaults = await run(undefined);
+      expect(defaults.code).not.toBe(0);
+      expect(defaults.stderr).toContain('Run with VEGSNAP_OFFLINE_SNAPSHOT=refresh');
+      const invalid = await run('yes');
+      expect(invalid.stderr).toContain('VEGSNAP_OFFLINE_SNAPSHOT must be cached or refresh');
+    } finally { await rm(folder, { recursive: true, force: true }); }
   });
   test('rejects unusable exports atomically; a valid refresh replaces the pack and reuses the downloaded export', async () => {
     const folder = await mkdtemp(join(tmpdir(), 'vegsnap-offline-test-')), sourceCache = await mkdtemp(join(tmpdir(), 'vegsnap-offline-cache-'));
