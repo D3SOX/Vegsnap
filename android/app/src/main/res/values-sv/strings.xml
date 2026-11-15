@@ -432,7 +432,7 @@
     <string name="tour_control_body">Inget Vegsnap-konto krävs. Välj hur mycket du delar och hur många kontroller som körs samtidigt.</string>
     <string name="tour_done">Börja kontrollera</string>
     <string name="tour_evidence">Läs av beläggsnivån</string>
-    <string name="tour_evidence_body">Varje beläggsnivå har en egen ikon och färg, som även visas i Historik. Öppna ett resultat för att se dess källor.</string>
+    <string name="tour_evidence_body">Alla dessa betyder vegansk. Ikon och färg visar vad resultatet bygger på, även i Historik. Öppna ett resultat för att se dess källor.</string>
     <string name="tour_local">Lokal historik, uttrycklig AI</string>
     <string name="tour_local_body">Historik och foton stannar på den här enheten. Uttryckliga AI-kontroller skickar valt innehåll till din leverantör. Databassökningar skickar produktidentifierare eller sökord, aldrig kamerabilder.</string>
     <string name="tour_maker">Vegansk enligt tillverkaren</string>
@@ -441,7 +441,7 @@
     <string name="tour_nonvegan">Inte vegansk</string>
     <string name="tour_nonvegan_body">Identifierade ingredienser eller material av animaliskt ursprung förklaras i resultatet.</string>
     <string name="tour_packaging">Synlig märkning</string>
-    <string name="tour_packaging_body">Ett veganpåstående eller en veganmärkning är synlig på förpackningen. Äkthet och certifieringsregister har inte kontrollerats.</string>
+    <string name="tour_packaging_body">Förpackningen eller en produktdatabas visar ett veganpåstående eller en veganmärkning. Äkthet och certifieringsregister har inte kontrollerats.</string>
     <string name="tour_photo">Lägg till det som saknas</string>
     <string name="tour_photo_body">Fotografera framsidan och de fullständiga ingredienserna eller materialen. Tryck på Kontrollera för att använda din valda AI när databasbelägg saknas.</string>
     <string name="tour_progress">Steg %1$d av %2$d</string>
@@ -457,8 +457,8 @@
     <string name="vegan">Ingredienserna/materialen verkar veganska</string>
     <string name="vegan_certification_source">Vegansk enligt certifieringskällan</string>
     <string name="vegan_certified">Certifierat vegansk</string>
-    <string name="vegan_label_visible">Veganmärkning synlig</string>
     <string name="vegan_manufacturer">Vegansk enligt tillverkaren</string>
+    <string name="vegan_per_label">Vegansk enligt märkningen</string>
     <string name="vision">Den här modellen tar emot bilder</string>
     <string name="vision_unknown">Bildstöd anges inte; fotokontroller provar den här modellen.</string>
     <string name="vision_unsupported">Den valda modellen stöder inte bilder. Välj en bildmodell för fotokontroller.</string>
