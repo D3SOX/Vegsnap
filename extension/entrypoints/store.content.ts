@@ -16,6 +16,8 @@ export default defineContentScript({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let queue = Promise.resolve();
     const badges = new Map<HTMLElement, ProductBinding>();
+    // Closed shadow roots keep the verdict away from store scripts, so the label is referenced directly.
+    const labels = new WeakMap<HTMLElement, HTMLSpanElement>();
     const languages = ['en', 'de', 'sv'] as const;
     type Language = typeof languages[number];
     const uiLanguage = browser.i18n.getUILanguage();
@@ -30,9 +32,9 @@ export default defineContentScript({
       languageGeneration++;
       // Completed lookups carry result text in the old language, so every badge starts over.
       for (const [host, binding] of badges) {
-        const label = host.shadowRoot?.querySelector('span');
+        const label = labels.get(host);
         if (label) label.textContent = t.check;
-        host.removeAttribute('title');
+        label?.parentElement?.removeAttribute('title');
         if (binding.product.barcode) { observer.unobserve(host); observer.observe(host); }
       }
     }
@@ -56,26 +58,30 @@ export default defineContentScript({
         const lookupCurrent = () => generation === languageGeneration && current(host, binding);
         queue = queue.then(async () => {
           if (!lookupCurrent()) return;
-          const label = host.shadowRoot?.querySelector('span');
+          const label = labels.get(host);
           if (label) label.textContent = t.checking;
+          let cached = false;
           try {
             const response = await browser.runtime.sendMessage({ type: 'background-check', barcode: binding.product.barcode }) as Reply<CheckResult>;
+            cached = response.ok && response.cached === true;
             if (!lookupCurrent()) return;
             if (label) label.textContent = response.ok && response.result.identity.match === 'exact_barcode' ? `Vegsnap · ${response.result.title}` : t.check;
-            host.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
+            // The tooltip stays inside the closed root; the host element is readable by store scripts.
+            if (label?.parentElement) label.parentElement.title = response.ok && response.result.identity.match === 'exact_barcode' ? response.result.summary : t.inconclusive;
           } catch { if (label && lookupCurrent()) label.textContent = t.check; }
-          await new Promise(resolve => setTimeout(resolve, 1600));
+          // Pace database lookups; answers from the background cache cost no request.
+          if (!cached) await new Promise(resolve => setTimeout(resolve, 1600));
         }).catch(() => {});
       }
     });
     function remove(host: HTMLElement) { observer.unobserve(host); badges.delete(host); host.remove(); }
     function attach(binding: ProductBinding) {
       const host = document.createElement('div'); host.dataset.vegsnapBadge = '';
-      const shadow = host.attachShadow({ mode: 'open' });
+      const shadow = host.attachShadow({ mode: 'closed' });
       const style = document.createElement('style');
       style.textContent = ':host{display:block;margin:6px 0;font:13px/1.4 system-ui;color:#234536}button{font:inherit;color:inherit;background:#edf5e9;border:1px solid #a3b89b;border-radius:12px;padding:8px 12px;cursor:pointer;min-height:44px;text-align:left}button:hover{background:#dfebd9}button:focus-visible{outline:2px solid #234536;outline-offset:2px}';
       const button = document.createElement('button'); button.type = 'button';
-      const label = document.createElement('span'); label.textContent = t.check; button.append(label);
+      const label = document.createElement('span'); label.textContent = t.check; button.append(label); labels.set(host, label);
       button.addEventListener('click', event => {
         event.preventDefault(); event.stopPropagation();
         if (!current(host, binding)) { scan(); return; }

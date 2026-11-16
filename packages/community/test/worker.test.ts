@@ -2,13 +2,13 @@ import { beforeAll, beforeEach, afterAll, expect, test } from 'bun:test';
 import type { Miniflare } from 'miniflare';
 import worker, { type Env } from '../src/index';
 import { cleanEvidence } from '../src/evidence';
-import { fixture, adminToken, submission, png } from './fixture';
+import { fixture, adminToken, submission, png, siteverifyRequests } from './fixture';
 
 let mf: Miniflare, client = 0;
 beforeAll(async () => { mf = await fixture(); },30_000);
 afterAll(async () => { await mf?.dispose(); });
 beforeEach(async () => {
-  const db = await mf.getD1Database('DB'); await db.batch(['submissions', 'submission_budget', 'content_reports', 'report_budget'].map(table => db.prepare(`DELETE FROM ${table}`)));
+  const db = await mf.getD1Database('DB'); await db.batch(['submissions', 'submission_budget', 'content_reports', 'report_budget', 'report_ip_budget'].map(table => db.prepare(`DELETE FROM ${table}`)));
   const bucket = await mf.getR2Bucket('EVIDENCE'); const list = await bucket.list();
   if (list.objects.length) await bucket.delete(list.objects.map(object => object.key));
 });
@@ -49,7 +49,8 @@ test('approval publishes edited text, private attachments stay private, exact ma
   const exact = await request('/api/replies?name=Example%20oat%20drink&brand=EXAMPLE%20MAKER&market=se');
   expect((await exact.json() as {replies:unknown[]}).replies).toHaveLength(1);
   expect((await request('/api/replies?barcode=3017620422004&market=SE')).status).toBe(422);
-  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  expect(response.headers.get('Cache-Control')).toBe('public, max-age=300');
+  expect((await request('/api/replies?market=SE')).headers.get('Cache-Control')).toBe('no-store');
 });
 test('public attachment opt-in, stale reviews and withdrawing approval work',async () => {
   const id = await create(); expect((await review(id,0,'approved',true)).status).toBe(200);
@@ -92,7 +93,7 @@ test('expiry deletes stale pending/rejected records and evidence, preserving app
 });
 test('static forms and scripts are served with CSP and without public cache',async () => {
   for (const path of ['/submit','/replies','/review','/submit.js','/common.js']) {
-    const response = await request(path); expect(response.status).toBe(200); expect(response.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
+    const response = await request(path); expect(response.status).toBe(200); expect(response.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'"); expect(response.headers.get('Cache-Control')).toBe('no-store');
   }
 });
 test('evidence validation removes image metadata and rejects disguised or malformed files',() => {
@@ -240,4 +241,53 @@ test('restricted-brand aliases without prefixes suggest a range without establis
   expect((await approveCoverage(id,{type:'range',markets:['SE'],products:[],range:{name:'Fun Light',wholeBrand:false,brandAliases:['Fun Light'],namePrefixes:[]}})).status).toBe(200);
   const page = await (await request('/api/replies?barcode=4006381333931&brand=Fun%20Light&market=SE')).json() as {replies:unknown[];candidates:{id:string;match:string}[]};
   expect(page.replies).toEqual([]); expect(page.candidates[0]).toMatchObject({id,match:'candidate'});
+});
+
+test('the review queue lists the oldest submissions first and pages by submission time', async () => {
+  const db = await mf.getD1Database('DB');
+  // Insert in descending id order so that id order and submission order disagree.
+  const rows = Array.from({length:22},(_,i) => ({id:`${(0xfffffff0 - i).toString(16)}-0000-4000-8000-000000000000`,createdAt:`2026-01-${String(i + 1).padStart(2,'0')}T00:00:00.000Z`}));
+  await db.batch(rows.map(row => db.prepare(`INSERT INTO submissions(id, product_name, name_key, brand, brand_key, market, question, reply, replied_on, claim, scope, created_at, original_json)
+    VALUES (?, 'P', 'p', 'B', 'b', 'SE', 'Q', 'R', '2026-01-01', 'vegan', 'ingredients', ?, ?)`).bind(row.id,row.createdAt,JSON.stringify(submission))));
+  const first = await (await request('/api/review',{headers:reviewHeaders})).json() as {submissions:{id:string}[];nextCursor:string};
+  expect(first.submissions.map(row => row.id)).toEqual(rows.slice(0,20).map(row => row.id));
+  const second = await (await request(`/api/review?cursor=${encodeURIComponent(first.nextCursor)}`,{headers:reviewHeaders})).json() as {submissions:{id:string}[];nextCursor:string|null};
+  expect(second).toMatchObject({submissions:rows.slice(20).map(row => ({id:row.id})),nextCursor:null});
+  expect((await request(`/api/review?cursor=${rows[0]!.id}`,{headers:reviewHeaders})).status).toBe(400);
+});
+test('Turnstile verification receives the client IP', async () => {
+  expect((await submit()).status).toBe(201);
+  expect(siteverifyRequests.at(-1)).toMatchObject({response:'valid',remoteip:`192.0.2.${client}`});
+});
+test('a failed storage write gives the daily submission allowance back', async () => {
+  const db = await mf.getD1Database('DB');
+  await db.prepare("CREATE TRIGGER fail_insert BEFORE INSERT ON submissions BEGIN SELECT RAISE(ABORT, 'test failure'); END").run();
+  try { expect((await submit()).status).toBe(503); }
+  finally { await db.prepare('DROP TRIGGER fail_insert').run(); }
+  expect(await db.prepare('SELECT count FROM submission_budget').first('count')).toBe(0);
+  expect((await (await mf.getR2Bucket('EVIDENCE')).list()).objects).toHaveLength(0);
+});
+test('PDF evidence can never be published', async () => {
+  const body = new FormData(); for (const [key,value] of Object.entries(submission)) body.set(key,value);
+  body.set('consent','yes'); body.set('terms','yes'); body.set('cf-turnstile-response','valid');
+  body.set('evidence',new Blob(['%PDF-1.4\n/Author (Private Name)\n%%EOF'],{type:'application/pdf'}),'reply.pdf');
+  const created = await request('/api/submissions',{method:'POST',headers:{Origin:'https://community.example','CF-Connecting-IP':`192.0.2.${++client}`},body});
+  expect(created.status).toBe(201); const {id} = await created.json() as {id:string};
+  const queue = await (await request('/api/review',{headers:reviewHeaders})).json() as {submissions:{evidencePublishable:boolean}[]};
+  expect(queue.submissions[0]?.evidencePublishable).toBe(false);
+  const published = await review(id,0,'approved',true);
+  expect(published.status).toBe(422); expect(await published.json()).toMatchObject({field:'evidencePublic'});
+  expect((await review(id,0,'approved')).status).toBe(200);
+  // Records published before this rule, or by an older Worker during rollout, are withheld too.
+  await (await mf.getD1Database('DB')).prepare('UPDATE submissions SET evidence_public=1 WHERE id=?').bind(id).run();
+  expect((await request(`/api/evidence/${id}`)).status).toBe(404);
+  expect((await (await lookup()).json() as {replies:{evidencePublic:boolean}[]}).replies[0]?.evidencePublic).toBe(false);
+  expect((await request(`/api/review/${id}/evidence`,{headers:reviewHeaders})).status).toBe(200);
+});
+test('public lookups and snapshots are rate limited per client', async () => {
+  const headers = {'CF-Connecting-IP':'198.51.100.77'};
+  for (let i = 0; i < 60; i++) expect((await request(i % 2 ? '/api/snapshot' : '/api/replies?barcode=3017620422003&market=SE',{headers})).status).toBe(200);
+  const limited = await request('/api/snapshot',{headers});
+  expect(limited.status).toBe(429); expect(limited.headers.get('Cache-Control')).toBe('no-store');
+  expect((await request('/api/snapshot',{headers:{'CF-Connecting-IP':'198.51.100.78'}})).status).toBe(200);
 });

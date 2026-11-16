@@ -15,13 +15,29 @@ test('an offline exact product is evaluated with source date and attribution wit
   expect(result.evidence[0]).toMatchObject({ kind: 'database', license: 'ODbL-1.0 (database); DBCL-1.0 (contents)', retrievedAt: '2026-10-05T09:00:00Z', sourceDate: new Date(1760000000000).toISOString() });
   expect(result.warnings.some(message => message.includes('Teilweiser Offline'))).toBe(true);
 });
-test('local exact match precedes network databases even when online and preserves partial-list uncertainty', async () => {
+test('a decided local match skips the network even when online', async () => {
+  let requests = 0;
+  const result = await checkProduct({ barcode: code }, { mode: 'explicit', offlineProducts: new OfflineProductIndex([snapshot()]), fetch: (async () => { requests++; throw new Error('Network must not run'); }) as unknown as typeof fetch });
+  expect(requests).toBe(0);
+  expect(result.outcome).toBe('not_vegan');
+});
+test('an open local match is refreshed online, and keeps its partial-list uncertainty when the network fails', async () => {
   const pack = snapshot(); pack.products[0]!.ingredients = 'water';
   let requests = 0;
-  const result = await checkProduct({ barcode: code }, { mode: 'explicit', offlineProducts: new OfflineProductIndex([pack]), fetch: (async () => { requests++; throw new Error('Network must not run'); }) as unknown as typeof fetch });
-  expect(requests).toBe(0);
+  const result = await checkProduct({ barcode: code }, { mode: 'explicit', offlineProducts: new OfflineProductIndex([pack]), fetch: (async () => { requests++; throw new Error('Network unavailable'); }) as unknown as typeof fetch });
+  expect(requests).toBe(3);
   expect(result.outcome).toBe('uncertain');
   expect(result.basis).toBe('insufficient');
+  expect(result.evidence.some(item => item.id === `offline:off:${code}`)).toBe(true);
+  expect(result.warnings.join(' ')).not.toContain('lookup failed');
+});
+test('a vegan label on the live record settles a product that is also in a pack', async () => {
+  const pack = snapshot(); pack.products[0]!.ingredients = 'water, natural flavouring';
+  const live = (async () => Response.json({ status: 'success', product: { code, product_name: 'Example', ingredients_text: 'water, natural flavouring',
+    countries_tags: ['en:germany'], labels_tags: ['en:vegan'] } })) as unknown as typeof fetch;
+  const result = await checkProduct({ barcode: code, category: 'food' }, { mode: 'explicit', offlineProducts: new OfflineProductIndex([pack]), fetch: live });
+  expect(result).toMatchObject({ outcome: 'vegan', basis: 'packaging' });
+  expect(result.evidence.some(item => item.id === `off:${code}`)).toBe(true);
 });
 test('missing local record falls back online; an offline miss is explicit about partial coverage', async () => {
   const empty = snapshot(); empty.products = [];

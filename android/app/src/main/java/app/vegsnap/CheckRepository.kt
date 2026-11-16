@@ -248,8 +248,18 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
         return companyConcerns.attach(applyDatabaseLabels(result, labels, database.first.locale), database.first.locale)
     }
     private suspend fun lookup(barcode: String, input: CheckInput, offline: Boolean = false): Pair<CheckInput, JSONObject>? {
-        offlineDatabase?.lookup(input.copy(barcode = barcode))?.let { return it }
+        val local = offlineDatabase?.lookup(input.copy(barcode = barcode))
+        if (local != null) {
+            // Packs carry no labels, so an open pack verdict is refreshed from the live record, whose vegan label may settle it.
+            if (offline || evaluator.evaluate(local.first).getString("outcome") != "uncertain") return local
+            return try { onlineLookup(barcode, input) ?: local }
+            catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (_: Exception) { local }
+        }
         if (offline) return null
+        return onlineLookup(barcode, input)
+    }
+    private suspend fun onlineLookup(barcode: String, input: CheckInput): Pair<CheckInput, JSONObject>? {
         val domains = when (input.category) {
             "food", "drink" -> listOf("openfoodfacts.org")
             "cosmetics" -> listOf("openbeautyfacts.org")
@@ -257,7 +267,7 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             else -> listOf("openfoodfacts.org", "openbeautyfacts.org", "openproductsfacts.org")
         }
         for (domain in domains) {
-            val request = Request.Builder().url("https://world.$domain/api/v3/product/$barcode.json?fields=code,product_name,product_name_de,ingredients_text,ingredients_text_de,brands,last_modified_t,countries_tags,labels_tags")
+            val request = Request.Builder().url("https://world.$domain/api/v3/product/$barcode.json?fields=code,product_name,product_name_de,product_name_sv,ingredients_text,ingredients_text_de,ingredients_text_sv,brands,last_modified_t,countries_tags,labels_tags")
                 .header("User-Agent", "Vegsnap/${BuildConfig.VERSION_NAME} (Android; local personal product checks)").build()
             val response = productRequests.product(request.url.toString()) { request(request, allowNotFound = true) } ?: continue
             val product = response.optJSONObject("product") ?: continue
@@ -266,8 +276,10 @@ class CheckRepository(private val evaluator: Evaluator, private val extractionPr
             val markets = product.optJSONArray("countries_tags") ?: JSONArray()
             if (input.autoMarket == false && markets.length() > 0 && markets.stringValues().none { productCountryCode(it) == input.market }) continue
             val market = selectProductCountry(input, markets = markets.stringValues()).first
-            val text = product.optString(if (input.locale == "de") "ingredients_text_de" else "ingredients_text").ifBlank { product.optString("ingredients_text") }
-            val name = product.optString(if (input.locale == "de") "product_name_de" else "product_name").ifBlank { product.optString("product_name") }
+            fun localized(field: String) = listOfNotNull("${field}_${input.locale}".takeIf { input.locale != "en" }, field, "${field}_de")
+                .map { product.optString(it) }.firstOrNull { it.isNotBlank() }.orEmpty()
+            val text = localized("ingredients_text")
+            val name = localized("product_name")
             val category = if (input.category == "other") when (domain) { "openfoodfacts.org" -> "food"; "openbeautyfacts.org" -> "cosmetics"; else -> "other" } else input.category
             val evidence = JSONObject().put("id", "$domain:$barcode").put("kind", "database").put("title", domain)
                 .put("databaseBrand", product.optString("brands")).put("databaseLabels", product.optJSONArray("labels_tags") ?: JSONArray()).put("productMarkets", markets)

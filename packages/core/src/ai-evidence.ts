@@ -1,3 +1,4 @@
+import { genericOriginQuestion } from './message-match';
 import { resultMessages } from './i18n';
 import { analyzeText, compositionHeadingWords, parseSourceIngredients, compositionTerms, normalizeTerm, needsProcessingEvidence } from './analyze';
 import { mergeResults, withoutCompositionFindings } from './merge-results';
@@ -102,12 +103,11 @@ export function applyAIEvidence(result: CheckResult, input: CheckInput, extracte
   }
   if (next.outcome === 'uncertain') {
     const unresolved = findings.filter(item => item.status === 'unknown' || item.status === 'ambiguous').map(item => item.term);
-    const generic = /^(?:Confirm the source of the ambiguous|Die Herkunft unklarer|Bekräfta ursprunget för oklara)/;
-    next.questions = next.questions.filter(question => !generic.test(question));
+    next.questions = next.questions.filter(question => !genericOriginQuestion.test(question));
     if (unresolved.length) next.questions.push(`${t.originQuestionPrefix}${unresolved.join(', ')}.`);
   }
   if (!input.images?.length) return next;
-  const observations = (extracted.labelObservations ?? []).filter(label => /\bvegans?\b/i.test(label.text) &&
+  const observations = (extracted.labelObservations ?? []).filter(label => /\bvegan(?:s|e[nrs]?|sk[at]?|[oa]s?)?\b/i.test(label.text) &&
     !/\b(?:vegetarian|vegetarisch|vegetarisk)\b/i.test(label.text) && !labelNegation.test(label.text.replace(animalFree, ' ')) &&
     (label.kind === 'vegan_claim' || veganCertifications.has(normalizeTerm(label.name))));
   if (!observations.length) return next;

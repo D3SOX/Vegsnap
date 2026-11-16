@@ -89,7 +89,7 @@ export class OfflineProductIndex {
   lookup(barcode: string, input: Pick<CheckInput, 'category' | 'locale' | 'market' | 'autoMarket'> = {}): DatabaseProduct | null {
     const t = resultMessages[input.locale ?? 'en'];
     const code = normalizeBarcode(barcode);
-    if (!code) throw new Error('Invalid GTIN/EAN: check the digits and checksum.');
+    if (!code) throw new Error(t.invalidBarcode);
     const allowed = input.category === 'food' || input.category === 'drink' ? ['off'] : input.category === 'cosmetics' ? ['obf'] : ['clothing', 'shoes', 'household'].includes(input.category ?? '') ? ['opf'] : DATABASES.map(db => db.id);
     const entries = (this.products.get(code.padStart(14, '0')) ?? []).filter(entry => allowed.includes(entry.product.source));
     const countryTags = [...new Set(entries.flatMap(entry=>entry.product.countries_tags))];

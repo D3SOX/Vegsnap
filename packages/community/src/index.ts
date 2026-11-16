@@ -1,6 +1,7 @@
 import { communityIdentityKey, communityMatchRules, SubmissionError, validateCommunitySubmission, type CommunityReply, type CommunitySubmission } from '@vegsnap/core/community';
 import { normalizeBarcode } from '@vegsnap/core/barcode';
 import { rateLimitAddress } from '@vegsnap/core/http';
+import { cursorAfter, parseCursor } from './cursor';
 import { cleanEvidence, MAX_EVIDENCE_BYTES } from './evidence';
 import { ReportError, submitReport, reviewReports } from './reports';
 
@@ -9,6 +10,7 @@ export interface Env {
   EVIDENCE: R2Bucket;
   ASSETS: Fetcher;
   SUBMISSION_LIMIT: RateLimit;
+  LOOKUP_LIMIT: RateLimit;
   PUBLIC_ORIGIN: string;
   TURNSTILE_SITE_KEY: string;
   TURNSTILE_SECRET?: string;
@@ -28,10 +30,12 @@ const json = (value: unknown, status = 200) => Response.json(value, { status });
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 // Text limits count characters; allow their UTF-8 expansion plus multipart framing.
 const MAX_METADATA_BYTES = 96_000;
+// PDFs are stored byte for byte and can hide metadata, embedded files and text under redaction boxes.
+const publishable = (type: string) => type === 'image/png';
 function publicReply(row: Row): CommunityReply {
   return { id: row.id, productName: row.product_name, brand: row.brand, barcode: row.barcode, market: row.market,
     variant: row.variant, question: row.question, reply: row.reply, repliedOn: row.replied_on, claim: row.claim,
-    scope: row.scope, sourceUrl: row.source_url, reviewedAt: row.reviewed_at!, evidencePublic: row.evidence_public === 1,
+    scope: row.scope, sourceUrl: row.source_url, reviewedAt: row.reviewed_at!, evidencePublic: row.evidence_public === 1 && publishable(row.evidence_type),
     ...(row.coverage_json ? { coverage: JSON.parse(row.coverage_json) as CommunitySubmission['coverage'] } : {}), ...(row.match ? { match: row.match } : {}) };
 }
 async function boundedBody(request: Request, maxBytes: number): Promise<Uint8Array> {
@@ -67,14 +71,14 @@ async function isAdmin(request: Request, env: Env): Promise<boolean> {
   for (let i = 0; i < first.length; i++) diff |= first[i]! ^ second[i]!;
   return diff === 0;
 }
-async function verifyChallenge(token: string, env: Env): Promise<void> {
+async function verifyChallenge(token: string, request: Request, env: Env): Promise<void> {
   if (!env.TURNSTILE_SECRET || !env.PUBLIC_ORIGIN) throw new HttpError(503, 'Submissions are not configured yet.');
   if (!token || token.length > 2048) throw new SubmissionError('challenge', 'Complete the human verification.');
   let response: Response;
   try {
     response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10_000),
-      body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: token }),
+      body: JSON.stringify({ secret: env.TURNSTILE_SECRET, response: token, ...(request.headers.has('CF-Connecting-IP') ? { remoteip: request.headers.get('CF-Connecting-IP') } : {}) }),
     });
   } catch { throw new HttpError(503, 'Human verification is temporarily unavailable. Try again.'); }
   if (!response.ok) throw new HttpError(503, 'Human verification is temporarily unavailable. Try again.');
@@ -107,21 +111,25 @@ async function submit(request: Request, env: Env): Promise<Response> {
   const file = form.get('evidence');
   if (!(file instanceof File) || file.size === 0) throw new SubmissionError('evidence', 'Attach a redacted screenshot or PDF of the response.');
   if (file.size > MAX_EVIDENCE_BYTES) throw new SubmissionError('evidence', 'Evidence must be no larger than 2 MB.');
-  await verifyChallenge(String(form.get('cf-turnstile-response') ?? ''), env);
+  await verifyChallenge(String(form.get('cf-turnstile-response') ?? ''), request, env);
   const evidence = cleanEvidence(new Uint8Array(await file.arrayBuffer()), file.type);
-  const now = new Date().toISOString();
-  const budget = await env.DB.prepare('INSERT INTO submission_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1 WHERE count < 100 RETURNING count').bind(now.slice(0, 10)).first();
+  const now = new Date().toISOString(), day = now.slice(0, 10);
+  const budget = await env.DB.prepare('INSERT INTO submission_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count = count + 1 WHERE count < 100 RETURNING count').bind(day).first();
   if (!budget) throw new HttpError(429, 'The daily submission limit has been reached. Please try tomorrow.');
   const id = crypto.randomUUID(); const key = `replies/${id}`;
-  await env.EVIDENCE.put(key, evidence.bytes, { httpMetadata: { contentType: evidence.type } });
   try {
+    await env.EVIDENCE.put(key, evidence.bytes, { httpMetadata: { contentType: evidence.type } });
     await env.DB.prepare(`INSERT INTO submissions(id, product_name, name_key, brand, brand_key, barcode, market, variant,
       question, reply, replied_on, claim, scope, source_url, evidence_key, evidence_type, created_at, original_json, coverage_json, match_rules_json)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, submission.productName,
       communityIdentityKey(submission.productName), submission.brand, communityIdentityKey(submission.brand), submission.barcode,
       submission.market, submission.variant, submission.question, submission.reply, submission.repliedOn, submission.claim,
       submission.scope, submission.sourceUrl, key, evidence.type, now, JSON.stringify(submission), submission.coverage ? JSON.stringify(submission.coverage) : null, JSON.stringify(communityMatchRules(submission))).run();
-  } catch (error) { await env.EVIDENCE.delete(key); throw error; }
+  } catch (error) {
+    // A failed write must not use up the shared daily budget.
+    await Promise.allSettled([env.EVIDENCE.delete(key), env.DB.prepare('UPDATE submission_budget SET count = count - 1 WHERE day = ? AND count > 0').bind(day).run()]);
+    throw error;
+  }
   return json({ id, status: 'pending' }, 201);
 }
 async function lookup(url: URL, env: Env): Promise<Response> {
@@ -188,6 +196,8 @@ async function review(request: Request, env: Env, id: string): Promise<Response>
   const record = status === 'approved' ? validateCommunitySubmission(value.submission) : null;
   if (record && current.coverage_json && !record.coverage) throw new HttpError(409, 'Reload the review page to edit this reply’s product coverage before saving.');
   if (status === 'approved' && (!current.evidence_key || !await env.EVIDENCE.head(current.evidence_key))) throw new HttpError(409, 'The evidence is missing. This submission cannot be approved.');
+  if (status === 'approved' && value.evidencePublic === true && !publishable(current.evidence_type))
+    throw new SubmissionError('evidencePublic', 'PDF attachments stay private because they can hide personal information. Approve without publishing the attachment.');
   const evidencePublic = status === 'approved' && value.evidencePublic === true ? 1 : 0;
   const updated = record
     ? await env.DB.prepare(`UPDATE submissions SET product_name=?, name_key=?, brand=?, brand_key=?, barcode=?, market=?, variant=?,
@@ -206,18 +216,23 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (request.method === 'GET' && path === '/api/config') return json({ siteKey: env.TURNSTILE_SITE_KEY, submissionsEnabled: env.SUBMISSIONS_ENABLED === 'true' && !!env.TURNSTILE_SECRET, maxEvidenceBytes: MAX_EVIDENCE_BYTES });
   if (request.method === 'POST' && path === '/api/submissions') return submit(request, env);
   if (request.method === 'POST' && path === '/api/reports') return submitReport(request, env);
-  if (request.method === 'GET' && path === '/api/replies') return lookup(url, env);
+  if (request.method === 'GET' && (path === '/api/replies' || path === '/api/snapshot')) {
+    // Lookups scan every approved reply's match rules, so each client gets a per-minute budget.
+    const { success } = await env.LOOKUP_LIMIT.limit({ key: `lookup:${rateLimitAddress(request.headers.get('CF-Connecting-IP'))}` });
+    if (!success) throw new HttpError(429, 'Too many lookups. Try again in a minute.');
+  }
+  if (request.method === 'GET' && path === '/api/replies') return publicCache(await lookup(url, env));
   if (request.method === 'GET' && path === '/api/snapshot') {
     const cursor = url.searchParams.get('cursor') ?? '';
     if (cursor && !idPattern.test(cursor)) throw new HttpError(400, 'Invalid snapshot cursor.');
     const { results } = await env.DB.prepare("SELECT * FROM submissions WHERE status='approved' AND id > ? ORDER BY id LIMIT 201").bind(cursor).all<Row>();
     const page = results.slice(0, 200);
-    return json({ schemaVersion: 1, generatedAt: new Date().toISOString(), replies: page.map(publicReply), nextCursor: results.length > 200 ? page.at(-1)!.id : null });
+    return publicCache(json({ schemaVersion: 1, generatedAt: new Date().toISOString(), replies: page.map(publicReply), nextCursor: results.length > 200 ? page.at(-1)!.id : null }));
   }
   const evidence = path.match(/^\/api\/evidence\/([^/]+)$/);
   if (request.method === 'GET' && evidence && idPattern.test(evidence[1]!)) {
     const row = await env.DB.prepare("SELECT * FROM submissions WHERE id=? AND status='approved' AND evidence_public=1").bind(evidence[1]).first<Row>();
-    if (!row?.evidence_key) throw new HttpError(404, 'Evidence not found.');
+    if (!row?.evidence_key || !publishable(row.evidence_type)) throw new HttpError(404, 'Evidence not found.');
     return evidenceResponse(row, env);
   }
   if (path.startsWith('/api/review')) {
@@ -226,13 +241,15 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (request.method === 'GET' && path === '/api/review') {
       const status = url.searchParams.get('status') ?? 'pending';
       if (!['pending', 'approved', 'rejected'].includes(status)) throw new HttpError(400, 'Invalid review status.');
-      const cursor = url.searchParams.get('cursor') ?? '';
-      if (cursor && !idPattern.test(cursor)) throw new HttpError(400, 'Invalid review cursor.');
-      const { results } = await env.DB.prepare('SELECT * FROM submissions WHERE status=? AND id > ? ORDER BY id LIMIT 21').bind(status, cursor).all<Row>();
+      const cursor = parseCursor(url.searchParams.get('cursor') ?? '');
+      if (!cursor) throw new HttpError(400, 'Invalid review cursor.');
+      // Oldest first, so the review queue is worked through in submission order.
+      const { results } = await env.DB.prepare('SELECT * FROM submissions WHERE status=? AND (created_at, id) > (?, ?) ORDER BY created_at, id LIMIT 21').bind(status, ...cursor).all<Row>();
       const page = results.slice(0, 20);
       return json({ submissions: page.map(row => ({ ...publicReply(row), status: row.status, createdAt: row.created_at,
-        reviewNote: row.review_note, revision: row.revision, hasEvidence: !!row.evidence_key, original: JSON.parse(row.original_json) as CommunitySubmission })),
-        nextCursor: results.length > 20 ? page.at(-1)!.id : null });
+        reviewNote: row.review_note, revision: row.revision, hasEvidence: !!row.evidence_key, evidencePublishable: publishable(row.evidence_type),
+        original: JSON.parse(row.original_json) as CommunitySubmission })),
+        nextCursor: results.length > 20 ? cursorAfter(page.at(-1)!) : null });
     }
     const match = path.match(/^\/api\/review\/([^/]+)(\/evidence)?$/);
     if (match && idPattern.test(match[1]!)) {
@@ -250,6 +267,9 @@ async function route(request: Request, env: Env): Promise<Response> {
   url.pathname = pages[path] ?? path;
   return env.ASSETS.fetch(new Request(url.toString(), { method: request.method }));
 }
+// Approved replies contain no per-user data; a short shared cache absorbs repeated lookups.
+const PUBLIC_CACHE = 'public, max-age=300';
+const publicCache = (response: Response) => { response.headers.set('Cache-Control', PUBLIC_CACHE); return response; };
 async function evidenceResponse(row: Row, env: Env): Promise<Response> {
   const object = await env.EVIDENCE.get(row.evidence_key);
   if (!object) throw new HttpError(404, 'Evidence not found.');
@@ -269,6 +289,7 @@ async function expire(env: Env): Promise<void> {
   }
   await env.DB.prepare('DELETE FROM submission_budget WHERE day < ?').bind(new Date(now - 7 * 86400_000).toISOString().slice(0, 10)).run();
   await env.DB.prepare('DELETE FROM report_budget WHERE day < ?').bind(new Date(now - 7 * 86400_000).toISOString().slice(0, 10)).run();
+  await env.DB.prepare('DELETE FROM report_ip_budget WHERE day < ?').bind(new Date(now).toISOString().slice(0, 10)).run();
   await env.DB.prepare('DELETE FROM content_reports WHERE created_at < ?').bind(pending).run();
 }
 export default {
@@ -281,7 +302,8 @@ export default {
         : json({ error: 'The service is temporarily unavailable. Please try again.' }, 503);
     }
     const headers = new Headers(response.headers);
-    headers.set('Cache-Control', 'no-store');
+    // Everything except public lookups, including static assets, stays uncached.
+    if (headers.get('Cache-Control') !== PUBLIC_CACHE) headers.set('Cache-Control', 'no-store');
     headers.set('Referrer-Policy', 'no-referrer');
     headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('X-Frame-Options', 'DENY');

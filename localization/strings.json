@@ -4510,6 +4510,9 @@
     "en": "The free Vegsnap AI allowance is used up. It resets at midnight UTC.",
     "de": "Das kostenlose Kontingent von Vegsnap KI ist aufgebraucht. Es wird um Mitternacht UTC zurückgesetzt.",
     "sv": "Gratiskvoten för Vegsnap AI är förbrukad. Den återställs vid midnatt UTC.",
+    "core": [
+      "result.hostedQuotaError"
+    ],
     "androidResult": [
       "hostedQuotaError"
     ]
@@ -4518,6 +4521,9 @@
     "en": "Too many requests to Vegsnap AI. Wait a minute, then try again.",
     "de": "Zu viele Anfragen an Vegsnap KI. Warte eine Minute und versuche es erneut.",
     "sv": "För många förfrågningar till Vegsnap AI. Vänta en minut och försök igen.",
+    "core": [
+      "result.hostedRateLimitError"
+    ],
     "androidResult": [
       "hostedRateLimitError"
     ]
@@ -6677,6 +6683,9 @@
     "en": "Your account does not have access to this AI request or model. Check your plan or choose another model.",
     "de": "Dein Konto hat keinen Zugriff auf diese KI-Anfrage oder dieses Modell. Prüfe deinen Tarif oder wähle ein anderes Modell.",
     "sv": "Ditt konto har inte åtkomst till den här AI-förfrågan eller modellen. Kontrollera din prenumeration eller välj en annan modell.",
+    "core": [
+      "result.aiAccessError"
+    ],
     "androidResult": [
       "aiAccessError"
     ]
@@ -6714,8 +6723,19 @@
     "en": "Your AI connection has expired or was rejected. Reconnect ChatGPT or check your API key.",
     "de": "Deine KI-Verbindung ist abgelaufen oder wurde abgelehnt. Verbinde ChatGPT erneut oder prüfe deinen API-Schlüssel.",
     "sv": "Din AI-anslutning har gått ut eller avvisats. Anslut ChatGPT igen eller kontrollera din API-nyckel.",
+    "core": [
+      "result.aiAuthenticationError"
+    ],
     "androidResult": [
       "aiAuthenticationError"
+    ]
+  },
+  "result_ai_barcode_mismatch": {
+    "en": "AI identified a different product barcode; confirm the product before using its evidence.",
+    "de": "Die KI hat einen anderen Produkt-Barcode erkannt; bestätige das Produkt, bevor du seine Belege verwendest.",
+    "sv": "AI:n identifierade en annan streckkod; bekräfta produkten innan du använder dess belägg.",
+    "core": [
+      "result.aiBarcodeMismatch"
     ]
   },
   "result_ai_check_failed": {
@@ -6730,6 +6750,9 @@
     "en": "The AI response ended before the analysis was complete. Your existing evidence was kept. Try again.",
     "de": "Die KI-Antwort endete vor Abschluss der Analyse. Bisherige Belege bleiben erhalten. Versuche es erneut.",
     "sv": "AI-svaret avslutades innan analysen var klar. Dina befintliga belägg har behållits. Försök igen.",
+    "core": [
+      "result.aiIncompleteError"
+    ],
     "androidResult": [
       "aiIncompleteError"
     ]
@@ -6827,6 +6850,9 @@
     "en": "The selected model is unavailable or does not support this request. Choose another model.",
     "de": "Das gewählte Modell ist nicht verfügbar oder unterstützt diese Anfrage nicht. Wähle ein anderes Modell.",
     "sv": "Den valda modellen är inte tillgänglig eller stöder inte den här förfrågan. Välj en annan modell.",
+    "core": [
+      "result.aiModelError"
+    ],
     "androidResult": [
       "aiModelError"
     ]
@@ -6835,6 +6861,9 @@
     "en": "Vegsnap could not reach the AI provider. Check your internet connection and try again.",
     "de": "Vegsnap konnte den KI-Anbieter nicht erreichen. Prüfe deine Internetverbindung und versuche es erneut.",
     "sv": "Vegsnap kunde inte nå AI-leverantören. Kontrollera internetanslutningen och försök igen.",
+    "core": [
+      "result.aiNetworkError"
+    ],
     "androidResult": [
       "aiNetworkError"
     ]
@@ -6855,6 +6884,9 @@
     "en": "An AI usage limit was reached. Check your provider's usage settings. For ChatGPT, open Settings → Usage.",
     "de": "Ein KI-Nutzungslimit wurde erreicht. Prüfe die Nutzungseinstellungen deines Anbieters. Öffne bei ChatGPT Einstellungen → Nutzung.",
     "sv": "En användningsgräns för AI har nåtts. Kontrollera din leverantörs användningsinställningar. För ChatGPT, öppna Inställningar → Användning.",
+    "core": [
+      "result.aiQuotaError"
+    ],
     "androidResult": [
       "aiQuotaError"
     ]
@@ -6863,6 +6895,9 @@
     "en": "The AI provider is receiving too many requests. Wait a moment, then try again.",
     "de": "Der KI-Anbieter erhält zu viele Anfragen. Warte kurz und versuche es erneut.",
     "sv": "AI-leverantören får för många förfrågningar. Vänta en stund och försök igen.",
+    "core": [
+      "result.aiRateLimitError"
+    ],
     "androidResult": [
       "aiRateLimitError"
     ]
@@ -6871,6 +6906,9 @@
     "en": "The AI provider rejected this request. Check your provider and model settings.",
     "de": "Der KI-Anbieter hat diese Anfrage abgelehnt. Prüfe deine Anbieter- und Modelleinstellungen.",
     "sv": "AI-leverantören avvisade förfrågan. Kontrollera dina leverantörs- och modellinställningar.",
+    "core": [
+      "result.aiRequestError"
+    ],
     "androidResult": [
       "aiRequestError"
     ]
@@ -6879,6 +6917,9 @@
     "en": "The AI response could not be safely evaluated. Your existing evidence was kept. Try again or choose another model.",
     "de": "Die KI-Antwort konnte nicht zuverlässig ausgewertet werden. Bisherige Belege bleiben erhalten. Versuche es erneut oder wähle ein anderes Modell.",
     "sv": "AI-svaret kunde inte utvärderas på ett säkert sätt. Dina befintliga belägg har behållits. Försök igen eller välj en annan modell.",
+    "core": [
+      "result.aiResponseError"
+    ],
     "androidResult": [
       "aiResponseError"
     ]
@@ -6887,14 +6928,28 @@
     "en": "The AI provider is temporarily unavailable. Try again later.",
     "de": "Der KI-Anbieter ist vorübergehend nicht verfügbar. Versuche es später erneut.",
     "sv": "AI-leverantören är tillfälligt otillgänglig. Försök igen senare.",
+    "core": [
+      "result.aiServiceError"
+    ],
     "androidResult": [
       "aiServiceError"
+    ]
+  },
+  "result_ai_text_changed": {
+    "en": "AI extraction changed the supplied text; the original evidence was kept.",
+    "de": "Die KI-Auswertung hat den angegebenen Text verändert; die ursprünglichen Belege wurden beibehalten.",
+    "sv": "AI-tolkningen ändrade den angivna texten; de ursprungliga beläggen behölls.",
+    "core": [
+      "result.aiTextChanged"
     ]
   },
   "result_ai_timeout_error": {
     "en": "The AI request timed out. Check your connection and try again.",
     "de": "Die KI-Anfrage hat zu lange gedauert. Prüfe deine Verbindung und versuche es erneut.",
     "sv": "AI-förfrågan tog för lång tid. Kontrollera anslutningen och försök igen.",
+    "core": [
+      "result.aiTimeoutError"
+    ],
     "androidResult": [
       "aiTimeoutError"
     ]
@@ -6932,6 +6987,9 @@
     "en": "The AI check failed. Your existing evidence was kept. Try again.",
     "de": "Die KI-Prüfung ist fehlgeschlagen. Bisherige Belege bleiben erhalten. Versuche es erneut.",
     "sv": "AI-kontrollen misslyckades. Dina befintliga belägg har behållits. Försök igen.",
+    "core": [
+      "result.aiUnknownError"
+    ],
     "androidResult": [
       "aiUnknownError"
     ]
@@ -7209,6 +7267,14 @@
       "countryUnknownWarning"
     ]
   },
+  "result_data_sharing_required": {
+    "en": "Allow data sharing for this feature in Firefox’s extension permissions, or use local checks.",
+    "de": "Erlaube die Datenfreigabe für diese Funktion in den Erweiterungsberechtigungen von Firefox oder prüfe lokal.",
+    "sv": "Tillåt datadelning för den här funktionen i Firefox tilläggsbehörigheter, eller kontrollera lokalt.",
+    "core": [
+      "result.dataSharingRequired"
+    ]
+  },
   "result_database_failed_with_ai": {
     "en": "Database unavailable; AI evidence has been kept.",
     "de": "Datenbank nicht erreichbar; KI-Belege bleiben erhalten.",
@@ -7279,12 +7345,36 @@
       "result.databaseLookupFailed"
     ]
   },
+  "result_database_market_missing": {
+    "en": "The database record does not list {market}; confirm the market before using it.",
+    "de": "Der Datenbankeintrag nennt {market} nicht; bestätige den Markt, bevor du ihn verwendest.",
+    "sv": "Databasposten anger inte {market}; bekräfta marknaden innan du använder den.",
+    "core": [
+      "result.databaseMarketMissing"
+    ]
+  },
   "result_database_missing": {
     "en": "No exact product record was found.",
     "de": "Kein passender Datenbankeintrag gefunden.",
     "sv": "Ingen exakt produktpost hittades.",
     "core": [
       "result.databaseMissing"
+    ]
+  },
+  "result_database_rate_limited": {
+    "en": "{database}: request limit reached; try again in a minute.",
+    "de": "{database}: Anfragelimit erreicht; versuche es in einer Minute erneut.",
+    "sv": "{database}: gränsen för förfrågningar har nåtts; försök igen om en minut.",
+    "core": [
+      "result.databaseRateLimited"
+    ]
+  },
+  "result_database_source_failed": {
+    "en": "{database}: lookup failed.",
+    "de": "{database}: Abfrage fehlgeschlagen.",
+    "sv": "{database}: uppslaget misslyckades.",
+    "core": [
+      "result.databaseSourceFailed"
     ]
   },
   "result_database_vegan_label": {
@@ -7295,6 +7385,14 @@
       "result.databaseVeganLabel"
     ],
     "savedResult": true
+  },
+  "result_invalid_barcode": {
+    "en": "Invalid GTIN/EAN: check the digits and checksum.",
+    "de": "Ungültige GTIN/EAN: Prüfe die Ziffern und die Prüfziffer.",
+    "sv": "Ogiltig GTIN/EAN: kontrollera siffrorna och kontrollsiffran.",
+    "core": [
+      "result.invalidBarcode"
+    ]
   },
   "result_manufacturer_composition_ai": {
     "en": "Manufacturer composition (AI)",

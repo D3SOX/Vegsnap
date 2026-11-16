@@ -32,6 +32,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun test scripts
       - name: Generate packs and catalog
+        env:
+          VEGSNAP_OFFLINE_SNAPSHOT: refresh
         run: |
           # GitHub caps a release at 1,000 assets, so each quarter's packs get their own release; the catalog keeps its fixed URL.
           release="offline-data-$(date -u +%Y)-q$(( ($(date -u +%-m) + 2) / 3 ))"

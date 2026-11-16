@@ -18,11 +18,14 @@ const leadingConjunction = /^(?:and\/or|und\/oder|and|und|och|og|ja|et|ou|y|ed|e
 const quantityLeadIn = /^(?:contains\s+)?(?:(?:less\s+than|or\s+less)(?:\s+of)?(?:\s+each\s+of\s+the\s+following)?|one\s+or\s+more\s+of\s+the\s+following)\s*:?\s*(?=\S)/u;
 // US labels also state an additive's purpose ("BHT added to preserve freshness", "(for color)", "as preservatives"). The closed vocabulary never covers an ingredient ("to retain fish moisture" keeps the fish).
 const purposeNote = /(?:^|\s+)(?:added\s+)?(?:(?:to|for)\s+(?:(?:preserve|protect|maintain|retain|promote|prevent|keep)\s+)?(?:the\s+|its\s+)?(?:freshness|flavou?r|colou?r|moisture|quality|caking|texture|tartness)|as\s+(?:an?\s+)?(?:preservatives?|antioxidants?))$/u;
+// An allergen statement after the list ("Contains: wheat.", "Enthält: Milch") names ingredients already declared.
+const allergenLeadIn = /^(?:contains|enthält|innehåller)\s*:\s*(?=\S)/u;
+const allergenSentence = /[.!]\s+(?=(?:contains|enthält|innehåller)\s*:)/giu;
 export function normalizeTerm(text: string): string {
   return text.normalize('NFKC').toLowerCase().replace(/’/g, "'").replace(/[_*"]/g, '').replace(/(?<=\p{L}{4})\d{1,2}\s*$/u, '').replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
-    .replace(/\b(?:organic|bio)\b/g, '').replace(materialPrefix, '')
+    .replace(/\b(?:organic|bio)\b-?/g, '').replace(materialPrefix, '')
     .replace(additivePrefix, '').replace(/^\s*(?:gemüse|vegetables|grönsaker)\s*[-–:]\s*(?=\S)/iu, '')
-    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(quantityLeadIn, '').replace(leadingConjunction, '').replace(purposeNote, '');
+    .replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim().replace(allergenLeadIn, '').replace(quantityLeadIn, '').replace(leadingConjunction, '').replace(purposeNote, '');
 }
 
 /** Discard typography notes only, retaining genuine allergen and subingredient text. */
@@ -39,6 +42,7 @@ export function compositionTerms(text: string, materialContext = false): string[
     value = value.slice(0, group.index!) + '(' + expanded + ')' + value.slice(end);
   }
   if (materialContext || materialSection.test(text)) value = value.replace(/\//g, ',');
+  value = value.replace(allergenSentence, ', ');
   return value.replace(/(?<!\d)\d+(?:[.,]\d+)?\s*%/g, '')
     .replace(/\(\s*(?:teilentölt|entölt|partially defatted|defatted|partially deoiled|deoiled|delvis avfettat)\s*\)/gi, '')
     // A bare purpose after an ingredient ("annatto extract (color)", "sodium benzoate (preservative)"); a listed "color" on its own stays an unspecified colour.
@@ -60,9 +64,9 @@ function containsWord(text: string, word: string): boolean {
 /** Preserve chemical punctuation and verify every AI term against intentional source composition. */
 export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
   if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
-  const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
-  const precautionMatch = precaution.exec(source);
-  const intentional = precautionMatch ? source.slice(0, precautionMatch.index) : source;
+  // Split before collapsing whitespace: a line break can end a precaution sentence.
+  // Text after a precaution sentence only vetoes through exact local terms, never through an AI split.
+  const intentional = splitPrecaution(text.normalize('NFKC').toLowerCase()).ingredients.replace(/\s+/g, ' ');
   const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
   return terms.every(term => containsWord(intentional, term)) ? [...new Set(terms.map(normalizeTerm))] : undefined;
 }
@@ -87,9 +91,9 @@ const freeFrom = 'free|frei(?:e[rsmn]?)?|fri(?:tt|a)?|los(?:e[rsmn]?)?|vrije?';
 // A bare Finnish "ei" is never a negation: it is the German egg ("Ei und Milch"); only its fixed phrases ("ei sisällä", "ei lisättyä") are.
 const qualified = (qualifiers: string) => String.raw`(?:non|nicht|icke)[-–]?(?:${qualifiers})\p{L}{0,2}|(?:${qualifiers})[-–]?\s?(?:${freeFrom})`;
 const domainNegations = qualifierDomains.map(domain => ({ pattern: new RegExp(`^(?:${qualified(domain.qualifiers)})$`, 'u'), rules: domain.rules }));
-const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein\w*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né`;
+const negations = String.raw`${qualified(animalQualifiers)}|no|non|not|without|ohne|kein[\p{L}\p{N}_]*|utan|ingen|inget|inga|inte|ej|uten|uden|ikke|ilman|ei sisällä|ei lisättyä|sans|sin|senza|traces?|spuren|spår|spor|zonder|geen|free (?:from|of)|frei von|fri från|vrij van|libre de|privo di|ni|né`;
 // A substitute, flavour or culture word only covers its own phrase ("natural flavouring and milk powder" contains milk powder).
-const modifiers = String.raw`vegan\w*|plant|plant-based|pflanzlich\w*|växtbaserad\w*|vegetabilisk\w*|faux|fake|artificial|künstlich\w*|synthetic\w*|synthetisch\w*|kunst\w*|konst\w*|syntet\w*|imitation\w*|imitiert\w*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r\w*|aroma\w*|ar[oô]m\w*|geschmack\w*|smak\w*|saveur\w*|go[uû]t\w*|sabor\w*|gusto\w*|smaak\w*|smag\w*|maku\w*|vegaan\w*|(?<!\p{L})(?:cultures?|kultur\w*)`;
+const modifiers = String.raw`vegan[\p{L}\p{N}_]*|plant|plant-based|pflanzlich[\p{L}\p{N}_]*|växtbaserad[\p{L}\p{N}_]*|vegetabilisk[\p{L}\p{N}_]*|faux|fake|artificial|künstlich[\p{L}\p{N}_]*|synthetic[\p{L}\p{N}_]*|synthetisch[\p{L}\p{N}_]*|kunst[\p{L}\p{N}_]*|konst[\p{L}\p{N}_]*|syntet[\p{L}\p{N}_]*|imitation[\p{L}\p{N}_]*|imitiert[\p{L}\p{N}_]*|imitat|ersatz|alternative|alternativ|ersättning|erstatning|substitute|replacer|flavou?r[\p{L}\p{N}_]*|aroma[\p{L}\p{N}_]*|ar[oô]m[\p{L}\p{N}_]*|geschmack[\p{L}\p{N}_]*|smak[\p{L}\p{N}_]*|saveur[\p{L}\p{N}_]*|go[uû]t[\p{L}\p{N}_]*|sabor[\p{L}\p{N}_]*|gusto[\p{L}\p{N}_]*|smaak[\p{L}\p{N}_]*|smag[\p{L}\p{N}_]*|maku[\p{L}\p{N}_]*|vegaan[\p{L}\p{N}_]*|(?<!\p{L})(?:cultures?|kultur[\p{L}\p{N}_]*)`;
 const negatedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?:$|[^\p{L}])`, 'u');
 const negationWord = new RegExp(String.raw`(?:^|[^\p{L}])(?:${negations})(?=$|[^\p{L}])`, 'gu');
 const modifiedBefore = new RegExp(String.raw`(?:^|[^\p{L}])(?:${modifiers})(?:$|[^\p{L}])`, 'u');
@@ -238,6 +242,46 @@ export function ruleForTerm(term: string): Rule | undefined {
 export const compositionHeadingWords = 'ingredients|ingredienser|zutaten|materials|material|zusammensetzung|composition|ingrédients|ingredientes|ingredienti|ingrediënten|ingredienten|ainesosat|ainekset';
 const heading = new RegExp(`(?:^|\\n)[^\\S\\r\\n]*(?:${compositionHeadingWords})\\s*:\\s*`, 'i');
 const precaution = /\b(?:may contain|kan innehålla spår av|kann spuren von|kann\b(?!\s+(?:eine?[nrs]?|einer) (?:oder mehrere|der folgenden)(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\benthalten|spuren von|peut contenir|traces? (?:éventuelles? )?de|(?:fabriqu[ée]e?s?|produits?) dans une? (?:atelier|usine)|puede contener|trazas de|(?:elaborad|fabricad)[oa]s? en una? (?:fábrica|instalaci[óo]n|planta)|pu[oò] contenere|tracce di|prodott[oa] in uno stabilimento|kan\b(?!\s+(?:een|één) of meer(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))[^.!]*\bbevatten|sporen van|kan inneholde|kan indeholde|spor av|spor af|(?:voi|saattaa) sisältää|jäämiä)(?![\p{L}\p{N}])(?!\s+(?:one or more|either|any (?:one )?of|une? ou plusieurs|l'une? des|uno o (?:más|varios)|alguno de|uno o più|uno dei|een of meer|en eller flere|ett eller flera|én eller flere|yksi tai useampi)(?![\p{L}\p{N}])(?![^.:;)]*(?:allerg|trace|traza|tracc|spor|spur|spår|jäämi)))/iu;
+/**
+ * A precaution ends at its closing bracket or at the end of its sentence. A bracketed one resumes the list
+ * ("oil (may contain palm oil), whey"); after a sentence, the tail is only checked for exact animal terms.
+ */
+const labelledSection = /^\s*\p{L}[\p{L} '-]{0,40}:/u;
+export function splitPrecaution(body: string): { ingredients: string; crossContact: string[]; tail: string } {
+  let ingredients = '', tail = '', offset = 0, afterSentence = false;
+  const crossContact: string[] = [];
+  // After a bracketed precaution the list resumes only to the end of its sentence ("salt (may contain nuts). Made in…").
+  let listEnd = Infinity;
+  // A line break after a comma or semicolon wraps the list rather than ending the sentence.
+  const boundary = /[.!](?=\s|$)|(?<![,;][^\S\n]{0,20})\n/g;
+  const sentenceEnd = (from: number) => { boundary.lastIndex = from; const found = boundary.exec(body); return found ? found.index + 1 : body.length; };
+  const take = (until: number) => {
+    if (!afterSentence && until > listEnd) { ingredients += body.slice(offset, listEnd); offset = listEnd; afterSentence = true; }
+    if (afterSentence) tail += body.slice(offset, until); else ingredients += body.slice(offset, until);
+  };
+  for (let match = precaution.exec(body.slice(offset)); match; match = precaution.exec(body.slice(offset))) {
+    const start = offset + match.index;
+    take(start);
+    // Depth over the whole body, so an outer bracket stays open after an inner precaution closes.
+    let depth = 0;
+    for (const char of body.slice(0, start)) depth = '(['.includes(char) ? depth + 1 : ')]'.includes(char) ? Math.max(0, depth - 1) : depth;
+    let end = -1;
+    for (let index = start, level = 0; depth && index < body.length; index++) {
+      if ('(['.includes(body[index]!)) level++;
+      else if (')]'.includes(body[index]!) && !level--) { end = index; break; }
+    }
+    const bracketed = end >= 0;
+    if (!bracketed) end = sentenceEnd(start + match[0].length);
+    crossContact.push(body.slice(start, end).trim());
+    offset = end;
+    // A boundary saved inside this precaution no longer ends the list.
+    if (end > listEnd) listEnd = Infinity;
+    if (bracketed && !afterSentence) listEnd = Math.min(listEnd, sentenceEnd(end));
+    afterSentence ||= !bracketed;
+  }
+  take(body.length);
+  return { ingredients, crossContact, tail };
+}
 export function analyzeText(value: CheckInput | string, now: () => Date = () => new Date(), parsedIngredients?: string[]): CheckResult {
   const input: CheckInput = typeof value === 'string' ? { text: value } : value;
   const locale = input.locale ?? 'en';
@@ -254,9 +298,7 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
   const headingMatch = heading.exec(text);
   const materialMatch = !headingMatch && ['shoes', 'clothing', 'other'].includes(input.category ?? 'other') ? materialSection.exec(text) : null;
   const body = headingMatch ? text.slice(headingMatch.index + headingMatch[0].length) : materialMatch ? text.slice(materialMatch.index).trim() : text;
-  const precautionMatch = precaution.exec(body);
-  const ingredients = precautionMatch ? body.slice(0, precautionMatch.index) : body;
-  const crossContact = precautionMatch ? [body.slice(precautionMatch.index).trim()] : [];
+  const { ingredients, crossContact, tail } = splitPrecaution(body);
   // A barcode identifies a product; it is not a composition term.
   const identityOnly = !headingMatch && !input.complete && input.name && normalizeTerm(ingredients) === normalizeTerm(input.name) && !ruleForTerm(normalizeTerm(ingredients));
   const fallback = normalizeBarcode(ingredients) || identityOnly ? [] : compositionTerms(ingredients, ['shoes', 'clothing'].includes(input.category ?? 'other'));
@@ -270,7 +312,21 @@ export function analyzeText(value: CheckInput | string, now: () => Date = () => 
     const guard = candidates.find(item => status(item) === 'animal') ?? candidates.find(item => status(item) === 'ambiguous');
     return guard ? [guard] : [];
   });
-  const tokens = parsed ? [...parsed, ...guards] : fallback;
+  // Text after a precaution sentence is not the list ("Store cool", "Made in a facility that handles milk"), but an exact
+  // animal term in a labelled section there still vetoes ("Coating: beeswax").
+  // A negated label ("Free from: milk") or item ("Contains: milk, no soy") names what the product does not contain.
+  const tailTerms = tail.split(/[.!](?=\s|$)|\n/).filter(sentence => labelledSection.test(sentence) && !negatedBefore.test(normalizeTerm(sentence.slice(0, sentence.indexOf(':')))))
+    .flatMap(sentence => compositionTerms(sentence));
+  const tailGuards = tailTerms.flatMap(term => {
+    const value = normalizeTerm(term.slice(term.lastIndexOf(':') + 1));
+    // "Contains: milk and eggs" declares each conjunct. A negation covers its conjunct and the ones after it
+    // ("no milk or eggs", "milk and no soy"); an unnegated whole term still wins when it is an alias itself.
+    const conjuncts = value.split(conjunctionSplit).map(normalizeTerm);
+    const firstNegated = conjuncts.findIndex(part => negatedBefore.test(part));
+    const parts = firstNegated < 0 ? conjuncts : conjuncts.slice(0, firstNegated);
+    return [...(negatedBefore.test(value) ? [] : [value, term]), ...parts].filter(item => exactRule(item)?.status === 'animal').slice(0, 1);
+  });
+  const tokens = [...(parsed ? [...parsed, ...guards] : fallback), ...tailGuards];
   const findings: Finding[] = [...new Set(tokens)].map(term => {
     const rule = ruleForTerm(term);
     return rule ? {

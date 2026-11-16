@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 import curry from '../../../fixtures/massaman-source-merge.json';
 import { analyzeText, localizeResult, type CheckResult, type Finding } from '../src';
-import { mergeResults } from '../src/merge-results';
+import { mergeResults, reconcileOriginQuestions } from '../src/merge-results';
+import { analysisMessages, resultMessages } from '../src/i18n';
 
 const assessedCurry = (): CheckResult => ({ ...analyzeText({ category: 'food' }), outcome: 'vegan', basis: 'composition', usedAI: true,
   findings: curry.findings.map(finding => ({ ...finding })) as Finding[], evidence: [{ id: 'web-composition-0', kind: 'ai_extraction', title: 'Retailer composition (AI)',
@@ -89,4 +90,11 @@ test('origin questions follow remaining findings in merged and saved results', (
   expect(mergeResults(ai, database).questions).toEqual(['Confirm the origin of: rare extract.', 'Keep the packaging.']);
   expect(localizeResult({ ...saved, findings: [...saved.findings, database.findings.at(-1)!] }, 'de').questions)
     .toEqual(['Die Herkunft dieser Zutaten klären: rare extract.', 'Keep the packaging.']);
+});
+test('origin questions are recognized in every locale from the generated copy', () => {
+  for (const locale of ['en', 'de', 'sv'] as const) {
+    const t = resultMessages[locale];
+    const questions = [analysisMessages[locale].origin, `${t.originQuestionPrefix}flavouring.`, 'Unrelated question?'];
+    expect(reconcileOriginQuestions(questions, [{ term: 'e471', status: 'ambiguous', explanation: '', evidenceId: 'x' }])).toEqual([`${t.originQuestionPrefix}e471.`, `${t.originQuestionPrefix}e471.`, 'Unrelated question?']);
+  }
 });

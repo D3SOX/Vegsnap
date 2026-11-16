@@ -17,6 +17,10 @@ describe('product identity', () => {
     expect(validGtin('4006381333932')).toBeUndefined();
     expect(validGtin(4006381333931)).toBeUndefined();
     expect(validGtin('B0001234')).toBeUndefined();
+    expect(validGtin('96385074')).toBe('96385074');
+    expect(validGtin('4006 381333931')).toBeUndefined();
+    expect(validGtin('4006-381333931')).toBeUndefined();
+    expect(validGtin('400638133393')).toBeUndefined();
   });
   test('extracts nested product cards without assigning the brand a product barcode', () => {
     const products = extractProducts({ '@graph': [{ '@type': 'Organization', name: 'Brand', gtin13: '4006381333931' }, { '@type': 'ItemList', itemListElement: [{ item: { '@type': ['Thing', 'Product'], name: 'Shoe', gtin13: '4006381333931', url: '/shoe' } }] }] });
@@ -39,6 +43,22 @@ describe('privacy boundaries', () => {
   test('selected barcode context-menu checks enter the same database path as pasted input', () => {
     expect(pendingInput({ text: '4006381333931', createdAt: Date.now() }).barcode).toBe('4006381333931');
     expect(pendingInput({ barcode: '4006381333931', name: 'Example', createdAt: Date.now() })).toMatchObject({ barcode: '4006381333931', name: 'Example' });
+  });
+  test('pasted text supplies a barcode only when it is the whole text or labelled', () => {
+    const barcode = (text: string) => scanInput({ text, category: 'food', images: [], complete: false }).barcode;
+    // 20260118 passes the EAN-8 checksum, like many dates and lot numbers on labels.
+    expect(barcode('Ingredients: oats, water. Best before 20260118')).toBeUndefined();
+    expect(barcode('Zutaten: Hafer, Wasser\nLOT 20260118 4006381333931')).toBeUndefined();
+    expect(pendingInput({ text: 'Mindestens haltbar bis: 20260118', createdAt: Date.now() }).barcode).toBeUndefined();
+    expect(barcode(' 4006381333931\n')).toBe('4006381333931');
+    expect(barcode('20260118')).toBe('20260118');
+    expect(barcode('Ingredients: oats, water EAN 4006381333931')).toBe('4006381333931');
+    expect(barcode('GTIN-13: 4006381333931\nIngredients: oats')).toBe('4006381333931');
+    expect(barcode('EAN-Code: 4006381333931')).toBe('4006381333931');
+    expect(barcode('Strichcode 4006381333931')).toBe('4006381333931');
+    expect(barcode('Streckkod: 7310865004703')).toBe('7310865004703');
+    expect(barcode('Barcode: 4006381333932, EAN 4006381333931')).toBe('4006381333931');
+    expect(barcode('Clean 4006381333931')).toBeUndefined();
   });
   test('remote image reads enforce limits without a Content-Length header', async () => {
     let cancelled = false;
@@ -89,7 +109,10 @@ describe('privacy boundaries', () => {
   test('remote API credentials require TLS except explicit loopback', () => {
     expect(endpointOrigin('https://api.openai.com/v1')).toBe('https://api.openai.com/*');
     expect(endpointOrigin('http://localhost:11434/v1')).toBe('http://localhost/*');
-    for (const url of ['http://api.example/v1', 'https://user:password@api.example/v1', 'https://api.example/v1?key=secret', 'file:///tmp/file']) expect(() => endpointOrigin(url)).toThrow();
+    expect(endpointOrigin('http://127.0.0.1:1234/v1')).toBe('http://127.0.0.1/*');
+    // Matches core's provider validation; the pattern is also an optional host permission in the manifest.
+    expect(endpointOrigin('http://[::1]:11434/v1')).toBe('http://[::1]/*');
+    for (const url of ['http://api.example/v1', 'https://user:password@api.example/v1', 'https://api.example/v1?key=secret', 'file:///tmp/file', 'http://[::2]:11434/v1', 'http://[::ffff:7f00:1]/v1']) expect(() => endpointOrigin(url)).toThrow();
   });
   test('check messages reject raw remote images, excessive photos, and invalid flags', () => {
     expect(isCheckInput({ text: 'Ingredients: milk', complete: false, images: ['data:image/jpeg;base64,YQ=='] })).toBe(true);

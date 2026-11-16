@@ -4,8 +4,15 @@ import type { HistoryResult } from './history';
 import type { Settings } from './settings';
 import type { AccountOptions, CompanionCommand } from './companion-state';
 import { validGtin } from './extraction';
+// A label such as "EAN-13:", "GTIN 14", "Strichcode" or "streckkod nr" directly before the digits.
+const BARCODE_LABEL = /(?<!\p{L})(?:ean|gtin|upc|barcode|bar code|strichcode|streckkod(?:en)?)[^\d\n]{0,12}?(?:(?:8|12|13|14)[^\d\n]{1,12}?)?(\d{8,14})(?!\d)/giu;
+/** The barcode a user supplied in text: the whole text, or a labelled number. Dates and lot numbers in
+ * pasted label text often pass a GTIN checksum, and the barcode decides which database product is attached. */
+export function textBarcode(text: string): string | undefined {
+  return validGtin(text.trim()) ?? [...text.matchAll(BARCODE_LABEL)].map(match => validGtin(match[1])).find(Boolean);
+}
 export function scanInput(input: { text: string; category: CheckInput['category']; complete: boolean; images: string[]; market?: string; autoMarket?: boolean }): CheckInput {
-  return { ...input, barcode: input.text.split(/\s+/).map(validGtin).find(Boolean), complete: input.complete ? true : undefined };
+  return { ...input, barcode: textBarcode(input.text), complete: input.complete ? true : undefined };
 }
 /** Page titles and structured product names provide identity, not ingredients. Selected text remains user composition. */
 export function inspectedInput(page: { selection: string; title: string; products: { name?: string; barcode?: string }[] }): Pick<CheckInput, 'text' | 'name' | 'barcode'> {
@@ -31,6 +38,7 @@ export type Request =
   | { type: 'open-check'; barcode?: string; name?: string; brand?: string; sourceUrl?: string }
   | { type: 'pending'; id: string }
   | { type: 'delete'; id?: string }
+  | { type: 'history-photos'; ids: string[] }
   | { type: 'set-result-market'; id: string; market: string }
   | { type: 'cache-community-result'; expected: string; result: HistoryResult }
   | { type: 'hide-reply'; id: string }
@@ -44,8 +52,10 @@ export function pendingInput(pending: Pending): CheckInput {
   return { ...scanInput({ text: pending.text ?? '', category: 'other', complete: false, images: [] }),
     ...(pending.barcode ? { barcode: pending.barcode } : {}), name: pending.name, brand: pending.brand, sourceUrl: pending.sourceUrl, market: pending.market };
 }
+/** History entries omit `photos`; request them with `history-photos` for the entries being shown. */
 export interface State { settings: Settings; history: HistoryResult[]; hasKey: boolean; offlinePacks: OfflinePackInfo[]; hiddenReplies: string[]; }
-export type Reply<T> = { ok: true; result: T } | { ok: false; error: string };
+/** `cached` marks a background lookup answered from the service worker's cache. */
+export type Reply<T> = { ok: true; result: T; cached?: boolean } | { ok: false; error: string };
 export function isRecord(v: unknown): v is Record<string, unknown> { return v !== null && typeof v === 'object' && !Array.isArray(v); }
 export function isBackgroundRequest(value: unknown): value is Extract<Request, { type: 'background-check' | 'open-check' }> {
   if (!isRecord(value)) return false;

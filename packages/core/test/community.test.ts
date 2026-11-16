@@ -44,6 +44,13 @@ describe('community verdicts and coverage', () => {
     expect(JSON.stringify(original)).toBe(before);
     expect(applyCommunityReplies(original,[],'en')).toBe(original);
   });
+  test('an old vegan reply no longer settles the verdict, while an old not-vegan reply still applies', () => {
+    const original = analyzeText({text:'vitamin D',name:'Oat drink',brand:'Maker',market:'SE'});
+    const later = new Date('2028-01-11T00:00:00Z');
+    expect(applyCommunityReplies(original,[reply],'en',undefined,new Date('2028-01-10T00:00:00Z')).outcome).toBe('vegan');
+    expect(applyCommunityReplies(original,[reply],'en',undefined,later)).toBe(original);
+    expect(applyCommunityReplies(original,[{...reply,claim:'not_vegan' as const}],'en',undefined,later).outcome).toBe('not_vegan');
+  });
   test('ingredient-only, processing-only, inconclusive and unconfirmed range replies never establish a whole-product verdict', () => {
     const original = analyzeText({text:'vitamin D'});
     for (const scoped of [{...reply,scope:'ingredients' as const},{...reply,scope:'processing' as const},

@@ -37,6 +37,8 @@ mock.module('../src/offline', () => ({ offlineLibrary: () => ({ index: async () 
 const checkInputs: CheckInput[] = [];
 const saved: unknown[] = [];
 const providerConfigs: ProviderConfig[] = [];
+const providerCatalogueFetchers: unknown[] = [];
+let tabRemovedListener: (tab: number) => void;
 const hostedProviderTokens: string[] = [];
 let hostedRemaining = 3;
 let hostedExtractionFails = false;
@@ -65,6 +67,7 @@ function nativePort() {
 }
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; }
 async function tick() { await new Promise(resolve => setTimeout(resolve, 0)); }
+async function until(test: () => boolean, description: string) { for (let count = 0; count < 50 && !test(); count++) await tick(); assert(test(), description); }
 
 type RegisteredScript = { id: string; matches: string[]; js: string[] };
 const registeredScripts: RegisteredScript[] = [{ id: 'unrelated-script', matches: [], js: [] }];
@@ -100,9 +103,11 @@ mock.module('wxt/browser', () => ({ browser: {
     async query({ url }: { url: string[] }) { return openTabs.filter(tab => url.some(pattern => matchesOrigin(tab.url, pattern))); },
     async create({ url }: { url: string }) { openedTabs.push(url); },
     async sendMessage(id: number, message: unknown) { notifiedTabs.push({ id, message }); },
+    onRemoved: { addListener(fn: (tab: number) => void) { tabRemovedListener = fn; } },
   },
 } }));
-mock.module('../src/history', () => ({ history: async (operation: string, value: unknown) => {
+function withoutPhotos(result: { photos?: unknown }) { const { photos: _photos, ...rest } = result; return rest; }
+mock.module('../src/history', () => ({ withoutPhotos, history: async (operation: string, value: unknown) => {
   if (operation !== 'list') historyOperations.push(`${operation}:start`);
   if (operation === 'save') { await historySaveGate; saved.push(...(Array.isArray(value) ? value : [value])); }
   if (operation === 'delete') { await historyDeleteGate; saved.splice(0); }
@@ -122,7 +127,7 @@ mock.module('@vegsnap/core', () => ({
   } }; },
   acceptsImages, researchVeganAlternatives, validateAlternativeSearch,
   checkProduct: async (input: CheckInput, options: CheckOptions) => { checkInputs.push(input); calls.push(options); if (useRealEvaluator) return evaluateProduct(input, options); options.onProgress?.('ai'); options.onProgress?.('evaluating'); return { id: 'example', identity: { match: 'exact_barcode' }, checkedAt: new Date().toISOString() }; },
-  createOpenAIProvider: (config: ProviderConfig) => { providerConfigs.push(config); return { supportsWebSearch: true, extract: async (input: CheckInput, signal?: AbortSignal) => { providerInputs.push(input); providerExtractions++;
+  createOpenAIProvider: (config: ProviderConfig, _fetcher: unknown, catalogueFetcher: unknown) => { providerConfigs.push(config); providerCatalogueFetchers.push(catalogueFetcher); return { supportsWebSearch: true, extract: async (input: CheckInput, signal?: AbortSignal) => { providerInputs.push(input); providerExtractions++;
     if (holdAlternative) {
       pendingAlternativeSignal = signal; signal?.throwIfAborted();
       await new Promise((_, reject) => signal?.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true }));
@@ -156,6 +161,12 @@ assert(calls[1]?.provider);
 assert.equal(calls[1]?.offlineProducts, offlineIndex, 'Explicit checks consult the same on-device index');
 assert.equal(saved.length, 1);
 assert.deepEqual((saved[0] as { input: CheckInput }).input, { text: 'ingredients: milk', locale: 'en', market: 'DE', autoMarket: true }, 'History retains the original draft for editing');
+assert.equal(providerCatalogueFetchers.at(-1), (await import('../src/data-consent')).catalogueFetch, 'API providers look up catalogues through the fetcher that skips Matspar');
+const cachedLookup = await listener!({ type: 'background-check', barcode: '4006381333931' }, page);
+assert(cachedLookup.ok && cachedLookup.cached === true, 'A repeated store lookup is answered from the cache and says so');
+assert.equal((await listener!({ type: 'background-check', barcode: '5012345678900' }, page)).ok, false, 'Uncached lookups from one tab are paced');
+tabRemovedListener!(1);
+assert.equal((await listener!({ type: 'background-check', barcode: '5012345678900' }, page)).ok, true, 'Closing a tab forgets its pacing entry');
 assert.equal((await listener!({ type: 'set-api-token', endpoint: 'https://api.openai.com/v1', token: 'test-secret' }, trusted)).ok, true);
 assert(!JSON.stringify(local).includes('test-secret'));
 assert(JSON.stringify(session).includes('test-secret'));
@@ -255,7 +266,13 @@ assert.equal((saved.at(-1) as { input: CheckInput }).input.images, undefined, 'D
 assert.deepEqual(checkInputs.at(-1)?.images, sanitizedPhotos, 'Analysis and local history refer to the same prepared photos');
 const historyState = await listener!({ type: 'state' }, trusted);
 assert(historyState.ok);
-assert.deepEqual((historyState.result as { history: { photos?: string[] }[] }).history.at(-1)?.photos, sanitizedPhotos, 'Reopening history returns its locally stored photos');
+assert(!(historyState.result as { history: { photos?: string[] }[] }).history.some(item => item.photos), 'Shared history state never carries photos');
+const photoId = (saved.at(-1) as { id: string }).id;
+const storedPhotos = await listener!({ type: 'history-photos', ids: [photoId, 'missing'] }, trusted);
+assert(storedPhotos.ok);
+assert.deepEqual(storedPhotos.result, { [photoId]: sanitizedPhotos }, 'Reopening a check loads its locally stored photos on request');
+for (const ids of [undefined, 'id', [7], ['x'.repeat(201)]]) assert.equal((await listener!({ type: 'history-photos', ids }, trusted)).ok, false);
+assert.equal((await listener!({ type: 'history-photos', ids: [photoId] }, page)).ok, false, 'Content scripts cannot read saved photos');
 
 assert.equal((await listener!({ type: 'update-settings', patch: { saveHistory: false } }, trusted)).ok, true);
 const beforePrivateCheck = saved.length;
@@ -613,12 +630,14 @@ let heldHostedConnect: Promise<void> | undefined;
 let hostedVerified = false;
 let hostedExpired = false;
 let hostedRefreshFails = false;
+let heldHostedStatus: Promise<void> | undefined;
 globalThis.fetch = Object.assign(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
   const request = new Request(input, init);
   hostedRequests.push(request);
   assert.equal(new URL(request.url).origin, new URL(hostedConfig.baseUrl).origin);
   if (request.method === 'POST') { await heldHostedConnect; return Response.json({}, { status: 201 }); }
   if (request.method === 'DELETE') return Response.json({ disconnected: true });
+  await heldHostedStatus;
   if (hostedRefreshFails) throw new Error('Temporary status failure');
   if (hostedExpired) return new Response('{}', { status: 401 });
   return Response.json({ state: hostedVerified ? 'connected' : 'pending', remaining: hostedRemaining, expiresAt: Date.now() + 86400000, enabled: true });
@@ -656,15 +675,22 @@ try {
   const checked = await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
   assert(checked.ok);
   assert.equal((checked.result as { aiStatus: string }).aiStatus, 'images');
-  assert.equal((session.hostedStatus as { remaining: number }).remaining, 2, 'Successful hosted checks immediately refresh the cached allowance');
+  await until(() => (session.hostedStatus as { remaining: number }).remaining === 2, 'Successful hosted checks refresh the cached allowance');
+  const statusGate = deferred(); heldHostedStatus = statusGate.promise;
+  const unblocked = await Promise.race([listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted), new Promise(resolve => setTimeout(() => resolve('blocked'), 1000))]);
+  assert(unblocked !== 'blocked' && (unblocked as Reply<unknown>).ok, 'A hosted result does not wait for the allowance refresh');
+  statusGate.resolve(); heldHostedStatus = undefined;
+  await until(() => (session.hostedStatus as { remaining: number }).remaining === 1, 'The allowance refresh still arrives after the result');
+  hostedRemaining = 2;
+  assert.equal((await listener!({ type: 'hosted', command: 'status' }, firefoxTrusted)).ok, true);
   hostedExtractionFails = true;
   const failed = await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
   assert(failed.ok);
   assert.equal((failed.result as { aiStatus: string }).aiStatus, 'failed');
-  assert.equal((session.hostedStatus as { remaining: number }).remaining, 1, 'Failed AI attempts also refresh consumed allowance');
+  await until(() => (session.hostedStatus as { remaining: number }).remaining === 1, 'Failed AI attempts also refresh consumed allowance');
   hostedExpired = true;
   await listener!({ type: 'check', input: hostedPhoto }, firefoxTrusted);
-  assert.equal(session.hostedCredential, undefined, 'An expired hosted attempt immediately removes stale cached access');
+  await until(() => session.hostedCredential === undefined, 'An expired hosted attempt removes stale cached access');
   assert.equal(session.hostedStatus, undefined);
   hostedExpired = false; hostedExtractionFails = false;
   session.hostedCredential = credential;
@@ -801,8 +827,9 @@ const correctionFixture = {id:'market-correction',identity:{name:'Drink',brand:'
 saved.push(correctionFixture);
 const correction = await listener!({type:'set-result-market',id:correctionFixture.id,market:'SE'},firefoxTrusted);
 assert(correction.ok);
-assert.deepEqual(correction.result,{...correctionFixture,identity:{...correctionFixture.identity,market:'SE',marketSource:'manual'}});
-assert.deepEqual(saved.at(-1),correction.result,'Corrected country is written to local history');
+const { photos: _correctionPhotos, ...correctionWithoutPhotos } = correctionFixture;
+assert.deepEqual(correction.result,{...correctionWithoutPhotos,identity:{...correctionFixture.identity,market:'SE',marketSource:'manual'}},'The reply leaves photos out like shared history state');
+assert.deepEqual(saved.at(-1),{...correctionFixture,identity:{...correctionFixture.identity,market:'SE',marketSource:'manual'}},'Corrected country is written to local history with its photos');
 assert.equal(correctionFixture.identity.market,'DE','Original analysis object is not mutated');
 assert.equal((await listener!({type:'set-result-market',id:'missing-result',market:'SE'},firefoxTrusted)).ok,false);
 assert.equal((await listener!({type:'set-result-market',id:correctionFixture.id,market:'DE,SE'},firefoxTrusted)).ok,false);
@@ -828,6 +855,12 @@ assert(cacheReply.ok); assert.deepEqual(cacheReply.result, cacheResult);
 saved.splice(0, saved.length, cacheResult);
 const lateCacheReply = await listener!(cacheMessage, firefoxTrusted);
 assert(lateCacheReply.ok); assert.equal(lateCacheReply.result, null, 'Late replies cannot overwrite changed results');
+const photoSource = { ...cacheSource, id: 'community-cache-photos', photos: ['data:image/jpeg;base64,YQ=='] };
+saved.splice(0, saved.length, photoSource);
+const { photos: _cachePhotos, ...photoView } = photoSource;
+const photoCacheReply = await listener!({ type: 'cache-community-result', expected: JSON.stringify(photoView), result: { ...photoView, outcome: 'vegan' } }, firefoxTrusted);
+assert(photoCacheReply.ok); assert.deepEqual(photoCacheReply.result, { ...photoView, outcome: 'vegan' });
+assert.deepEqual((saved.at(-1) as { photos: string[] }).photos, photoSource.photos, 'Caching a reply from photo-less window state keeps the stored photos');
 saved.splice(0);
 const deletedCacheReply = await listener!(cacheMessage, firefoxTrusted);
 assert(deletedCacheReply.ok); assert.equal(deletedCacheReply.result, null, 'Late replies cannot recreate deleted history');

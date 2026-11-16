@@ -29,11 +29,15 @@ internal fun cachedCommunityResult(source: JSONObject, hidden: Set<String>): JSO
     return if (blocked) withoutCommunityReplies(source) else source
 }
 
+/** Recipes change: an old vegan confirmation no longer settles a verdict, while an old not-vegan reply still fails safe. */
+internal const val COMMUNITY_VEGAN_REPLY_MAX_AGE_DAYS = 730L
 /** Current community evidence can be saved locally without replacing the original analysis. */
 internal fun applyCommunityReplies(source: JSONObject, replies: List<CommunityReply>, locale: String, baseUrl: String,
     now: Instant = Instant.now()): JSONObject {
     val original = withoutCommunityReplies(source)
-    val eligible = replies.filter { it.scope == "whole_product" && it.claim in setOf("vegan", "not_vegan") && it.match != "candidate" }
+    val current = { reply: CommunityReply -> reply.claim != "vegan" ||
+        !java.time.LocalDate.parse(reply.repliedOn).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().plus(java.time.Duration.ofDays(COMMUNITY_VEGAN_REPLY_MAX_AGE_DAYS)).isBefore(now) }
+    val eligible = replies.filter { it.scope == "whole_product" && it.claim in setOf("vegan", "not_vegan") && it.match != "candidate" && current(it) }
     if (eligible.isEmpty()) return original
     val result = JSONObject(original.toString())
     result.put("communityOriginal", JSONObject().apply {

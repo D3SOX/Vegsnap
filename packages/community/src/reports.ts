@@ -1,6 +1,7 @@
 import { SubmissionError } from '@vegsnap/core/community';
 import { rateLimitAddress } from '@vegsnap/core/http';
 import { validateContentReport, type ContentReport, type ResultReport } from '@vegsnap/core/content-reports';
+import { cursorAfter, parseCursor } from './cursor';
 import type { Env } from './index';
 
 export class ReportError extends Error {
@@ -9,6 +10,15 @@ export class ReportError extends Error {
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 // Extension pages send their own per-installation origin on POST requests; web pages cannot use these schemes.
 const extensionOrigin = /^(?:chrome|moz|safari-web)-extension:\/\/[a-z0-9-]+$/i;
+// Native apps send no Origin and cannot show Turnstile, so one client may use only a tenth of the global daily budget.
+const DAILY_REPORTS = 200, DAILY_REPORTS_PER_CLIENT = 20;
+/** Keyed per-day client hash: the counter row cannot be reversed or linked across days, and expires the next day. */
+async function clientHash(request: Request, env: Env, day: string): Promise<string> {
+  if (!env.TURNSTILE_SECRET) throw new ReportError(503, 'Reports are not configured yet.');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.TURNSTILE_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`report:${day}:${rateLimitAddress(request.headers.get('CF-Connecting-IP'))}`));
+  return [...new Uint8Array(mac)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
 
 /** Native reports contain only explicitly reviewed text or verdict context, never attachments or credentials. */
 export async function submitReport(request: Request, env: Env): Promise<Response> {
@@ -36,22 +46,39 @@ export async function submitReport(request: Request, env: Env): Promise<Response
   try { report = validateContentReport(value); }
   catch (error) { if (error instanceof SubmissionError) throw new ReportError(400, error.message); throw error; }
   if (report.kind === 'community' && !await env.DB.prepare("SELECT id FROM submissions WHERE id=? AND status='approved'").bind(report.contentId).first()) throw new ReportError(404, 'This reply is no longer published.');
-  const now = new Date().toISOString();
-  const budget = await env.DB.prepare('INSERT INTO report_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count=count+1 WHERE count < 200 RETURNING count').bind(now.slice(0, 10)).first();
-  if (!budget) throw new ReportError(429, 'The daily report limit has been reached. Try tomorrow.');
+  const now = new Date().toISOString(), day = now.slice(0, 10);
+  const hash = await clientHash(request, env, day);
+  const client = await env.DB.prepare('INSERT INTO report_ip_budget(day, client, count) VALUES (?, ?, 1) ON CONFLICT(day, client) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count')
+    .bind(day, hash, DAILY_REPORTS_PER_CLIENT).first();
+  if (!client) throw new ReportError(429, 'You have sent the maximum number of reports for today. Try tomorrow.');
+  // A report that is not stored must not use up the client's allowance.
+  const refundClient = () => env.DB.prepare('UPDATE report_ip_budget SET count=count-1 WHERE day=? AND client=? AND count > 0').bind(day, hash).run();
+  let budget: unknown;
+  try { budget = await env.DB.prepare('INSERT INTO report_budget(day, count) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET count=count+1 WHERE count < ? RETURNING count').bind(day, DAILY_REPORTS).first(); }
+  catch (error) { await refundClient().catch(() => {}); throw error; }
+  if (!budget) { await refundClient(); throw new ReportError(429, 'The daily report limit has been reached. Try tomorrow.'); }
   const id = crypto.randomUUID();
-  await env.DB.prepare('INSERT INTO content_reports(id, kind, content_id, text, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, report.kind, report.contentId, report.text, report.reason, report.result ? JSON.stringify(report.result) : '', now).run();
+  try {
+    await env.DB.prepare('INSERT INTO content_reports(id, kind, content_id, text, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, report.kind, report.contentId, report.text, report.reason, report.result ? JSON.stringify(report.result) : '', now).run();
+  } catch (error) {
+    await Promise.allSettled([refundClient(), env.DB.prepare('UPDATE report_budget SET count=count-1 WHERE day=? AND count > 0').bind(day).run()]);
+    throw error;
+  }
   return Response.json({ id }, { status: 201 });
 }
 
 export async function reviewReports(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (request.method === 'GET' && url.pathname === '/api/review/reports') {
+    const cursor = parseCursor(url.searchParams.get('cursor') ?? '');
+    if (!cursor) throw new ReportError(400, 'Invalid report cursor.');
     const { results } = await env.DB.prepare(`SELECT r.*, s.product_name, s.brand, s.reply, s.revision, s.status AS reply_status
       FROM content_reports r LEFT JOIN submissions s ON r.kind='community' AND s.id=r.content_id
-      ORDER BY r.created_at, r.id LIMIT 50`).all<{ details: string }>();
-    return Response.json({ reports: results.map(({ details, ...row }) => ({ ...row, details: details ? JSON.parse(details) as ResultReport : null })) });
+      WHERE (r.created_at, r.id) > (?, ?) ORDER BY r.created_at, r.id LIMIT 51`).bind(...cursor).all<{ id: string; created_at: string; details: string }>();
+    const page = results.slice(0, 50);
+    return Response.json({ reports: page.map(({ details, ...row }) => ({ ...row, details: details ? JSON.parse(details) as ResultReport : null })),
+      nextCursor: results.length > 50 ? cursorAfter(page.at(-1)!) : null });
   }
   const id = url.pathname.substring('/api/review/reports/'.length);
   if (request.method === 'DELETE' && uuid.test(id)) {

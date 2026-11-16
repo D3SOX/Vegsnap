@@ -16,5 +16,8 @@
   },
   "d1_databases": [{ "binding": "DB", "database_name": "veguide-community", "database_id": "1a622120-c9e7-471d-bd77-623b8bb5ef82", "migrations_dir": "migrations" }],
   "r2_buckets": [{ "binding": "EVIDENCE", "bucket_name": "veguide-community-evidence", "jurisdiction": "eu" }],
-  "ratelimits": [{ "name": "SUBMISSION_LIMIT", "namespace_id": "826401", "simple": { "limit": 5, "period": 60 } }]
+  "ratelimits": [
+    { "name": "SUBMISSION_LIMIT", "namespace_id": "826401", "simple": { "limit": 5, "period": 60 } },
+    { "name": "LOOKUP_LIMIT", "namespace_id": "826405", "simple": { "limit": 60, "period": 60 } }
+  ]
 }

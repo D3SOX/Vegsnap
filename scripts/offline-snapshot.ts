@@ -201,13 +201,15 @@ async function nonfoodRows(source: 'obf' | 'opf', cache: string, now: Date, fetc
   const rows: unknown[] = [];
   for (const row of parseTsv(text)) {
     if (rows.length >= 200_000) throw new Error('Non-food export exceeds row bound');
-    // The exports have labelled the _t and _datetime columns in swapped order, so last_modified_t may hold an ISO date.
-    const modified = row.last_modified_t ?? '';
-    rows.push({ ...row, last_modified_t: /^\d+$/.test(modified) ? Number(modified) : Math.floor(Date.parse(modified) / 1000) });
+    rows.push({ ...row, last_modified_t: exportTimestamp(row.last_modified_t ?? '') });
   }
   // An unreadable export must fail the refresh so the previous pack is kept, instead of silently dropping the source.
   if (!rows.some(row => normalizeProduct(row, source))) throw new Error(`${source} export has no usable products`);
   return { source, rows, retrievedAt };
+}
+/** The exports have labelled the _t and _datetime columns in swapped order, so last_modified_t may hold an ISO date. */
+export function exportTimestamp(value: string): number {
+  return /^\d+$/.test(value) ? Number(value) : Math.floor(Date.parse(value) / 1000);
 }
 /** Locates one field without splitting the line, so the millions of products outside every region cost a partial scan each. */
 function tsvField(line: string, index: number): string {
@@ -235,7 +237,7 @@ export async function selectFood(regions: readonly Region[], rows: AsyncIterable
     if (!tsvField(line, columns.countries_tags!).split(',').some(tag => tags.has(tag))) continue;
     const fields = line.split('\t'), field = (key: string) => fields[columns![key]!] ?? '';
     const row = { code: field('code'), product_name: field('product_name'), brands: field('brands'), ingredients_text: field('ingredients_text'),
-      countries_tags: field('countries_tags'), last_modified_t: Number(field('last_modified_t')) };
+      countries_tags: field('countries_tags'), last_modified_t: exportTimestamp(field('last_modified_t')) };
     const product = normalizeProduct(row);
     if (!product) continue;
     const scans = Number(field('unique_scans_n')) || 0;
@@ -278,7 +280,9 @@ async function foodExport(cache: string, now: Date, fetcher: SnapshotFetch): Pro
   return { path, retrievedAt: now.toISOString() };
 }
 type RefreshStatus = 'cached' | 'updated' | 'stale';
-interface RefreshOptions { force?: boolean; strict?: boolean; fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }
+/** `cached` uses the existing snapshot whatever its age; `refresh` (the default here) rebuilds it once it is older than the 7-day cache. */
+type RefreshMode = 'cached' | 'refresh';
+interface RefreshOptions { mode?: RefreshMode; force?: boolean; strict?: boolean; fetcher?: SnapshotFetch; now?: Date; sourceCache?: string; includeNonfood?: boolean; log?: (message: string) => void }
 export async function refreshSnapshot(options: RefreshOptions & { output: string; region?: Region }): Promise<RefreshStatus> {
   return (await refreshSnapshots([{ region: options.region ?? 'de-eu', output: options.output }], options))[0]!;
 }
@@ -288,9 +292,9 @@ export async function refreshSnapshots(packs: { region: Region; output: string }
   const existing = await Promise.all(packs.map(pack => readSnapshot(pack.output, pack.region)));
   const statuses: (RefreshStatus | undefined)[] = packs.map(({ region, output }, index) => {
     const snapshot = existing[index];
-    if (!options.force && process.env.VEGSNAP_OFFLINE_SNAPSHOT === 'cached') {
-      if (!snapshot) throw new Error(`No usable ${region} snapshot at ${output} for VEGSNAP_OFFLINE_SNAPSHOT=cached`);
-      log(`Offline ${region}: using ${snapshot.products.length} products from ${snapshot.generatedAt} (VEGSNAP_OFFLINE_SNAPSHOT=cached).`); return 'cached';
+    if (!options.force && options.mode === 'cached') {
+      if (!snapshot) throw new Error(`No usable ${region} snapshot at ${output}. Run with VEGSNAP_OFFLINE_SNAPSHOT=refresh to download the Open Food Facts exports.`);
+      log(`Offline ${region}: using ${snapshot.products.length} products from ${snapshot.generatedAt} (set VEGSNAP_OFFLINE_SNAPSHOT=refresh to update it).`); return 'cached';
     }
     const age = snapshot ? now.getTime() - Date.parse(snapshot.generatedAt) : Infinity;
     if (snapshot && !options.force && age >= 0 && age < CACHE_TTL_MS && snapshot.sources.every(source => now.getTime() - Date.parse(source.retrievedAt) >= 0 && now.getTime() - Date.parse(source.retrievedAt) < CACHE_TTL_MS)) {
@@ -362,13 +366,19 @@ if (import.meta.main) {
     regions.some(item => item !== 'de-eu' && !Object.hasOwn(PACKS, item)) || new Set(regions).size !== regions.length ||
     args.includes('--output') && (directory !== undefined || regions.length > 1) || args.some((arg, index) =>
     !['--region', '--output', '--output-dir', '--force', '--strict'].includes(arg) && !['--region', '--output', '--output-dir'].includes(args[index - 1] ?? ''))) {
-    throw new Error('Usage: bun scripts/offline-snapshot.ts [--region de-eu|all|PACK[,PACK…]] [--output path | --output-dir directory] [--force] [--strict]');
+    throw new Error('Usage: [VEGSNAP_OFFLINE_SNAPSHOT=cached|refresh] bun scripts/offline-snapshot.ts [--region de-eu|all|PACK[,PACK…]] [--output path | --output-dir directory] [--force] [--strict]');
   }
+  // Builds run this script, and a refresh downloads the full Open Food Facts export (about 10 GB decompressed)
+  // and rewrites the checked-in bundle. Only an explicit request refreshes: the release and pack workflows set it.
+  const mode = process.env.VEGSNAP_OFFLINE_SNAPSHOT || 'cached';
+  if (mode !== 'cached' && mode !== 'refresh') throw new Error('VEGSNAP_OFFLINE_SNAPSHOT must be cached or refresh.');
   const root = fileURLToPath(new URL('..', import.meta.url));
   const lock = resolve(root, 'artifacts/offline/refresh.lock');
-  await mkdir(dirname(lock), { recursive: true });
+  // Reading the cached snapshot writes nothing, so only refreshes wait for each other.
+  const writes = mode === 'refresh' || args.includes('--force');
+  if (writes) await mkdir(dirname(lock), { recursive: true });
   const deadline = Date.now() + 240_000;
-  while (true) {
+  while (writes) {
     try { await mkdir(lock); await writeFile(`${lock}/owner.json`, JSON.stringify({ pid: process.pid, createdAt: Date.now() })); break; }
     catch (error) {
       if (!(error instanceof Error) || !('code' in error) || error.code !== 'EEXIST') throw error;
@@ -386,6 +396,6 @@ if (import.meta.main) {
   }
   try {
     const output = (item: string) => resolve(value('--output') ?? (directory ? `${directory}/${item}.json` : item === 'de-eu' ? `${root}/data/offline/bundle.json` : `${root}/artifacts/offline/${item}.json`));
-    await refreshSnapshots(regions.map(item => ({ region: item as Region, output: output(item) })), { sourceCache: resolve(root, 'artifacts/offline/source-cache'), force: args.includes('--force'), strict: args.includes('--strict') });
-  } finally { await rm(lock, { recursive: true, force: true }); }
+    await refreshSnapshots(regions.map(item => ({ region: item as Region, output: output(item) })), { sourceCache: resolve(root, 'artifacts/offline/source-cache'), mode, force: args.includes('--force'), strict: args.includes('--strict') });
+  } finally { if (writes) await rm(lock, { recursive: true, force: true }); }
 }

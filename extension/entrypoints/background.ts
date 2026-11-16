@@ -6,12 +6,12 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { companionProvider } from '../src/companion';
 import { createCompanionState, type CompanionCommand } from '../src/companion-state';
 import { hostedCommand, hostedToken } from '../src/hosted';
-import { history, type HistoryResult } from '../src/history';
+import { history, withoutPhotos, type HistoryResult } from '../src/history';
 import { withoutCommunityHistory } from '../src/community-history';
 import { mergeHistoryImport, parseHistoryImport } from '../src/history-transfer';
 import { hiddenReplies, hideReply, restoreReplies } from '../src/hidden-replies';
 import { offlineLibrary } from '../src/offline';
-import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
+import { ACCOUNT_DATA, AI_DATA, CONTENT_DATA, aiFetch, catalogueFetch, contentFetch, hasDataConsent, requireDataConsent } from '../src/data-consent';
 import { PRESETS, changeConnectionSettings, STORES, endpointOrigin, parseSettings, storeMarket, type Connection } from '../src/settings';
 import { allowBackground, isBackgroundRequest, isCheckInput, isRecord, type CheckProgressMessage, type CheckReply, type Pending, type Reply } from '../src/protocol';
 
@@ -33,6 +33,7 @@ export default defineBackground(() => {
   }
   const cache = new Map<string, { result: CheckResult; time: number }>();
   const lastCheck = new Map<number, number>();
+  browser.tabs.onRemoved.addListener(tab => { lastCheck.delete(tab); });
   async function settings() { return parseSettings((await browser.storage.local.get('settings')).settings, browser.i18n.getUILanguage()); }
   async function openCheck(input: Omit<Pending, 'createdAt'>) {
     const id = crypto.randomUUID();
@@ -88,7 +89,7 @@ export default defineBackground(() => {
           const tab = sender.tab?.id;
           if (tab === undefined) throw new Error('Missing tab.');
           const cached = cache.get(`${config.language}:${storeMarket(sender.url!)}:${message.barcode}`);
-          if (cached && Date.now() - cached.time < 3_600_000) return { ok: true, result: cached.result };
+          if (cached && Date.now() - cached.time < 3_600_000) return { ok: true, result: cached.result, cached: true };
           if (Date.now() - (lastCheck.get(tab) ?? 0) < 1500) throw new Error('Please wait before the next lookup.');
           lastCheck.set(tab, Date.now());
           const result = await checkProduct({ barcode: message.barcode, locale: config.language, market: storeMarket(sender.url!) }, { mode: 'background', fetch: contentFetch, offlineProducts: await offlineLibrary().index() });
@@ -97,7 +98,13 @@ export default defineBackground(() => {
           return { ok: true, result };
         }
         switch (message.type) {
-          case 'state': { const key = (await browser.storage.session.get('credential')).credential; return { ok: true, result: { settings: config, history: await history('list'), offlinePacks: await offlineLibrary().info(), hiddenReplies: await hiddenReplies(), hasKey: isRecord(key) && key.endpoint === config.baseUrl && typeof key.token === 'string' && key.token.length > 0 } }; }
+          case 'state': { const key = (await browser.storage.session.get('credential')).credential; return { ok: true, result: { settings: config, history: (await history('list')).map(withoutPhotos), offlinePacks: await offlineLibrary().info(), hiddenReplies: await hiddenReplies(), hasKey: isRecord(key) && key.endpoint === config.baseUrl && typeof key.token === 'string' && key.token.length > 0 } }; }
+          case 'history-photos': {
+            const ids = message.ids;
+            if (!Array.isArray(ids) || ids.length > 10_000 || ids.some(id => typeof id !== 'string' || id.length > 200)) throw new Error('Invalid history request.');
+            const wanted = new Set(ids);
+            return { ok: true, result: Object.fromEntries((await history('list')).flatMap(saved => wanted.has(saved.id) && saved.photos?.length ? [[saved.id, saved.photos]] : [])) };
+          }
           case 'import-offline-pack': {
             if (typeof message.text !== 'string') throw new Error('Invalid offline pack.');
             await offlineLibrary().import(message.text);
@@ -215,7 +222,7 @@ export default defineBackground(() => {
             else if (!['chatgpt', 'database'].includes(config.connection) && config.model) {
               const credential: unknown = (await browser.storage.session.get('credential')).credential;
               const token = isRecord(credential) && credential.endpoint === config.baseUrl && typeof credential.token === 'string' ? credential.token : undefined;
-              provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) }, aiFetch);
+              provider = createOpenAIProvider({ baseUrl: config.baseUrl, token, model: config.model, supportsVision: acceptsImages(config.model) }, aiFetch, catalogueFetch);
             }
             // The evaluator consults local rules and the offline index first. Only
             // a network operation that is actually needed can ask for consent.
@@ -230,7 +237,8 @@ export default defineBackground(() => {
                 }
                 try { return await extract(...args); }
                 finally {
-                  if (config.connection === 'hosted') await hostedCommand('status').catch(() => {});
+                  // The refreshed allowance reaches open windows through its session-storage change; the result does not wait for it.
+                  if (config.connection === 'hosted') void hostedCommand('status').catch(() => {});
                 }
               };
             }
@@ -268,18 +276,19 @@ export default defineBackground(() => {
               if (!saved) throw new Error('This result is no longer in history.');
               const corrected = { ...withoutCommunityHistory(saved), identity: { ...saved.identity, market, marketSource: 'manual' as const }, ...(saved.input ? {input:{...saved.input,market,autoMarket:false}} : {}) };
               await history('save', corrected);
-              updated = corrected;
+              updated = withoutPhotos(corrected);
             });
             return { ok: true, result: updated };
           }
           case 'cache-community-result': {
             if (typeof message.expected !== 'string' || !isRecord(message.result) || typeof message.result.id !== 'string') throw new Error('Invalid community cache update.');
-            const expected = message.expected, result = message.result as unknown as HistoryResult;
+            const expected = message.expected, result = withoutPhotos(message.result as unknown as HistoryResult);
             let updated: HistoryResult | null = null;
             await changeHistory(async () => {
               const saved = (await history('list')).find(item => item.id === result.id);
-              if (!saved || JSON.stringify(saved) !== expected || JSON.stringify(result) === expected) return;
-              await history('save', result);
+              // Windows hold history without photos, so compare and update the rest and keep the stored photos.
+              if (!saved || JSON.stringify(withoutPhotos(saved)) !== expected || JSON.stringify(result) === expected) return;
+              await history('save', { ...result, ...(saved.photos ? { photos: saved.photos } : {}) });
               updated = result;
             });
             return { ok: true, result: updated };

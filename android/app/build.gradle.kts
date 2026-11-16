@@ -91,7 +91,7 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
 }
 
-// Refresh once per seven days; a valid bundled snapshot also supports offline builds.
+// Reuses the checked-in snapshot; VEGSNAP_OFFLINE_SNAPSHOT=refresh (release workflows) refreshes it once per seven days.
 val prepareOfflineSnapshot = tasks.register<Exec>("prepareOfflineSnapshot") {
     workingDir(rootDir.parentFile)
     commandLine("bun", "scripts/offline-snapshot.ts")

@@ -62,8 +62,9 @@ From the extracted source root:
 
 The generated files are in extension/.output/firefox-mv3.
 Compare their bytes with the submitted XPI; ZIP metadata/order may differ.
-Do not use build:firefox or scripts/offline-snapshot.ts for this comparison:
-those commands refresh live product data. This archive includes the exact
+Do not set VEGSNAP_OFFLINE_SNAPSHOT=refresh or pass --force to
+scripts/offline-snapshot.ts for this comparison: both refresh live product
+data. Without them, builds reuse the bundled data. This archive includes the exact
 bundled data/offline/bundle.json used in the submitted build. No Android SDK,
 Java, Rust, companion installation, credentials or signing keys are needed.
 The optional companion source is included for inspection but is not built

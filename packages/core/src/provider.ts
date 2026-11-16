@@ -2,6 +2,7 @@ import promptData from '../../../contracts/ai-extraction-prompt.json';
 import outputSchema from '../../../contracts/ai-output.schema.json';
 import type { AIExtraction, Category, CheckInput, ProviderAdapter, ProviderConfig } from './types';
 import { readBoundedText } from './http';
+import { AIFailure, httpFailure } from './ai-error';
 import { acceptsImages } from './model-capabilities';
 import { analyzeText, parseSourceIngredients, safeSourceUrl } from './analyze';
 import { applyAIEvidence, compositionComplete } from './ai-evidence';
@@ -43,35 +44,35 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
     typeof value.category !== 'string' || !categories.includes(value.category as Category) ||
     ['name', 'brand', 'barcode'].some(key => value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length > 300)) ||
     typeof value.barcode === 'string' && !/^(?:\d{8}|\d{12}|\d{13}|\d{14})$/.test(value.barcode)) {
-    throw new Error('AI returned invalid extraction data.');
+    throw new AIFailure('invalid_response', 'AI returned invalid extraction data.');
   }
   if (value.packaging !== undefined && (!object(value.packaging) || !Object.keys(value.packaging).length ||
     Object.entries(value.packaging).some(([key, clue]) => !['language', 'country', 'variant', 'quantity'].includes(key) ||
       typeof clue !== 'string' || !clue.trim() || clue.length > 300))) {
-    throw new Error('AI returned invalid packaging clues.');
+    throw new AIFailure('invalid_response', 'AI returned invalid packaging clues.');
   }
-  if (value.ingredients !== undefined && !validIngredientList(value.ingredients)) throw new Error('AI returned invalid parsed ingredients.');
+  if (value.ingredients !== undefined && !validIngredientList(value.ingredients)) throw new AIFailure('invalid_response', 'AI returned invalid parsed ingredients.');
   if (value.alternatives !== undefined && (!Array.isArray(value.alternatives) || value.alternatives.length > 5 || value.alternatives.some(item =>
     !object(item) || Object.keys(item).some(key => !['name', 'brand', 'url', 'quote', 'store', 'storeUrl', 'storeQuote'].includes(key)) ||
     ['name', 'brand', 'url', 'quote'].some(key => typeof item[key] !== 'string' || !item[key].trim()) ||
     Object.entries(item).some(([key, field]) => typeof field !== 'string' || field.length > (key.endsWith('Url') || key === 'url' ? 2000 : key.toLowerCase().endsWith('quote') ? 1000 : 300))))) {
-    throw new Error('AI returned invalid alternatives.');
+    throw new AIFailure('invalid_response', 'AI returned invalid alternatives.');
   }
-  if (!value.text.trim() && value.complete) throw new Error('AI marked an empty composition as complete.');
+  if (!value.text.trim() && value.complete) throw new AIFailure('invalid_response', 'AI marked an empty composition as complete.');
   if (value.ingredientAssessments !== undefined && (!Array.isArray(value.ingredientAssessments) || value.ingredientAssessments.length > 100 ||
     value.ingredientAssessments.some(item => !object(item) || Object.keys(item).some(key => !['term', 'translatedTerm', 'status', 'explanation'].includes(key)) ||
       typeof item.term !== 'string' || !item.term.trim() || item.term.length > 300 ||
       item.translatedTerm !== undefined && (typeof item.translatedTerm !== 'string' || !item.translatedTerm.trim() || item.translatedTerm.length > 300) ||
       !['plant', 'animal', 'ambiguous', 'unknown'].includes(String(item.status)) ||
       typeof item.explanation !== 'string' || !item.explanation.trim() || item.explanation.length > 1000))) {
-    throw new Error('AI returned invalid ingredient assessments.');
+    throw new AIFailure('invalid_response', 'AI returned invalid ingredient assessments.');
   }
   if (value.labelObservations !== undefined && (!Array.isArray(value.labelObservations) || value.labelObservations.length > 5 ||
     value.labelObservations.some(item => !object(item) || Object.keys(item).some(key => !['kind', 'name', 'text'].includes(key)) ||
       !['vegan_certification', 'vegan_claim'].includes(String(item.kind)) ||
       typeof item.name !== 'string' || !item.name.trim() || item.name.length > 100 ||
       typeof item.text !== 'string' || !item.text.trim() || item.text.length > 300))) {
-    throw new Error('AI returned invalid label observations.');
+    throw new AIFailure('invalid_response', 'AI returned invalid label observations.');
   }
   if (value.webClaims !== undefined && (!Array.isArray(value.webClaims) || value.webClaims.length > 5 ||
     value.webClaims.some(item => !object(item) || Object.keys(item).some(key => !['url', 'quote', 'claim', 'sourceType', 'productName', 'brand'].includes(key)) ||
@@ -79,7 +80,7 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
       typeof item.quote !== 'string' || !item.quote.trim() || item.quote.length > 1000 ||
       !['vegan', 'not_vegan'].includes(String(item.claim)) || !['manufacturer', 'certification'].includes(String(item.sourceType)) ||
       ['productName', 'brand'].some(key => typeof item[key] !== 'string' || !item[key].trim() || item[key].length > 300)))) {
-    throw new Error('AI returned invalid web claims.');
+    throw new AIFailure('invalid_response', 'AI returned invalid web claims.');
   }
   if (value.webCompositions !== undefined && (!Array.isArray(value.webCompositions) || value.webCompositions.length > 3 ||
     value.webCompositions.some(item => !object(item) || Object.keys(item).some(key => !['url', 'text', 'ingredients', 'complete', 'sourceType', 'productName', 'brand'].includes(key)) ||
@@ -88,7 +89,7 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
       item.ingredients !== undefined && !validIngredientList(item.ingredients) ||
       !['manufacturer', 'retailer'].includes(String(item.sourceType)) ||
       ['productName', 'brand'].some(key => typeof item[key] !== 'string' || !item[key].trim() || item[key].length > 300)))) {
-    throw new Error('AI returned invalid researched composition.');
+    throw new AIFailure('invalid_response', 'AI returned invalid researched composition.');
   }
   if (value.research !== undefined && (!object(value.research) ||
     Object.keys(value.research).some(key => !['searched', 'sources', 'market'].includes(key)) || typeof value.research.searched !== 'boolean' ||
@@ -96,7 +97,7 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
     !Array.isArray(value.research.sources) || value.research.sources.length > 50 ||
     value.research.sources.some(item => !object(item) || Object.keys(item).some(key => !['url', 'title'].includes(key)) ||
       typeof item.url !== 'string' || item.url.length > 2000 || !safeSourceUrl(item.url) || typeof item.title !== 'string' || item.title.length > 300))) {
-    throw new Error('Provider returned invalid web search metadata.');
+    throw new AIFailure('invalid_response', 'Provider returned invalid web search metadata.');
   }
   const { contact: rawContact, companyAssessment: rawCompanyAssessment, ...assessment } = value;
   const contact = parseManufacturerContact(rawContact);
@@ -104,14 +105,14 @@ export function validateAIExtraction(value: unknown, options: { allowResearch?: 
   return { ...assessment, ...(contact ? { contact } : {}), ...(companyAssessment ? { companyAssessment } : {}) } as unknown as AIExtraction;
 }
 export function parseAIExtraction(text: string): AIExtraction {
-  if (text.length > 100_000) throw new Error('AI extraction is too large.');
+  if (text.length > 100_000) throw new AIFailure('invalid_response', 'AI extraction is too large.');
   const trimmed = text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   return validateAIExtraction(withoutNulls(JSON.parse(trimmed)));
 }
 
 /** Search provenance comes from the Responses envelope, never from the model's JSON text. */
 function parseResponsesExtraction(body: unknown): AIExtraction {
-  if (!object(body) || body.status !== 'completed' || !Array.isArray(body.output)) throw new Error('AI response was incomplete; no verdict was accepted.');
+  if (!object(body) || body.status !== 'completed' || !Array.isArray(body.output)) throw new AIFailure('incomplete_response', 'AI response was incomplete; no verdict was accepted.');
   const sources = new Map<string, { url: string; title: string }>();
   let searched = false;
   const text: string[] = [];
@@ -131,7 +132,7 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
     if (item.type !== 'message' || item.role !== 'assistant' || !Array.isArray(item.content)) continue;
     for (const part of item.content) {
       if (!object(part)) continue;
-      if (part.type === 'refusal') throw new Error('AI response was refused; no verdict was accepted.');
+      if (part.type === 'refusal') throw new AIFailure('incomplete_response', 'AI response was refused; no verdict was accepted.');
       if (part.type === 'output_text' && typeof part.text === 'string') {
         text.push(part.text);
         if (Array.isArray(part.annotations)) {
@@ -140,7 +141,7 @@ function parseResponsesExtraction(body: unknown): AIExtraction {
       }
     }
   }
-  if (!text.length) throw new Error('AI provider returned no completion.');
+  if (!text.length) throw new AIFailure('incomplete_response', 'AI provider returned no completion.');
   const extraction = parseAIExtraction(text.join('\n'));
   return { ...extraction, research: { searched, sources: searched ? [...sources.values()] : [] } };
 }
@@ -229,7 +230,7 @@ export interface ResearchProviderOptions {
 function checkAIInput(input: CheckInput, supportsVision: boolean) {
   const images = input.images ?? [];
   if (images.length > 3) throw new Error('Use at most three product photos per check.');
-  if (images.length && !supportsVision) throw new Error('Choose a vision-capable model for photo checks.');
+  if (images.length && !supportsVision) throw new AIFailure('unsupported_model', 'Choose a vision-capable model for photo checks.');
   for (const image of images) {
     if (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(image) || image.length > 4_000_000) {
       throw new Error('Use a locally sanitized JPEG, PNG or WebP photo smaller than 3 MB.');
@@ -259,7 +260,7 @@ export function createResearchProvider(run: AIPassRunner, options: ResearchProvi
       const suppliedCode = normalizeBarcode(input.barcode ?? '');
       const extractedCode = normalizeBarcode(extracted.barcode ?? '');
       if (suppliedCode && extractedCode && suppliedCode.padStart(14, '0') !== extractedCode.padStart(14, '0')) {
-        throw new Error('AI identified a different product barcode; confirm the product before using its evidence.');
+        throw new AIFailure('invalid_response', 'AI identified a different product barcode; confirm the product before using its evidence.', 'aiBarcodeMismatch');
       }
       if (!needsResearch(extracted, input)) return extracted;
       const countryInput = { ...input, market: countryContext?.fallbackMarket ?? input.market };
@@ -341,8 +342,8 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       headers: { 'Content-Type': 'application/json', ...(config.token ? { Authorization: `Bearer ${config.token}` } : {}) },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`AI provider returned HTTP ${response.status}. Check your connection, model, and allowance.`);
-    return JSON.parse(await readBoundedText(response, 100_000));
+    if (!response.ok) throw await httpFailure(response, 'AI provider');
+    return JSON.parse(await readBoundedText(response, 1_048_576));
   }
   if (supportsWebSearch) {
     return createResearchProvider(async (pass, signal) => {
@@ -366,10 +367,10 @@ export function createOpenAIProvider(config: ProviderConfig, fetcher: typeof fet
       const body = await send({ model: config.model, stream: false, max_tokens: 6000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
         messages: [{ role: 'system', content: input.alternativeSearch ? promptData.alternativesPrompt : EXTRACTION_PROMPT }, { role: 'user', content }] },
         signal ? AbortSignal.any([signal, deadlineSignal]) : deadlineSignal);
-      if (!object(body) || !Array.isArray(body.choices) || !object(body.choices[0])) throw new Error('AI provider returned no completion.');
+      if (!object(body) || !Array.isArray(body.choices) || !object(body.choices[0])) throw new AIFailure('incomplete_response', 'AI provider returned no completion.');
       const choice = body.choices[0];
       if (choice.finish_reason !== 'stop' || !object(choice.message) || typeof choice.message.content !== 'string' || choice.message.refusal) {
-        throw new Error('AI response was incomplete or refused; no verdict was accepted.');
+        throw new AIFailure('incomplete_response', 'AI response was incomplete or refused; no verdict was accepted.');
       }
       return parseAIExtraction(choice.message.content);
     },

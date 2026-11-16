@@ -19,6 +19,12 @@ class CommunityVerdictTest {
         assertEquals("2026-01-10T00:00:00Z",updated.getJSONArray("evidence").getJSONObject(0).getString("sourceDate"))
         assertSame(original,applyCommunityReplies(original,emptyList(),"en","https://community.example"))
     }
+    @Test fun oldVeganRepliesStopSettlingWhileOldNotVeganRepliesStillApply() {
+        val later = java.time.Instant.parse("2028-01-11T00:00:00Z")
+        assertEquals("vegan", applyCommunityReplies(result(), listOf(reply), "en", "https://community.example", java.time.Instant.parse("2028-01-10T00:00:00Z")).getString("outcome"))
+        assertEquals("uncertain", applyCommunityReplies(result(), listOf(reply), "en", "https://community.example", later).getString("outcome"))
+        assertEquals("not_vegan", applyCommunityReplies(result(), listOf(reply.copy(claim = "not_vegan")), "en", "https://community.example", later).getString("outcome"))
+    }
     @Test fun onlyConfirmedWholeProductRepliesAffectTheVerdict() {
         val original = result()
         for (item in listOf(reply.copy(scope="ingredients"),reply.copy(scope="processing"),reply.copy(claim="inconclusive"),reply.copy(match="candidate")))

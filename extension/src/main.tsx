@@ -10,8 +10,8 @@ import { Browse } from './browse';
 import type { AlternativeSearch, BrowsePage, VeganAlternative } from '@vegsnap/core';
 import { alternativeMessages, marketMessages, messages } from './i18n';
 import { PRESETS, changeConnectionSettings, STORES, defaultSettings, endpointOrigin, type Connection, type Settings } from './settings';
-import { isRecord, scanInput, pendingInput, inspectedInput, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
-import { extractProducts, validGtin } from './extraction';
+import { isRecord, scanInput, pendingInput, inspectedInput, textBarcode, type CheckReply, type Pending, type Reply, type Request, type State } from './protocol';
+import { extractProducts } from './extraction';
 import { sanitizeImage, readImageResponse } from './images';
 import { editableInput, historyExport, type HistoryResult } from './history';
 import { HISTORY_IMPORT_MAX_BYTES, HISTORY_IMPORT_MAX_RESULTS } from './history-transfer';
@@ -57,6 +57,18 @@ export function App() {
   const [tab, setTab] = useState<'scan' | 'browse' | 'history' | 'settings'>('scan');
   const [savedHistory, setHistory] = useState<HistoryResult[]>([]);
   const [storedResult, setResult] = useState<HistoryResult>();
+  // Counts view changes during render, before any effect runs, so an async step never acts on a view the
+  // user has left, even after returning to it.
+  const shown = useRef({ tab, result: storedResult?.id, changes: 0 });
+  if (shown.current.tab !== tab || shown.current.result !== storedResult?.id) shown.current = { tab, result: storedResult?.id, changes: shown.current.changes + 1 };
+  // Photos stay out of shared state: each check's photos are loaded once, only while they can be shown.
+  const [photos, setPhotos] = useState<Record<string, string[]>>({});
+  const requestedPhotos = useRef(new Set<string>());
+  function keepPhotos(value: HistoryResult): HistoryResult {
+    const { photos: supplied, ...result } = value;
+    requestedPhotos.current.add(result.id); setPhotos(current => ({ ...current, [result.id]: supplied ?? [] }));
+    return result;
+  }
   const [editingResult, setEditingResult] = useState<HistoryResult>();
   const [community, setCommunity] = useState<{ key: string; source: string; replies?: CommunityReply[]; retrievedAt: string }>();
   const [hiddenReplies, setHiddenReplies] = useState<string[]>([]);
@@ -177,6 +189,16 @@ export function App() {
     return () => { sync.dispose(); browser.runtime.onMessage.removeListener(changed); browser.storage.onChanged.removeListener(storageChanged); window.removeEventListener('focus', focus); document.removeEventListener('visibilitychange', visible); };
   }, []);
   useEffect(() => { if (ready && config.connection === 'hosted') void connectHosted('status'); }, [ready, config.connection]);
+  useEffect(() => {
+    const visible = tab === 'history' ? savedHistory.map(item => item.id) : storedResult ? [storedResult.id] : [];
+    const ids = visible.filter(id => savedHistory.some(item => item.id === id) && !requestedPhotos.current.has(id));
+    if (!ids.length) return;
+    for (const id of ids) requestedPhotos.current.add(id);
+    request<Record<string, string[]>>({ type: 'history-photos', ids })
+      // An empty list records a check without photos, so editing it need not wait.
+      .then(found => setPhotos(current => ({ ...current, ...Object.fromEntries(ids.map(id => [id, found[id] ?? []])) })))
+      .catch(() => { for (const id of ids) requestedPhotos.current.delete(id); });
+  }, [tab, savedHistory, storedResult?.id]);
   useEffect(() => { setEmailRevealed(false); }, [tab, account.email, account.state, account.selectedAccount]);
   useEffect(() => {
     const hide = () => setEmailRevealed(false);
@@ -192,7 +214,7 @@ export function App() {
     try {
       const checked = await request<CheckReply>({ type: 'check', input, requestId, ...(previousId ? { previousId } : {}) });
       if (checked.onlineConsent) setOnlineCheck({ id: checked.id, previousId: previousId ?? checked.id, input, kind: checked.onlineConsent });
-      return checked;
+      return keepPhotos(checked);
     }
     finally { if (activeCheckId.current === requestId) { activeCheckId.current = undefined; setCheckProgress(undefined); } }
   }
@@ -201,10 +223,19 @@ export function App() {
       await settingsWrites.current;
       const checked = await runCheck(input, editingResult?.id); newScan(); setResult(checked); await refresh(); });
   }
-  function editResult() {
+  async function editResult() {
     if (!storedResult) return;
-    const input = editableInput(storedResult);
-    const barcodeInText = input.barcode !== undefined && input.text?.split(/\s+/).some(value => validGtin(value) === input.barcode);
+    // Editing must not drop saved photos whose request has not returned yet.
+    let saved = photos[storedResult.id];
+    if (!saved) {
+      const opened = shown.current.changes;
+      try { saved = (await request<Record<string, string[]>>({ type: 'history-photos', ids: [storedResult.id] }))[storedResult.id]; }
+      catch (error) { if (shown.current.changes === opened) setError(error instanceof Error ? error.message : String(error)); return; }
+      // The user may have moved on while the photos loaded; never replace what they are doing now.
+      if (shown.current.changes !== opened) return;
+    }
+    const input = editableInput({ ...storedResult, photos: saved });
+    const barcodeInText = input.barcode !== undefined && textBarcode(input.text ?? '') === input.barcode;
     setEditingResult(storedResult); setResult(undefined); setTab('scan');
     marketOverride.current = input.autoMarket !== true && storedResult.identity.marketSource !== 'fallback';
     setMarket(marketOverride.current ? input.market ?? configRef.current.fallbackCountry : configRef.current.fallbackCountry);
@@ -418,9 +449,9 @@ export function App() {
       {result ? <section class="result">
         <button type="button" class="text-button" onClick={newScan}>← {t.back}</button>
         <div class={`verdict ${result.outcome}`}><span class="eyebrow">{t.result}</span><h1 ref={resultHeading} tabIndex={-1}>{result.title}</h1><p>{result.summary}</p><div class="result-meta"><span>{result.identity.name ?? result.identity.barcode ?? t[result.category]}</span><span>{t.checked} {new Date(result.checkedAt).toLocaleDateString(config.language)}</span></div></div>
-        <button class="edit-details" type="button" disabled={busy} onClick={editResult}>{t.editDetails}</button>
+        <button class="edit-details" type="button" disabled={busy} onClick={() => void editResult()}>{t.editDetails}</button>
         {result.outcome === 'not_vegan' && <Alternatives researchEnabled={alternativeResearchEnabled} key={`${result.id}:${result.identity.market}`} config={config} initialQuery={alternativeQueryForProduct(result.identity.name ?? '', result.identity.brand, result.findings.filter(finding => finding.status === 'animal').map(finding => finding.term))} category={result.category} market={result.identity.market} excludeBarcode={result.identity.barcode} research={researchAlternatives}/>}
-        {result.photos?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{result.photos.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
+        {photos[result.id]?.length ? <section class="history-photos"><h2>{t.savedPhotos}</h2>{photos[result.id]!.map((photo, index) => <details key={index}><summary><img src={photo} alt={`${t.savedPhotos} ${index + 1}`}/><span>{t.previewPhoto}</span></summary><img class="photo-expanded" src={photo} alt={`${t.savedPhotos} ${index + 1}`}/></details>)}</section> : null}
         <p class="muted">{result.aiStatus === 'images' ? t.aiImages : result.aiStatus === 'text' ? t.aiText : result.aiStatus === 'failed' ? t.aiFailed : result.aiStatus === 'unconfigured' ? t.aiUnconfigured : result.aiStatus === 'disabled' ? t.aiDisabled : result.aiStatus === 'vision_disabled' ? t.aiVisionDisabled : result.aiStatus === 'offline' ? t.aiOffline : result.usedAI ? t.ai : t.local}</p>
         {reportOrigin && <div class="actions">
           {(result.usedAI || result.companyAssessment) && <ContentReportButton key={`ai:${result.id}`} kind="ai" locale={config.language} origin={reportOrigin} initialText={aiReportText(result)} send={contentFetch} allowSend={() => requestDataConsent(CONTENT_DATA)}/>}
@@ -436,6 +467,7 @@ export function App() {
         <ProductMarket market={storedResult!.identity.market} source={storedResult!.identity.marketSource} locale={config.language} disabled={busy} onSave={country=>act(async ()=>{
           const original = storedResult!;
           const corrected = savedHistory.some(item=>item.id === original.id)
+            // Metadata only: the reply omits photos, so the loaded ones stay.
             ? await request<HistoryResult>({type:'set-result-market',id:original.id,market:country})
             : {...original,identity:{...original.identity,market:country,marketSource:'manual' as const}};
           setOnlineCheck(undefined);
@@ -470,7 +502,7 @@ export function App() {
         </form>
       </section> : tab === 'history' ? <section>
         <div class="section-title"><h1>{t.history}</h1><div class="actions">{savedHistory.length > 0 && <button type="button" onClick={exportHistory}>{t.export}</button>}<label class="upload">{t.import}<input type="file" accept="application/json,.json" disabled={!ready || busy} onChange={event => { const file = event.currentTarget.files?.[0]; if (file) void act(async () => { if (file.size > HISTORY_IMPORT_MAX_BYTES) throw new Error(t.importSizeLimit); const outcome = await request<{ added: number; skipped: number }>({ type: 'import-history', text: await file.text() }); await refresh(); setNotice(t.importDone.replace('{added}', outcome.added.toLocaleString(config.language)).replace('{skipped}', outcome.skipped.toLocaleString(config.language))); }); event.currentTarget.value = ''; }}/></label></div></div>
-        {savedHistory.length === 0 ? <div class="empty"><Leaf/><h2>{t.noHistory}</h2><p>{t.noHistoryHint}</p></div> : <><label>{t.search}<input type="search" value={search} onInput={event => setSearch(event.currentTarget.value)}/></label><div class="history-list">{savedHistory.filter(item => `${item.title} ${item.identity.name ?? ''} ${item.identity.barcode ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(item => <article key={item.id}><button type="button" class="history-item" onClick={() => setResult(item)}><span class={`dot ${item.outcome}`}/>{item.photos?.[0] && <img class="history-thumbnail" src={item.photos[0]} alt=""/>}<span class="history-description"><strong>{item.identity.name ?? item.identity.barcode ?? item.title}</strong><small>{item.title} · {new Date(item.checkedAt).toLocaleDateString(config.language)}</small></span><span aria-hidden="true">›</span></button><button type="button" class="history-delete" title={t.delete} aria-label={`${t.delete}: ${item.identity.name ?? item.identity.barcode ?? item.title}`} disabled={busy} onClick={event => { event.stopPropagation(); void act(async () => { await request({ type: 'delete', id: item.id }); await refresh(); }); }}><Trash/></button></article>)}</div><button type="button" class="danger" onClick={() => { if (confirm(t.confirmDelete)) void act(async () => { await request({ type: 'delete' }); await refresh(); }); }}>{t.deleteAll}</button></>}
+        {savedHistory.length === 0 ? <div class="empty"><Leaf/><h2>{t.noHistory}</h2><p>{t.noHistoryHint}</p></div> : <><label>{t.search}<input type="search" value={search} onInput={event => setSearch(event.currentTarget.value)}/></label><div class="history-list">{savedHistory.filter(item => `${item.title} ${item.identity.name ?? ''} ${item.identity.barcode ?? ''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(item => <article key={item.id}><button type="button" class="history-item" onClick={() => setResult(item)}><span class={`dot ${item.outcome}`}/>{photos[item.id]?.[0] && <img class="history-thumbnail" src={photos[item.id]![0]} alt=""/>}<span class="history-description"><strong>{item.identity.name ?? item.identity.barcode ?? item.title}</strong><small>{item.title} · {new Date(item.checkedAt).toLocaleDateString(config.language)}</small></span><span aria-hidden="true">›</span></button><button type="button" class="history-delete" title={t.delete} aria-label={`${t.delete}: ${item.identity.name ?? item.identity.barcode ?? item.title}`} disabled={busy} onClick={event => { event.stopPropagation(); void act(async () => { await request({ type: 'delete', id: item.id }); await refresh(); }); }}><Trash/></button></article>)}</div><button type="button" class="danger" onClick={() => { if (confirm(t.confirmDelete)) void act(async () => { await request({ type: 'delete' }); await refresh(); }); }}>{t.deleteAll}</button></>}
       </section> : <section>
         <h1>{t.settings}</h1>
         <section aria-labelledby="store-heading"><h2 id="store-heading">{t.storeHeading}</h2><p class="hint">{t.storeHint}</p>{STORES.map(store => <div class="store" key={store.id}><div><strong>{store.name}</strong><small>{config.stores.includes(store.id) ? t.storeEnabled : t.storeOff}</small></div><div class="actions">{config.stores.includes(store.id) && storeAccess[store.id] === false && <button type="button" disabled={!ready || busy} onClick={() => void act(() => toggleStore(store, true))}>{t.enableAllSites}</button>}<button type="button" disabled={!ready || busy} onClick={() => void act(() => toggleStore(store))}>{config.stores.includes(store.id) ? t.disable : t.enable}</button></div></div>)}</section>
