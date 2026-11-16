@@ -28,6 +28,8 @@ internal fun splitPrecaution(body: String): PrecautionSplit {
         val end = close ?: sentenceEnd(body, match.last + 1)
         crossContact += body.substring(start, end).trim()
         offset = end
+        // A boundary saved inside this precaution no longer ends the list.
+        if (end > listEnd) listEnd = Int.MAX_VALUE
         if (close != null && !afterSentence) listEnd = minOf(listEnd, sentenceEnd(body, end))
         afterSentence = afterSentence || close == null
         match = next()
@@ -35,7 +37,8 @@ internal fun splitPrecaution(body: String): PrecautionSplit {
     take(body.length)
     return PrecautionSplit(ingredients.toString(), crossContact, tail.toString())
 }
-private val sentenceBoundary = Regex("[.!](?=\\s|$)|\\n")
+// A line break after a comma or semicolon wraps the list rather than ending the sentence.
+private val sentenceBoundary = Regex("[.!](?=\\s|$)|(?<![,;][^\\S\\n]{0,20})\\n")
 /** The position after the sentence that continues at [from], or the end of [text]. */
 private fun sentenceEnd(text: String, from: Int): Int = sentenceBoundary.find(text, from)?.let { it.range.first + 1 } ?: text.length
 /** The bracket closing the one a precaution at [start] was opened in, if any; depth counts the whole text before it. */

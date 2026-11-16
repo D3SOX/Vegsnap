@@ -19,9 +19,9 @@ private fun canonicalIngredientSource(text: String): String = java.text.Normaliz
 /** Preserve chemical punctuation; every model-split term must occur in intentional source composition. */
 internal fun parseSourceIngredients(text: String, items: JSONArray?): List<String>? {
     if (items == null || items.length() !in 1..100) return null
-    val source = canonicalIngredientSource(text)
+    // Split before collapsing whitespace: a line break can end a precaution sentence.
     // Text after a precaution sentence only vetoes through exact local terms, never through an AI split.
-    val intentional = splitPrecaution(source).ingredients
+    val intentional = canonicalIngredientSource(splitPrecaution(java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFKC).lowercase(java.util.Locale.ROOT)).ingredients)
     val terms = mutableListOf<String>()
     for (index in 0 until items.length()) {
         val value = items.opt(index) as? String ?: return null

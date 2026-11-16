@@ -3086,5 +3086,27 @@
       "outcome": "not_vegan",
       "basis": "composition"
     }
+  },
+  {
+    "id": "bracketed-precaution-wrapped-list",
+    "input": {
+      "text": "Ingredients: water, salt (may contain nuts),\nmilk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
+  },
+  {
+    "id": "bracketed-precaution-boundary-inside-later-precaution",
+    "input": {
+      "text": "Ingredients: water (may contain nuts), salt (may contain soy. May contain sesame), milk.",
+      "category": "food"
+    },
+    "expected": {
+      "outcome": "not_vegan",
+      "basis": "composition"
+    }
   }
 ]

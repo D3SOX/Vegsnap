@@ -107,6 +107,9 @@ describe('AI parses source-grounded ingredient names', () => {
       expect(parseSourceIngredients(`water. ${precaution}`, ['water', allergen])).toBeUndefined();
       expect(parseSourceIngredients(`water. ${precaution}`, ['water'])).toEqual(['water']);
     }
+    const facility = 'Ingredients: water, salt (may contain nuts)\nMade in a facility that handles milk.';
+    expect(parseSourceIngredients(facility, ['water', 'salt', 'milk'])).toBeUndefined();
+    expect(parseSourceIngredients('Ingredients: water, salt (may contain nuts),\nmilk.', ['water', 'salt', 'milk'])).toEqual(['water', 'salt', 'milk']);
   });
 
   test('invalid parsed-list shape cannot be accepted by the provider contract', () => {

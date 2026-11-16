@@ -64,9 +64,9 @@ function containsWord(text: string, word: string): boolean {
 /** Preserve chemical punctuation and verify every AI term against intentional source composition. */
 export function parseSourceIngredients(text: string, value: unknown): string[] | undefined {
   if (!Array.isArray(value) || !value.length || value.length > 100 || value.some(term => typeof term !== 'string' || !term.trim() || term.length > 300)) return undefined;
-  const source = text.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  // Split before collapsing whitespace: a line break can end a precaution sentence.
   // Text after a precaution sentence only vetoes through exact local terms, never through an AI split.
-  const intentional = splitPrecaution(source).ingredients;
+  const intentional = splitPrecaution(text.normalize('NFKC').toLowerCase()).ingredients.replace(/\s+/g, ' ');
   const terms = (value as string[]).map(term => term.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim());
   return terms.every(term => containsWord(intentional, term)) ? [...new Set(terms.map(normalizeTerm))] : undefined;
 }
@@ -252,7 +252,9 @@ export function splitPrecaution(body: string): { ingredients: string; crossConta
   const crossContact: string[] = [];
   // After a bracketed precaution the list resumes only to the end of its sentence ("salt (may contain nuts). Made in…").
   let listEnd = Infinity;
-  const sentenceEnd = (from: number) => { const found = /[.!](?=\s|$)|\n/.exec(body.slice(from)); return found ? from + found.index + 1 : body.length; };
+  // A line break after a comma or semicolon wraps the list rather than ending the sentence.
+  const boundary = /[.!](?=\s|$)|(?<![,;][^\S\n]{0,20})\n/g;
+  const sentenceEnd = (from: number) => { boundary.lastIndex = from; const found = boundary.exec(body); return found ? found.index + 1 : body.length; };
   const take = (until: number) => {
     if (!afterSentence && until > listEnd) { ingredients += body.slice(offset, listEnd); offset = listEnd; afterSentence = true; }
     if (afterSentence) tail += body.slice(offset, until); else ingredients += body.slice(offset, until);
@@ -272,6 +274,8 @@ export function splitPrecaution(body: string): { ingredients: string; crossConta
     if (!bracketed) end = sentenceEnd(start + match[0].length);
     crossContact.push(body.slice(start, end).trim());
     offset = end;
+    // A boundary saved inside this precaution no longer ends the list.
+    if (end > listEnd) listEnd = Infinity;
     if (bracketed && !afterSentence) listEnd = Math.min(listEnd, sentenceEnd(end));
     afterSentence ||= !bracketed;
   }
