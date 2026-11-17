@@ -33,13 +33,14 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
     private val alternativesAI by lazy { CheckRepository(getApplication(), chatGPT) }
     internal suspend fun publicAlternatives(input: AlternativeQuery): List<VeganAlternative> {
         check(!settings.value.offline)
-        return alternativesRepository.alternatives(input, alternativesEvaluator)
+        // The first access parses the bundled rules, which must not happen on the UI thread.
+        return withContext(Dispatchers.IO) { alternativesRepository.alternatives(input, alternativesEvaluator) }
     }
     internal suspend fun researchAlternatives(input: AlternativeQuery): List<VeganAlternative> {
         val config = settings.value
         if (config.offline || !aiConnectionReady(config, chatGPTState.value, hostedAIState.value, apiToken.value, hostedToken.value)) return emptyList()
         val resolved = config.forAnalysis(hostedAI.baseUrl, hostedAI.model, true)
-        return alternativesAI.alternativeResearch(input, resolved, if (config.connection == "hosted") hostedToken.value else apiToken.value)
+        return withContext(Dispatchers.IO) { alternativesAI.alternativeResearch(input, resolved, if (config.connection == "hosted") hostedToken.value else apiToken.value) }
     }
     private val database = ApplicationHistoryDatabase.get(application)
     private val offlineDatabase = ApplicationOfflineDatabase.get(application)
@@ -170,7 +171,7 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
             locale = appLocale(), market = state.value.market, autoMarket = state.value.autoMarket)
         barcodeJob = viewModelScope.launch {
             try {
-                val result = withTimeout(60_000) { barcodeRepository.lookupBarcode(input, offline = settings.value.offline, autoCountry = settings.value.autoCountry) }
+                val result = withTimeout(60_000) { withContext(Dispatchers.IO) { barcodeRepository }.lookupBarcode(input, offline = settings.value.offline, autoCountry = settings.value.autoCountry) }
                 if (result == null || !barcodeCoordinator.accepts(observation) || state.value.capturing || state.value.photos.isNotEmpty()) return@launch
                 val json = result.toString()
                 val savedInput = input.copy(name = result.getJSONObject("identity").optString("name"), category = result.getString("category"))
