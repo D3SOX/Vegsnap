@@ -40,7 +40,8 @@ class VegsnapViewModel(application: Application) : AndroidViewModel(application)
         val config = settings.value
         if (config.offline || !aiConnectionReady(config, chatGPTState.value, hostedAIState.value, apiToken.value, hostedToken.value)) return emptyList()
         val resolved = config.forAnalysis(hostedAI.baseUrl, hostedAI.model, true)
-        return withContext(Dispatchers.IO) { alternativesAI.alternativeResearch(input, resolved, if (config.connection == "hosted") hostedToken.value else apiToken.value) }
+        val token = if (config.connection == "hosted") hostedToken.value else apiToken.value
+        return withContext(Dispatchers.IO) { alternativesAI.alternativeResearch(input, resolved, token) }
     }
     private val database = ApplicationHistoryDatabase.get(application)
     private val offlineDatabase = ApplicationOfflineDatabase.get(application)
