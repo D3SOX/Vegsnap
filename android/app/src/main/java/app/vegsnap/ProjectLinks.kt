@@ -48,7 +48,7 @@ internal fun ProjectLinks() {
 internal fun SourceLicenseLinks() {
     val open = openProjectLink()
     val entries = listOf(
-        Triple("Vegsnap", "AGPL-3.0-only", "https://github.com/D3SOX/vegsnap/blob/main/LICENSE"),
+        Triple("Vegsnap", "AGPL-3.0-or-later", "https://github.com/D3SOX/vegsnap/blob/main/LICENSE"),
         Triple("Open Food Facts · Open Beauty Facts · Open Products Facts", "ODbL-1.0", "https://opendatacommons.org/licenses/odbl/1-0/"),
         Triple(stringResource(R.string.database_contents), "DbCL-1.0", "https://opendatacommons.org/licenses/dbcl/1-0/"),
         Triple("Wikidata", "CC0", "https://www.wikidata.org/wiki/Wikidata:Licensing"),

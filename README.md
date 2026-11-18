@@ -134,6 +134,6 @@ Run `bun run strings:generate` after editing the catalog. It generates Android `
 
 ## Data licenses
 
-The application code uses AGPL-3.0-only. Open Food Facts, Open Beauty Facts and Open Products Facts databases use ODbL-1.0, with individual contents under DBCL-1.0. Regional packs retain source URLs and dates. These data licenses are separate from the application license.
+The application code uses AGPL-3.0-or-later. Open Food Facts, Open Beauty Facts and Open Products Facts databases use ODbL-1.0, with individual contents under DBCL-1.0. Regional packs retain source URLs and dates. These data licenses are separate from the application license.
 
 Third-party dependencies, language models and certification marks retain their own licenses and terms.

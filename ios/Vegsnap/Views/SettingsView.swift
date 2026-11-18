@@ -114,7 +114,7 @@ struct SettingsView: View {
                 Link(L("Privacy policy"), destination: URL(string: "https://vegsnap.app/privacy.html#ios")!)
                 Link(L("Website"), destination: URL(string: "https://vegsnap.app")!)
                 Link(L("Source code and issues"), destination: URL(string: "https://github.com/D3SOX/vegsnap")!)
-                Text("AGPL-3.0-only").foregroundStyle(.secondary)
+                Text("AGPL-3.0-or-later").foregroundStyle(.secondary)
                 Text(L("No account required. No ads. No telemetry.")).font(.footnote)
             }
         }.navigationTitle(L("Settings"))

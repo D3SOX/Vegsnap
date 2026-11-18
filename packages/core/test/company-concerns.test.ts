@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { analyzeText, attachCompanyConcerns, checkProduct, createCompanyConcernResolver, resolveCompanyConcerns, type CompanyConcernDataset } from '../src';
 
 const dataset: CompanyConcernDataset = {
-  version: 1, license: 'AGPL-3.0-only', policy: 'Reviewed conduct only, never mixed product lines alone.',
+  version: 1, license: 'AGPL-3.0-or-later', policy: 'Reviewed conduct only, never mixed product lines alone.',
   entities: [
     { id: 'parent', name: 'Example Parent', kind: 'company', aliases: ['Example Parent, Inc.'] },
     { id: 'brand', name: 'Example Brand', kind: 'brand', aliases: ['Example Brand DE'], parent: { id: 'parent', sourceUrl: 'https://example.invalid/ownership', reviewedAt: '2026-10-06' } },

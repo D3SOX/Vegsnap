@@ -2,7 +2,7 @@
   "name": "vegsnap",
   "version": "0.2.24",
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "AGPL-3.0-or-later",
   "packageManager": "bun@1.4.4",
   "workspaces": [
     "packages/*",
