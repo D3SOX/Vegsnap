@@ -111,28 +111,31 @@ class AnalysisQueueService : Service() {
     }
     private suspend fun drain() {
         try {
-            withContext(Dispatchers.IO) { store.initialize() }
             val application = application as Application
-            val languages = ApplicationOcrLanguages.get(application)
-            val processor = PhotoProcessor(application, languages)
-            val historyPhotos = ApplicationHistoryPhotos.get(application)
-            val database = ApplicationHistoryDatabase.get(application)
-            val repository = CheckRepository(application, ChatGPTConnection(application))
-            val runner = AnalysisQueueRunner(store, analyze = { job, progress ->
-                languages.initialize()
-                val photos = store.files(job.id).map { PreparedPhoto(it.readBytes()) }
-                val token = CredentialStore(application, if (job.settings.connection == "hosted") "hosted" else "api").read(job.settings.baseUrl)
-                withTimeout(5 * 60_000L) {
-                    repository.check(job.input, photos, job.settings, token, progress) { prepared ->
-                        prepared.map { ensureActive(); processor.recognizePhoto(it) }
+            // Parsing the bundled rules and prompts takes long enough to freeze the UI when a check starts.
+            val runner = withContext(Dispatchers.IO) {
+                store.initialize()
+                val languages = ApplicationOcrLanguages.get(application)
+                val processor = PhotoProcessor(application, languages)
+                val historyPhotos = ApplicationHistoryPhotos.get(application)
+                val database = ApplicationHistoryDatabase.get(application)
+                val repository = CheckRepository(application, ChatGPTConnection(application))
+                AnalysisQueueRunner(store, analyze = { job, progress ->
+                    languages.initialize()
+                    val photos = store.files(job.id).map { PreparedPhoto(it.readBytes()) }
+                    val token = CredentialStore(application, if (job.settings.connection == "hosted") "hosted" else "api").read(job.settings.baseUrl)
+                    withTimeout(5 * 60_000L) {
+                        repository.check(job.input, photos, job.settings, token, progress) { prepared ->
+                            prepared.map { ensureActive(); processor.recognizePhoto(it) }
+                        }
                     }
-                }
-            }, publish = { job, result ->
-                publishAnalysisResult(job, result, historyPhotos,
-                    photos = { store.files(job.id).map { it.readBytes() } },
-                    exists = { database.history().find(it) != null },
-                    previous = { database.history().find(it)?.json?.let(::JSONObject) }, persist = { database.history().save(it) })
-            })
+                }, publish = { job, result ->
+                    publishAnalysisResult(job, result, historyPhotos,
+                        photos = { store.files(job.id).map { it.readBytes() } },
+                        exists = { database.history().find(it) != null },
+                        previous = { database.history().find(it)?.json?.let(::JSONObject) }, persist = { database.history().save(it) })
+                })
+            }
             val parallel = ParallelAnalysisQueue(store, scope, runner) { changes.trySend(Unit) }
             scheduler = parallel
             while (currentCoroutineContext().isActive) {
