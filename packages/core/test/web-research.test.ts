@@ -240,7 +240,7 @@ describe('researched product composition', () => {
           const request = JSON.parse(String(init?.body)) as { input: { content: { text: string }[] }[] };
           contexts.push(JSON.parse(request.input[0]!.content[0]!.text));
           return reply(envelope(first, contexts.length === 2 ? [{ type: 'web_search_call', status: 'completed' }] : []));
-        }) as unknown as typeof fetch);
+        }) as unknown as typeof fetch, (async () => new Response(null, { status: 503 })) as unknown as typeof fetch);
       await provider.extract({ ...input, barcode: identifiers.supplied });
       expect(contexts).toHaveLength(2);
       expect(contexts[1]!.barcode).toBe(identifiers.expected);
