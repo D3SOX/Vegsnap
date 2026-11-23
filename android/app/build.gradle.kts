@@ -6,7 +6,9 @@ plugins {
 }
 android {
     namespace = "app.vegsnap"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 1 }
+    }
     defaultConfig {
         applicationId = "app.vegsnap"
         minSdk = 26

@@ -3585,7 +3585,7 @@ mod tests {
         let unsupported = encode(
             &header,
             &test_claims(),
-            &EncodingKey::from_secret(b"public-test-secret"),
+            &EncodingKey::from_secret(b"public-test-secret").unwrap(),
         )
         .unwrap();
         assert!(
